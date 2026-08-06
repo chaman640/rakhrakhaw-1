@@ -1,0 +1,32 @@
+import { cn } from '@/lib/cn';
+
+export default function Tabs({ tabs, value, onChange, className }) {
+  return (
+    <div className={cn('mb-5 flex gap-1 overflow-x-auto border-b border-slate-200', className)}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          onClick={() => onChange(tab.value)}
+          className={cn(
+            'relative shrink-0 px-4 py-2.5 text-sm font-medium transition-colors focus-ring',
+            value === tab.value
+              ? 'text-brand-700'
+              : 'text-slate-500 hover:text-slate-800'
+          )}
+        >
+          <span className="flex items-center gap-2">
+            {tab.label}
+            {tab.count > 0 && (
+              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {tab.count}
+              </span>
+            )}
+          </span>
+          {value === tab.value && (
+            <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-600" />
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}

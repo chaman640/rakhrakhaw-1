@@ -1,0 +1,491 @@
+import mongoose from 'mongoose';
+import ApiError from '../utils/ApiError.js';
+import { STOCK_MOVEMENT_TYPES, UNITS } from '../config/constants.js';
+import { round2 } from '../utils/money.js';
+import { saveImage, deleteImage } from '../utils/storage.js';
+import { parseCsvToObjects, toCsv } from '../utils/csv.js';
+import { Item, Category, StockMovement, PartyItemRate } from '../models/index.js';
+import { applyStockChange, setStock } from './stock.service.js';
+
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/* ------------------------------------------------------------------ list */
+
+export async function listItems(businessId, q) {
+  const filter = { businessId };
+
+  if (q.status === 'active') filter.isActive = true;
+  else if (q.status === 'inactive') filter.isActive = false;
+
+  if (q.categoryId === 'none') filter.categoryId = null;
+  else if (q.categoryId) filter.categoryId = q.categoryId;
+
+  if (q.q) {
+    const rx = new RegExp(escapeRegex(q.q), 'i');
+    filter.$or = [{ name: rx }, { sku: rx }, { hsn: rx }];
+  }
+
+  // Stock filter — low ka matlab "lowStockAt se kam ya barabar, par khatam nahi"
+  if (q.stock === 'out') filter.stockQty = { $lte: 0 };
+  else if (q.stock === 'in') filter.stockQty = { $gt: 0 };
+  else if (q.stock === 'low') {
+    filter.$expr = { $and: [{ $lte: ['$stockQty', '$lowStockAt'] }, { $gt: ['$stockQty', 0] }] };
+  }
+
+  const skip = (q.page - 1) * q.limit;
+
+  const [items, total] = await Promise.all([
+    Item.find(filter)
+      .sort(q.sort.startsWith('-') ? { [q.sort.slice(1)]: -1 } : { [q.sort]: 1 })
+      .skip(skip)
+      .limit(q.limit)
+      .populate('categoryId', 'name')
+      .lean(),
+    Item.countDocuments(filter),
+  ]);
+
+  return {
+    items: items.map(decorate),
+    meta: { page: q.page, limit: q.limit, total, totalPages: Math.max(1, Math.ceil(total / q.limit)) },
+  };
+}
+
+// isLowStock virtual lean() ke saath hamesha nahi aata — yahan pakka kar dete hain
+function decorate(item) {
+  const stockQty = Number(item.stockQty || 0);
+  const lowStockAt = Number(item.lowStockAt || 0);
+  return {
+    ...item,
+    // categoryId populate hoke aata hai -> { _id, name }
+    category: item.categoryId?.name || null,
+    categoryId: item.categoryId?.name ? item.categoryId._id : (item.categoryId || null),
+    isLowStock: stockQty > 0 && stockQty <= lowStockAt,
+    isOutOfStock: stockQty <= 0,
+    stockValue: round2(stockQty * Number(item.purchasePrice || 0)),
+    margin: marginOf(item),
+  };
+}
+
+function marginOf(item) {
+  const cost = Number(item.purchasePrice || 0);
+  const sale = Number(item.wholesalePrice || item.salePrice || 0);
+  if (!cost || !sale) return null;
+  return { amount: round2(sale - cost), percent: round2(((sale - cost) / cost) * 100) };
+}
+
+/* ----------------------------------------------------------------- stats */
+
+export async function getStats(businessId) {
+  const bid = new mongoose.Types.ObjectId(businessId);
+
+  const [agg] = await Item.aggregate([
+    { $match: { businessId: bid, isActive: true } },
+    {
+      $group: {
+        _id: null,
+        totalItems: { $sum: 1 },
+        stockValue: { $sum: { $multiply: ['$stockQty', '$purchasePrice'] } },
+        outOfStock: { $sum: { $cond: [{ $lte: ['$stockQty', 0] }, 1, 0] } },
+        lowStock: {
+          $sum: {
+            $cond: [
+              { $and: [{ $lte: ['$stockQty', '$lowStockAt'] }, { $gt: ['$stockQty', 0] }] },
+              1, 0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  return {
+    totalItems: agg?.totalItems || 0,
+    stockValue: round2(agg?.stockValue || 0),
+    lowStock: agg?.lowStock || 0,
+    outOfStock: agg?.outOfStock || 0,
+  };
+}
+
+export async function getLowStockItems(businessId, limit = 20) {
+  return Item.find({
+    businessId,
+    isActive: true,
+    $expr: { $lte: ['$stockQty', '$lowStockAt'] },
+  })
+    .sort({ stockQty: 1 })
+    .limit(limit)
+    .select('name unit stockQty lowStockAt imageUrl')
+    .lean();
+}
+
+/* ------------------------------------------------------------------ CRUD */
+
+export async function getItem(businessId, id) {
+  const item = await Item.findOne({ _id: id, businessId }).populate('categoryId', 'name').lean();
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  const movements = await StockMovement.find({ businessId, itemId: id })
+    .sort({ createdAt: -1 }).limit(20).lean();
+
+  return { ...decorate(item), movements };
+}
+
+async function assertUniqueName(businessId, name, excludeId = null) {
+  const query = { businessId, name: new RegExp(`^${escapeRegex(name)}$`, 'i'), isActive: true };
+  if (excludeId) query._id = { $ne: excludeId };
+  if (await Item.exists(query)) throw ApiError.conflict(`"${name}" naam ka item pehle se hai`);
+}
+
+async function assertCategoryBelongs(businessId, categoryId) {
+  if (!categoryId) return null;
+  const exists = await Category.exists({ _id: categoryId, businessId });
+  if (!exists) throw ApiError.badRequest('Ye category aapki nahi hai');
+  return categoryId;
+}
+
+export async function createItem(businessId, payload, userId) {
+  await assertUniqueName(businessId, payload.name);
+  const categoryId = await assertCategoryBelongs(businessId, payload.categoryId || null);
+
+  const openingStock = Number(payload.openingStock || 0);
+
+  const item = await Item.create({
+    ...payload,
+    categoryId,
+    businessId,
+    openingStock,
+    stockQty: openingStock,
+  });
+
+  // Opening stock bhi audit trail me aata hai
+  if (openingStock !== 0) {
+    await StockMovement.create({
+      businessId,
+      itemId: item._id,
+      type: STOCK_MOVEMENT_TYPES.OPENING,
+      qty: openingStock,
+      balanceAfter: openingStock,
+      note: 'Opening stock',
+      createdBy: userId,
+    });
+  }
+
+  return getItem(businessId, item._id);
+}
+
+export async function updateItem(businessId, id, payload, userId) {
+  if (payload.name) await assertUniqueName(businessId, payload.name, id);
+  if (payload.categoryId !== undefined) {
+    payload.categoryId = payload.categoryId ? await assertCategoryBelongs(businessId, payload.categoryId) : null;
+  }
+
+  // stockQty yahan se kabhi nahi badalta — uske liye alag endpoint hai
+  delete payload.stockQty;
+  delete payload.openingStock;
+
+  const item = await Item.findOneAndUpdate({ _id: id, businessId }, payload, { new: true, runValidators: true });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  return getItem(businessId, id);
+}
+
+/**
+ * Delete — agar item kabhi kisi purchase/invoice me use hua hai to sirf
+ * deactivate hota hai (purane bill kharab na ho jayein), warna poora hat jata hai.
+ */
+export async function deleteItem(businessId, id) {
+  const item = await Item.findOne({ _id: id, businessId });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  const usedInTransaction = await StockMovement.exists({
+    businessId,
+    itemId: id,
+    type: { $in: [STOCK_MOVEMENT_TYPES.PURCHASE, STOCK_MOVEMENT_TYPES.SALE] },
+  });
+
+  if (usedInTransaction) {
+    item.isActive = false;
+    item.visibleToRetailers = false;
+    await item.save();
+    return { deleted: false, deactivated: true, message: `${item.name} purane bill me hai, isliye hide kar diya` };
+  }
+
+  if (item.imagePublicId) await deleteImage(item.imagePublicId);
+  await StockMovement.deleteMany({ businessId, itemId: id });
+  await PartyItemRate.deleteMany({ businessId, itemId: id });
+  await item.deleteOne();
+
+  return { deleted: true, deactivated: false, message: `${item.name} delete ho gaya` };
+}
+
+/* ----------------------------------------------------------------- photo */
+
+export async function setPhoto(businessId, id, file) {
+  if (!file) throw ApiError.badRequest('Koi image nahi mili');
+
+  const item = await Item.findOne({ _id: id, businessId });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  const { url, publicId } = await saveImage(file, 'items');
+  if (item.imagePublicId) await deleteImage(item.imagePublicId);
+
+  item.imageUrl = url;
+  item.imagePublicId = publicId;
+  await item.save();
+
+  return { imageUrl: url };
+}
+
+export async function removePhoto(businessId, id) {
+  const item = await Item.findOne({ _id: id, businessId });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  if (item.imagePublicId) await deleteImage(item.imagePublicId);
+  item.imageUrl = '';
+  item.imagePublicId = '';
+  await item.save();
+  return { imageUrl: '' };
+}
+
+/* ----------------------------------------------------------------- stock */
+
+export async function adjustStock(businessId, id, { mode, qty, note, type }, userId) {
+  if (mode === 'set') {
+    await setStock({ businessId, itemId: id, newQty: qty, note, userId });
+  } else {
+    const signed = mode === 'add' ? Math.abs(qty) : -Math.abs(qty);
+    if (signed === 0) throw ApiError.badRequest('Quantity 0 nahi ho sakti');
+    await applyStockChange({
+      businessId, itemId: id, type: type || STOCK_MOVEMENT_TYPES.ADJUSTMENT,
+      qty: signed, note, userId,
+      allowNegative: false,
+    });
+  }
+  return getItem(businessId, id);
+}
+
+/* ------------------------------------------------------------------ bulk */
+
+export async function bulkAction(businessId, { ids, action, categoryId }) {
+  const filter = { businessId, _id: { $in: ids } };
+
+  switch (action) {
+    case 'activate':
+      await Item.updateMany(filter, { isActive: true });
+      return { message: `${ids.length} item wapas chalu kar diye` };
+
+    case 'deactivate':
+      await Item.updateMany(filter, { isActive: false, visibleToRetailers: false });
+      return { message: `${ids.length} item hide kar diye` };
+
+    case 'showToRetailers':
+      await Item.updateMany(filter, { visibleToRetailers: true });
+      return { message: `${ids.length} item retailers ko dikhne lage` };
+
+    case 'hideFromRetailers':
+      await Item.updateMany(filter, { visibleToRetailers: false });
+      return { message: `${ids.length} item retailers se chhupa diye` };
+
+    case 'setCategory': {
+      const cid = categoryId ? await assertCategoryBelongs(businessId, categoryId) : null;
+      await Item.updateMany(filter, { categoryId: cid });
+      return { message: `${ids.length} item ki category badal di` };
+    }
+
+    case 'delete': {
+      let removed = 0, hidden = 0;
+      for (const id of ids) {
+        const res = await deleteItem(businessId, id).catch(() => null);
+        if (res?.deleted) removed++;
+        else if (res?.deactivated) hidden++;
+      }
+      return { message: `${removed} delete, ${hidden} hide (purane bill me the)` };
+    }
+
+    default:
+      throw ApiError.badRequest('Ye action nahi ho sakta');
+  }
+}
+
+/* ---------------------------------------------------------------- export */
+
+export const CSV_HEADERS = [
+  'name', 'sku', 'category', 'unit',
+  'purchasePrice', 'salePrice', 'wholesalePrice',
+  'stockQty', 'lowStockAt', 'hsn', 'gstRate',
+];
+
+export async function exportCsv(businessId) {
+  const items = await Item.find({ businessId, isActive: true })
+    .sort({ name: 1 }).populate('categoryId', 'name').lean();
+
+  const rows = items.map((i) => ({
+    name: i.name,
+    sku: i.sku || '',
+    category: i.categoryId?.name || '',
+    unit: i.unit,
+    purchasePrice: i.purchasePrice,
+    salePrice: i.salePrice,
+    wholesalePrice: i.wholesalePrice,
+    stockQty: i.stockQty,
+    lowStockAt: i.lowStockAt,
+    hsn: i.hsn || '',
+    gstRate: i.gstRate,
+  }));
+
+  return { csv: toCsv(CSV_HEADERS, rows), count: rows.length };
+}
+
+export function sampleCsv() {
+  return toCsv(CSV_HEADERS, [
+    { name: 'Bearing 6203', sku: 'BRG-6203', category: 'Bearings', unit: 'PCS',
+      purchasePrice: 85, salePrice: 120, wholesalePrice: 105, stockQty: 50, lowStockAt: 10, hsn: '8482', gstRate: 18 },
+    { name: 'Chain 428H', sku: 'CHN-428', category: 'Chains', unit: 'PCS',
+      purchasePrice: 320, salePrice: 450, wholesalePrice: 400, stockQty: 24, lowStockAt: 5, hsn: '7315', gstRate: 18 },
+  ]);
+}
+
+/* ---------------------------------------------------------------- import */
+
+/**
+ * Do step: pehle commit=false se preview (kuch save nahi hota),
+ * user dekh le, phir commit=true se asli import.
+ */
+export async function importCsv(businessId, { csv, commit }, userId) {
+  const { headers, records } = parseCsvToObjects(csv);
+
+  if (!headers.includes('name')) {
+    throw ApiError.badRequest('CSV me "name" column hona zaroori hai. Sample file download karke dekh lein.');
+  }
+  if (!records.length) throw ApiError.badRequest('CSV me koi row nahi mili');
+  if (records.length > 2000) throw ApiError.badRequest('Ek baar me 2000 se zyada item nahi ho sakte');
+
+  const [existingItems, existingCategories] = await Promise.all([
+    Item.find({ businessId }).select('name sku').lean(),
+    Category.find({ businessId }).select('name').lean(),
+  ]);
+
+  const itemByName = new Map(existingItems.map((i) => [i.name.toLowerCase(), i]));
+  const categoryByName = new Map(existingCategories.map((c) => [c.name.toLowerCase(), c]));
+
+  const seenInFile = new Set();
+  const rows = [];
+
+  for (const rec of records) {
+    const errors = [];
+    const name = (rec.name || '').trim();
+
+    if (!name) errors.push('Naam khali hai');
+    else if (name.length > 120) errors.push('Naam bahut lamba hai');
+
+    const key = name.toLowerCase();
+    if (key && seenInFile.has(key)) errors.push('Isi file me ye naam do baar hai');
+    seenInFile.add(key);
+
+    const unit = (rec.unit || 'PCS').toUpperCase();
+    if (!UNITS.includes(unit)) errors.push(`Unit "${rec.unit}" galat hai (${UNITS.slice(0, 6).join('/')}...)`);
+
+    const nums = {};
+    for (const [field, label] of [
+      ['purchasePrice', 'Purchase price'], ['salePrice', 'Sale price'],
+      ['wholesalePrice', 'Wholesale price'], ['stockQty', 'Stock'],
+      ['lowStockAt', 'Low stock'], ['gstRate', 'GST rate'],
+    ]) {
+      const raw = rec[field];
+      if (raw === undefined || raw === '') { nums[field] = field === 'lowStockAt' ? 5 : 0; continue; }
+      const n = Number(String(raw).replace(/[₹,\s]/g, ''));
+      if (Number.isNaN(n)) errors.push(`${label} number nahi hai: "${raw}"`);
+      else if (n < 0) errors.push(`${label} negative nahi ho sakta`);
+      else nums[field] = n;
+    }
+    if (nums.gstRate > 28) errors.push('GST rate 28 se zyada nahi ho sakta');
+
+    const existing = itemByName.get(key);
+
+    rows.push({
+      line: rec.__line,
+      name,
+      sku: (rec.sku || '').trim(),
+      categoryName: (rec.category || '').trim(),
+      unit,
+      hsn: (rec.hsn || '').trim(),
+      ...nums,
+      action: existing ? 'update' : 'create',
+      existingId: existing?._id || null,
+      errors,
+    });
+  }
+
+  const valid = rows.filter((r) => !r.errors.length);
+  const invalid = rows.filter((r) => r.errors.length);
+
+  const newCategories = [...new Set(
+    valid.map((r) => r.categoryName).filter((c) => c && !categoryByName.has(c.toLowerCase()))
+  )];
+
+  const summary = {
+    total: rows.length,
+    willCreate: valid.filter((r) => r.action === 'create').length,
+    willUpdate: valid.filter((r) => r.action === 'update').length,
+    withErrors: invalid.length,
+    newCategories,
+  };
+
+  if (!commit) {
+    return { preview: true, summary, rows: rows.slice(0, 200), truncated: rows.length > 200 };
+  }
+
+  if (!valid.length) throw ApiError.badRequest('Ek bhi sahi row nahi mili — errors theek karke dobara try karein');
+
+  // Nayi categories pehle bana lo
+  for (const catName of newCategories) {
+    const created = await Category.create({ businessId, name: catName });
+    categoryByName.set(catName.toLowerCase(), created);
+  }
+
+  let created = 0, updated = 0;
+
+  for (const row of valid) {
+    const categoryId = row.categoryName ? categoryByName.get(row.categoryName.toLowerCase())?._id || null : null;
+
+    const common = {
+      sku: row.sku,
+      categoryId,
+      unit: row.unit,
+      purchasePrice: row.purchasePrice,
+      salePrice: row.salePrice,
+      wholesalePrice: row.wholesalePrice,
+      lowStockAt: row.lowStockAt,
+      hsn: row.hsn,
+      gstRate: row.gstRate,
+    };
+
+    if (row.action === 'update') {
+      await Item.updateOne({ _id: row.existingId, businessId }, common);
+      // Stock CSV se aaya hai to use adjustment ki tarah record karo
+      const item = await Item.findById(row.existingId).select('stockQty').lean();
+      if (item && Number(row.stockQty) !== Number(item.stockQty)) {
+        await setStock({ businessId, itemId: row.existingId, newQty: row.stockQty, note: 'CSV import', userId });
+      }
+      updated++;
+    } else {
+      const item = await Item.create({
+        businessId, name: row.name, ...common,
+        openingStock: row.stockQty, stockQty: row.stockQty,
+      });
+      if (row.stockQty) {
+        await StockMovement.create({
+          businessId, itemId: item._id, type: STOCK_MOVEMENT_TYPES.OPENING,
+          qty: row.stockQty, balanceAfter: row.stockQty, note: 'CSV import', createdBy: userId,
+        });
+      }
+      created++;
+    }
+  }
+
+  return {
+    preview: false,
+    summary: { ...summary, created, updated, skipped: invalid.length },
+    rows: invalid.slice(0, 100),
+  };
+}
