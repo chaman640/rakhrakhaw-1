@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
 import { env } from './config/env.js';
-import { rememberOrigin } from './config/origin.js';
+import { rememberOrigin, detectedOrigin } from './config/origin.js';
 import { CLIENT_DIST, UPLOAD_DIR } from './config/paths.js';
 import apiRoutes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -18,19 +18,46 @@ const app = express();
 // Render/nginx ke peeche chalte waqt asli protocol (https) aur host pata chalta hai
 app.set('trust proxy', 1);
 
+// Sabse pehle app ka apna URL yaad kar lo — CORS aur invite link dono isi pe tike hain
+app.use((req, res, next) => { rememberOrigin(req); next(); });
+
 /**
- * CORS.
+ * CORS — kaun si doosri website hamari API browser se bula sakti hai.
  *
- * Ek hi URL wale deploy me client aur API dono ek jagah hain — CORS lagta hi nahi.
- * Ye sirf local dev ke liye hai jahan client 5173 pe aur server 5000 pe alag chalte hain.
+ * Do baatein saaf rakhni zaroori hain:
+ *
+ * 1. CORS **server ka pehra nahi hai**. Ye sirf browser ka niyam hai. Postman,
+ *    curl ya koi script CORS ko dekhti hi nahi. Isliye API ki asli suraksha
+ *    CORS se nahi, `protect` (JWT token) aur `withTenant` (businessId) se aati hai —
+ *    /health, login, signup aur invite ko chhod kar har route un dono se guzarta hai.
+ *
+ * 2. Iska kaam sirf itna hai: kisi aur website ka JavaScript, user ke browser me
+ *    chal kar, hamari API se data na padh le.
+ *
+ * Isliye ab sirf apna hi origin allow karte hain (aur dev me localhost).
+ * Pehle production me sab allow tha — ek hi URL wale deploy me farak nahi padta,
+ * par band rakhna hi theek hai.
  */
 const devOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173'];
 app.use(cors({
   origin(origin, cb) {
-    if (!origin) return cb(null, true);                      // same-origin ya curl
+    // Origin header hai hi nahi — same-origin page, curl, ya health check
+    if (!origin) return cb(null, true);
+
+    // App ka apna URL (pehli request pe pata chal jata hai) — hamesha allowed
+    const self = detectedOrigin();
+    if (self && origin === self) return cb(null, true);
+
+    // Client sach me alag URL pe ho to wahi ek allowed hai
     if (process.env.CLIENT_URL) return cb(null, origin === process.env.CLIENT_URL);
-    if (!env.isProd) return cb(null, devOrigins.includes(origin) || origin.startsWith('http://localhost:'));
-    return cb(null, true);                                   // single-URL deploy
+
+    // Dev me client 5173 pe alag chalta hai
+    if (!env.isProd) {
+      return cb(null, devOrigins.includes(origin) || origin.startsWith('http://localhost:'));
+    }
+
+    // Baaki har website ke liye band
+    return cb(null, false);
   },
   credentials: true,
 }));
@@ -39,9 +66,6 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 if (!env.isProd) app.use(morgan('dev'));
-
-// Pehli request se app ka apna URL yaad kar lo (invite link isi se banta hai)
-app.use((req, res, next) => { rememberOrigin(req); next(); });
 
 // Local upload ki images (Cloudinary set nahi hai to yahi use hoti hain)
 app.use('/uploads', express.static(UPLOAD_DIR));

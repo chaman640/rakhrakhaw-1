@@ -1,9 +1,21 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
+import { syncIndexes } from './config/indexes.js';
 
 async function start() {
   await connectDB();
+
+  // Purane project ke bache hue index hata dete hain (warna signup pe
+  // "Ye email pehle se maujud hai" jaisi ajeeb error aati hai).
+  // 20 second se zyada lage to chhod dete hain — deploy isme atakna nahi chahiye.
+  await Promise.race([
+    syncIndexes(),
+    new Promise((resolve) => setTimeout(() => {
+      console.warn('[db] Index sync me der lag rahi hai, aage badh rahe hain');
+      resolve();
+    }, 20000)),
+  ]);
   // 0.0.0.0 — Render/Docker ke andar sirf localhost pe sunne se bahar se koi nahi pahunch pata
   app.listen(env.port, '0.0.0.0', () => {
     if (env.isProd) {
