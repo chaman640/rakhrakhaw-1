@@ -233,7 +233,7 @@ export default function BusinessTab({ business, onSaved }) {
           <Input label="Low stock warning" type="number" min="0" value={form.lowStockThreshold}
             onChange={set('lowStockThreshold')} hint="Itne se kam stock par alert aayega" />
           <Textarea label="Invoice ke terms & conditions" rows={3} value={form.termsAndConditions}
-            onChange={set('termsAndConditions')} className="sm:col-span-2"
+            onChange={set('termsAndConditions')} containerClassName="sm:col-span-2"
             placeholder="Maal wapas nahi hoga. Payment 30 din me." />
         </div>
       </Card>

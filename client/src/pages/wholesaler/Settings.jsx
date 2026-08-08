@@ -28,10 +28,15 @@ export default function Settings() {
     api.get('/business/me')
       .then((res) => setBusiness(res.data))
       .finally(() => setLoading(false));
-    api.get('/business/retailers?status=pending')
-      .then((res) => setPendingCount(res.data.summary.pending || 0))
-      .catch(() => {});
-  }, []);
+    // Ye ginti sirf malik wale "Invite link" tab pe dikhti hai, aur retailer
+    // list ab bina `parties` ijazat ke khulti bhi nahi — isliye staff ke liye
+    // ye call karne ka koi matlab hi nahi
+    if (isOwner) {
+      api.get('/business/retailers?status=pending')
+        .then((res) => setPendingCount(res.data.summary.pending || 0))
+        .catch(() => {});
+    }
+  }, [isOwner]);
 
   if (loading) {
     return (

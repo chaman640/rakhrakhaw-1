@@ -110,8 +110,8 @@ export async function getKhataSummary(businessId) {
  * Ek party ka poora khata.
  *
  * `balanceAfter` har entry ke saath pehle se store hai (ledger.service se),
- * isliye running balance dobara ginne ki zarurat nahi — bas date range ka
- * opening nikalna padta hai.
+ * isliye running balance dobara ginne ki zarurat nahi — bas ye dhyan rakhna
+ * hai ki limit lagne par KAUNSI entries kati.
  */
 export async function getPartyLedger(businessId, partyId, { from, to, limit = 200 } = {}) {
   const party = await Party.findOne({ _id: partyId, businessId }).lean();
@@ -124,14 +124,28 @@ export async function getPartyLedger(businessId, partyId, { from, to, limit = 20
     if (to) { const t = new Date(to); t.setHours(23, 59, 59, 999); filter.date.$lte = t; }
   }
 
-  const entries = await LedgerEntry.find(filter)
-    .sort({ date: 1, createdAt: 1 })
-    .limit(limit)
-    .lean();
+  // ULTA nikalte hain (naya pehle), phir palat dete hain.
+  //
+  // Pehle seedha nikalte the — us se limit PURANI entries pakadti thi. Jis party
+  // ke 200 se zyada lena-dena ho gaye, uske khate me aaj ka bill dikhta hi nahi tha
+  // aur neeche "Baaki" me mahino purana number chipak jata tha. Ab limit hamesha
+  // NAYI entries pakadti hai, isliye closing hamesha aaj ka sach hota hai.
+  const [newestFirst, total] = await Promise.all([
+    LedgerEntry.find(filter).sort({ date: -1, createdAt: -1 }).limit(limit).lean(),
+    LedgerEntry.countDocuments(filter),
+  ]);
+  const entries = newestFirst.reverse();
 
-  // Range se pehle ka balance
+  // Jo dikh raha hai us se PEHLE ka hisaab.
+  //
+  // Pehli dikhne wali entry se ulta jod kar nikalte hain. Isse
+  // "opening + badha − ghata = closing" HAMESHA barabar rehta hai — chahe
+  // entries limit se kati hon, chahe date range laga ho, chahe dono.
   let opening = 0;
-  if (from) {
+  if (entries.length) {
+    const first = entries[0];
+    opening = round2((first.balanceAfter || 0) - (first.debit || 0) + (first.credit || 0));
+  } else if (from) {
     const before = await LedgerEntry.findOne({ businessId, partyId, date: { $lt: from } })
       .sort({ date: -1, createdAt: -1 }).select('balanceAfter').lean();
     opening = round2(before?.balanceAfter || 0);
@@ -151,6 +165,10 @@ export async function getPartyLedger(businessId, partyId, { from, to, limit = 20
     totalDebit,
     totalCredit,
     closing: round2(entries.length ? entries[entries.length - 1].balanceAfter : opening),
+    // UI ko batana hai ki kuch purani entries chhup gayi hain
+    total,
+    shown: entries.length,
+    truncated: total > entries.length,
   };
 }
 

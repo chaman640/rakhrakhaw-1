@@ -229,16 +229,28 @@ export async function createReturn(businessId, payload, userId) {
     }
   }
 
+  /**
+   * Ek hi item agar do alag line me daala gaya ho to dono ko JOD kar dekhna zaroori hai.
+   *
+   * Pehle har line alag alag check hoti thi — isliye bill me 10 beche the aur koi
+   * "6 + 6" do line me daal de to dono 10 se kam nikalte the aur 12 wapas ho jate the.
+   */
+  const wantedByItem = new Map();
+  for (const line of payload.items) {
+    const key = String(line.itemId);
+    wantedByItem.set(key, round2((wantedByItem.get(key) || 0) + Number(line.qty || 0)));
+  }
+
   // Bill se zyada wapas na ho jaye
   if (original) {
     const already = await returnedSoFar(businessId, isSale
       ? { invoiceId: original._id } : { purchaseId: original._id });
 
-    for (const line of payload.items) {
-      const src = original.items.find((i) => String(i.itemId) === String(line.itemId));
-      if (!src) throw ApiError.badRequest(`${line.itemId} is bill me tha hi nahi`);
-      const left = round2(src.qty - (already[String(line.itemId)] || 0));
-      if (line.qty > left) {
+    for (const [itemId, wantQty] of wantedByItem) {
+      const src = original.items.find((i) => String(i.itemId) === itemId);
+      if (!src) throw ApiError.badRequest(`${itemId} is bill me tha hi nahi`);
+      const left = round2(src.qty - (already[itemId] || 0));
+      if (wantQty > left) {
         throw ApiError.badRequest(
           `${src.name}: sirf ${left} ${src.unit} wapas ho sakta hai (${src.qty} me se ${round2(src.qty - left)} pehle hi wapas ho chuka)`
         );
@@ -268,11 +280,14 @@ export async function createReturn(businessId, payload, userId) {
     };
   });
 
-  // Supplier ko wapas bhejne se pehle dekh lo stock hai bhi ya nahi
+  // Supplier ko wapas bhejne se pehle dekh lo stock hai bhi ya nahi.
+  // Yahan bhi ek hi item ki saari line jod kar dekhni hai — warna 15+15 do line me
+  // daal kar 20 ke stock se 30 nikalne ki koshish ho jati hai (aur note ban chukne
+  // ke baad beech me fail hoti hai).
   if (!isSale) {
-    for (const line of lines) {
-      const item = itemMap.get(String(line.itemId));
-      if (item.stockQty < line.qty) {
+    for (const [itemId, wantQty] of wantedByItem) {
+      const item = itemMap.get(itemId);
+      if (item && item.stockQty < wantQty) {
         throw ApiError.badRequest(
           `${item.name} ka stock sirf ${item.stockQty} ${item.unit} hai — itna wapas nahi bhej sakte`
         );
@@ -280,18 +295,34 @@ export async function createReturn(businessId, payload, userId) {
     }
   }
 
-  // GST — bill jaisa hi hisaab. Original bill ka snapshot ho to wahi type use karo,
-  // taaki credit note aur bill dono me ek jaisa tax lage.
+  /**
+   * GST — bill jaisa hi hisaab.
+   *
+   * DHYAN: `decideTaxType()` ek OBJECT deta hai — `{ documentType, taxType }`.
+   * Pehle yahan destructure karna reh gaya tha, isliye poora object `taxType` me
+   * chala jata tha. Nateeja: `computeInvoice` ka `taxType === 'CGST_SGST'` kabhi
+   * match hi nahi karta tha -> GST 0 lagta tha, aur object enum field me jaane se
+   * note save bhi nahi hota tha. (invoice.service.js me ye sahi likha hai.)
+   */
   const gstEnabled = original?.gstEnabled ?? Boolean(business?.gstEnabled);
-  const taxType = original?.taxType || decideTaxType({
+  const decided = decideTaxType({
     gstEnabled,
     businessStateCode: business?.address?.stateCode,
     partyStateCode: party?.address?.stateCode,
   });
+  // Bill ka apna taxType ho to wahi — credit note aur bill me ek jaisa tax lagna chahiye.
+  // (Purchase me taxType hota hi nahi, wahan decided use hoga.)
+  const taxType = original?.taxType || decided.taxType;
 
-  const totals = computeInvoice(lines, {
-    gstEnabled, taxType, extraDiscount: payload.extraDiscount || 0,
-  });
+  let totals;
+  try {
+    totals = computeInvoice(lines, {
+      gstEnabled, taxType, extraDiscount: payload.extraDiscount || 0,
+    });
+  } catch (err) {
+    // "discount rate se zyada" jaisi galti user ki hai — 500 nahi, 400 jana chahiye
+    throw ApiError.badRequest(err.message);
+  }
 
   const { number: returnNo } = await Counter.nextNumber({
     businessId, key: cfg.counterKey, prefix: cfg.prefix, date: payload.returnDate || new Date(),

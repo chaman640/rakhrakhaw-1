@@ -63,14 +63,18 @@ export default function Catalog() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debouncedQ, categoryId, stock, sort]);
 
+  // Kuch item pe wholesaler ne "kam se kam itna hi lena" laga rakha hai —
+  // default 1 rakhne se "Daal dein" dabate hi server mana kar deta tha
+  const minQty = (item) => Math.max(1, Number(item.minOrderQty || 0));
+
   async function add(item) {
-    const qty = Number(qtys[item._id] || 1);
+    const qty = Number(qtys[item._id] || minQty(item));
     if (qty <= 0) return;
     setAdding(item._id);
     try {
       await api.post('/cart/items', { itemId: item._id, qty });
       await refreshCart();
-      setQtys((s) => ({ ...s, [item._id]: 1 }));
+      setQtys((s) => ({ ...s, [item._id]: minQty(item) }));
       setJustAdded(item._id);
       setTimeout(() => setJustAdded((v) => (v === item._id ? null : v)), 1800);
     } catch (err) {
@@ -137,7 +141,7 @@ export default function Catalog() {
               <ItemCard
                 key={item._id}
                 item={item}
-                qty={qtys[item._id] ?? 1}
+                qty={qtys[item._id] ?? minQty(item)}
                 onQty={(v) => setQtys((s) => ({ ...s, [item._id]: v }))}
                 onAdd={() => add(item)}
                 adding={adding === item._id}

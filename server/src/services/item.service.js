@@ -4,7 +4,7 @@ import { STOCK_MOVEMENT_TYPES, UNITS } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { saveImage, deleteImage } from '../utils/storage.js';
 import { parseCsvToObjects, toCsv } from '../utils/csv.js';
-import { Item, Category, StockMovement, PartyItemRate } from '../models/index.js';
+import { Item, Category, StockMovement, PartyItemRate, Invoice, Purchase, ReturnNote } from '../models/index.js';
 import { applyStockChange, setStock } from './stock.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -216,13 +216,19 @@ export async function deleteItem(businessId, id) {
   const item = await Item.findOne({ _id: id, businessId });
   if (!item) throw ApiError.notFound('Item nahi mila');
 
-  const usedInTransaction = await StockMovement.exists({
-    businessId,
-    itemId: id,
-    type: { $in: [STOCK_MOVEMENT_TYPES.PURCHASE, STOCK_MOVEMENT_TYPES.SALE] },
-  });
+  // Seedha document dekho, stock movement nahi.
+  //
+  // Pehle yahan PURCHASE/SALE movement dhoonda jata tha. Wo asli sawal ka
+  // ulta jawab hai — sawal ye hai ki "kya ye item kisi purane bill me hai",
+  // aur delete ki hui purchase ka movement bhi ab (theek se) bacha rehta hai.
+  // Document se poochhne pe jawab hamesha sahi milta hai.
+  const [inInvoice, inPurchase, inReturn] = await Promise.all([
+    Invoice.exists({ businessId, 'items.itemId': id }),
+    Purchase.exists({ businessId, 'items.itemId': id }),
+    ReturnNote.exists({ businessId, 'items.itemId': id }),
+  ]);
 
-  if (usedInTransaction) {
+  if (inInvoice || inPurchase || inReturn) {
     item.isActive = false;
     item.visibleToRetailers = false;
     await item.save();

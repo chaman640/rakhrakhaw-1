@@ -317,8 +317,10 @@ function StatBox({ label, value, sub, icon: Icon, tone, onClick }) {
     amber: 'bg-amber-50 text-amber-700', red: 'bg-red-50 text-red-700',
   };
   return (
-    <Card className="cursor-pointer transition-colors hover:border-brand-300" onClick={onClick}>
-      <button onClick={onClick} className="flex w-full items-start justify-between gap-3 text-left">
+    // Poora card clickable hai (Card khud handle karta hai) — andar dobara button
+    // rakhne se click do baar chalta tha
+    <Card className="transition-colors hover:border-brand-300" onClick={onClick}>
+      <div className="flex w-full items-start justify-between gap-3 text-left">
         <div className="min-w-0">
           <p className="text-sm text-slate-500">{label}</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
@@ -327,7 +329,7 @@ function StatBox({ label, value, sub, icon: Icon, tone, onClick }) {
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${tones[tone]}`}>
           <Icon size={20} />
         </div>
-      </button>
+      </div>
     </Card>
   );
 }

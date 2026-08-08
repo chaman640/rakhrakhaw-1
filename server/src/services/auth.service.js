@@ -8,6 +8,7 @@ import { normalizePhone } from '../utils/phone.js';
 import { getStateCode } from '../config/states.js';
 import { validateGstin } from '../utils/gstin.js';
 import { generateInviteCode } from '../utils/generateCode.js';
+import { businessForUser } from '../utils/businessView.js';
 import { User, Business, Party } from '../models/index.js';
 
 function signToken(user) {
@@ -95,7 +96,8 @@ export async function signupWholesaler({ name, phone, password, businessName }) 
     await session.endSession();
   }
 
-  return { token: signToken(user), user: publicUser(user), business };
+  // Abhi abhi signup kiya hai to ye khud malik hai — poora profile milega
+  return { token: signToken(user), user: publicUser(user), business: businessForUser(business, user) };
 }
 
 /** Invite link kholne par — retailer ko dikhega ki kis dukaan se jud raha hai */
@@ -210,20 +212,12 @@ export async function buildSession(user) {
       .lean();
   }
 
-  // Retailer ko wholesaler ka poora business object nahi dena — sirf zaroori cheezein
-  const businessForClient =
-    user.role === ROLES.RETAILER && business
-      ? {
-          _id: business._id,
-          name: business.name,
-          phone: business.phone,
-          address: business.address,
-          logoUrl: business.logoUrl,
-          gstEnabled: business.gstEnabled,
-        }
-      : business;
-
-  return { user: publicUser(user), business: businessForClient, party };
+  // Kis user ko dukaan ki kaunsi baat dikhegi — faisla ek hi jagah hota hai.
+  //
+  // Pehle sirf retailer ke liye chhanti hoti thi aur STAFF ko poora doc chala
+  // jata tha — matlab har salesman ke paas invite code (jisse koi bhi retailer
+  // ban kar ghus sakta hai), malik ki UPI ID aur dukaan ka email pahunch jata tha.
+  return { user: publicUser(user), business: businessForUser(business, user), party };
 }
 
 export async function changePassword(userId, { currentPassword, newPassword }) {

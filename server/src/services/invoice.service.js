@@ -8,11 +8,12 @@ import { round2 } from '../utils/money.js';
 import { getFinancialYear } from '../utils/financialYear.js';
 import { amountInWords } from '../utils/amountInWords.js';
 import {
-  Invoice, Order, Party, Item, Business, Counter, StockMovement, Payment,
+  Invoice, Order, Party, Item, Business, Counter, StockMovement, Payment, ReturnNote,
 } from '../models/index.js';
 import { computeInvoice, decideTaxType, hsnSummary } from './gst.service.js';
 import { applyStockChange } from './stock.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
+import { releaseInvoiceFromPayments, removeInlinePayments } from './payment.service.js';
 import { resolveRates } from './rate.service.js';
 import { notifyRetailer } from './notification.service.js';
 
@@ -159,6 +160,55 @@ export async function prefillFromOrder(businessId, orderId) {
 
 /* ---------------------------------------------------------------- create */
 
+/**
+ * Aadhe bane hue bill ko poori tarah mitana.
+ *
+ * `createInvoice` beech me fail ho jaye to ye chalta hai. Ulte order me:
+ * payment → khata → stock → bill. Har kadam try/catch me alag hai, taaki ek
+ * kadam fail hone se baaki kadam na ruk jayen — aadha safai poori gadbad se
+ * bhi buri hoti hai.
+ *
+ * Stock wapas karte waqt movement DELETE nahi hote (Batch 4 wala niyam) —
+ * history saaf saaf dikhati hai ki maal gaya tha aur wapas aa gaya.
+ */
+async function undoHalfInvoice(businessId, state, userId) {
+  const { invoice, doneStock = [], inlinePayment, ledgerPosted, invoiceNo } = state;
+
+  const step = async (naam, fn) => {
+    try { await fn(); } catch (e) {
+      console.error(`[invoice] ${invoiceNo} ka rollback — "${naam}" nahi ho paya:`, e.message);
+    }
+  };
+
+  if (inlinePayment) {
+    await step('bill ke saath wali payment hatana', async () => {
+      await reverseEntriesFor({ businessId, refType: 'Payment', refId: inlinePayment._id, userId });
+      await Payment.deleteOne({ _id: inlinePayment._id, businessId });
+    });
+  }
+
+  if (ledgerPosted) {
+    await step('khata ulta karna', () =>
+      reverseEntriesFor({ businessId, refType: 'Invoice', refId: invoice._id, userId }));
+  }
+
+  for (const line of doneStock) {
+    await step(`${line.name} ka stock wapas`, () => applyStockChange({
+      businessId,
+      itemId: line.itemId,
+      type: STOCK_MOVEMENT_TYPES.SALE_RETURN,
+      qty: line.qty,
+      refType: 'Invoice',
+      refId: invoice._id,
+      note: `${invoiceNo} adhoora reh gaya — stock wapas`,
+      userId,
+      allowNegative: true,
+    }));
+  }
+
+  await step('adhoora bill hatana', () => Invoice.deleteOne({ _id: invoice._id, businessId }));
+}
+
 export async function createInvoice(businessId, payload, userId) {
   const business = await Business.findById(businessId).lean();
   if (!business) throw ApiError.notFound('Business nahi mila');
@@ -201,12 +251,23 @@ export async function createInvoice(businessId, payload, userId) {
     };
   });
 
-  // Stock pehle se check kar lo — aadha bill banakar fail hona theek nahi
+  /**
+   * Stock pehle se check kar lo — aadha bill banakar fail hona theek nahi.
+   *
+   * Ek hi item do line me daal diya ho to dono JOD kar dekhna padta hai. Pehle
+   * har line alag dekhi jati thi: stock 10 tha, do line me 6+6 daal do, dono
+   * line alag alag paas ho jati thi aur bill ban jata tha.
+   */
+  const wantedByItem = new Map();
   for (const line of lines) {
-    const item = itemMap.get(String(line.itemId));
-    if (item.stockQty < line.qty) {
+    const key = String(line.itemId);
+    wantedByItem.set(key, round2((wantedByItem.get(key) || 0) + Number(line.qty || 0)));
+  }
+  for (const [itemId, wanted] of wantedByItem) {
+    const item = itemMap.get(itemId);
+    if (item.stockQty < wanted) {
       throw ApiError.badRequest(
-        `${item.name} ka stock sirf ${item.stockQty} ${item.unit} hai, bill me ${line.qty} lagaya hai`
+        `${item.name} ka stock sirf ${item.stockQty} ${item.unit} hai, bill me ${wanted} lagaya hai`
       );
     }
   }
@@ -277,71 +338,112 @@ export async function createInvoice(businessId, payload, userId) {
     createdBy: userId,
   });
 
-  // ---- YAHIN STOCK GHATTA HAI (order pe nahi) ----
-  for (const line of totals.items) {
-    await applyStockChange({
-      businessId,
-      itemId: line.itemId,
-      type: STOCK_MOVEMENT_TYPES.SALE,
-      qty: -line.qty,
-      refType: 'Invoice',
-      refId: invoice._id,
-      note: `${invoiceNo} · ${party.shopName || party.name}`,
-      userId,
-    });
-  }
+  /**
+   * YAHAN SE AAGE SAB "SAB YA KUCH NAHI" HAI.
+   *
+   * Bill ban chuka hai. Ab stock ghatega, khata badhega, shayad payment banegi.
+   * Beech me kuch fail ho jaye (aksar: doosre bill ne wahi stock utha liya) to
+   * pehle kya hota tha — bill list me pada rehta, do item ka stock kat chuka hota,
+   * aur khate me kuch aata hi nahi. User ko ek bill dikhta jo usne banaya hi nahi tha.
+   *
+   * Ab har kadam yaad rakhte hain aur gadbad hone par ULTE order me sab wapas
+   * karke asli error aage bhej dete hain.
+   *
+   * (MongoDB transaction क्यों नahi: uske liye `session` ko stock.service,
+   * ledger.service aur Counter — teeno ke andar tak le jana padta, aur wo teeno
+   * poore project ke "ek hi darwaza" wale service hain. Upar wala stock check
+   * 99% case pehle hi rok deta hai; ye rollback bache hue case ka jaal hai.)
+   */
+  const doneStock = [];
+  let inlinePayment = null;
+  let ledgerPosted = false;
 
-  // ---- Khata: retailer ka udhaar badha ----
-  await postEntry({
-    businessId, partyId: party._id, type: LEDGER_TYPES.INVOICE,
-    debit: totals.grandTotal,
-    date: invoice.invoiceDate,
-    refType: 'Invoice', refId: invoice._id, refNo: invoiceNo,
-    note: order ? `Order ${order.orderNo}` : 'Bill',
-    userId,
-  });
+  try {
+    // ---- YAHIN STOCK GHATTA HAI (order pe nahi) ----
+    for (const line of totals.items) {
+      await applyStockChange({
+        businessId,
+        itemId: line.itemId,
+        type: STOCK_MOVEMENT_TYPES.SALE,
+        qty: -line.qty,
+        refType: 'Invoice',
+        refId: invoice._id,
+        note: `${invoiceNo} · ${party.shopName || party.name}`,
+        userId,
+      });
+      doneStock.push(line);
+    }
 
-  // ---- Turant paisa mila to payment bhi ----
-  if (paidAmount > 0) {
-    const { number: paymentNo } = await Counter.nextNumber({
-      businessId, key: COUNTER_KEYS.PAYMENT, prefix: 'PAY',
-    });
-
-    await Payment.create({
-      businessId, partyId: party._id, paymentNo,
-      date: invoice.invoiceDate,
-      direction: 'IN',
-      amount: paidAmount,
-      mode: payload.paymentMode || 'CASH',
-      status: PAYMENT_STATUS.CONFIRMED,
-      confirmedAt: new Date(),
-      confirmedBy: userId,
-      againstInvoiceIds: [invoice._id],
-      note: `${invoiceNo} ke saath`,
-      recordedBy: userId,
-    });
-
+    // ---- Khata: retailer ka udhaar badha ----
     await postEntry({
-      businessId, partyId: party._id, type: LEDGER_TYPES.PAYMENT_IN,
-      credit: paidAmount,
+      businessId, partyId: party._id, type: LEDGER_TYPES.INVOICE,
+      debit: totals.grandTotal,
       date: invoice.invoiceDate,
       refType: 'Invoice', refId: invoice._id, refNo: invoiceNo,
-      note: 'Bill ke saath mila',
+      note: order ? `Order ${order.orderNo}` : 'Bill',
       userId,
     });
-  }
+    ledgerPosted = true;
 
-  // ---- Order ko bill se jodo aur delivered kar do ----
-  if (order) {
-    order.invoiceId = invoice._id;
-    if (![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(order.status)) {
-      order.status = ORDER_STATUS.DELIVERED;
-      order.statusHistory.push({
-        status: ORDER_STATUS.DELIVERED, at: new Date(), byUserId: userId,
-        note: `Bill ${invoiceNo} ban gaya`,
+    // ---- Turant paisa mila to payment bhi ----
+    if (paidAmount > 0) {
+      const { number: paymentNo } = await Counter.nextNumber({
+        businessId, key: COUNTER_KEYS.PAYMENT, prefix: 'PAY',
+      });
+
+      const payment = await Payment.create({
+        businessId, partyId: party._id, paymentNo,
+        date: invoice.invoiceDate,
+        direction: 'IN',
+        amount: paidAmount,
+        mode: payload.paymentMode || 'CASH',
+        status: PAYMENT_STATUS.CONFIRMED,
+        confirmedAt: new Date(),
+        confirmedBy: userId,
+        allocations: [{ invoiceId: invoice._id, amount: paidAmount }],
+        againstInvoiceIds: [invoice._id],
+        sourceInvoiceId: invoice._id,      // bill cancel hoga to yahi payment hategi
+        note: `${invoiceNo} ke saath`,
+        recordedBy: userId,
+      });
+      inlinePayment = payment;
+
+      /**
+       * DHYAN: is entry ka refType 'Payment' hai, 'Invoice' nahi.
+       *
+       * Pehle yahan 'Invoice' likha tha — aur `deletePayment` 'Payment' dhoondhta tha.
+       * Isliye ye payment delete karne pe bill to theek ho jata tha par khate me
+       * credit pada reh jata tha (bill 10000 maangta, khata 7000 dikhata).
+       * Ab har payment ki entry ek jaisi banti hai.
+       */
+      await postEntry({
+        businessId, partyId: party._id, type: LEDGER_TYPES.PAYMENT_IN,
+        credit: paidAmount,
+        date: invoice.invoiceDate,
+        refType: 'Payment', refId: payment._id, refNo: paymentNo,
+        note: `${invoiceNo} ke saath mila`,
+        userId,
       });
     }
-    await order.save();
+
+    // ---- Order ko bill se jodo aur delivered kar do ----
+    if (order) {
+      order.invoiceId = invoice._id;
+      if (![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(order.status)) {
+        order.status = ORDER_STATUS.DELIVERED;
+        order.statusHistory.push({
+          status: ORDER_STATUS.DELIVERED, at: new Date(), byUserId: userId,
+          note: `Bill ${invoiceNo} ban gaya`,
+        });
+      }
+      await order.save();
+    }
+  } catch (err) {
+    // Jo jo ho chuka tha, ulta kar do — aur asli error hi aage bhejo
+    await undoHalfInvoice(businessId, {
+      invoice, doneStock, inlinePayment, ledgerPosted, invoiceNo,
+    }, userId);
+    throw err;
   }
 
   await notifyRetailer(businessId, party._id, {
@@ -366,6 +468,23 @@ export async function cancelInvoice(businessId, id, { reason }, userId) {
   if (!invoice) throw ApiError.notFound('Bill nahi mila');
   if (invoice.isCancelled) throw ApiError.badRequest('Ye bill pehle se cancel hai');
 
+  /**
+   * Is bill ka maal pehle se wapas aa chuka ho to cancel nahi karne dena.
+   *
+   * Warna dono ka reversal jud jata hai: credit note ne 4 pcs wapas kiye the aur
+   * cancel poore 10 wapas jod deta — stock me 4 ka phantom aur khate me 4000 ka
+   * jhootha advance ban jata tha.
+   *
+   * (Ulta case pehle se roka hua hai: cancel bill ka return nahi ban sakta.)
+   */
+  const note = await ReturnNote.findOne({ businessId, invoiceId: invoice._id })
+    .select('returnNo').lean();
+  if (note) {
+    throw ApiError.badRequest(
+      `Is bill ka maal wapas aa chuka hai (${note.returnNo}) — pehle wo credit note hatayein, phir bill cancel hoga`
+    );
+  }
+
   // Stock wapas
   for (const line of invoice.items) {
     await applyStockChange({
@@ -378,18 +497,33 @@ export async function cancelInvoice(businessId, id, { reason }, userId) {
     });
   }
 
-  // Khata ulta
-  await reverseEntriesFor({ businessId, refType: 'Invoice', refId: invoice._id, userId });
+  const paidBefore = round2(invoice.paidAmount || 0);
 
-  // Us bill ke saath jo payment thi wo bhi hatao
-  await Payment.deleteMany({ businessId, againstInvoiceIds: invoice._id });
+  // Bill ke SAATH jo paisa aaya tha — wo entry bill ke saath hi hategi.
+  // (Ye reverse karne se PEHLE, taaki purane data me uski ledger entry mil jaye.)
+  await removeInlinePayments(businessId, invoice, userId);
 
+  // Bill ko cancel mark karo — iske BAAD hi baaki paisa dobara baantna hai,
+  // warna wo isi cancel hue bill pe wapas lag jayega.
   invoice.isCancelled = true;
   invoice.notes = [invoice.notes, `CANCELLED: ${reason || 'wajah nahi batayi'}`].filter(Boolean).join(' | ');
   invoice.paymentStatus = 'unpaid';
   invoice.paidAmount = 0;
   invoice.dueAmount = 0;
   await invoice.save();
+
+  /**
+   * Baad me alag se aayi payments jo is bill pe lagi thi — wo DELETE nahi hoti.
+   * Paisa to sach me aaya tha. Bas is bill ka hissa hata kar wo paisa doosre
+   * khule bill pe laga diya jata hai, aur bacha to advance ban jata hai.
+   *
+   * Pehle yahan `Payment.deleteMany({ againstInvoiceIds })` tha — wo mahine baad
+   * aayi payment ko bhi uda deta tha aur uski khata entry pichhe chhod deta tha.
+   */
+  const released = await releaseInvoiceFromPayments(businessId, invoice, paidBefore);
+
+  // Bill ka apna khata entry ulta
+  await reverseEntriesFor({ businessId, refType: 'Invoice', refId: invoice._id, userId });
 
   // Order se link hata do taaki naya bill ban sake
   if (invoice.orderId) {
@@ -406,7 +540,11 @@ export async function cancelInvoice(businessId, id, { reason }, userId) {
 
   return {
     cancelled: true,
-    message: `${invoice.invoiceNo} cancel ho gaya — stock aur khata dono wapas theek kar diye`,
+    released,
+    message: released > 0
+      ? `${invoice.invoiceNo} cancel ho gaya — stock aur khata theek kar diye. `
+        + `Is bill pe lage ${released} doosre bill pe laga diye (ya advance me jama hain).`
+      : `${invoice.invoiceNo} cancel ho gaya — stock aur khata dono wapas theek kar diye`,
   };
 }
 

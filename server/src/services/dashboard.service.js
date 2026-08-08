@@ -250,8 +250,21 @@ export async function getWholesalerDashboard(businessId, user = null) {
   }
   if (!can(PERMISSIONS.INVOICES)) {
     delete full.sale;
+  }
+  // Mahine ka jod, 14 din ka trend aur top items — ye report wali baat hai.
+  //
+  // Pehle ye teeno `invoices` pe tike the. Matlab salesman, jise /reports pe
+  // jaane ki ijazat nahi hai, dashboard se hi poore mahine ki bikri, 14 din ka
+  // graph aur sabse zyada bikne wale item dekh leta tha. Ab dono jagah ek hi
+  // niyam hai. "Aaj kitna bika" uske paas rehne dete hain — bill to wo khud
+  // banata hai.
+  if (!can(PERMISSIONS.REPORTS)) {
     delete full.trend;
     delete full.topItems;
+    if (full.sale) {
+      delete full.sale.month;
+      delete full.sale.monthBills;
+    }
   }
   // Activity feed me har cheez mil-jul kar aati hai — jo dekh nahi sakta, wo row hata do
   full.activity = (full.activity || []).filter((a) =>
@@ -289,7 +302,7 @@ function buildActivity(invoices, orders, payments) {
 
 /* ───────────────────────────────────────────────────── retailer ka dashboard */
 
-export async function getRetailerDashboard(businessId, partyId) {
+export async function getRetailerDashboard(businessId, partyId, userId = null) {
   const { monthStart } = boundaries();
 
   const [party, orderCounts, monthSpend, openInvoices, recentOrders, unread] = await Promise.all([
@@ -307,7 +320,14 @@ export async function getRetailerDashboard(businessId, partyId) {
       .select('invoiceNo invoiceDate grandTotal dueAmount').lean(),
     Order.find({ businessId, partyId }).sort({ createdAt: -1 }).limit(4)
       .select('orderNo status itemsTotal createdAt').lean(),
-    Notification.countDocuments({ businessId, isRead: false }),
+    // Sirf ISI user ki. Pehle yahan `userId` tha hi nahi — matlab retailer ko
+    // poore business ki bin-padhi notifications ka number dikhta tha (jisme
+    // malik ke low-stock aur naye-order wale alert bhi gine jate the), aur list
+    // kholne pe kuch nahi milta tha. Notification.service har jagah userId se
+    // hi chhanta hai — sirf yahan chhoot gaya tha.
+    userId
+      ? Notification.countDocuments({ businessId, userId, isRead: false })
+      : Promise.resolve(0),
   ]);
 
   const statusMap = Object.fromEntries(orderCounts.map((o) => [o._id, o.n]));

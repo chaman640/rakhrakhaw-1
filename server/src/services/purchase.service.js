@@ -197,6 +197,7 @@ export async function createPurchase(businessId, payload, userId) {
     items: totals.items,
     subTotal: totals.subTotal,
     discountTotal: totals.discountTotal,
+    taxableTotal: totals.taxableTotal,
     taxTotal: totals.taxTotal,
     roundOff: totals.roundOff,
     grandTotal: totals.grandTotal,
@@ -283,6 +284,13 @@ export async function deletePurchase(businessId, id, userId) {
   }
 
   // Stock wapas nikalo
+  //
+  // Dono record — "maal aaya" aur "maal wapas gaya" — bane rehte hain.
+  // Pehle yahan ke baad `StockMovement.deleteMany({ refType: 'Purchase', refId })`
+  // chalta tha jo abhi banaya hua reversal bhi uda deta tha. Nateeja: item ka
+  // stock 10 kam ho jata tha aur history me uska koi nishaan hi nahi hota —
+  // "stock kahan gaya" ka jawab kabhi nahi milta tha. Isliye ab kuch delete
+  // nahi hota; history saaf saaf dikhati hai ki maal aaya tha aur wapas gaya.
   for (const line of purchase.items) {
     await applyStockChange({
       businessId, itemId: line.itemId,
@@ -296,9 +304,6 @@ export async function deletePurchase(businessId, id, userId) {
 
   // Khata ulta karo
   await reverseEntriesFor({ businessId, refType: 'Purchase', refId: purchase._id, userId });
-
-  // Purane movement records hata do (ab wo purchase hai hi nahi)
-  await StockMovement.deleteMany({ businessId, refType: 'Purchase', refId: purchase._id });
 
   const no = purchase.purchaseNo;
   await purchase.deleteOne();

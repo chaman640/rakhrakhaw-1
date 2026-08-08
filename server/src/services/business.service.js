@@ -1,5 +1,4 @@
 import { env } from '../config/env.js';
-import { clientOrigin } from '../config/origin.js';
 import { PARTY_TYPES, PARTY_STATUS } from '../config/constants.js';
 import { getStateCode } from '../config/states.js';
 import { validateGstin } from '../utils/gstin.js';
@@ -7,18 +6,25 @@ import { generateInviteCode } from '../utils/generateCode.js';
 import { normalizePhone } from '../utils/phone.js';
 import ApiError from '../utils/ApiError.js';
 import { saveImage, deleteImage } from '../utils/storage.js';
+import { buildInviteLink, businessForUser } from '../utils/businessView.js';
 import { Business, Party, User } from '../models/index.js';
 
-export async function getBusiness(businessId) {
+/**
+ * `user` dena zaroori hai — usi se tay hota hai ki dukaan ki kaunsi baat
+ * dikhegi (dekho `utils/businessView.js`). Bina user ke sirf staff-level
+ * hissa milta hai, taaki galti se kabhi poora doc bahar na chala jaye.
+ */
+export async function getBusiness(businessId, user = null) {
   const business = await Business.findById(businessId).lean();
   if (!business) throw ApiError.notFound('Business profile nahi mila');
-  return { ...business, inviteLink: buildInviteLink(business.inviteCode) };
+  return businessForUser(business, user);
 }
 
-// Ek hi URL wale deploy me app khud pata laga leta hai ki wo kis URL pe chal raha hai
-export const buildInviteLink = (code) => (code ? `${clientOrigin()}/join/${code}` : '');
+export { buildInviteLink };
 
-export async function updateBusiness(businessId, payload) {
+// Ye sirf malik chala sakta hai (route pe `requireOwner` laga hai),
+// isliye jawab me poora doc jata hai.
+export async function updateBusiness(businessId, payload, user = null) {
   const business = await Business.findById(businessId);
   if (!business) throw ApiError.notFound('Business profile nahi mila');
 
@@ -60,7 +66,7 @@ export async function updateBusiness(businessId, payload) {
   }
 
   await business.save();
-  return getBusiness(businessId);
+  return getBusiness(businessId, user);
 }
 
 export async function setLogo(businessId, file) {

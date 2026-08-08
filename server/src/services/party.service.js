@@ -6,7 +6,7 @@ import { normalizePhone } from '../utils/phone.js';
 import { validateGstin } from '../utils/gstin.js';
 import { round2 } from '../utils/money.js';
 import {
-  Party, User, Item, PartyItemRate, Order, Invoice, Payment, LedgerEntry, Purchase,
+  Party, User, Item, PartyItemRate, Order, Invoice, Payment, LedgerEntry, Purchase, ReturnNote,
 } from '../models/index.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -204,24 +204,39 @@ export async function deleteParty(businessId, id) {
   const party = await Party.findOne({ _id: id, businessId });
   if (!party) throw ApiError.notFound('Party nahi mili');
 
-  const [orders, invoices, payments, purchases] = await Promise.all([
+  // Har wo document jo is party se juda ho sakta hai — ek bhi chhoot gaya to
+  // party hard-delete ho jayegi aur wo document anaath ho jayega (uska khata
+  // bhi neeche LedgerEntry.deleteMany me mit jayega).
+  // ReturnNote pehle yahan gina hi nahi jata tha, isliye jis party ka sirf
+  // "bina bill ka return" tha wo chupchap delete ho jati thi.
+  const [orders, invoices, payments, purchases, returns] = await Promise.all([
     Order.countDocuments({ businessId, partyId: id }),
     Invoice.countDocuments({ businessId, partyId: id }),
     Payment.countDocuments({ businessId, partyId: id }),
     Purchase.countDocuments({ businessId, supplierId: id }),
+    ReturnNote.countDocuments({ businessId, partyId: id }),
   ]);
 
-  const used = orders + invoices + payments + purchases;
+  const used = orders + invoices + payments + purchases + returns;
 
   if (used > 0) {
     party.status = PARTY_STATUS.BLOCKED;
     party.isActive = false;
     await party.save();
     if (party.linkedUserId) await User.updateOne({ _id: party.linkedUserId }, { isActive: false });
+
+    // Kya kya mila, wahi naam le kar batao — "record hai" se user ko kuch pata nahi chalta
+    const parts = [];
+    if (orders) parts.push(`${orders} order`);
+    if (invoices) parts.push(`${invoices} bill`);
+    if (payments) parts.push(`${payments} payment`);
+    if (purchases) parts.push(`${purchases} kharid`);
+    if (returns) parts.push(`${returns} return`);
+
     return {
       deleted: false,
       blocked: true,
-      message: `${party.name} ka ${used} record hai (order/bill/payment), isliye delete nahi kiya — block kar diya`,
+      message: `${party.name} ka ${parts.join(', ')} hai, isliye delete nahi kiya — block kar diya`,
     };
   }
 

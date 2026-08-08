@@ -30,6 +30,9 @@ const purchaseSchema = new mongoose.Schema(
 
     subTotal: { type: Number, default: 0 },
     discountTotal: { type: Number, default: 0 },
+    // Discount ke baad, GST se pehle wali raqam. GST report ka "input credit"
+    // isi ko jodta hai — isliye ise save karna zaroori hai, dobara ginna nahi.
+    taxableTotal: { type: Number, default: 0 },
     taxTotal: { type: Number, default: 0 },
     roundOff: { type: Number, default: 0 },
     grandTotal: { type: Number, default: 0 },

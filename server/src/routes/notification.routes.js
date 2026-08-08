@@ -1,13 +1,17 @@
 import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
+import { withTenant } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import * as ctrl from '../controllers/notification.controller.js';
 import { idParamSchema, notificationQuerySchema } from '../validators/order.validator.js';
 
 const router = Router();
 
-// Dono roles ke liye — har user apni hi notifications dekhta hai
-router.use(protect);
+// Dono roles ke liye — har user apni hi notifications dekhta hai.
+// `withTenant` ki abhi zarurat nahi (har query `userId` se chhanti hai), par
+// poore project ka niyam hai "har logged-in route pe businessId set ho" —
+// isliye yahan bhi laga hai, taaki ye router us niyam se bahar na rahe.
+router.use(protect, withTenant);
 
 router.get('/', validate({ query: notificationQuerySchema }), ctrl.list);
 router.get('/counts', ctrl.counts);

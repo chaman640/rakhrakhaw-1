@@ -14,7 +14,7 @@ import Spinner from './Spinner';
 export default function Combobox({
   value, display, onChange, fetchOptions, placeholder = 'Dhundhein...',
   label, required, error, emptyText = 'Kuch nahi mila', className, autoFocus, id,
-  onCreateNew, createNewLabel = 'Naya banayein',
+  onCreateNew, createNewLabel = 'Naya banayein', disabled = false,
 }) {
   const autoId = useId();
   const fieldId = id || autoId;
@@ -128,18 +128,22 @@ export default function Combobox({
             type="button"
             id={fieldId}
             autoFocus={autoFocus}
+            disabled={disabled}
             onClick={() => setOpen(true)}
             aria-haspopup="listbox"
             aria-expanded={open}
             className={cn(
-              'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm focus-ring',
-              error ? 'border-red-400' : 'border-slate-300 hover:border-slate-400'
+              'flex h-10 w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-sm focus-ring',
+              error ? 'border-red-400' : 'border-slate-300 hover:border-slate-400',
+              // Bill se aaya hua return — party aur item badalne nahi dena,
+              // warna server "ye bill is retailer ka nahi hai" wala error deta hai
+              disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500' : 'bg-white'
             )}
           >
             <span className={cn('truncate', display ? 'text-slate-900' : 'text-slate-400')}>
               {display || placeholder}
             </span>
-            <ChevronDown size={16} className="shrink-0 text-slate-400" />
+            {!disabled && <ChevronDown size={16} className="shrink-0 text-slate-400" />}
           </button>
         )}
       </div>

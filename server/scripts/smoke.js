@@ -1983,6 +1983,497 @@ async function run() {
     ledger11 = await LedgerEntry.find({ refType: 'ReturnNote', refId: creditNote }).lean();
     check('delete pe khata entry bhi hat gayi', ledger11.length === 0, `${ledger11.length}`);
 
+    /* ─────────────────────────────────────────────────────────────────────
+       GST ON ke saath return
+
+       Ye section isliye hai kyunki upar ke saare return tests GST OFF ke
+       saath chalte hain — aur usi wajah se ek asli bug mahino chhupa raha:
+       `decideTaxType()` object deta hai, par return.service usse destructure
+       nahi kar raha tha. GST off me farak hi nahi padta (tax 0 hi hota hai),
+       GST on karte hi tax 0 lagta tha aur note save bhi nahi hota tha.
+       ───────────────────────────────────────────────────────────────────── */
+    console.log(`\n${Y}Return GST ke saath${N}`);
+
+    await call('PUT', '/business/me', { token: wToken, body: { gstEnabled: true, gstin: '09AAACH7409R1ZZ' } });
+    await call('PUT', `/items/${bearingId}`, { token: wToken, body: { hsn: '8482', gstRate: 18 } });
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 100 } });
+
+    // ---- 1. Bill se credit note (same state -> CGST + SGST) ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 10, rate: 100, gstRate: 18 }] },
+    });
+    const gstBill = r.data?._id;
+    check('GST wala bill bana (1000 + 180)', r.data?.grandTotal === 1180, `${r.data?.grandTotal}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId, invoiceId: gstBill,
+        items: [{ itemId: bearingId, qty: 2, rate: 100, gstRate: 18 }],
+      },
+    });
+    check('bill se credit note ban gaya', r.status === 201, `${r.message}`);
+    check('taxType string hai, object nahi', r.data?.taxType === 'CGST_SGST', `${JSON.stringify(r.data?.taxType)}`);
+    check('credit note pe CGST 18 + SGST 18 laga',
+      r.data?.cgstTotal === 18 && r.data?.sgstTotal === 18,
+      `cgst ${r.data?.cgstTotal}, sgst ${r.data?.sgstTotal}`);
+    check('credit note ka kul 236 (200 + 36)', r.data?.grandTotal === 236, `${r.data?.grandTotal}`);
+    const gstCredit = r.data?._id;
+
+    r = await call('GET', `/khata/${partyId}`, { token: wToken });
+    const crEntry = r.data?.entries?.find((e) => e.refType === 'ReturnNote' && String(e.refId) === String(gstCredit));
+    check('khate me GST ke saath poora 236 credit hua', crEntry?.credit === 236, `${crEntry?.credit}`);
+
+    // ---- 2. BINA BILL ke credit note — yahi case toota hua tha ----
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId,
+        items: [{ itemId: bearingId, qty: 1, rate: 100, gstRate: 18 }],
+        reason: 'Bina bill ke wapas aaya',
+      },
+    });
+    check('bina bill ke bhi credit note ban gaya', r.status === 201, `${r.message}`);
+    check('bina bill wale note pe bhi GST laga (18)',
+      round2(r.data?.cgstTotal + r.data?.sgstTotal + r.data?.igstTotal) === 18,
+      `tax ${round2((r.data?.cgstTotal || 0) + (r.data?.sgstTotal || 0) + (r.data?.igstTotal || 0))}`);
+    check('bina bill wale note ka kul 118', r.data?.grandTotal === 118, `${r.data?.grandTotal}`);
+
+    // ---- 3. Purchase return (supplier ka bhi apna taxType nahi hota) ----
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'PURCHASE_RETURN', partyId: supplierId,
+        items: [{ itemId: bearingId, qty: 2, rate: 90, gstRate: 18 }],
+      },
+    });
+    check('GST wala debit note ban gaya', r.status === 201, `${r.message}`);
+    check('debit note pe bhi GST laga (32.4)',
+      round2((r.data?.cgstTotal || 0) + (r.data?.sgstTotal || 0) + (r.data?.igstTotal || 0)) === 32.4,
+      `tax ${round2((r.data?.cgstTotal || 0) + (r.data?.sgstTotal || 0) + (r.data?.igstTotal || 0))}`);
+
+    // ---- 4. Dusre state pe IGST ----
+    await call('PUT', `/parties/${partyId}`, {
+      token: wToken, body: { address: { city: 'Mumbai', state: 'Maharashtra', pincode: '400001' } },
+    });
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: { type: 'SALE_RETURN', partyId, items: [{ itemId: bearingId, qty: 1, rate: 100, gstRate: 18 }] },
+    });
+    check('dusre state pe IGST laga, CGST nahi',
+      r.data?.taxType === 'IGST' && r.data?.igstTotal === 18 && r.data?.cgstTotal === 0,
+      `${r.data?.taxType} / igst ${r.data?.igstTotal}`);
+    await call('PUT', `/parties/${partyId}`, {
+      token: wToken, body: { address: { city: 'Kanpur', state: 'Uttar Pradesh', pincode: '208001' } },
+    });
+
+    // ---- 5. Ek hi item do line me daal kar rok bypass na ho ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 10, rate: 100, gstRate: 18 }] },
+    });
+    const dupBill = r.data?._id;
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId, invoiceId: dupBill,
+        items: [
+          { itemId: bearingId, qty: 6, rate: 100, gstRate: 18 },
+          { itemId: bearingId, qty: 6, rate: 100, gstRate: 18 },
+        ],
+      },
+    });
+    check('ek hi item do line me (6+6 vs bill me 10) reject hua',
+      r.status === 400 && /wapas ho sakta hai/.test(r.message || ''), `status ${r.status}: ${r.message}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId, invoiceId: dupBill,
+        items: [
+          { itemId: bearingId, qty: 4, rate: 100, gstRate: 18 },
+          { itemId: bearingId, qty: 6, rate: 100, gstRate: 18 },
+        ],
+      },
+    });
+    check('4+6 = poore 10 chal gaye', r.status === 201, `${r.message}`);
+
+    // ---- 6. Discount rate se zyada -> 400 aana chahiye, 500 nahi ----
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId,
+        items: [{ itemId: bearingId, qty: 1, rate: 100, discount: 500, gstRate: 18 }],
+      },
+    });
+    check('rate se zyada discount pe 400 mila (500 nahi)', r.status === 400, `status ${r.status}`);
+
+    await call('PUT', '/business/me', { token: wToken, body: { gstEnabled: false } });
+
+    /* ─────────────────────────────────────────────────────────────────────
+       Paise ka reversal
+
+       Sabse zaroori baat jo yahan check hoti hai: BILL kya keh raha hai aur
+       KHATA kya keh raha hai — dono hamesha ek hi baat kahen. Pehle chaar
+       jagah aisi thi jahan dono alag ho jate the aur paisa gayab dikhta tha.
+       ───────────────────────────────────────────────────────────────────── */
+    console.log(`\n${Y}Paise ka reversal${N}`);
+
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 500 } });
+
+    // Har baar ke liye chhota helper — khata aur bill ka milan
+    const balanceOf = async () => (await call('GET', `/parties/${partyId}`, { token: wToken })).data?.balance;
+    const closingOf = async () => (await call('GET', `/khata/${partyId}`, { token: wToken })).data?.closing;
+
+    // ---- 1. Bill ke saath aaya paisa delete karo ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 10, rate: 1000 }], paidAmount: 3000 },
+    });
+    const revBill = r.data?._id;
+    check('bill 10000 bana, 3000 mila, 7000 baaki',
+      r.data?.grandTotal === 10000 && r.data?.dueAmount === 7000, `due ${r.data?.dueAmount}`);
+
+    const balBeforeRev = await balanceOf();
+
+    const revBillNo = (await call('GET', `/invoices/${revBill}`, { token: wToken })).data?.invoiceNo;
+    r = await call('GET', '/payments?limit=10', { token: wToken });
+    const inlinePay = r.data?.find((p) => p.note === `${revBillNo} ke saath`);
+    check('bill ke saath wali payment mil gayi', Boolean(inlinePay), 'nahi mili');
+    check('uspe sourceInvoiceId laga hai', String(inlinePay?.sourceInvoiceId) === String(revBill),
+      `${inlinePay?.sourceInvoiceId}`);
+    check('uske allocations me 3000 likha hai', inlinePay?.allocations?.[0]?.amount === 3000,
+      JSON.stringify(inlinePay?.allocations));
+
+    r = await call('DELETE', `/payments/${inlinePay._id}`, { token: wToken });
+    check('bill wali payment delete ho gayi', r.status === 200, `${r.message}`);
+
+    r = await call('GET', `/invoices/${revBill}`, { token: wToken });
+    check('delete pe bill wapas poora udhaar (10000)', r.data?.dueAmount === 10000, `${r.data?.dueAmount}`);
+    check('KHATA BHI 3000 badha (pehle credit pada reh jata tha)',
+      round2(await balanceOf()) === round2(balBeforeRev + 3000),
+      `${balBeforeRev} -> ${await balanceOf()}`);
+    check('khate ka closing aur Party.balance barabar',
+      round2(await closingOf()) === round2(await balanceOf()),
+      `closing ${await closingOf()} vs balance ${await balanceOf()}`);
+
+    // ---- 2. Bill cancel pe doosri payment na ude ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 4000 }] },
+    });
+    const cancelBill = r.data?._id;
+
+    r = await call('POST', '/payments', {
+      token: wToken, body: { partyId, amount: 4000, mode: 'CASH', note: 'alag se aayi payment' },
+    });
+    const standalonePay = r.data?._id;
+    check('4000 ki alag payment ban gayi', r.status === 201, `${r.message}`);
+
+    r = await call('DELETE', `/payments/${standalonePay}`, { token: wToken });
+    check('test ke liye wapas hata di', r.status === 200);
+
+    // Ab dobara — is baar bill cancel karenge
+    r = await call('POST', '/payments', { token: wToken, body: { partyId, amount: 4000, mode: 'CASH' } });
+    const keepPay = r.data?._id;
+
+    r = await call('POST', `/invoices/${cancelBill}/cancel`, { token: wToken, body: { reason: 'test' } });
+    check('bill cancel ho gaya', r.data?.cancelled === true, `${r.message}`);
+
+    r = await call('GET', `/payments/${keepPay}`, { token: wToken });
+    check('alag se aayi payment ZINDA hai (pehle delete ho jati thi)',
+      r.status === 200 && r.data?.amount === 4000, `status ${r.status}`);
+    check('us payment se cancel wale bill ka hissa hat gaya',
+      !(r.data?.allocations || []).some((a) => String(a.invoiceId) === String(cancelBill)),
+      JSON.stringify(r.data?.allocations));
+
+    check('cancel ke baad bhi khata aur closing barabar',
+      round2(await closingOf()) === round2(await balanceOf()),
+      `closing ${await closingOf()} vs balance ${await balanceOf()}`);
+
+    // ---- 3. Credit note bana ho to bill cancel na ho ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 10, rate: 500 }] },
+    });
+    const crBill = r.data?._id;
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: { type: 'SALE_RETURN', partyId, invoiceId: crBill, items: [{ itemId: bearingId, qty: 4, rate: 500 }] },
+    });
+    check('is bill ka credit note ban gaya', r.status === 201, `${r.message}`);
+    const crNote = r.data?._id;
+
+    r = await call('POST', `/invoices/${crBill}/cancel`, { token: wToken, body: {} });
+    check('credit note wale bill ka cancel ruk gaya (stock/khata double hone se bacha)',
+      r.status === 400 && /wapas aa chuka hai/.test(r.message || ''), `status ${r.status}: ${r.message}`);
+
+    await call('DELETE', `/returns/${crNote}`, { token: wToken });
+    r = await call('POST', `/invoices/${crBill}/cancel`, { token: wToken, body: {} });
+    check('credit note hatane ke baad cancel chal gaya', r.data?.cancelled === true, `${r.message}`);
+
+    // ---- 4. Do payment ek hi bill pe, pehli wali delete ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 5000 }] },
+    });
+    const twoA = r.data?._id;
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 5000 }] },
+    });
+    const twoB = r.data?._id;
+
+    // Purana udhaar pehle clear kar do taaki hisaab saaf rahe
+    const dueNow = await balanceOf();
+    if (dueNow > 10000) {
+      await call('POST', '/payments', { token: wToken, body: { partyId, amount: round2(dueNow - 10000), mode: 'CASH' } });
+    }
+
+    r = await call('POST', '/payments', { token: wToken, body: { partyId, amount: 8000, mode: 'CASH' } });
+    const payA = r.data?._id;
+    check('8000: 5000 pehle bill pe, 3000 doosre pe',
+      (await call('GET', `/invoices/${twoA}`, { token: wToken })).data?.dueAmount === 0
+      && (await call('GET', `/invoices/${twoB}`, { token: wToken })).data?.dueAmount === 2000,
+      `A due ${(await call('GET', `/invoices/${twoA}`, { token: wToken })).data?.dueAmount}`);
+
+    r = await call('GET', `/payments/${payA}`, { token: wToken });
+    check('allocations me 5000 aur 3000 alag alag likhe hain',
+      r.data?.allocations?.length === 2 && r.data.allocations[0].amount === 5000
+      && r.data.allocations[1].amount === 3000, JSON.stringify(r.data?.allocations));
+
+    await call('POST', '/payments', { token: wToken, body: { partyId, amount: 2000, mode: 'CASH' } });
+
+    r = await call('DELETE', `/payments/${payA}`, { token: wToken });
+    check('pehli payment delete hui', r.status === 200);
+    check('delete pe pehla bill poora udhaar wapas (5000)',
+      (await call('GET', `/invoices/${twoA}`, { token: wToken })).data?.dueAmount === 5000,
+      `${(await call('GET', `/invoices/${twoA}`, { token: wToken })).data?.dueAmount}`);
+    check('doosre bill pe sirf 2000 bacha (pehle 0 reh jata tha)',
+      (await call('GET', `/invoices/${twoB}`, { token: wToken })).data?.paidAmount === 2000,
+      `paid ${(await call('GET', `/invoices/${twoB}`, { token: wToken })).data?.paidAmount}`);
+    check('khata aur closing abhi bhi barabar',
+      round2(await closingOf()) === round2(await balanceOf()),
+      `closing ${await closingOf()} vs balance ${await balanceOf()}`);
+
+    // ---- 5. Aakhri jaanch: khata ka jod = saare bill ka baaki ----
+    r = await call('GET', '/invoices?status=active&limit=200', { token: wToken });
+    const billsDue = round2((r.data || []).reduce((s, i) => s + (i.dueAmount || 0), 0));
+    const bal = round2(await balanceOf());
+    check('khata = saare active bill ka baaki (koi paisa gayab nahi)',
+      bal === billsDue, `khata ${bal} vs bill ka jod ${billsDue}`);
+
+    /* ─────────────────────────────────────────────────────────────────────
+       Khata, GST report aur delete ka nishaan
+
+       Chaar alag jagah jahan "purana ya adhoora" data dikhta tha:
+       khata ka Baaki, GST report ka kharid taxable, purchase delete ki
+       history, aur return wali party ka delete.
+       ───────────────────────────────────────────────────────────────────── */
+    console.log(`\n${Y}Khata, GST report aur delete ka nishaan${N}`);
+
+    // ---- 1. Khata ka "Baaki" hamesha aaj ka ho, chahe entries kat jayein ----
+    //
+    // limit=3 lagane se wahi haalat banti hai jo 200 se zyada lena-dena wali
+    // party pe banti hai. Pehle limit PURANI entries pakadti thi, isliye
+    // "Baaki" mahino purana chipak jata tha aur aaj ka bill dikhta hi nahi tha.
+    const realBal = round2(await balanceOf());
+    r = await call('GET', `/khata/${partyId}?limit=3`, { token: wToken });
+    const kh = r.data || {};
+    check('kam limit pe bhi khata ka Baaki = party ka asli balance',
+      round2(kh.closing) === realBal, `closing ${kh.closing} vs balance ${realBal}`);
+    check('sirf 3 entry dikhi', kh.entries?.length === 3, `${kh.entries?.length}`);
+    check('kul ginti alag se aayi', kh.total > 3, `total ${kh.total}`);
+    check('purani entries chhupi hain, ye bata diya', kh.truncated === true);
+    check('opening + badha − ghata = Baaki',
+      round2(kh.opening + kh.totalDebit - kh.totalCredit) === round2(kh.closing),
+      `${kh.opening} + ${kh.totalDebit} − ${kh.totalCredit} ≠ ${kh.closing}`);
+
+    r = await call('GET', `/khata/${partyId}`, { token: wToken });
+    check('poori list me bhi Baaki wahi', round2(r.data?.closing) === realBal,
+      `${r.data?.closing} vs ${realBal}`);
+    check('poori list pe truncated ka nishaan nahi', r.data?.truncated === false);
+
+    // ---- 2. GST report me kharid ka taxable 0 na ho ----
+    await call('PUT', '/business/me', { token: wToken, body: { gstEnabled: true } });
+
+    r = await call('POST', '/purchases', {
+      token: wToken,
+      body: { supplierId, items: [{ itemId: bearingId, qty: 20, rate: 100, gstRate: 18 }] },
+    });
+    const gstPur = r.data?._id;
+    check('GST wali kharid bani (taxable 2000)', r.data?.taxableTotal === 2000,
+      `taxable ${r.data?.taxableTotal}`);
+
+    r = await call('GET', '/reports/gst?from=2020-01-01', { token: wToken });
+    check('GST report me kharid ka taxable 0 nahi hai (pehle hamesha 0 aata tha)',
+      (r.data?.meta?.purchaseTaxable || 0) > 0, `purchaseTaxable ${r.data?.meta?.purchaseTaxable}`);
+    check('input credit bhi mila', (r.data?.meta?.inputTax || 0) > 0,
+      `inputTax ${r.data?.meta?.inputTax}`);
+
+    // ---- 3. Purchase delete hone ke baad history sach bole ----
+    const stockBefore = (await call('GET', `/items/${bearingId}`, { token: wToken })).data?.stockQty;
+
+    r = await call('DELETE', `/purchases/${gstPur}`, { token: wToken });
+    check('kharid delete ho gayi', r.status === 200, `status ${r.status}`);
+
+    const stockAfter = (await call('GET', `/items/${bearingId}`, { token: wToken })).data?.stockQty;
+    check('stock 20 wapas nikal gaya', round2(stockBefore - stockAfter) === 20,
+      `${stockBefore} → ${stockAfter}`);
+
+    r = await call('GET', `/items/${bearingId}/movements`, { token: wToken });
+    const wapas = (r.data || []).find((m) => m.type === 'PURCHASE_RETURN' && m.qty === -20);
+    check('stock ghatne ka record history me hai (pehle mit jata tha)', Boolean(wapas));
+    check('usme likha hai ki kaunsi kharid delete hui',
+      /delete hui/.test(wapas?.note || ''), wapas?.note);
+    check('aur "maal aaya" wala record bhi bacha hai',
+      (r.data || []).some((m) => m.type === 'PURCHASE' && m.qty === 20));
+
+    await call('PUT', '/business/me', { token: wToken, body: { gstEnabled: false } });
+
+    // ---- 4. Sirf return wali party delete na ho ----
+    r = await call('POST', '/parties', {
+      token: wToken,
+      body: { name: 'Sirf Return Wala', phone: '9500000077', type: 'retailer' },
+    });
+    const onlyReturnParty = r.data?._id;
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId: onlyReturnParty,
+        items: [{ itemId: bearingId, qty: 1, rate: 100 }],
+      },
+    });
+    check('bina bill ka return bana', r.status === 201, `status ${r.status}`);
+
+    r = await call('DELETE', `/parties/${onlyReturnParty}`, { token: wToken });
+    check('sirf return wali party delete NAHI hui', r.data?.deleted === false,
+      `deleted ${r.data?.deleted}`);
+    check('block ho gayi', r.data?.blocked === true);
+    check('message me "return" ka naam aaya', /return/.test(r.data?.message || ''), r.data?.message);
+
+    r = await call('GET', `/parties/${onlyReturnParty}`, { token: wToken });
+    check('party abhi bhi maujud hai', r.status === 200, `status ${r.status}`);
+    r = await call('GET', `/khata/${onlyReturnParty}`, { token: wToken });
+    check('uska khata bhi saabut hai', (r.data?.entries?.length || 0) > 0,
+      `entries ${r.data?.entries?.length}`);
+
+    /* ─────────────────────────────────────────────────────────────────────
+       Do kaam ek saath
+
+       Ye section asli me DO REQUEST EK SAATH bhejta hai (Promise.all). Dukaan me
+       yahi hota hai: do log alag alag phone se, ya ek hi banda button do baar
+       daba deta hai. Har check ke baad wahi sawal — khata aur bill ek hi baat
+       kah rahe hain ya nahi.
+       ───────────────────────────────────────────────────────────────────── */
+    console.log(`\n${Y}Do kaam ek saath${N}`);
+
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 500 } });
+
+    // ---- 1. Ek hi bill pe do payment, ek saath ----
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 10, rate: 1000 }] },
+    });
+    const raceBill = r.data?._id;
+    check('10000 ka bill bana', r.data?.dueAmount === 10000, `due ${r.data?.dueAmount}`);
+
+    const balBeforeRace = round2(await balanceOf());
+
+    const [pA, pB] = await Promise.all([
+      call('POST', '/payments', { token: wToken, body: { partyId, amount: 5000, mode: 'CASH' } }),
+      call('POST', '/payments', { token: wToken, body: { partyId, amount: 5000, mode: 'UPI' } }),
+    ]);
+    check('dono payment ban gayi', pA.status === 201 && pB.status === 201,
+      `${pA.status} / ${pB.status}`);
+
+    r = await call('GET', `/invoices/${raceBill}`, { token: wToken });
+    check('bill pe poore 10000 lage (5000 gayab nahi hue)', r.data?.paidAmount === 10000,
+      `paid ${r.data?.paidAmount}`);
+    check('bill ka udhaar 0', r.data?.dueAmount === 0, `due ${r.data?.dueAmount}`);
+    check('khata bhi 10000 kam hua', round2(await balanceOf()) === round2(balBeforeRace - 10000),
+      `pehle ${balBeforeRace}, ab ${await balanceOf()}`);
+    check('khata aur closing barabar', round2(await closingOf()) === round2(await balanceOf()),
+      `closing ${await closingOf()} vs balance ${await balanceOf()}`);
+
+    // ---- 2. Ek payment, do baar delete ----
+    const balBeforeDel = round2(await balanceOf());
+    const [dA, dB] = await Promise.all([
+      call('DELETE', `/payments/${pA.data?.payment?._id}`, { token: wToken }),
+      call('DELETE', `/payments/${pA.data?.payment?._id}`, { token: wToken }),
+    ]);
+    check('do me se sirf EK delete chala',
+      [dA.status, dB.status].filter((s) => s === 200).length === 1, `${dA.status} / ${dB.status}`);
+    check('doosre ko saaf mana kar diya',
+      [dA.status, dB.status].some((s) => s === 404), `${dA.status} / ${dB.status}`);
+    check('khata sirf 5000 wapas gaya (10000 nahi)',
+      round2(await balanceOf()) === round2(balBeforeDel + 5000),
+      `pehle ${balBeforeDel}, ab ${await balanceOf()}`);
+
+    r = await call('GET', `/invoices/${raceBill}`, { token: wToken });
+    check('bill pe bhi 5000 hi wapas aaya', r.data?.dueAmount === 5000, `due ${r.data?.dueAmount}`);
+
+    // ---- 3. Ek UPI claim, do baar confirm ----
+    r = await call('POST', '/my/payments', {
+      token: rToken, body: { amount: 1000, reference: 'RACE123' },
+    });
+    const raceClaim = r.data?._id;
+    check('retailer ne UPI claim bheja', r.status === 201, `${r.message}`);
+
+    if (raceClaim) {
+      const balBeforeConfirm = round2(await balanceOf());
+      const [cA, cB] = await Promise.all([
+        call('POST', `/payments/${raceClaim}/confirm`, { token: wToken }),
+        call('POST', `/payments/${raceClaim}/confirm`, { token: wToken }),
+      ]);
+      check('do me se sirf EK confirm chala',
+        [cA.status, cB.status].filter((s) => s === 200).length === 1, `${cA.status} / ${cB.status}`);
+      check('doosre ko "pehle se confirm hai" mila',
+        /pehle se confirm/.test(`${cA.message} ${cB.message}`), `${cA.message} | ${cB.message}`);
+      check('khate me 1000 hi gaya, 2000 nahi',
+        round2(await balanceOf()) === round2(balBeforeConfirm - 1000),
+        `pehle ${balBeforeConfirm}, ab ${await balanceOf()}`);
+      check('khata aur closing abhi bhi barabar',
+        round2(await closingOf()) === round2(await balanceOf()),
+        `closing ${await closingOf()} vs balance ${await balanceOf()}`);
+    }
+
+    // ---- 4. Do bill ek saath, stock sirf ek ke liye ----
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 12 } });
+
+    const billsBefore = (await call('GET', '/invoices?limit=1', { token: wToken })).meta?.total;
+    const [iA, iB] = await Promise.all([
+      call('POST', '/invoices', { token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 12, rate: 100 }] } }),
+      call('POST', '/invoices', { token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 12, rate: 100 }] } }),
+    ]);
+    check('sirf EK bill bana', [iA.status, iB.status].filter((s) => s === 201).length === 1,
+      `${iA.status} / ${iB.status}`);
+    check('doosre ko stock wali error mili',
+      /stock/i.test(`${iA.message} ${iB.message}`), `${iA.message} | ${iB.message}`);
+
+    const billsAfter = (await call('GET', '/invoices?limit=1', { token: wToken })).meta?.total;
+    check('list me sirf ek naya bill jud a (adhoora bill pada nahi hai)',
+      billsAfter === billsBefore + 1, `pehle ${billsBefore}, ab ${billsAfter}`);
+
+    r = await call('GET', `/items/${bearingId}`, { token: wToken });
+    check('stock poora 0 hua (12 hi gaya, 24 nahi)', r.data?.stockQty === 0, `stock ${r.data?.stockQty}`);
+
+    // ---- 5. Aakhri jaanch — khata apne aap se mel khata hai ----
+    r = await call('GET', `/khata/${partyId}`, { token: wToken });
+    const kk = r.data || {};
+    check('khata ka apna jod barabar hai',
+      round2(kk.opening + kk.totalDebit - kk.totalCredit) === round2(kk.closing),
+      `${kk.opening} + ${kk.totalDebit} − ${kk.totalCredit} ≠ ${kk.closing}`);
+    check('aur khata = Party.balance', round2(kk.closing) === round2(await balanceOf()),
+      `closing ${kk.closing} vs balance ${await balanceOf()}`);
+
+    // Har payment ka allocation uski apni raqam se zyada na ho
+    r = await call('GET', `/payments?partyId=${partyId}&limit=200`, { token: wToken });
+    const overAllocated = (r.data || []).filter((p) => {
+      const laga = round2((p.allocations || []).reduce((s, a) => s + (a.amount || 0), 0));
+      return laga > round2(p.amount) + 0.01;
+    });
+    check('kisi payment ka allocation uski raqam se zyada nahi hai',
+      overAllocated.length === 0, overAllocated.map((p) => p.paymentNo).join(', '));
+
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 500 } });
+
     console.log(`\n${Y}Staff login${N}`);
 
     r = await call('GET', '/staff', { token: wToken });
@@ -2048,6 +2539,91 @@ async function run() {
 
     r = await call('GET', '/business/me', { token: wToken });
     check('malik ki dukaan ka naam nahi badla', r.data?.name === 'Ramesh Auto Parts', `${r.data?.name}`);
+
+    /* ─────────────────────────────────────────────────────────────────────
+       Staff ko kya NAHI dikhna chahiye
+
+       Menu chhupa dena kaafi nahi hai — API se seedha maangne par bhi na mile.
+       Yahan wahi teen darwaze check hote hain jo pehle khule pade the.
+       ───────────────────────────────────────────────────────────────────── */
+    console.log(`\n${Y}Staff ko kya NAHI dikhna chahiye${N}`);
+
+    // ---- 1. Retailer ko block/approve karna ----
+    const statusBefore = (await call('GET', `/parties/${partyId}`, { token: wToken })).data?.status;
+
+    r = await call('GET', '/business/retailers', { token: staffToken });
+    check('salesman retailer list NAHI dekh saka', r.status === 403, `status ${r.status}`);
+    check('us jawab me kisi ka balance nahi gaya',
+      !JSON.stringify(r).includes('creditLimit'));
+
+    r = await call('POST', `/business/retailers/${partyId}/block`, { token: staffToken });
+    check('salesman kisi retailer ko block NAHI kar saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', `/parties/${partyId}`, { token: wToken });
+    check('retailer ka status waisa ka waisa hai', r.data?.status === statusBefore,
+      `pehle ${statusBefore}, ab ${r.data?.status}`);
+
+    r = await call('POST', `/business/retailers/${partyId}/approve`, { token: staffToken });
+    check('approve bhi NAHI kar saka', r.status === 403, `status ${r.status}`);
+
+    // Malik ka apna kaam nahi rukna chahiye
+    r = await call('GET', '/business/retailers', { token: wToken });
+    check('malik retailer list dekh saka', r.status === 200, `status ${r.status}`);
+
+    // ---- 2. Invite link, UPI aur dukaan ka email ----
+    const bizStaff = await call('GET', '/business/me', { token: staffToken });
+    check('staff ko /business/me khula (bill ke liye chahiye)', bizStaff.status === 200,
+      `status ${bizStaff.status}`);
+    check('par invite code NAHI mila', bizStaff.data?.inviteCode === undefined,
+      `${bizStaff.data?.inviteCode}`);
+    check('invite link bhi NAHI mila', bizStaff.data?.inviteLink === undefined,
+      `${bizStaff.data?.inviteLink}`);
+    check('malik ki UPI id NAHI mili', bizStaff.data?.upiId === undefined, `${bizStaff.data?.upiId}`);
+    check('dukaan ka email NAHI mila', bizStaff.data?.email === undefined, `${bizStaff.data?.email}`);
+
+    // ...lekin bill banane ke liye jo chahiye wo mila
+    check('staff ko dukaan ka naam mila', bizStaff.data?.name === 'Ramesh Auto Parts',
+      `${bizStaff.data?.name}`);
+    check('staff ko address bhi mila', typeof bizStaff.data?.address === 'object');
+
+    const bizOwner = await call('GET', '/business/me', { token: wToken });
+    check('malik ko invite code poora mila', Boolean(bizOwner.data?.inviteCode),
+      `${bizOwner.data?.inviteCode}`);
+    check('malik ko invite link bhi mila', /\/join\//.test(bizOwner.data?.inviteLink || ''),
+      `${bizOwner.data?.inviteLink}`);
+
+    // Doosra darwaza — /auth/me
+    r = await call('GET', '/auth/me', { token: staffToken });
+    check('/auth/me se bhi invite code nahi nikla',
+      r.data?.business?.inviteCode === undefined, `${r.data?.business?.inviteCode}`);
+    check('/auth/me se UPI bhi nahi nikli',
+      r.data?.business?.upiId === undefined, `${r.data?.business?.upiId}`);
+    check('phir bhi dukaan ka naam wahan hai', r.data?.business?.name === 'Ramesh Auto Parts');
+
+    if (bizOwner.data?.inviteCode) {
+      check('poore staff session me invite code kahin nahi hai',
+        !JSON.stringify(r).includes(bizOwner.data.inviteCode));
+    }
+
+    // ---- 3. Dashboard pe report wali baat ----
+    r = await call('GET', '/dashboard', { token: staffToken });
+    check('salesman ka dashboard khula', r.status === 200, `status ${r.status}`);
+    check('usme mahine ka jod NAHI hai', r.data?.sale?.month === undefined, `${r.data?.sale?.month}`);
+    check('14 din ka graph NAHI hai', r.data?.trend === undefined);
+    check('top items NAHI hain', r.data?.topItems === undefined);
+    check('aaj ka bill wala hissa hai (bill wo khud banata hai)',
+      r.data?.sale?.today !== undefined);
+
+    r = await call('GET', '/dashboard', { token: wToken });
+    check('malik ko mahine ka jod mila', r.data?.sale?.month !== undefined);
+    check('malik ko trend bhi mila', Array.isArray(r.data?.trend));
+
+    // ---- 4. Retailer ka unread count sirf uska ----
+    r = await call('GET', '/dashboard', { token: rToken });
+    const retailerUnread = r.data?.unread;
+    r = await call('GET', '/notifications/unread-count', { token: rToken });
+    check('retailer ke dashboard ka count uski apni list se milta hai',
+      retailerUnread === r.data?.count, `dashboard ${retailerUnread} vs list ${r.data?.count}`);
 
     // permission badlo
     r = await call('PUT', `/staff/${salesmanId}`, {

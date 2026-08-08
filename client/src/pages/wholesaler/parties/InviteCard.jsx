@@ -6,7 +6,7 @@ import { Card, CardHeader, Button, Switch, ConfirmModal, useToast } from '@/comp
 
 /** Retailers page aur Settings dono me yahi card use hota hai */
 export default function InviteCard({ compact = false }) {
-  const { business, refresh } = useAuth();
+  const { business, refresh, isOwner } = useAuth();
   const toast = useToast();
 
   const [local, setLocal] = useState(null);
@@ -55,6 +55,24 @@ export default function InviteCard({ compact = false }) {
     } catch (err) {
       toast.error(err.message);
     }
+  }
+
+  // Invite link sirf malik ke paas rehta hai — server ab staff ko bhejta hi nahi.
+  // (Jiske paas link hai wo retailer ban kar ghus sakta hai, aur naya link sirf
+  // malik bana sakte hain — isliye leak hone par pata bhi nahi chalta.)
+  if (!isOwner) {
+    return (
+      <Card>
+        <CardHeader
+          title="Retailer invite link"
+          subtitle="Naye retailer jodne ka link"
+        />
+        <p className="text-sm text-slate-500">
+          Ye link sirf dukaan ke malik ke paas rehta hai. Kisi naye retailer ko jodna ho
+          to unse link mangwa lijiye.
+        </p>
+      </Card>
+    );
   }
 
   return (

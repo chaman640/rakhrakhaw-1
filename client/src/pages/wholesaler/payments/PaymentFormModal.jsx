@@ -103,7 +103,8 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
           <Combobox
             label="Kiska paisa"
             required
-            value={party}
+            value={party?.value}
+            display={party?.label}
             onChange={setParty}
             fetchOptions={fetchParties}
             placeholder="Naam ya phone se dhoondhein"

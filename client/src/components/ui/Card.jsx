@@ -1,8 +1,22 @@
 import { cn } from '@/lib/cn';
 
-export default function Card({ children, className, padding = true }) {
+export default function Card({ children, className, padding = true, onClick, ...props }) {
+  // onClick diya ho to poora card clickable ho — pehle wo chup-chaap gir jata tha,
+  // aur dashboard ke tile pe sirf beech ka hissa kaam karta tha
+  const clickable = typeof onClick === 'function';
   return (
-    <div className={cn('rounded-xl border border-slate-200 bg-white shadow-sm', padding && 'p-5', className)}>
+    <div
+      onClick={onClick}
+      {...(clickable ? { role: 'button', tabIndex: 0,
+        onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); } } } : {})}
+      className={cn(
+        'rounded-xl border border-slate-200 bg-white shadow-sm',
+        padding && 'p-5',
+        clickable && 'cursor-pointer focus-ring',
+        className
+      )}
+      {...props}
+    >
       {children}
     </div>
   );

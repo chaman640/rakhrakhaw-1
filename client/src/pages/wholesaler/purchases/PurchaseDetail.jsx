@@ -86,7 +86,7 @@ export default function PurchaseDetail() {
 
           <div className="flex shrink-0 gap-2 no-print">
             <Button variant="secondary" size="sm" icon={Undo2}
-              onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${purchase._id}`)}>
+              onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${p._id}`)}>
               Maal wapas bheja
             </Button>
             <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>Print</Button>

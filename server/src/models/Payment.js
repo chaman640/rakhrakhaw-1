@@ -20,7 +20,26 @@ const paymentSchema = new mongoose.Schema(
     confirmedAt: { type: Date, default: null },
     confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
+    /**
+     * Kis bill pe KITNA laga.
+     *
+     * Pehle sirf `againstInvoiceIds` tha — yaani "kaunse bill", "kitna" nahi.
+     * Delete karte waqt code ko andaza lagana padta tha, aur do payment ek hi
+     * bill pe lagi hon to hisaab galat ho jata tha.
+     *
+     * `againstInvoiceIds` abhi bhi rakha hai — purani entries usi pe hain, aur
+     * query/index bhi usi pe hai. Nayi payments me dono saath saath likhte hain.
+     */
+    allocations: [{
+      _id: false,
+      invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true },
+      amount: { type: Number, required: true, min: 0 },
+    }],
     againstInvoiceIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }],
+
+    // Bill banate waqt "abhi itna mila" wali payment — bill cancel hoga to yahi hategi.
+    // Baad me alag se aayi payments cancel pe delete NAHI hoti, sirf dusre bill pe lag jati hain.
+    sourceInvoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', default: null },
 
     note: { type: String, default: '' },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

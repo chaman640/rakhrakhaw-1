@@ -51,4 +51,4 @@ export const wholesalerHome = asyncHandler(async (req, res) =>
   ok(res, await dashboard.getWholesalerDashboard(req.businessId, req.user)));
 
 export const retailerHome = asyncHandler(async (req, res) =>
-  ok(res, await dashboard.getRetailerDashboard(req.businessId, req.partyId)));
+  ok(res, await dashboard.getRetailerDashboard(req.businessId, req.partyId, req.user._id)));

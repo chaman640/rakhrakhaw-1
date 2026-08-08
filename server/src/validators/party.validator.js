@@ -69,6 +69,8 @@ export const listRatesQuerySchema = z.object({
 export const bulkRateSchema = z.object({
   mode: z.enum(['percentOffWholesale', 'percentOffSale', 'percentOnPurchase', 'clear']),
   value: z.coerce.number().min(-100).max(1000).optional().default(0),
-  categoryId: objectId.or(z.literal('')).nullable().optional(),
+  // 'none' = "bina category wale items" — service isse sambhalti hai (party.service.js),
+  // isliye validator ko bhi allow karna zaroori hai (listRatesQuerySchema me pehle se hai)
+  categoryId: objectId.or(z.literal('')).or(z.literal('none')).nullable().optional(),
   roundTo: z.enum(['none', '1', '0.5', '5', '10']).optional().default('none'),
 });

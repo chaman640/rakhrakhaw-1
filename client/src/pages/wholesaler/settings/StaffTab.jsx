@@ -22,6 +22,16 @@ const PERM_LABEL = {
   settings: 'Settings',
 };
 
+/**
+ * Jo asli me di ja sakti hai.
+ *
+ * `settings` yahan JAAN-BOOJH KAR nahi hai. Dukaan ki detail, staff aur backup —
+ * teeno server pe sirf malik ke liye khule hain (`requireOwner`). Pehle iska
+ * checkbox dikhta tha, malik use tick kar deta tha, aur kuch hota hi nahi tha.
+ * Jhoota button dikhane se accha hai ki dikhe hi na.
+ */
+const GRANTABLE = Object.keys(PERM_LABEL).filter((k) => k !== 'settings');
+
 const ROLE_HINT = {
   manager: 'Settings chhod kar lagbhag sab kuch',
   salesman: 'Order aur bill — khata nahi dikhega',
@@ -121,9 +131,9 @@ export default function StaffTab() {
                 </p>
                 {!s.isOwner && (
                   <p className="mt-1 text-xs text-slate-400">
-                    {s.permissions.length === Object.keys(PERM_LABEL).length
+                    {GRANTABLE.every((p) => s.permissions.includes(p))
                       ? 'Sab kuch'
-                      : s.permissions.map((p) => PERM_LABEL[p]).join(', ') || 'Kuch nahi'}
+                      : s.permissions.map((p) => PERM_LABEL[p]).filter(Boolean).join(', ') || 'Kuch nahi'}
                   </p>
                 )}
               </div>
@@ -306,7 +316,7 @@ function StaffFormModal({ open, onClose, staff, roles, onSaved }) {
             Role chunte hi theek-thaak set ho jata hai — chahein to badal lein
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {Object.entries(PERM_LABEL).map(([key, label]) => (
+            {GRANTABLE.map((key) => (
               <label key={key}
                 className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50">
                 <input
@@ -315,10 +325,14 @@ function StaffFormModal({ open, onClose, staff, roles, onSaved }) {
                   onChange={() => togglePerm(key)}
                   className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
                 />
-                <span className="text-sm text-slate-700">{label}</span>
+                <span className="text-sm text-slate-700">{PERM_LABEL[key]}</span>
               </label>
             ))}
           </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Dukaan ki detail, invite link, staff aur backup — ye sirf aapke (malik ke) paas rehte hain,
+            kisi staff ko nahi diye ja sakte.
+          </p>
           {!perms.length && (
             <p className="mt-2 text-xs text-amber-700">
               Ek bhi nahi chuna — ye login karke kuch nahi kar payega

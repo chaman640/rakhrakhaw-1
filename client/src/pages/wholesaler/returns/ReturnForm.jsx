@@ -38,7 +38,11 @@ export default function ReturnForm() {
   const presetType = params.get('type');
   const docId = params.get('doc');
 
-  const [type, setType] = useState(presetType || 'SALE_RETURN');
+  // URL me galat ?type= aa jaye (purana bookmark, typo) to bhi page khulna chahiye —
+  // warna cfg undefined ho jata hai aur poora page blank ho jata hai
+  const [type, setType] = useState(
+    TYPES.some((t) => t.value === presetType) ? presetType : 'SALE_RETURN'
+  );
   const [party, setParty] = useState(null);
   const [partyState, setPartyState] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -49,7 +53,7 @@ export default function ReturnForm() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(Boolean(docId));
 
-  const cfg = TYPES.find((t) => t.value === type);
+  const cfg = TYPES.find((t) => t.value === type) || TYPES[0];
   const isSale = type === 'SALE_RETURN';
 
   // ---- Bill/purchase se prefill ----
@@ -238,7 +242,8 @@ export default function ReturnForm() {
               <Combobox
                 label={isSale ? 'Kis retailer se' : 'Kis supplier ko'}
                 required
-                value={party}
+                value={party?.value}
+                display={party?.label}
                 onChange={(opt) => { setParty(opt); setPartyState(opt.raw?.address?.stateCode || ''); }}
                 fetchOptions={fetchParties}
                 placeholder="Naam ya phone se dhoondhein"
@@ -267,7 +272,8 @@ export default function ReturnForm() {
                     <div className="sm:col-span-5">
                       <Combobox
                         label={i === 0 ? 'Item' : undefined}
-                        value={r.itemId ? { value: r.itemId, label: r.name } : null}
+                        value={r.itemId}
+                        display={r.name}
                         onChange={(opt) => pickItem(r.key, opt)}
                         fetchOptions={fetchItems}
                         placeholder="Item dhoondhein"

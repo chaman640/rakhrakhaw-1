@@ -145,7 +145,7 @@ seedha order karein. Vyapar + Thokmarket ka hybrid.
 - [x] **Party-wise item rate** — har item ke saamne inline rate, effective rate + source badge, live fayda
 - [x] **Bulk rate tool** — "wholesale se 10% kam", "purchase pe 20% jyada", category-wise, rounding (0.5 / 1 / 5 / 10)
 - [x] `rate.service.js` — rate resolution chain ek jagah (Part 6 aur 8 yahi use karenge)
-- [x] Delete guard — order/bill/payment wali party delete nahi, sirf block
+- [x] Delete guard — order / bill / payment / kharid / **return** wali party delete nahi, sirf block (aur message me batata hai ki kya kya mila)
 
 ### Part 3 — Items / Inventory
 - [x] Item CRUD — 3 price (purchase / sale / wholesale), unit, SKU, photo, description
@@ -547,6 +547,17 @@ await Item.updateOne({ _id: itemId }, { $inc: { stockQty: 10 } });
 
 Part 5 (purchase) aur Part 8 (invoice) dono yahi function call karenge.
 
+**Movement kabhi delete mat karna.** Purchase delete hone par bhi dono record bane
+rehte hain — "maal aaya" wala bhi aur "maal wapas gaya" wala bhi. Pehle
+`deletePurchase` reversal banane ke turant baad `StockMovement.deleteMany()` chala
+deta tha, jo apna hi banaya hua reversal bhi uda deta tha. Nateeja: item ka stock
+10 kam ho jata tha aur history bilkul khali — "stock kahan gaya" ka jawab hi nahi
+bachta tha, jo ki is service ka poora maqsad hai.
+
+Isi wajah se **"kya ye item kisi purane bill me hai"** ka jawab bhi ab movement se
+nahi, seedha document se poochha jata hai (`Invoice` / `Purchase` / `ReturnNote` me
+`items.itemId`). Movement ek audit trail hai — "kya use hua" ka proxy nahi.
+
 ---
 
 ## Rate ka niyam (Part 4 se aage hamesha)
@@ -619,6 +630,23 @@ entry hai kya; hai to poora khata dobara jodta hai.
 Smoke test me iske do pehredaar hain: *"khata ka closing aur Party.balance barabar hain"* aur
 *"har entry ka running balance sahi jud raha hai"*.
 
+### Khata padhte waqt: limit hamesha NAYI entries pakde
+
+`getPartyLedger()` entries **ulta** (naya pehle) nikalta hai aur phir palat deta hai.
+Sidha nikalne se `limit` **purani** entries pakadti thi — jis party ke 200 se zyada
+lena-dena ho gaye, uske khate me **aaj ka bill dikhta hi nahi tha** aur neeche
+"Baaki" me mahino purana number chipak jata tha.
+
+`opening` bhi ab pehli **dikhne wali** entry se ulta jod kar nikalta hai
+(`balanceAfter − debit + credit`), na ki hamesha 0 se. Isse ye hamesha sach rehta hai:
+
+```
+opening + kul badha − kul ghata = Baaki
+```
+
+chahe entries limit se kati hon, chahe date range laga ho, chahe dono. Jab kuch
+kata ho to jawab me `truncated: true` bhi jata hai aur UI upar ek line dikha deta hai.
+
 ---
 
 ## Paise ka niyam (Part 9 se aage hamesha)
@@ -652,11 +680,112 @@ wholesaler "Nahi mila"       ->  status: failed    ->  khata jaisa tha waisa hi
 Ye jaan-boojh kar hai — retailer ke keh dene se hisaab nahi badalna chahiye. Paisa asli me aaya ya
 nahi, ye sirf wholesaler apna account dekh kar bata sakta hai.
 
-**Delete karne pe kya hota hai:**
+**Kis bill pe kitna laga — ye ab likha jata hai:**
 
-1. Allocation ulti — jis bill pe laga tha uska `paidAmount` ghatta hai, `dueAmount` wapas badhta hai
-2. Ledger entry hat jati hai aur `Party.balance` ulta ho jata hai
-3. Pending payment delete karne pe kuch reverse karne ki zarurat hi nahi (kuch laga hi nahi tha)
+`Payment.allocations` = `[{ invoiceId, amount }]`. Pehle sirf `againstInvoiceIds` tha yaani
+"kaunse bill" — "kitna" nahi. Delete karte waqt code ko andaza lagana padta tha, aur do payment
+ek hi bill pe lagi hon to hisaab galat ho jata tha. `againstInvoiceIds` abhi bhi likha jata hai
+(purani entries aur query uspe hain), par asli hisaab `allocations` se hota hai.
+
+---
+
+## Do kaam ek saath (concurrency)
+
+Dukaan me do log alag alag phone se kaam karte hain, aur net slow ho to ek hi banda
+button do baar daba deta hai. Teen niyam isi liye hain:
+
+### 1. Number kabhi JS me mat gino — MongoDB se ginwao
+
+```js
+// GALAT — do request ek saath aayen to ek ka paisa gayab
+inv.paidAmount = inv.paidAmount + apply;
+await inv.save();
+
+// SAHI — DB khud, us waqt ki asli value se ginta hai
+await Invoice.findOneAndUpdate(
+  { _id, businessId, dueAmount: { $gte: apply } },   // <- utna baaki hai tabhi
+  [{ $set: { paidAmount: { $round: [{ $add: ['$paidAmount', apply] }, 2] } } }, ...],
+  { new: true }
+);
+```
+
+Padho-gino-likho ke beech doosri request ghus jati hai: dono ne `paidAmount 0` padha,
+dono ne `5000` likh diya — 10000 ka bill 5000 paid dikhata, jabki khate me dono credit
+gine gaye. `payment.service.js` ka `applyPaidAtomic()` ab isi ka ek darwaza hai.
+
+### 2. Status badalna ho to PEHLE jhanda gaado, phir kaam karo
+
+```js
+// GALAT — dono request check paas kar jaati hain
+const p = await Payment.findOne({ _id });
+if (p.status === 'confirmed') throw ...;
+
+// SAHI — filter me hi purani status
+const p = await Payment.findOneAndUpdate(
+  { _id, businessId, status: PENDING },
+  { $set: { status: CONFIRMED } }, { new: true }
+);
+if (!p) { /* kisi aur ne pehle kar liya */ }
+```
+
+MongoDB ek document pe ek waqt me ek hi update chalata hai, isliye do me se sirf **ek**
+ko document milta hai. `confirmPayment`, `rejectPayment` (`findOneAndUpdate`) aur
+`deletePayment` (`findOneAndDelete`) — teeno isi tarah "claim" karte hain. Kaam beech me
+fail ho jaye to status wapas `pending` kar diya jata hai.
+
+### 3. Kai kadam wala kaam: pehle poora check, phir gadbad pe poora ulta
+
+`createInvoice` paanch kaam karta hai — bill, stock, khata, payment, order. Beech me fail
+ho jaye (aksar: doosre bill ne wahi stock utha liya) to pehle **aadha bill** reh jata tha:
+list me bill dikhta, do item ka stock kat chuka hota, khate me kuch aata hi nahi.
+
+Ab do parat hain:
+
+1. **Pehle poora stock check** — saari line JOD kar (ek hi item do line me ho tab bhi)
+2. **Phir bhi fail ho to `undoHalfInvoice()`** — ulte order me payment → khata → stock → bill
+
+**MongoDB transaction kyun nahi:** uske liye `session` ko `stock.service`, `ledger.service`
+aur `Counter` — teeno ke andar tak le jana padta, aur wo teeno poore project ke "ek hi
+darwaza" wale service hain. Upar wala check 99% case pehle hi rok deta hai; rollback bache
+hue case ka jaal hai.
+
+Rollback me stock ke movement **delete nahi** hote (wahi niyam jo purchase delete pe hai) —
+history saaf dikhati hai ki maal gaya tha aur wapas aa gaya.
+
+**Test:** `smoke.js` ka **"Do kaam ek saath"** section sach me do request ek saath bhejta
+hai (`Promise.all`) — aapke apne DB pe.
+
+---
+
+### Reversal ka poora naksha
+
+**Ye sabse zaroori table hai.** Har document delete/cancel hone par kya kya ulta karna hai —
+ye ek jagah likha hua na hone ki wajah se chaar alag alag jagah paisa gayab ho raha tha.
+Naya code likhte waqt is table se milaana:
+
+| Kya hua | Stock | Khata | Doosre document |
+|---|---|---|---|
+| **Purchase delete** | ghatta hai (`PURCHASE_RETURN`) | `refType: 'Purchase'` ulta | maal bik chuka ho to delete hi nahi hota |
+| **Bill cancel** | badhta hai (`SALE_RETURN`) | `refType: 'Invoice'` ulta | **credit note bana ho to cancel hi nahi hota**; bill ke saath aayi payment hatti hai; baad wali payments sirf **chhut** jati hain |
+| **Payment delete** | — | `refType: 'Payment'` ulta | `allocations` ke hisaab se har bill ka `paidAmount` ghatta hai |
+| **Payment reject** | — | kuch nahi (pending tha, laga hi nahi tha) | kuch nahi |
+| **Return delete** | ulta (`stockSign` ke against) | `refType: 'ReturnNote'` ulta | — |
+
+**Do niyam jo yahan se nikalte hain:**
+
+1. **Paisa kabhi delete nahi hota jab tak user khud na kahe.** Bill cancel karne par uspe lagi
+   doosri payments *delete nahi hoti* — unse sirf us bill ka hissa hatta hai aur wo paisa doosre
+   khule bill pe lag jata hai (FIFO), bacha to advance ban jata hai. Pehle yahan
+   `Payment.deleteMany({ againstInvoiceIds })` tha — wo mahine baad aayi payment ko bhi uda deta tha.
+   Sirf **bill ke saath** aayi payment (`sourceInvoiceId`) bill ke saath hi hatti hai.
+
+2. **Har payment ki khata entry `refType: 'Payment'` hoti hai** — bill ke saath aayi payment ki bhi.
+   Pehle wo `refType: 'Invoice'` thi aur `deletePayment` `'Payment'` dhoondhta tha, isliye
+   payment delete karne pe bill to theek ho jata tha par khate me credit pada reh jata tha
+   (bill 10000 maangta, khata 7000 dikhata).
+
+**Aakhri kasauti:** kisi bhi kaam ke baad `khata ka balance` = `us party ke saare active bill
+ka baaki`. `npm run smoke` me yahi check aakhir me chalta hai.
 
 ### UPI kaise kaam karta hai
 
@@ -697,6 +826,13 @@ ki paisa kitna purana phansa hai.
 
 **Munafa "andaza" hai** — invoice pe cost snapshot nahi hota, item ka aaj ka `purchasePrice` use
 hota hai. Isliye report me साफ likha hai "Munafa (andaza)".
+
+**Jo report jodti hai, wo document pe SAVE hona chahiye.** GST report ka input credit
+`$sum: '$taxableTotal'` karta hai — lekin `Purchase` model me `taxableTotal` field thi hi
+nahi, isliye kharid ka taxable hamesha **0** dikhta tha (tax theek dikhta tha, sirf taxable 0).
+Naya total jodne se pehle dekh lo ki wo field model me hai aur create karte waqt save ho rahi hai.
+Purane document ke liye `config/backfill.js` hai — startup pe ek baar chalta hai, kabhi
+startup rokta nahi (bilkul `syncIndexes()` ki tarah).
 
 ### Low stock alert kab aata hai
 
@@ -749,8 +885,13 @@ Ek dukaan, kai log. Signup karne wala **owner** hai; baaki uske staff.
 | **Salesman** | Items, orders, bill — khata nahi |
 | **Munshi** (accountant) | Khata, payment, report, bill — stock/purchase nahi |
 
-Permission 9 hain: `items`, `parties`, `purchases`, `orders`, `invoices`, `returns`, `khata`,
-`reports`, `settings`. Role chunne par default set ho jati hain, owner chahe to badal sakta hai.
+Staff ko 8 permission di ja sakti hain: `items`, `parties`, `purchases`, `orders`, `invoices`,
+`returns`, `khata`, `reports`. Role chunne par default set ho jati hain, owner chahe to badal
+sakta hai.
+
+`settings` (9vi) **kisi staff ko di nahi ja sakti** — dukaan ki detail, invite link, staff aur
+backup, chaaron server pe `requireOwner` se bandh hain. Pehle iska checkbox dikhta tha, malik
+tick kar deta tha, aur hota kuch nahi tha. Ab checkbox hai hi nahi (`GRANTABLE` list, `StaffTab.jsx`).
 
 **Teen jagah rok lagti hai — teeno zaroori hain:**
 
@@ -761,6 +902,40 @@ Permission 9 hain: `items`, `parties`, `purchases`, `orders`, `invoices`, `retur
 Teesra sabse zaroori hai. Sirf menu chhupa dena kaafi nahi — salesman ko dashboard pe "udhaar
 baaki ₹2,266" dikh jana bhi leak hai. Isliye jiski ijazat nahi, uska hissa response me aata hi
 nahi.
+
+### Naya route jodte waqt ye do sawal
+
+**1. "Ye kaam kis permission ka hai?"** — sirf `requireRole(WHOLESALER)` kaafi NAHI hai, wo to
+har staff paas kar leta hai. `/business/retailers` (list, approve, block) pe yahi galti thi:
+wo `/parties` wala hi kaam karte hain, par unpe koi `requirePermission` laga hi nahi tha —
+matlab salesman doosre darwaze se kisi bhi retailer ka **login band** kar sakta tha
+(block karne pe uska `User.isActive` false ho jata hai) aur sabka balance/credit limit bhi dekh leta tha.
+
+**2. "Ek hi cheez ke do darwaze to nahi hain?"** — agar hain to dono pe ek jaisa niyam laga hai
+ya nahi. Dashboard ka mahine wala jod, 14 din ka graph aur top items pehle `invoices` pe tike the,
+jabki wahi numbers `/api/reports` `reports` ke peeche the. Ab dono jagah `reports` chahiye.
+
+### Dukaan ki detail: ek hi darwaza
+
+`Business` doc kabhi seedha response me mat bhejna — hamesha
+**`utils/businessView.js` ka `businessForUser(business, user)`** se.
+
+| Kaun | Kya milta hai |
+|---|---|
+| **Malik** | Poora doc + `inviteLink` |
+| **Staff** | Sirf wo jo bill pe chhapta hai — naam, phone, address, GSTIN, logo, prefix, T&C |
+| **Retailer** | Sirf dukaan ki pehchaan — naam, phone, address, logo, `gstEnabled` |
+
+Staff se ye chhupte hain: `inviteCode`/`inviteLink`, `upiId`/`upiName`, `email`,
+`inviteEnabled`, `autoApproveRetailers`, `ownerUserId`.
+
+Sabse zaroori **invite code** hai — jiske paas link hai wo retailer ban kar ghus sakta hai, aur
+naya link sirf malik bana sakta hai; isliye leak hone par malik ko pata bhi nahi chalega.
+
+Pehle chhanti sirf retailer ke liye hoti thi, wo bhi `buildSession()` ke andar hi likhi thi —
+aur `/business/me` apna alag jawab deta tha (poora doc). Do jagah do niyam = ek jagah bhool.
+Ab dono wahi ek function bulate hain, aur user na diya jaye to by default staff-level hissa hi
+milta hai (fail-safe).
 
 Owner ko koi hata/block nahi kar sakta — khud bhi nahi. Doosra owner banaya bhi nahi ja sakta.
 

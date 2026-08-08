@@ -5,12 +5,14 @@ import { STATES } from '../config/states.js';
 import * as businessService from '../services/business.service.js';
 
 export const getMyBusiness = asyncHandler(async (req, res) => {
-  const business = await businessService.getBusiness(req.businessId);
+  // `req.user` dena zaroori hai — malik ko poora profile, staff ko sirf
+  // wo hissa jo bill pe chhapta hai (dekho utils/businessView.js)
+  const business = await businessService.getBusiness(req.businessId, req.user);
   return ok(res, business);
 });
 
 export const updateMyBusiness = asyncHandler(async (req, res) => {
-  const business = await businessService.updateBusiness(req.businessId, req.body);
+  const business = await businessService.updateBusiness(req.businessId, req.body, req.user);
   return ok(res, business, 'Profile save ho gaya');
 });
 

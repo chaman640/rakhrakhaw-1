@@ -1,12 +1,18 @@
 import { forwardRef, useId } from 'react';
 import { cn } from '@/lib/cn';
 
-const Textarea = forwardRef(function Textarea({ label, error, hint, rows = 3, className, id, ...props }, ref) {
+const Textarea = forwardRef(function Textarea(
+  { label, error, hint, rows = 3, className, containerClassName, id, ...props },
+  ref
+) {
   const autoId = useId();
   const areaId = id || autoId;
 
+  // className textarea pe jata hai. Grid me jagah ghere (jaise sm:col-span-2) uske liye
+  // containerClassName chahiye — Input me ye pehle se hai, Textarea me nahi tha,
+  // isliye T&C ka box aadha width dikhta tha.
   return (
-    <div className="w-full">
+    <div className={cn('w-full', containerClassName)}>
       {label && (
         <label htmlFor={areaId} className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
       )}
