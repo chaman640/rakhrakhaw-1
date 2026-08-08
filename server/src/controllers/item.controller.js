@@ -9,6 +9,9 @@ export const list = asyncHandler(async (req, res) => {
   return res.json({ success: true, message: 'OK', data: items, meta });
 });
 
+export const brands = asyncHandler(async (req, res) =>
+  ok(res, await service.listBrands(req.businessId)));
+
 export const stats = asyncHandler(async (req, res) =>
   ok(res, await service.getStats(req.businessId)));
 

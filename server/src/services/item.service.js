@@ -20,9 +20,11 @@ export async function listItems(businessId, q) {
   if (q.categoryId === 'none') filter.categoryId = null;
   else if (q.categoryId) filter.categoryId = q.categoryId;
 
+  if (q.brand) filter.brand = q.brand;
+
   if (q.q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
-    filter.$or = [{ name: rx }, { sku: rx }, { hsn: rx }];
+    filter.$or = [{ name: rx }, { sku: rx }, { hsn: rx }, { brand: rx }, { modelNo: rx }, { barcode: rx }];
   }
 
   // Stock filter — low ka matlab "lowStockAt se kam ya barabar, par khatam nahi"
@@ -61,9 +63,20 @@ function decorate(item) {
     categoryId: item.categoryId?.name ? item.categoryId._id : (item.categoryId || null),
     isLowStock: stockQty > 0 && stockQty <= lowStockAt,
     isOutOfStock: stockQty <= 0,
+    // .lean() virtuals skip kar deta hai, isliye yahan dobara banana padta hai
+    warrantyText: warrantyTextOf(item.warrantyMonths),
     stockValue: round2(stockQty * Number(item.purchasePrice || 0)),
     margin: marginOf(item),
   };
+}
+
+/** 18 -> "1 saal 6 mahine" */
+function warrantyTextOf(months) {
+  const m = Number(months || 0);
+  if (!m) return '';
+  const years = Math.floor(m / 12);
+  const rest = m % 12;
+  return [years && `${years} saal`, rest && `${rest} mahine`].filter(Boolean).join(' ');
 }
 
 function marginOf(item) {
@@ -74,6 +87,12 @@ function marginOf(item) {
 }
 
 /* ----------------------------------------------------------------- stats */
+
+/** Jo brand asli me use ho rahe hain unki list — dropdown ke liye */
+export async function listBrands(businessId) {
+  const brands = await Item.distinct('brand', { businessId, isActive: true, brand: { $ne: '' } });
+  return brands.sort((a, b) => a.localeCompare(b));
+}
 
 export async function getStats(businessId) {
   const bid = new mongoose.Types.ObjectId(businessId);
@@ -310,9 +329,10 @@ export async function bulkAction(businessId, { ids, action, categoryId }) {
 /* ---------------------------------------------------------------- export */
 
 export const CSV_HEADERS = [
-  'name', 'sku', 'category', 'unit',
-  'purchasePrice', 'salePrice', 'wholesalePrice',
+  'name', 'sku', 'brand', 'modelNo', 'barcode', 'category', 'unit',
+  'purchasePrice', 'salePrice', 'wholesalePrice', 'mrp',
   'stockQty', 'lowStockAt', 'hsn', 'gstRate',
+  'warrantyMonths', 'warrantyNote', 'rack', 'minOrderQty',
 ];
 
 export async function exportCsv(businessId) {
@@ -322,15 +342,23 @@ export async function exportCsv(businessId) {
   const rows = items.map((i) => ({
     name: i.name,
     sku: i.sku || '',
+    brand: i.brand || '',
+    modelNo: i.modelNo || '',
+    barcode: i.barcode || '',
     category: i.categoryId?.name || '',
     unit: i.unit,
     purchasePrice: i.purchasePrice,
     salePrice: i.salePrice,
     wholesalePrice: i.wholesalePrice,
+    mrp: i.mrp || 0,
     stockQty: i.stockQty,
     lowStockAt: i.lowStockAt,
     hsn: i.hsn || '',
     gstRate: i.gstRate,
+    warrantyMonths: i.warrantyMonths || 0,
+    warrantyNote: i.warrantyNote || '',
+    rack: i.rack || '',
+    minOrderQty: i.minOrderQty || 0,
   }));
 
   return { csv: toCsv(CSV_HEADERS, rows), count: rows.length };
@@ -338,10 +366,14 @@ export async function exportCsv(businessId) {
 
 export function sampleCsv() {
   return toCsv(CSV_HEADERS, [
-    { name: 'Bearing 6203', sku: 'BRG-6203', category: 'Bearings', unit: 'PCS',
-      purchasePrice: 85, salePrice: 120, wholesalePrice: 105, stockQty: 50, lowStockAt: 10, hsn: '8482', gstRate: 18 },
-    { name: 'Chain 428H', sku: 'CHN-428', category: 'Chains', unit: 'PCS',
-      purchasePrice: 320, salePrice: 450, wholesalePrice: 400, stockQty: 24, lowStockAt: 5, hsn: '7315', gstRate: 18 },
+    { name: 'Bearing 6203', sku: 'BRG-6203', brand: 'SKF', modelNo: '6203-2RS', barcode: '8901234567890',
+      category: 'Bearings', unit: 'PCS', purchasePrice: 85, salePrice: 120, wholesalePrice: 105, mrp: 140,
+      stockQty: 50, lowStockAt: 10, hsn: '8482', gstRate: 18,
+      warrantyMonths: 6, warrantyNote: 'Company warranty, bill ke saath', rack: 'A-3', minOrderQty: 0 },
+    { name: 'Chain 428H', sku: 'CHN-428', brand: 'Rolon', modelNo: '428H-118L', barcode: '',
+      category: 'Chains', unit: 'PCS', purchasePrice: 320, salePrice: 450, wholesalePrice: 400, mrp: 520,
+      stockQty: 24, lowStockAt: 5, hsn: '7315', gstRate: 18,
+      warrantyMonths: 12, warrantyNote: '', rack: 'B-1', minOrderQty: 2 },
   ]);
 }
 
@@ -390,6 +422,7 @@ export async function importCsv(businessId, { csv, commit }, userId) {
       ['purchasePrice', 'Purchase price'], ['salePrice', 'Sale price'],
       ['wholesalePrice', 'Wholesale price'], ['stockQty', 'Stock'],
       ['lowStockAt', 'Low stock'], ['gstRate', 'GST rate'],
+      ['mrp', 'MRP'], ['warrantyMonths', 'Warranty months'], ['minOrderQty', 'Min order qty'],
     ]) {
       const raw = rec[field];
       if (raw === undefined || raw === '') { nums[field] = field === 'lowStockAt' ? 5 : 0; continue; }
@@ -406,9 +439,14 @@ export async function importCsv(businessId, { csv, commit }, userId) {
       line: rec.__line,
       name,
       sku: (rec.sku || '').trim(),
+      brand: (rec.brand || '').trim(),
+      modelNo: (rec.modelNo || '').trim(),
+      barcode: (rec.barcode || '').trim(),
       categoryName: (rec.category || '').trim(),
       unit,
       hsn: (rec.hsn || '').trim(),
+      warrantyNote: (rec.warrantyNote || '').trim(),
+      rack: (rec.rack || '').trim(),
       ...nums,
       action: existing ? 'update' : 'create',
       existingId: existing?._id || null,
@@ -450,14 +488,22 @@ export async function importCsv(businessId, { csv, commit }, userId) {
 
     const common = {
       sku: row.sku,
+      brand: row.brand,
+      modelNo: row.modelNo,
+      barcode: row.barcode,
       categoryId,
       unit: row.unit,
       purchasePrice: row.purchasePrice,
       salePrice: row.salePrice,
       wholesalePrice: row.wholesalePrice,
+      mrp: row.mrp,
       lowStockAt: row.lowStockAt,
       hsn: row.hsn,
       gstRate: row.gstRate,
+      warrantyMonths: row.warrantyMonths,
+      warrantyNote: row.warrantyNote,
+      rack: row.rack,
+      minOrderQty: row.minOrderQty,
     };
 
     if (row.action === 'update') {

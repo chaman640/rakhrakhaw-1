@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { env } from '../config/env.js';
+import { serverOrigin } from '../config/origin.js';
+import { UPLOAD_DIR } from '../config/paths.js';
 
-const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const cloudinaryConfigured = Boolean(
@@ -58,7 +59,7 @@ export async function saveImage(file, folder = 'misc') {
   await fs.promises.writeFile(filepath, file.buffer);
 
   return {
-    url: `${env.serverUrl}/uploads/${folder}/${filename}`,
+    url: `${serverOrigin()}/uploads/${folder}/${filename}`,
     publicId: `local:${folder}/${filename}`,
   };
 }

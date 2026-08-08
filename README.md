@@ -17,6 +17,45 @@ seedha order karein. Vyapar + Thokmarket ka hybrid.
 - [x] Base UI layout — sidebar, header, responsive shell
 - [x] 13 reusable components
 
+### Part 11 — Return, Staff aur Backup
+- [x] **Item me naye field** — brand, model/serial number, barcode, MRP, rack (godown me jagah)
+- [x] **Warranty** — kitne mahine + shart, dropdown se (6 mahine / 1 saal / 2 saal...)
+- [x] Warranty **retailer ko bhi dikhti hai** — catalog card pe badge, bill pe har line ke neeche
+- [x] Warranty ka **snapshot bill pe** — baad me item ki warranty badle to purana bill nahi badalta
+- [x] **Kam se kam order** — retailer isse kam nahi mangwa sakta (cart me hi ruk jata hai)
+- [x] Brand, model ya barcode se search; brand ka filter
+- [x] **Sale return = Credit Note** — stock wapas badhta hai, retailer ka udhaar ghatta hai
+- [x] **Purchase return = Debit Note** — stock ghatta hai, supplier ko dena ghatta hai
+- [x] Bill/purchase se **ek click me return** — qty pehle se bhari, "pehle kitna wapas ho chuka" bhi
+- [x] Bill se zyada wapas nahi ho sakta; stock se zyada wapas bhej nahi sakte
+- [x] Chhapne layak credit/debit note — GST, amount in words, karan, signature
+- [x] Delete = poora reversal (stock + khata dono)
+- [x] **Staff login** — Manager / Salesman / Munshi, har ek ka apna phone + password
+- [x] **9 permission** — role chunte hi theek set ho jate hain, chahein to badal lein
+- [x] Staff ko sirf uske kaam ka menu, page aur **dashboard ka data** dikhta hai
+- [x] Owner hi staff bana/hata/block kar sakta hai; koi doosra malik nahi ban sakta
+- [x] Har koi apna password khud badal sakta hai (purana password poochh kar)
+- [x] **Poora data backup** — ek JSON file, password uske andar kabhi nahi jata
+- [x] 6 alag CSV (parties, bills, khata, payments, purchases, returns) — Excel/CA ke liye
+
+### Part 10 — Dashboard, Reports & Notifications
+- [x] **Dashboard** — dukaan kholte hi aaj ki sale, paisa aaya, udhaar, stock — ek nazar me
+- [x] "Aaj ye dekh lijiye" — naye order, pending payment, approve karne wale retailer, kam stock
+- [x] **14 din ka sale chart** — koi chart library nahi, "Number me dekhein" se poori table
+- [x] Kal se kitna upar-neeche (%), sabse zyada bike item, top retailers, recent activity
+- [x] **6 reports** — Sale, Purchase, Stock, Udhaar (aging), GST, Payment
+- [x] Sale/Purchase — din, item, retailer/supplier ke hisaab se; item wise pe **munafe ka andaza**
+- [x] Stock — keemat, kam bacha, khatam, **60 din se pada hua** maal
+- [x] Udhaar — **0-30 / 31-60 / 61-90 / 90+ din** ke bucket, sabse purana kitne din ka
+- [x] GST — B2B/B2C batwara, HSN wise, output − input = **sarkar ko kitna dena hai**
+- [x] Payment — din wise Cash / UPI / Bank / Cheque
+- [x] **Har report ki CSV** — Excel me kholne layak, aakhri line me KUL
+- [x] Date range + "Aaj / Is mahine / 30 din" ke shortcut, print bhi
+- [x] **Low stock ka apne aap alert** — threshold PAAR karne pe, har bill pe nahi
+- [x] **"Yaad dilayein"** — retailer ko udhaar ka alert, apna message bhi bhej sakte hain
+- [x] **Notifications page** — type filter, Aaj/Kal grouping, sab padh liya, purani hatayein
+- [x] Retailer ka apna **Home** — udhaar, chalu order, baaki bill, pichhle order
+
 ### Part 9 — Khata & Payments
 - [x] **Khata page** — kisse kitna lena hai, kisko kitna dena hai, ek jagah
 - [x] Summary cards — receivable, payable, net, credit limit paar karne wale
@@ -134,6 +173,38 @@ seedha order karein. Vyapar + Thokmarket ka hybrid.
 - [x] Logo upload (Cloudinary ya local disk — jo configured ho)
 - [x] Password change, profile edit, logout
 - [x] Smoke test — `npm run smoke`
+
+---
+
+## Live karna (Render) — ek hi URL pe
+
+Client aur server **ek hi service** me chalte hain, do alag nahi:
+
+```
+https://aapka-app.onrender.com          -> React app
+https://aapka-app.onrender.com/api/...  -> API (usi URL pe)
+```
+
+Kaise: `npm run build` client ko `client/dist` me bana deta hai, aur Express usi ko serve karta
+hai — `/api` API pe jata hai, `/uploads` images pe, aur **baaki har route index.html pe**
+(React Router isi se chalta hai, refresh karne pe 404 nahi aata).
+
+Client `VITE_API_URL` set na ho to **relative `/api`** use karta hai — isliye jis URL pe app khula
+hai, API usi pe jayegi. Koi CORS nahi, koi URL kahin likhne ki zarurat nahi.
+
+**`CLIENT_URL` set karne ki zarurat nahi.** App pehli request se hi khud pata laga leta hai ki wo
+kis URL pe chal raha hai (`X-Forwarded-Proto` + `Host`, `trust proxy` ke saath) — invite link aur
+upload ki image ka link usi se banta hai. Ek baar pata chalne ke baad koi request use badal nahi
+sakti.
+
+**Poora step-by-step: [`DEPLOY.md`](./DEPLOY.md)** — Atlas, GitHub, Render, Cloudinary sab.
+
+```bash
+npm run build     # dono install + client ka build
+npm start         # ek hi URL pe sab
+npm run preview   # dono ek saath (local pe wahi jo Render pe hoga)
+```
+
 
 ---
 
@@ -395,6 +466,41 @@ to purane bill "Bill of Supply" hi rahenge — yahi legally sahi hai.
 | POST | `/api/my/payments` | retailer | "UPI se bhej diya" — pending banta hai |
 | GET | `/api/my/payments/:id` | retailer | ek payment |
 
+### Part 10 ke endpoints
+
+| Method | Path | Kaun | Kya karta hai |
+|---|---|---|---|
+| GET | `/api/dashboard` | dono | role ke hisaab se dashboard ka poora data |
+| GET | `/api/reports/:name` | wholesaler | sale / purchase / stock / outstanding / gst / payment |
+| GET | `/api/reports/:name/csv` | wholesaler | wahi report, CSV file ban kar |
+| POST | `/api/khata/:partyId/remind` | wholesaler | retailer ko udhaar ki yaad dilana |
+| GET | `/api/notifications` | dono | list (type filter, page) + unread count |
+| GET | `/api/notifications/counts` | dono | type wise ginti |
+| POST | `/api/notifications/read-all` | dono | sab padh liya |
+| DELETE | `/api/notifications/clear-read` | dono | padhi hui purani hatao |
+| DELETE | `/api/notifications/:id` | dono | ek hatao |
+
+### Part 11 ke endpoints
+
+| Method | Path | Kaun | Kya karta hai |
+|---|---|---|---|
+| GET | `/api/items/brands` | items | jo brand use ho rahe hain unki list |
+| GET | `/api/returns` | returns | list (type/party/date filter) |
+| GET | `/api/returns/stats` | returns | kitna wapas aaya, kitna bheja |
+| GET | `/api/returns/prefill/:type/:docId` | returns | bill/purchase se form bhar do |
+| POST | `/api/returns` | returns | credit ya debit note banao |
+| GET | `/api/returns/:id` | returns | ek note |
+| DELETE | `/api/returns/:id` | returns | poora reversal |
+| GET | `/api/my/returns` | retailer | apne credit note |
+| GET | `/api/staff` | **owner** | dukaan ke saare login + role/permission list |
+| POST | `/api/staff` | **owner** | naya login |
+| PUT | `/api/staff/:id` | **owner** | role, permission, password, block |
+| DELETE | `/api/staff/:id` | **owner** | login hatao |
+| POST | `/api/staff/change-password` | koi bhi | apna password badlo |
+| GET | `/api/backup/summary` | **owner** | kitna data hai |
+| GET | `/api/backup/download` | **owner** | poora JSON backup |
+| GET | `/api/backup/csv/:kind` | **owner** | parties/invoices/khata/payments/purchases/returns |
+
 ---
 
 ## Invite flow (Part 2 ka dil)
@@ -497,6 +603,24 @@ isliye do entry ek saath aayein tab bhi running balance galat nahi hota.
 
 ---
 
+## Khate ka running balance (asli DB pe pakda gaya bug)
+
+Har ledger entry me `balanceAfter` **store** hota hai (fast read ke liye). Dikkat tab hoti hai jab
+beech ki koi entry **hat** jaye — bill cancel, payment delete, return delete. Aage wali entries ka
+`balanceAfter` purana hi reh jata tha, aur khata `Party.balance` se alag ho jata tha.
+
+Ab `reverseEntriesFor()` entry hatane ke baad **`recalcBalances()`** chalata hai — us party ka poora
+khata shuru se dobara jud jata hai, aur `Party.balance` bhi wahi se set hota hai. Isliye dono kabhi
+alag ho hi nahi sakte; galti ho bhi jaye to agli reversal pe khud theek ho jayegi.
+
+Wahi cheez **purani date** wali entry pe bhi lagti hai — `postEntry()` dekhta hai ki iske aage koi
+entry hai kya; hai to poora khata dobara jodta hai.
+
+Smoke test me iske do pehredaar hain: *"khata ka closing aur Party.balance barabar hain"* aur
+*"har entry ka running balance sahi jud raha hai"*.
+
+---
+
 ## Paise ka niyam (Part 9 se aage hamesha)
 
 Khata sirf `services/ledger.service.js` se badalta hai (ye Part 5 se hai), aur paisa sirf
@@ -546,6 +670,114 @@ upi://pay?pa=<upi-id>&pn=<naam>&am=<amount>&cu=INR&tn=<note>
 Phone pe ye link GPay/PhonePe/Paytm khol deta hai, amount pehle se bhara hua. Computer pe wahi
 link QR ban jata hai (`qrcode` package, sirf modal khulne par load hoti hai). Confirm karna manual
 hai — V2 me bank statement se auto-match kar sakte hain.
+
+
+---
+
+## Report ka niyam (Part 10)
+
+Har report `services/report.service.js` me hai aur **ek hi shakal** me jawab deti hai:
+
+```js
+{ columns, rows, totals, meta }
+```
+
+`columns` isliye alag se aata hai taaki **table aur CSV dono ek hi cheez se banein**. Naya column
+jodna ho to sirf `columns` me ek line — CSV apne aap update ho jayegi, controller me kuch nahi
+badalna padta.
+
+| Flag | Matlab |
+|---|---|
+| `money: true` | ₹ ke saath dikhega |
+| `text: true` | left align, aur total me nahi ginega |
+| `noTotal: true` | number hai par jodne layak nahi (rate, %, average) |
+
+**Aging buckets** party ke balance se nahi, **bill ki date** se bante hain — isi se pata chalta hai
+ki paisa kitna purana phansa hai.
+
+**Munafa "andaza" hai** — invoice pe cost snapshot nahi hota, item ka aaj ka `purchasePrice` use
+hota hai. Isliye report me साफ likha hai "Munafa (andaza)".
+
+### Low stock alert kab aata hai
+
+Sirf jab stock threshold **paar** kare — pehle upar tha, ab neeche. Isi se har bill pe wahi alert
+dobara nahi aata:
+
+```
+20 -> 18  (limit 10)  ->  koi alert nahi
+18 ->  4  (limit 10)  ->  "Bearing 6203 kam bacha hai"
+ 4 ->  3              ->  koi alert nahi (pehle se hi neeche tha)
+ 3 ->  0              ->  "Bearing 6203 khatam ho gaya"
+```
+
+Ye check `stock.service.js` ke andar hi hai — matlab purchase, bill, adjustment, kahin se bhi
+stock ghate, alert apne aap chal jayega. Alert bhejne me kuch gadbad ho jaye to bill nahi rukta
+(poora block `try/catch` me hai) — hisaab alert se zyada zaroori hai.
+
+
+---
+
+## Return ka niyam (Part 11)
+
+Maal wapas aane ke do bilkul ulte case hain, aur dono ka apna document banta hai:
+
+| | Kya hua | Document | Stock | Khata |
+|---|---|---|---|---|
+| `SALE_RETURN` | Retailer ne humein wapas kiya | **Credit Note** (`CRN/26-27/0001`) | **badhta** hai | uska udhaar **ghatta** hai |
+| `PURCHASE_RETURN` | Humne supplier ko wapas bheja | **Debit Note** (`DBN/26-27/0001`) | **ghatta** hai | usko dena **ghatta** hai |
+
+Dono me ledger entry **credit** hi hai — kyunki dono soorat me hisaab ghatta hai. Wahi purana
+convention (`debit` = hisaab badha, `credit` = hisaab ghata) yahan bhi chalta hai.
+
+**Bill se zyada wapas nahi ho sakta.** Har baar hisaab lagta hai ki us bill me se ab tak kitna
+wapas ho chuka hai — becha 10, wapas 12 kabhi nahi hoga. Purchase return me stock ka check bhi
+hai: jo maal paas hai hi nahi, wo wapas kaise bhejenge.
+
+**Bill khud nahi badalta.** Credit note ek alag document hai — original bill waisa ka waisa rehta
+hai (wo sach me hui sale thi). Ye legally bhi sahi hai aur samajhne me bhi seedha.
+
+---
+
+## Staff ka niyam (Part 11)
+
+Ek dukaan, kai log. Signup karne wala **owner** hai; baaki uske staff.
+
+| Role | Kya milta hai |
+|---|---|
+| **Malik** (owner) | Sab kuch — hamesha, chahe permissions khali ho |
+| **Manager** | Settings chhod kar lagbhag sab |
+| **Salesman** | Items, orders, bill — khata nahi |
+| **Munshi** (accountant) | Khata, payment, report, bill — stock/purchase nahi |
+
+Permission 9 hain: `items`, `parties`, `purchases`, `orders`, `invoices`, `returns`, `khata`,
+`reports`, `settings`. Role chunne par default set ho jati hain, owner chahe to badal sakta hai.
+
+**Teen jagah rok lagti hai — teeno zaroori hain:**
+
+1. **Menu** — sidebar me wahi item dikhta hai jiski ijazat hai
+2. **Route** — URL type karke bhi khula nahi milega (`RequirePermission`)
+3. **API** — `requirePermission()` har route pe, aur **dashboard ka data bhi chhant kar** jata hai
+
+Teesra sabse zaroori hai. Sirf menu chhupa dena kaafi nahi — salesman ko dashboard pe "udhaar
+baaki ₹2,266" dikh jana bhi leak hai. Isliye jiski ijazat nahi, uska hissa response me aata hi
+nahi.
+
+Owner ko koi hata/block nahi kar sakta — khud bhi nahi. Doosra owner banaya bhi nahi ja sakta.
+
+---
+
+## Backup ka niyam (Part 11)
+
+Settings → Backup me do cheezein:
+
+1. **Poora JSON backup** — saara data ek file me. Password (`passwordHash`) kabhi is file me
+   nahi jata. File browser me download hoti hai, kahin upload nahi hoti.
+2. **6 CSV** — parties, bills, khata, payments, purchases, returns. Excel me kholne layak.
+
+Sirf **owner** backup le sakta hai — staff nahi.
+
+> Ye database ke backup ki jagah nahi leta. Dono alag cheezein hain — MongoDB Atlas pe automatic
+> backup on rakhiye, aur mahine me ek baar ye file bhi utaar liya kariye.
 
 
 ---
@@ -621,6 +853,25 @@ Browser ke print window me "Save as PDF" chunne se saaf PDF milta hai, aur text 
 
 ## Aage ke parts
 
-| Part | Kya banega |
+**11 part ban chuke hain.**
+
+### Production pe jaane se pehle — ye baaki hai
+
+| 🔴 Zaroori | Kyun |
 |---|---|
-| 10 | Notifications page, sale/stock reports, dashboard summary — **aakhri part** |
+| **Forgot password** | Abhi hai hi nahi. Retailer password bhool gaya to hamesha ke liye bahar |
+| **Login pe rate limiting** | Koi bhi hazaar password try kar sakta hai |
+| **`helmet`** | Security headers nahi lage |
+
+| 🟠 Deploy karte waqt | Kyun |
+|---|---|
+| Cloudinary | Bina uske images `uploads/` me jaati hain aur deploy pe gayab ho jaati hain |
+| MongoDB backup | Atlas pe automatic backup on kar dijiye |
+| Error tracking | Abhi sirf server console me dikhta hai |
+
+| 🟡 Aage ke feature | |
+|---|---|
+| WhatsApp pe bill/reminder | Notification se zyada log dekhte hain |
+| Bank statement se UPI auto-match | Confirm manual karna na pade |
+| E-way bill | Bade order pe zaroori hota hai |
+| Offline mode | Dukaan me net chala jata hai |

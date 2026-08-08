@@ -3,18 +3,26 @@ import { useSearchParams } from 'react-router-dom';
 import { PartyPopper } from 'lucide-react';
 import api from '@/lib/api';
 import { PageHeader, Tabs, Spinner, Card } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import BusinessTab from './settings/BusinessTab';
 import RetailersTab from './settings/RetailersTab';
 import AccountTab from './settings/AccountTab';
+import StaffTab from './settings/StaffTab';
+import BackupTab from './settings/BackupTab';
 
 export default function Settings() {
+  const { isOwner } = useAuth();
   const [params, setParams] = useSearchParams();
-  const [tab, setTab] = useState('business');
+  // Staff ko dukaan ki settings badalne ki ijazat nahi — unke liye Account hi default
+  const [tab, setTab] = useState(() => 'business');
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
   const welcome = params.get('welcome') === '1';
+
+  // Staff ke liye sirf Account tab bacha hai — wahi khol do
+  useEffect(() => { if (!isOwner) setTab('account'); }, [isOwner]);
 
   useEffect(() => {
     api.get('/business/me')
@@ -37,7 +45,7 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Dukaan ki detail, GST aur retailer access" />
+      <PageHeader title="Settings" subtitle="Dukaan ki detail, GST, staff aur backup" />
 
       {welcome && (
         <Card className="mb-5 border-brand-200 bg-brand-50">
@@ -64,14 +72,21 @@ export default function Settings() {
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: 'business', label: 'Dukaan' },
-          { value: 'retailers', label: 'Invite link', count: pendingCount },
+          // Dukaan ki detail, invite link, staff aur backup — sab malik ke haath me
+          ...(isOwner ? [
+            { value: 'business', label: 'Dukaan' },
+            { value: 'retailers', label: 'Invite link', count: pendingCount },
+            { value: 'staff', label: 'Log aur login' },
+            { value: 'backup', label: 'Backup' },
+          ] : []),
           { value: 'account', label: 'Account' },
         ]}
       />
 
-      {tab === 'business' && <BusinessTab business={business} onSaved={setBusiness} />}
-      {tab === 'retailers' && <RetailersTab />}
+      {tab === 'business' && isOwner && <BusinessTab business={business} onSaved={setBusiness} />}
+      {tab === 'retailers' && isOwner && <RetailersTab />}
+      {tab === 'staff' && isOwner && <StaffTab />}
+      {tab === 'backup' && isOwner && <BackupTab />}
       {tab === 'account' && <AccountTab />}
     </>
   );

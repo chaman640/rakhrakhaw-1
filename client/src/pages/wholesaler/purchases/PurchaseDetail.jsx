@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Trash2, Truck, Package, Printer } from 'lucide-react';
+import { ArrowLeft, Trash2, Truck, Package, Printer, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
@@ -85,6 +85,10 @@ export default function PurchaseDetail() {
           </div>
 
           <div className="flex shrink-0 gap-2 no-print">
+            <Button variant="secondary" size="sm" icon={Undo2}
+              onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${purchase._id}`)}>
+              Maal wapas bheja
+            </Button>
             <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>Print</Button>
             <Button variant="danger" size="sm" icon={Trash2} onClick={() => setConfirm(true)}>Delete</Button>
           </div>

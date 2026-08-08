@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Banknote, Smartphone, Landmark, FileCheck } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney } from '@/lib/format';
-import { Modal, Button, Input, Select, Textarea, useToast } from '@/components/ui';
+import { Modal, Button, Input, Combobox, Textarea, useToast } from '@/components/ui';
 
 const MODES = [
   { value: 'CASH', label: 'Cash', icon: Banknote },
@@ -17,13 +17,17 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
  * Paisa entry karne ka form.
  *
  * `fixedParty` mile to party pehle se chuni hui hai (party detail se khula hai),
- * warna dropdown se chunni padegi (Payments page se khula hai).
+ * warna Payments page se khula hai — tab search karke chunni padti hai.
+ *
+ * Yahan Combobox jaan-boojh kar hai, plain dropdown nahi: 200 se zyada party
+ * hone par dropdown me kuch party chhut jati thi (aur phone pe scroll karna
+ * bhi mushkil hai). Ab server pe search hoti hai, list poori chahiye hi nahi.
  */
 export default function PaymentFormModal({ open, onClose, fixedParty = null, onSaved }) {
   const toast = useToast();
 
-  const [parties, setParties] = useState([]);
-  const [partyId, setPartyId] = useState('');
+  // { value, label, raw } — Combobox ka format
+  const [party, setParty] = useState(null);
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState('CASH');
   const [date, setDate] = useState(todayStr());
@@ -34,34 +38,39 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
 
   useEffect(() => {
     if (!open) return;
-    setPartyId(fixedParty?._id || '');
+    setParty(fixedParty
+      ? { value: fixedParty._id, label: fixedParty.shopName || fixedParty.name, raw: fixedParty }
+      : null);
     setAmount(''); setMode('CASH'); setDate(todayStr());
     setReference(''); setNote(''); setError('');
-
-    if (!fixedParty) {
-      api.get('/parties', { params: { type: 'all', limit: 300 } })
-        .then((r) => setParties(r.data)).catch(() => {});
-    }
   }, [open, fixedParty]);
 
-  const selected = useMemo(
-    () => fixedParty || parties.find((p) => p._id === partyId) || null,
-    [fixedParty, parties, partyId]
-  );
+  const fetchParties = useCallback(async (q) => {
+    const res = await api.get('/parties', { params: { type: 'all', q, limit: 20 } });
+    return res.data.map((pp) => ({
+      value: pp._id,
+      label: pp.shopName || pp.name,
+      sublabel: `${pp.type === 'supplier' ? 'Supplier' : 'Retailer'} · ${pp.phone}`,
+      right: pp.balance > 0 ? formatMoney(pp.balance) : '',
+      raw: pp,
+    }));
+  }, []);
+
+  const selected = party?.raw || null;
 
   const isSupplier = selected?.type === 'supplier';
   const direction = isSupplier ? 'OUT' : 'IN';
   const due = Number(selected?.balance || 0);
 
   async function save() {
-    if (!partyId) return setError('Pehle party chunein');
+    if (!party?.value) return setError('Pehle party chunein');
     if (!(Number(amount) > 0)) return setError('Amount daaliye');
 
     setSaving(true);
     setError('');
     try {
       const res = await api.post('/payments', {
-        partyId, direction, amount: Number(amount), mode, date,
+        partyId: party.value, direction, amount: Number(amount), mode, date,
         reference: reference.trim(), note: note.trim(),
       });
       toast.success(res.message);
@@ -91,16 +100,13 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
     >
       <div className="space-y-4">
         {!fixedParty && (
-          <Select
+          <Combobox
             label="Kiska paisa"
             required
-            placeholder="Party chunein"
-            value={partyId}
-            onChange={(e) => setPartyId(e.target.value)}
-            options={parties.map((p) => ({
-              value: p._id,
-              label: `${p.shopName || p.name}${p.balance > 0 ? ` — ${formatMoney(p.balance)} baaki` : ''}`,
-            }))}
+            value={party}
+            onChange={setParty}
+            fetchOptions={fetchParties}
+            placeholder="Naam ya phone se dhoondhein"
           />
         )}
 

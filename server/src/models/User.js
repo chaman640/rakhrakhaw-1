@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { ROLES } from '../config/constants.js';
+import { ROLES, STAFF_ROLES, PERMISSIONS } from '../config/constants.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -17,6 +17,21 @@ const userSchema = new mongoose.Schema(
     // Sirf retailer ke liye: wholesaler ke data me uski Party entry
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', default: null },
 
+    // ---- Staff (Part 11) ----
+    // role: 'wholesaler' wale saare users dukaan ke andar ke hain.
+    // Unme se ek OWNER hai (jisne signup kiya), baaki uske staff.
+    staffRole: {
+      type: String,
+      enum: Object.values(STAFF_ROLES),
+      default: STAFF_ROLES.OWNER,
+    },
+    // Owner chahe to role ke default permissions badal sakta hai
+    permissions: {
+      type: [{ type: String, enum: Object.values(PERMISSIONS) }],
+      default: [],
+    },
+    createdByUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
   },
@@ -29,6 +44,13 @@ userSchema.methods.setPassword = async function (plain) {
 
 userSchema.methods.checkPassword = function (plain) {
   return bcrypt.compare(plain, this.passwordHash);
+};
+
+/** Owner ko hamesha sab kuch — chahe permissions array khali ho */
+userSchema.methods.can = function (permission) {
+  if (this.role !== 'wholesaler') return false;
+  if (this.staffRole === STAFF_ROLES.OWNER) return true;
+  return (this.permissions || []).includes(permission);
 };
 
 userSchema.set('toJSON', {

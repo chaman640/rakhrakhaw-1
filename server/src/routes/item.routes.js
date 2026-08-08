@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
+import { protect, requireRole, requirePermission } from '../middleware/auth.js';
 import { withTenant } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { uploadImage, handleUploadError } from '../middleware/uploadImage.js';
-import { ROLES } from '../config/constants.js';
+import { ROLES, PERMISSIONS } from '../config/constants.js';
 import * as ctrl from '../controllers/item.controller.js';
 import {
   createItemSchema, updateItemSchema, listItemsQuerySchema,
@@ -11,9 +11,10 @@ import {
 } from '../validators/item.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePermission(PERMISSIONS.ITEMS));
 
 // DHYAN: ye fixed paths /:id se PEHLE aane chahiye, warna "stats" ko id samajh lega
+router.get('/brands', ctrl.brands);
 router.get('/stats', ctrl.stats);
 router.get('/low-stock', ctrl.lowStock);
 router.get('/units', ctrl.units);

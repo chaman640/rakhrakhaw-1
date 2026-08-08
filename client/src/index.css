@@ -47,7 +47,8 @@ body {
 
   /* Sirf bill chhapega — sidebar, header, buttons sab gayab */
   body * { visibility: hidden; }
-  .invoice-sheet, .invoice-sheet * { visibility: visible; }
+  .invoice-sheet, .invoice-sheet *,
+  .report-sheet, .report-sheet * { visibility: visible; }
 
   .invoice-sheet {
     position: absolute;

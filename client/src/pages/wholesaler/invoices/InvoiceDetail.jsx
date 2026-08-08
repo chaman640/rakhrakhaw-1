@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer, XCircle, Share2, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Printer, XCircle, Share2, ShoppingCart, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { Card, Button, Badge, Spinner, Modal, Textarea, useToast } from '@/components/ui';
@@ -92,6 +92,12 @@ export default function InvoiceDetail() {
                 <Link to={`/orders/${invoice.orderId}`}>
                   <Button variant="secondary" size="sm" icon={ShoppingCart}>Order</Button>
                 </Link>
+              )}
+              {!invoice.isCancelled && (
+                <Button variant="secondary" size="sm" icon={Undo2}
+                  onClick={() => navigate(`/returns/new?type=SALE_RETURN&doc=${invoice._id}`)}>
+                  Maal wapas aaya
+                </Button>
               )}
               <Button variant="secondary" size="sm" icon={Share2} onClick={share}>WhatsApp</Button>
               <Button size="sm" icon={Printer} onClick={() => window.print()}>Print / PDF</Button>

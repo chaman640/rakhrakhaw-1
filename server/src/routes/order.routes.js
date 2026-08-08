@@ -1,15 +1,15 @@
 import { Router } from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
+import { protect, requireRole, requirePermission } from '../middleware/auth.js';
 import { withTenant } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
-import { ROLES } from '../config/constants.js';
+import { ROLES, PERMISSIONS } from '../config/constants.js';
 import * as ctrl from '../controllers/order.controller.js';
 import {
   listOrdersQuerySchema, statusSchema, cancelSchema, updateItemsSchema, idParamSchema,
 } from '../validators/order.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePermission(PERMISSIONS.ORDERS));
 
 router.get('/stats', ctrl.stats);
 router.get('/', validate({ query: listOrdersQuerySchema }), ctrl.list);

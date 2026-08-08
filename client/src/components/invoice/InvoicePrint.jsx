@@ -6,6 +6,15 @@ const TAX_LABEL = { CGST_SGST: 'CGST + SGST', IGST: 'IGST', NONE: '' };
  * Asli bill ka layout. Screen pe bhi yahi dikhta hai aur Ctrl+P pe A4 pe bhi.
  * Print ke liye alag component nahi banaya — jo dikha wahi chhapega.
  */
+/** 18 -> "1 saal 6 mahine" */
+function warrantyText(months) {
+  const m = Number(months || 0);
+  if (!m) return '';
+  const y = Math.floor(m / 12);
+  const rest = m % 12;
+  return [y && `${y} saal`, rest && `${rest} mahine`].filter(Boolean).join(' ');
+}
+
 export default function InvoicePrint({ invoice }) {
   const b = invoice.businessSnapshot || {};
   const p = invoice.partySnapshot || {};
@@ -94,6 +103,12 @@ export default function InvoicePrint({ invoice }) {
               <td className="py-2">{i + 1}</td>
               <td className="py-2">
                 <span className="font-medium">{it.name}</span>
+                {it.warrantyMonths > 0 && (
+                  <span className="block text-[10px] text-slate-600">
+                    Warranty: {warrantyText(it.warrantyMonths)}
+                    {it.warrantyNote && ` — ${it.warrantyNote}`}
+                  </span>
+                )}
                 {it.discount > 0 && (
                   <span className="block text-[10px] text-slate-500">
                     Discount {formatMoney(it.discount)}

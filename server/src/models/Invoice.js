@@ -6,6 +6,10 @@ const invoiceItemSchema = new mongoose.Schema(
     itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
     name: { type: String, required: true },
     hsn: { type: String, default: '' },
+    // Part 11 — warranty ka SNAPSHOT. Baad me item ki warranty badle to
+    // purana bill nahi badalna chahiye — customer usi bill pe claim karega.
+    warrantyMonths: { type: Number, default: 0 },
+    warrantyNote: { type: String, default: '' },
     unit: { type: String, enum: UNITS, default: 'PCS' },
     qty: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },

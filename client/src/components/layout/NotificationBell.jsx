@@ -119,6 +119,13 @@ export default function NotificationBell() {
                 })
               )}
             </div>
+
+            <button
+              onClick={() => { setOpen(false); navigate('/notifications'); }}
+              className="w-full border-t border-slate-200 py-2.5 text-center text-xs font-medium text-brand-700 hover:bg-slate-50"
+            >
+              Saari notifications dekhein
+            </button>
           </div>
         </>
       )}

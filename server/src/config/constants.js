@@ -5,6 +5,46 @@ export const ROLES = {
   RETAILER: 'retailer',
 };
 
+/**
+ * Ek dukaan me kai log kaam karte hain — sabko sab kuch dikhna zaroori nahi.
+ * Salesman ko khata/report nahi, munshi ko stock nahi — yahi soch ke banaya hai.
+ */
+export const STAFF_ROLES = {
+  OWNER: 'owner',
+  MANAGER: 'manager',
+  SALESMAN: 'salesman',
+  ACCOUNTANT: 'accountant',
+};
+
+export const PERMISSIONS = {
+  ITEMS: 'items',           // stock, item add/edit
+  PARTIES: 'parties',       // retailer/supplier
+  PURCHASES: 'purchases',
+  ORDERS: 'orders',
+  INVOICES: 'invoices',     // bill banana
+  RETURNS: 'returns',
+  KHATA: 'khata',           // khata + payments
+  REPORTS: 'reports',
+  SETTINGS: 'settings',     // business profile, staff, backup
+};
+
+const P = PERMISSIONS;
+
+/** Har role ko by-default kya milta hai (owner ko sab kuch hamesha) */
+export const ROLE_PERMISSIONS = {
+  [STAFF_ROLES.OWNER]: Object.values(P),
+  [STAFF_ROLES.MANAGER]: [P.ITEMS, P.PARTIES, P.PURCHASES, P.ORDERS, P.INVOICES, P.RETURNS, P.KHATA, P.REPORTS],
+  [STAFF_ROLES.SALESMAN]: [P.ITEMS, P.ORDERS, P.INVOICES],
+  [STAFF_ROLES.ACCOUNTANT]: [P.PARTIES, P.KHATA, P.REPORTS, P.INVOICES, P.RETURNS],
+};
+
+export const STAFF_ROLE_LABEL = {
+  [STAFF_ROLES.OWNER]: 'Malik',
+  [STAFF_ROLES.MANAGER]: 'Manager',
+  [STAFF_ROLES.SALESMAN]: 'Salesman',
+  [STAFF_ROLES.ACCOUNTANT]: 'Munshi',
+};
+
 export const PARTY_TYPES = {
   RETAILER: 'retailer',
   SUPPLIER: 'supplier',
@@ -60,6 +100,8 @@ export const LEDGER_TYPES = {
   PAYMENT_OUT: 'PAYMENT_OUT',
   PURCHASE: 'PURCHASE',
   ADJUSTMENT: 'ADJUSTMENT',
+  SALE_RETURN: 'SALE_RETURN',
+  PURCHASE_RETURN: 'PURCHASE_RETURN',
 };
 
 export const PAYMENT_MODES = {
@@ -89,9 +131,17 @@ export const UNITS = [
 ];
 
 // Counter keys — document numbering ke liye
+// Part 11 — maal wapas aane ke do tarike
+export const RETURN_TYPES = {
+  SALE_RETURN: 'SALE_RETURN',         // retailer se wapas aaya  -> Credit Note
+  PURCHASE_RETURN: 'PURCHASE_RETURN', // supplier ko wapas bheja -> Debit Note
+};
+
 export const COUNTER_KEYS = {
   INVOICE: 'invoice',
   ORDER: 'order',
   PURCHASE: 'purchase',
   PAYMENT: 'payment',
+  SALE_RETURN: 'saleReturn',
+  PURCHASE_RETURN: 'purchaseReturn',
 };

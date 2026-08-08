@@ -4,8 +4,13 @@ import { connectDB } from './config/db.js';
 
 async function start() {
   await connectDB();
-  app.listen(env.port, () => {
-    console.log(`[server] ${env.nodeEnv} mode, http://localhost:${env.port}`);
+  // 0.0.0.0 — Render/Docker ke andar sirf localhost pe sunne se bahar se koi nahi pahunch pata
+  app.listen(env.port, '0.0.0.0', () => {
+    if (env.isProd) {
+      console.log(`[server] production mode, port ${env.port} — client aur API dono ek hi URL pe`);
+    } else {
+      console.log(`[server] ${env.nodeEnv} mode, http://localhost:${env.port}`);
+    }
   });
 }
 

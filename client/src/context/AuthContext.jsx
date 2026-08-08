@@ -72,6 +72,13 @@ export function AuthProvider({ children }) {
     partyStatus: party?.status || null,
     // GST on/off — poori app isi flag se tax fields dikhati/chhupati hai
     gstEnabled: Boolean(business?.gstEnabled),
+
+    // ---- Staff (Part 11) ----
+    // Malik ko sab kuch. Staff ko sirf jitni ijazat hai utna menu aur button.
+    isOwner: Boolean(user?.isOwner),
+    staffRole: user?.staffRole || null,
+    permissions: user?.permissions || [],
+    can: (permission) => Boolean(user?.isOwner) || (user?.permissions || []).includes(permission),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

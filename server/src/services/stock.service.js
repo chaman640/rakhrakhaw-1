@@ -56,7 +56,43 @@ export async function applyStockChange({
     createdBy: userId,
   });
 
+  // Stock ghata hai to dekh lo kahin khatam to nahi ho raha
+  if (qty < 0) await maybeWarnLowStock(businessId, item, qty);
+
   return item;
+}
+
+/**
+ * Low stock ka alert.
+ *
+ * Sirf tab bhejta hai jab stock threshold ko PAAR kiya ho — yaani pehle upar tha, ab neeche.
+ * Isse har bill pe wahi alert dobara nahi aata. Alert bhejne me kuch gadbad ho jaye to
+ * bill nahi rukna chahiye, isliye poora block try/catch me hai.
+ */
+async function maybeWarnLowStock(businessId, item, qty) {
+  try {
+    const before = item.stockQty - qty;   // qty minus me hai, isliye ghatane se pehle wala mil jata hai
+    const limit = item.lowStockAt ?? 0;
+
+    const crossedOut = before > 0 && item.stockQty <= 0;
+    const crossedLow = before > limit && item.stockQty <= limit;
+    if (!crossedOut && !crossedLow) return;
+
+    const { notifyWholesaler } = await import('./notification.service.js');
+    const { NOTIFICATION_TYPES } = await import('../config/constants.js');
+
+    await notifyWholesaler(businessId, {
+      type: NOTIFICATION_TYPES.LOW_STOCK,
+      title: crossedOut ? `${item.name} khatam ho gaya` : `${item.name} kam bacha hai`,
+      body: crossedOut
+        ? 'Stock 0 hai — order aaya to pura nahi kar payenge'
+        : `Sirf ${item.stockQty} ${item.unit} bacha hai`,
+      link: `/items?q=${encodeURIComponent(item.name)}`,
+      data: { itemId: item._id, stockQty: item.stockQty },
+    });
+  } catch {
+    // alert na jaye to bhi stock ka kaam nahi rukna chahiye
+  }
 }
 
 /** Stock ko seedha ek number pe set karna (physical count ke baad) */

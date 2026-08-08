@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 import { env } from '../config/env.js';
-import { ROLES, PARTY_TYPES, PARTY_STATUS } from '../config/constants.js';
+import { ROLES, PARTY_TYPES, PARTY_STATUS, PERMISSIONS } from '../config/constants.js';
 import ApiError from '../utils/ApiError.js';
 import { normalizePhone } from '../utils/phone.js';
 import { getStateCode } from '../config/states.js';
@@ -17,6 +17,7 @@ function signToken(user) {
 }
 
 function publicUser(user) {
+  const staffRole = user.staffRole || 'owner';
   return {
     _id: user._id,
     name: user.name,
@@ -24,6 +25,13 @@ function publicUser(user) {
     role: user.role,
     businessId: user.businessId,
     partyId: user.partyId,
+
+    // Part 11 — client isi se menu aur buttons chhupata hai
+    staffRole,
+    isOwner: user.role === 'wholesaler' && staffRole === 'owner',
+    permissions: user.role === 'wholesaler'
+      ? (staffRole === 'owner' ? Object.values(PERMISSIONS) : (user.permissions || []))
+      : [],
   };
 }
 

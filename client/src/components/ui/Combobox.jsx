@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -13,9 +13,11 @@ import Spinner from './Spinner';
  */
 export default function Combobox({
   value, display, onChange, fetchOptions, placeholder = 'Dhundhein...',
-  label, required, error, emptyText = 'Kuch nahi mila', className, autoFocus,
+  label, required, error, emptyText = 'Kuch nahi mila', className, autoFocus, id,
   onCreateNew, createNewLabel = 'Naya banayein',
 }) {
+  const autoId = useId();
+  const fieldId = id || autoId;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState([]);
@@ -88,11 +90,18 @@ export default function Combobox({
 
   return (
     <div className={cn('w-full', className)} ref={wrapRef}>
+      {/*
+        Label ko id se jodna zaroori hai — warna screen reader ko bas "button"
+        sunai deta hai, pata hi nahi chalta ki kaunsa field hai.
+        "*" label ke bahar hai taaki label ka text saaf rahe.
+      */}
       {label && (
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          {label}
+        <div className="mb-1.5 flex items-center">
+          <label htmlFor={fieldId} className="block text-sm font-medium text-slate-700">
+            {label}
+          </label>
           {required && <span aria-hidden="true" className="ml-0.5 text-red-500">*</span>}
-        </label>
+        </div>
       )}
 
       <div className="relative">
@@ -101,6 +110,7 @@ export default function Combobox({
             <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               ref={inputRef}
+              id={fieldId}
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -116,8 +126,11 @@ export default function Combobox({
         ) : (
           <button
             type="button"
+            id={fieldId}
             autoFocus={autoFocus}
             onClick={() => setOpen(true)}
+            aria-haspopup="listbox"
+            aria-expanded={open}
             className={cn(
               'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm focus-ring',
               error ? 'border-red-400' : 'border-slate-300 hover:border-slate-400'
@@ -136,6 +149,8 @@ export default function Combobox({
       {open && coords && createPortal(
         <div
           data-combobox-list
+          role="listbox"
+          aria-label={label ? `${label} ke options` : 'Options'}
           style={{ left: coords.left, top: coords.top, width: coords.width }}
           className="fixed z-[70] max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
         >
@@ -158,6 +173,8 @@ export default function Combobox({
               <button
                 key={opt.value}
                 type="button"
+                role="option"
+                aria-selected={value === opt.value}
                 onMouseEnter={() => setHighlight(i)}
                 onClick={() => pick(opt)}
                 className={cn(

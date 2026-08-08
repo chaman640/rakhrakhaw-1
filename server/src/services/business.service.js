@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { clientOrigin } from '../config/origin.js';
 import { PARTY_TYPES, PARTY_STATUS } from '../config/constants.js';
 import { getStateCode } from '../config/states.js';
 import { validateGstin } from '../utils/gstin.js';
@@ -14,7 +15,8 @@ export async function getBusiness(businessId) {
   return { ...business, inviteLink: buildInviteLink(business.inviteCode) };
 }
 
-export const buildInviteLink = (code) => (code ? `${env.clientUrl}/join/${code}` : '');
+// Ek hi URL wale deploy me app khud pata laga leta hai ki wo kis URL pe chal raha hai
+export const buildInviteLink = (code) => (code ? `${clientOrigin()}/join/${code}` : '');
 
 export async function updateBusiness(businessId, payload) {
   const business = await Business.findById(businessId);

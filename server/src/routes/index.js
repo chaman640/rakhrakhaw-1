@@ -15,6 +15,11 @@ import myInvoiceRoutes from './myInvoice.routes.js';
 import khataRoutes from './khata.routes.js';
 import paymentRoutes from './payment.routes.js';
 import myKhataRoutes from './myKhata.routes.js';
+import reportRoutes from './report.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
+import returnRoutes from './return.routes.js';
+import staffRoutes from './staff.routes.js';
+import backupRoutes from './backup.routes.js';
 
 const router = Router();
 
@@ -54,10 +59,13 @@ router.use('/khata', khataRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/my', myKhataRoutes);   // /api/my/khata, /api/my/payments
 
-/**
- * Aage ke parts yahan mount honge:
- *
- * Part 10 router.use('/reports', reportRoutes);
- */
+// Part 10 — reports aur dashboard
+router.use('/reports', reportRoutes);
+router.use('/dashboard', dashboardRoutes);
+
+// Part 11 — maal wapas
+router.use('/returns', returnRoutes);
+router.use('/staff', staffRoutes);
+router.use('/backup', backupRoutes);
 
 export default router;

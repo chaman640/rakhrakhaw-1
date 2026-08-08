@@ -1,0 +1,45 @@
+# Render ka blueprint — ek hi service me client + server.
+#
+# Render pe: New → Blueprint → apna repo chunein → Apply.
+# Sirf MONGO_URI bharni padegi, baaki sab yahin se set ho jata hai.
+
+services:
+  - type: web
+    name: rakhrakhav
+    runtime: node
+    plan: free
+    region: singapore          # India ke sabse paas
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Node ka version pakka kar dete hain — Render ka default badalta rehta hai
+      - key: NODE_VERSION
+        value: "20"
+
+      # Ye Render dashboard me khud bharni hai (MongoDB Atlas ka connection string).
+      # sync:false ka matlab — ye value repo me nahi jayegi.
+      - key: MONGO_URI
+        sync: false
+
+      # Render khud ek lamba random secret bana dega — kahin likhne ki zarurat nahi
+      - key: JWT_SECRET
+        generateValue: true
+
+      - key: JWT_EXPIRES_IN
+        value: 30d
+
+      # Images ke liye — Render ki disk har deploy pe saaf ho jati hai,
+      # isliye production me Cloudinary daalna zaroori hai (free plan kaafi hai).
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # CLIENT_URL / SERVER_URL jaan-boojh kar nahi diye —
+      # ek hi URL wale deploy me app khud pata laga leta hai.

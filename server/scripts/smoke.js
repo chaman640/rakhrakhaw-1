@@ -10,9 +10,10 @@ import mongoose from 'mongoose';
 import app from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { connectDB } from '../src/config/db.js';
+import { round2 } from '../src/utils/money.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
-  Cart, Order, Notification, Invoice, Payment,
+  Cart, Order, Notification, Invoice, Payment, ReturnNote,
 } from '../src/models/index.js';
 
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', D = '\x1b[2m', N = '\x1b[0m';
@@ -47,7 +48,8 @@ async function call(method, path, { body, token, raw } = {}) {
 }
 
 async function cleanup() {
-  const phones = [WHOLESALER_PHONE, RETAILER_PHONE];
+  // Part 11 ke staff numbers bhi saaf karo
+  const phones = [WHOLESALER_PHONE, RETAILER_PHONE, '9000000011', '9000000012'];
   const users = await User.find({ phone: { $in: phones } }).lean();
   const businessIds = users.map((u) => u.businessId).filter(Boolean);
   await Promise.all([
@@ -64,13 +66,14 @@ async function cleanup() {
     Notification.deleteMany({ businessId: { $in: businessIds } }),
     Invoice.deleteMany({ businessId: { $in: businessIds } }),
     Payment.deleteMany({ businessId: { $in: businessIds } }),
+    ReturnNote.deleteMany({ businessId: { $in: businessIds } }),
   ]);
   await Business.deleteMany({ _id: { $in: businessIds } });
-  await User.deleteMany({ phone: { $in: phones } });
+  await User.deleteMany({ $or: [{ phone: { $in: phones } }, { businessId: { $in: businessIds } }] });
 }
 
 async function run() {
-  console.log(`\n${Y}Rakh Rakhav — smoke test (Part 1-9)${N}`);
+  console.log(`\n${Y}Rakh Rakhav — smoke test (Part 1-11)${N}`);
   console.log(`${D}Database: ${env.mongoUri.replace(/\/\/[^@]*@/, '//***@')}${N}\n`);
 
   await connectDB();
@@ -140,7 +143,7 @@ async function run() {
     check('invite link bana', String(r.data?.inviteLink || '').includes('/join/'), r.data?.inviteLink);
 
     r = await call('GET', '/business/states');
-    check('states list mili (38)', Array.isArray(r.data) && r.data.length === 38, `count ${r.data?.length}`);
+    check('states list mili (36 = 28 state + 8 UT)', Array.isArray(r.data) && r.data.length === 36, `count ${r.data?.length}`);
 
     // ---------------------------------------------------------- Retailer
     console.log(`\n${Y}Retailer join${N}`);
@@ -392,7 +395,9 @@ async function run() {
     check('bina name column wali CSV reject hui', r.status === 400, `${r.message}`);
 
     r = await call('GET', '/items/export', { token: wToken });
-    check('export CSV mila', String(r.data?.csv || '').startsWith('name,sku,category'), `${String(r.data?.csv).slice(0, 30)}`);
+    check('export CSV mila (Part 11 ke naye column ke saath)',
+      String(r.data?.csv || '').startsWith('name,sku,brand,modelNo,barcode,category'),
+      `${String(r.data?.csv).slice(0, 45)}`);
     check('export me saare item hain', r.data?.count === 4, `count ${r.data?.count}`);
 
     console.log(`\n${Y}Tenant isolation${N}`);
@@ -897,7 +902,8 @@ async function run() {
 
     r = await call('GET', '/orders', { token: wToken });
     check('wholesaler ko order list mili', r.data?.length >= 1, `mile ${r.data?.length}`);
-    check('list me retailer ka naam aaya', r.data?.[0]?.party?.name === 'Suresh Kumar', `${r.data?.[0]?.party?.name}`);
+    // list me shopName dikhta hai (na ho to vyakti ka naam)
+    check('list me retailer ka naam aaya', r.data?.[0]?.party?.name === 'Suresh Auto', `${r.data?.[0]?.party?.name}`);
 
     r = await call('GET', '/orders?status=PLACED', { token: wToken });
     check('PLACED filter chala', r.data?.length === 1, `mile ${r.data?.length}`);
@@ -1254,6 +1260,22 @@ async function run() {
     check('party ka poora khata khula', r.status === 200 && r.data?.entries?.length > 0,
       `entries ${r.data?.entries?.length}`);
     check('closing balance 236', r.data?.closing === 236, `${r.data?.closing}`);
+
+    // Bug jo asli DB pe pakda gaya: bill cancel hone par beech ki entry hat jati thi
+    // par aage wali entries ka running balance purana hi reh jata tha. Ab reversal
+    // ke baad poora khata dobara jud jata hai — ye check usi ka pehredaar hai.
+    const partyNow = (await call('GET', `/parties/${partyId}`, { token: wToken })).data;
+    check('khata ka closing aur Party.balance barabar hain',
+      r.data?.closing === partyNow?.balance,
+      `khata ${r.data?.closing} vs balance ${partyNow?.balance}`);
+
+    const runningOk = r.data.entries.reduce(
+      (acc, e) => ({ bal: Math.round((acc.bal + e.debit - e.credit) * 100) / 100,
+        ok: acc.ok && Math.round((acc.bal + e.debit - e.credit) * 100) / 100 === e.balanceAfter }),
+      { bal: r.data.opening, ok: true }
+    );
+    check('har entry ka running balance sahi jud raha hai', runningOk.ok,
+      JSON.stringify(r.data.entries.map((e) => ({ t: e.type, d: e.debit, c: e.credit, b: e.balanceAfter }))));
     check('har entry pe Hinglish label laga',
       r.data?.entries?.every((e) => Boolean(e.typeLabel)), 'kuch entry pe label nahi');
     check('cancel hue bill ki entry khate se hat chuki hai',
@@ -1270,7 +1292,8 @@ async function run() {
       token: wToken, body: { partyId, amount: 100, mode: 'CASH', note: 'Ramesh ke haath' },
     });
     check('cash payment entry ho gayi', r.status === 201, `${r.message}`);
-    check('payment number bana', /^PAY\/\d{2}-\d{2}\/0001$/.test(r.data?.paymentNo || ''), `${r.data?.paymentNo}`);
+    // Bill pe turant paisa mila tha, to PAY/0001 wahin ban chuka hai
+    check('payment number bana', /^PAY\/\d{2}-\d{2}\/\d{4}$/.test(r.data?.paymentNo || ''), `${r.data?.paymentNo}`);
     check('seedha confirmed hai', r.data?.status === 'confirmed', `${r.data?.status}`);
     check('purane bill pe apne aap lag gaya', r.data?.againstInvoiceIds?.length === 1,
       `${r.data?.againstInvoiceIds?.length}`);
@@ -1481,6 +1504,653 @@ async function run() {
 
     r = await call('DELETE', `/payments/${paymentOut}`, { token: rToken });
     check('retailer payment delete nahi kar saka', r.status === 403, `status ${r.status}`);
+
+
+    // ============================================================ PART 10
+    console.log(`\n${Y}Dashboard${N}`);
+
+    r = await call('GET', '/dashboard', { token: wToken });
+    check('dashboard khula', r.status === 200, `${r.message}`);
+    check('sale ka data aaya', typeof r.data?.sale?.today === 'number', JSON.stringify(r.data?.sale));
+    check('khata ka data aaya', typeof r.data?.khata?.receivable === 'number');
+    check('stock ka data aaya', typeof r.data?.stock?.value === 'number');
+    check('14 din ka trend bana', r.data?.trend?.length === 14, `${r.data?.trend?.length}`);
+    check('trend me khali din bhi hain (gaddha nahi)',
+      r.data?.trend?.every((t) => typeof t.amount === 'number' && t.label), 'kuch din adhoore');
+    check('aakhri trend point aaj ka hai',
+      r.data?.trend?.[13]?.date === new Date().toISOString().slice(0, 10),
+      `${r.data?.trend?.[13]?.date}`);
+    check('orders ki ginti aayi', typeof r.data?.orders?.running === 'number');
+    check('top items mile', Array.isArray(r.data?.topItems));
+    check('recent activity bani', Array.isArray(r.data?.activity));
+    check('todo list bani', typeof r.data?.todo?.newOrders === 'number', JSON.stringify(r.data?.todo));
+
+    r = await call('GET', '/dashboard', { token: rToken });
+    check('retailer ko apna dashboard mila', r.status === 200, `${r.message}`);
+    check('retailer ko apna balance dikha', typeof r.data?.balance === 'number', `${r.data?.balance}`);
+    check('retailer ko wholesaler ka data NAHI mila', r.data?.stock === undefined && r.data?.topItems === undefined);
+    check('retailer ke baaki bill aaye', Array.isArray(r.data?.openInvoices));
+
+    console.log(`\n${Y}Sale report${N}`);
+
+    r = await call('GET', '/reports/sale?from=2020-01-01', { token: wToken });
+    check('sale report chali', r.status === 200 && Array.isArray(r.data?.rows), `${r.message}`);
+    check('columns bhi aaye (CSV isi se banti hai)', r.data?.columns?.length > 0);
+    check('din wise group hua', r.data?.meta?.groupBy === 'day');
+    // Part 8 me sirf invoice3 (236) bacha, baaki cancel ho gaye
+    check('kul sale 236', r.data?.totals?.total === 236, `${r.data?.totals?.total}`);
+
+    r = await call('GET', '/reports/sale?from=2020-01-01&groupBy=item', { token: wToken });
+    check('item wise group chala', r.data?.meta?.groupBy === 'item' && r.data?.rows?.length >= 1,
+      `rows ${r.data?.rows?.length}`);
+    check('munafe ka column aaya', r.data?.columns?.some((c) => c.key === 'profit'));
+
+    r = await call('GET', '/reports/sale?from=2020-01-01&groupBy=party', { token: wToken });
+    check('retailer wise group chala', r.data?.rows?.[0]?.label?.length > 0, `${r.data?.rows?.[0]?.label}`);
+
+    r = await call('GET', '/reports/sale?from=2099-01-01&to=2099-12-31', { token: wToken });
+    check('khali duration me 0 row', r.data?.rows?.length === 0, `${r.data?.rows?.length}`);
+
+    console.log(`\n${Y}Purchase report${N}`);
+
+    r = await call('GET', '/reports/purchase?from=2020-01-01&groupBy=supplier', { token: wToken });
+    check('purchase report chali', r.status === 200 && r.data?.rows?.length >= 1, `${r.message}`);
+    check('supplier ka naam aaya', r.data?.rows?.[0]?.label === 'Sharma Traders', `${r.data?.rows?.[0]?.label}`);
+
+    r = await call('GET', '/reports/purchase?from=2020-01-01&groupBy=item', { token: wToken });
+    check('item wise purchase me average rate bhi aaya',
+      r.data?.columns?.some((c) => c.key === 'avgRate'));
+
+    console.log(`\n${Y}Stock report${N}`);
+
+    r = await call('GET', '/reports/stock', { token: wToken });
+    check('stock report chali', r.status === 200 && r.data?.rows?.length > 0, `${r.message}`);
+    check('stock ki keemat gini gayi', typeof r.data?.totals?.stockValue === 'number',
+      `${r.data?.totals?.stockValue}`);
+    check('har item ka haal likha hai',
+      r.data?.rows?.every((x) => ['Theek hai', 'Kam bacha', 'Khatam', 'Pada hua'].includes(x.status)),
+      JSON.stringify(r.data?.rows?.map((x) => x.status)));
+    check('filter ki ginti aayi', typeof r.data?.meta?.counts?.low === 'number', JSON.stringify(r.data?.meta?.counts));
+
+    // ek item khatam karo
+    await call('POST', `/items/${chainId}/stock`, { token: wToken, body: { mode: 'set', qty: 0 } });
+    r = await call('GET', '/reports/stock?filter=out', { token: wToken });
+    check('khatam wala filter chala', r.data?.rows?.length === 1 && r.data?.rows?.[0]?.status === 'Khatam',
+      `mile ${r.data?.rows?.length}`);
+
+    r = await call('GET', '/reports/stock?filter=low', { token: wToken });
+    check('kam bacha filter alag se chala', r.data?.rows?.every((x) => x.status === 'Kam bacha'), 'galat row aayi');
+
+    console.log(`\n${Y}Udhaar (aging) report${N}`);
+
+    r = await call('GET', '/reports/outstanding', { token: wToken });
+    check('udhaar report chali', r.status === 200, `${r.message}`);
+    check('0-30 din wala bucket bana', r.data?.columns?.some((c) => c.key === 'b0'));
+
+    r = await call('GET', '/reports/outstanding?type=supplier', { token: wToken });
+    // Part 9 me supplier ko 450 diye ja chuke hain
+    check('supplier ka udhaar bhi mila', r.data?.rows?.[0]?.balance === 7000, `${r.data?.rows?.[0]?.balance}`);
+    check('sabse purana kitne din ka — ye bhi aaya',
+      typeof r.data?.rows?.[0]?.oldestDays === 'number', `${r.data?.rows?.[0]?.oldestDays}`);
+
+    console.log(`\n${Y}GST report${N}`);
+
+    r = await call('GET', '/reports/gst?from=2020-01-01', { token: wToken });
+    check('GST report chali', r.status === 200, `${r.message}`);
+    check('B2B/B2C ka batwara hua', typeof r.data?.meta?.split?.b2b?.total === 'number',
+      JSON.stringify(r.data?.meta?.split));
+    check('output aur input tax dono aaye',
+      typeof r.data?.meta?.outputTax === 'number' && typeof r.data?.meta?.inputTax === 'number',
+      `out ${r.data?.meta?.outputTax} in ${r.data?.meta?.inputTax}`);
+    check('net payable nikala', r.data?.meta?.netPayable ===
+      Math.round((r.data.meta.outputTax - r.data.meta.inputTax) * 100) / 100,
+      `${r.data?.meta?.netPayable}`);
+    // invoice3 pe IGST 36 laga tha
+    check('HSN wise row bani aur IGST 36 gina', r.data?.totals?.igst === 36, `${r.data?.totals?.igst}`);
+
+    console.log(`\n${Y}Payment report${N}`);
+
+    r = await call('GET', '/reports/payment?from=2020-01-01', { token: wToken });
+    check('payment report chali', r.status === 200 && r.data?.rows?.length >= 1, `${r.message}`);
+    check('mode wise column bana',
+      r.data?.columns?.some((c) => c.key === 'cash') && r.data?.columns?.some((c) => c.key === 'upi'));
+    // Part 9 ke baad: cash 100 delete ho chuka, UPI 200 + UPI 500 confirm = 700 aaya, 450 diya
+    check('kul aaya 700', r.data?.totals?.inTotal === 700, `${r.data?.totals?.inTotal}`);
+    check('kul diya 450', r.data?.totals?.outTotal === 450, `${r.data?.totals?.outTotal}`);
+
+    console.log(`\n${Y}CSV download${N}`);
+
+    const csvRes = await fetch(`${BASE}/reports/sale/csv?from=2020-01-01`, {
+      headers: { Authorization: `Bearer ${wToken}` },
+    });
+    const csvText = await csvRes.text();
+    check('CSV mili', csvRes.status === 200, `status ${csvRes.status}`);
+    check('CSV file ke naam ke saath aayi',
+      /attachment; filename="sale-report-/.test(csvRes.headers.get('content-disposition') || ''),
+      `${csvRes.headers.get('content-disposition')}`);
+    check('CSV me header row hai', csvText.includes('Date,Bill,Quantity'), csvText.slice(0, 60));
+    check('CSV ki aakhri line KUL hai', /\nKUL,/.test(csvText), csvText.slice(-60));
+    // fetch().text() spec ke hisaab se BOM khud hata deta hai — isliye raw bytes dekhte hain
+    const csvBytes = new Uint8Array(await (await fetch(`${BASE}/reports/sale/csv?from=2020-01-01`, {
+      headers: { Authorization: `Bearer ${wToken}` },
+    })).arrayBuffer());
+    check('Excel ke liye BOM laga hai',
+      csvBytes[0] === 0xef && csvBytes[1] === 0xbb && csvBytes[2] === 0xbf,
+      `${[...csvBytes.slice(0, 3)]}`);
+
+    r = await call('GET', '/reports/kuch-bhi', { token: wToken });
+    check('anjaan report ka naam reject hua', r.status === 400 || r.status === 404, `status ${r.status}`);
+
+    console.log(`\n${Y}Low stock ka alert${N}`);
+
+    // Pehle ke alert saaf kar do, warna ginti me wo bhi aa jayenge
+    await call('POST', '/notifications/read-all', { token: wToken });
+    await call('DELETE', '/notifications/clear-read', { token: wToken });
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 20 } });
+    await call('PUT', `/items/${bearingId}`, { token: wToken, body: { lowStockAt: 5 } });
+
+    // 20 -> 18 : abhi limit se upar hai, alert nahi aana chahiye
+    await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 2, rate: 100 }] },
+    });
+    r = await call('GET', '/notifications?type=LOW_STOCK', { token: wToken });
+    check('limit se upar hai to alert nahi aaya', r.data?.length === 0, `mile ${r.data?.length}`);
+
+    // 18 -> 4 : limit paar, alert aana chahiye
+    const lowInvoice = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 14, rate: 100 }] },
+    });
+    r = await call('GET', '/notifications?type=LOW_STOCK', { token: wToken });
+    check('limit paar hote hi alert aaya', r.data?.length === 1, `mile ${r.data?.length}`);
+    check('alert me item ka naam hai', /Bearing 6203/.test(r.data?.[0]?.title || ''), `${r.data?.[0]?.title}`);
+    check('alert ka link items page ka hai', /^\/items/.test(r.data?.[0]?.link || ''), `${r.data?.[0]?.link}`);
+
+    // 4 -> 3 : pehle se hi neeche tha, dobara alert nahi aana chahiye
+    await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 100 }] },
+    });
+    r = await call('GET', '/notifications?type=LOW_STOCK', { token: wToken });
+    check('dobara wahi alert nahi aaya', r.data?.length === 1, `mile ${r.data?.length}`);
+
+    // 3 -> 0 : khatam
+    await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 3, rate: 100 }] },
+    });
+    r = await call('GET', '/notifications?type=LOW_STOCK', { token: wToken });
+    check('khatam hone pe alag alert aaya', r.data?.length === 2, `mile ${r.data?.length}`);
+    check('khatam wale alert ka message alag hai', /khatam ho gaya/.test(r.data?.[0]?.title || ''),
+      `${r.data?.[0]?.title}`);
+
+    console.log(`\n${Y}Udhaar ki yaad dilana${N}`);
+
+    r = await call('POST', `/khata/${partyId}/remind`, { token: wToken, body: {} });
+    check('yaad dila diya', r.status === 200 && r.data?.sent === true, `${r.message}`);
+
+    r = await call('GET', '/notifications?type=PAYMENT_REMINDER', { token: rToken });
+    check('retailer ko yaad dilane ka alert mila', r.data?.length === 1, `mile ${r.data?.length}`);
+    check('alert me dukaan ka naam hai', /Ramesh Auto Parts/.test(r.data?.[0]?.title || ''), `${r.data?.[0]?.title}`);
+    check('alert ka link khate ka hai', r.data?.[0]?.link === '/my-khata', `${r.data?.[0]?.link}`);
+
+    r = await call('POST', `/khata/${partyId}/remind`, {
+      token: wToken, body: { message: 'Bhaiya kal tak bhej dena' },
+    });
+    check('apna message bhi bhej sakte hain', r.status === 200, `${r.message}`);
+    r = await call('GET', '/notifications?type=PAYMENT_REMINDER', { token: rToken });
+    check('apna wala message hi gaya', r.data?.[0]?.body === 'Bhaiya kal tak bhej dena', `${r.data?.[0]?.body}`);
+
+    r = await call('POST', `/khata/${supplierId}/remind`, { token: wToken, body: {} });
+    check('jo app pe nahi hai usko yaad nahi dila sakte', r.status === 400, `${r.message}`);
+
+    console.log(`\n${Y}Notifications page${N}`);
+
+    r = await call('GET', '/notifications', { token: wToken });
+    check('list paginated aayi', Array.isArray(r.data) && r.meta?.totalPages >= 1, JSON.stringify(r.meta));
+    check('unread count response me hi mil gaya', typeof r.unread === 'number', `${r.unread}`);
+
+    r = await call('GET', '/notifications/counts', { token: wToken });
+    check('type wise ginti aayi', typeof r.data?.byType?.LOW_STOCK?.total === 'number',
+      JSON.stringify(r.data?.byType));
+    check('kul aur unread dono aaye', typeof r.data?.all === 'number' && typeof r.data?.unread === 'number');
+
+    r = await call('GET', '/notifications?type=LOW_STOCK&limit=1', { token: wToken });
+    check('type filter + limit chala', r.data?.length === 1 && r.meta?.total === 2,
+      `mile ${r.data?.length} / total ${r.meta?.total}`);
+
+    r = await call('GET', '/notifications?type=GALAT_TYPE', { token: wToken });
+    check('galat type reject hua', r.status === 400, `status ${r.status}`);
+
+    const delId = (await call('GET', '/notifications', { token: wToken })).data?.[0]?._id;
+    r = await call('DELETE', `/notifications/${delId}`, { token: wToken });
+    check('ek notification delete hui', r.status === 200, `${r.message}`);
+
+    await call('POST', '/notifications/read-all', { token: wToken });
+    r = await call('DELETE', '/notifications/clear-read', { token: wToken });
+    check('padhi hui purani saaf ho gayi', r.data?.deleted > 0, `${r.data?.deleted}`);
+    r = await call('GET', '/notifications', { token: wToken });
+    check('clear ke baad list khali', r.data?.length === 0, `mile ${r.data?.length}`);
+
+    r = await call('GET', '/notifications', { token: rToken });
+    check('doosre user ki notifications alag rahin', r.data?.length > 0, `mile ${r.data?.length}`);
+
+    console.log(`\n${Y}Tenant isolation (Part 10)${N}`);
+
+    r = await call('GET', '/reports/sale', { token: rToken });
+    check('retailer sale report nahi khol saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/reports/stock/csv', { token: rToken });
+    check('retailer CSV bhi nahi le saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('POST', `/khata/${partyId}/remind`, { token: rToken, body: {} });
+    check('retailer khud ko yaad nahi dila saka', r.status === 403, `status ${r.status}`);
+
+
+    // ============================================================ PART 11
+    console.log(`\n${Y}Item ke naye field${N}`);
+
+    r = await call('POST', '/items', {
+      token: wToken,
+      body: {
+        name: 'Clutch Plate Set', brand: 'TVS', modelNo: 'CP-4S-2026', barcode: '8901234567890',
+        purchasePrice: 500, salePrice: 700, wholesalePrice: 640, mrp: 850,
+        openingStock: 12, lowStockAt: 3, rack: 'B-2', minOrderQty: 2,
+        hsn: '8708', gstRate: 18, warrantyMonths: 18, warrantyNote: 'Company warranty, bill ke saath',
+      },
+    });
+    check('naye field ke saath item bana', r.status === 201, `${r.message}`);
+    check('brand save hua', r.data?.brand === 'TVS', `${r.data?.brand}`);
+    check('model/serial number save hua', r.data?.modelNo === 'CP-4S-2026', `${r.data?.modelNo}`);
+    check('MRP save hui', r.data?.mrp === 850, `${r.data?.mrp}`);
+    check('rack save hua', r.data?.rack === 'B-2', `${r.data?.rack}`);
+    check('warranty 18 mahine save hui', r.data?.warrantyMonths === 18, `${r.data?.warrantyMonths}`);
+    check('warranty Hinglish me bani', r.data?.warrantyText === '1 saal 6 mahine', `${r.data?.warrantyText}`);
+    const setId = r.data?._id;
+
+    r = await call('POST', '/items', {
+      token: wToken, body: { name: 'Bad Warranty', warrantyMonths: 500 },
+    });
+    check('bahut lambi warranty reject hui', r.status === 400, `status ${r.status}`);
+
+    r = await call('GET', '/items?q=TVS', { token: wToken });
+    check('brand se search chala', r.data?.length === 1 && r.data?.[0]?.name === 'Clutch Plate Set',
+      `mile ${r.data?.length}`);
+
+    r = await call('GET', '/items?q=CP-4S', { token: wToken });
+    check('model number se search chala', r.data?.length === 1, `mile ${r.data?.length}`);
+
+    r = await call('GET', '/items?q=8901234567890', { token: wToken });
+    check('barcode se search chala', r.data?.length === 1, `mile ${r.data?.length}`);
+
+    r = await call('GET', '/items/brands', { token: wToken });
+    check('brands ki list aayi', r.data?.includes('TVS'), JSON.stringify(r.data));
+
+    r = await call('GET', '/items?brand=TVS', { token: wToken });
+    check('brand filter chala', r.data?.length === 1, `mile ${r.data?.length}`);
+
+    r = await call('GET', '/items/export', { token: wToken, raw: true });
+    check('CSV export me naye column aaye',
+      typeof r === 'object', 'export endpoint chala');
+
+    console.log(`\n${Y}Warranty retailer ko dikhe${N}`);
+
+    // CSV import wala "Clutch Plate" pehle se hai — isliye poora naam
+    r = await call('GET', '/catalog?q=Clutch Plate Set', { token: rToken });
+    check('retailer ko warranty dikhi', r.data?.[0]?.warrantyText === '1 saal 6 mahine',
+      `${r.data?.[0]?.warrantyText}`);
+    check('retailer ko warranty ki shart bhi dikhi',
+      /Company warranty/.test(r.data?.[0]?.warrantyNote || ''), `${r.data?.[0]?.warrantyNote}`);
+    check('retailer ko brand aur MRP dikhe',
+      r.data?.[0]?.brand === 'TVS' && r.data?.[0]?.mrp === 850,
+      `${r.data?.[0]?.brand} / ${r.data?.[0]?.mrp}`);
+    check('kam se kam order ki ginti dikhi', r.data?.[0]?.minOrderQty === 2, `${r.data?.[0]?.minOrderQty}`);
+
+    r = await call('POST', '/cart/items', { token: rToken, body: { itemId: setId, qty: 1 } });
+    check('minimum se kam order block hua', r.status === 400 && /kam se kam 2/.test(r.message || ''),
+      `${r.message}`);
+
+    r = await call('POST', '/cart/items', { token: rToken, body: { itemId: setId, qty: 2 } });
+    check('minimum poora hone par cart me gaya', r.status === 200 || r.status === 201, `${r.message}`);
+    await call('DELETE', '/cart', { token: rToken });
+
+    r = await call('POST', '/invoices', {
+      token: wToken, body: { partyId, items: [{ itemId: setId, qty: 2, rate: 640 }] },
+    });
+    check('bill pe warranty ka snapshot laga', r.data?.items?.[0]?.warrantyMonths === 18,
+      `${r.data?.items?.[0]?.warrantyMonths}`);
+    check('warranty ki shart bhi snapshot hui',
+      /Company warranty/.test(r.data?.items?.[0]?.warrantyNote || ''), `${r.data?.items?.[0]?.warrantyNote}`);
+    const warrantyInvoice = r.data?._id;
+
+    // item ki warranty badlo — purana bill nahi badalna chahiye
+    await call('PUT', `/items/${setId}`, { token: wToken, body: { warrantyMonths: 0, warrantyNote: '' } });
+    r = await call('GET', `/invoices/${warrantyInvoice}`, { token: wToken });
+    check('warranty hatane par purana bill nahi badla', r.data?.items?.[0]?.warrantyMonths === 18,
+      `${r.data?.items?.[0]?.warrantyMonths}`);
+    await call('PUT', `/items/${setId}`, { token: wToken, body: { warrantyMonths: 18 } });
+
+    console.log(`\n${Y}Maal wapas aaya (credit note)${N}`);
+
+    r = await call('GET', `/returns/prefill/SALE_RETURN/${warrantyInvoice}`, { token: wToken });
+    check('bill se return prefill mila', r.status === 200 && r.data?.items?.length === 1, `${r.message}`);
+    check('prefill me bill ka number aaya', /^INV\//.test(r.data?.againstNo || ''), `${r.data?.againstNo}`);
+    check('prefill me poora qty default aaya', r.data?.items?.[0]?.qty === 2, `${r.data?.items?.[0]?.qty}`);
+    check('pehle kitna wapas hua wo bhi aaya', r.data?.items?.[0]?.returnedQty === 0,
+      `${r.data?.items?.[0]?.returnedQty}`);
+
+    let itemsBefore = await call('GET', '/items?q=Clutch Plate Set', { token: wToken });
+    const clutchStockBefore = itemsBefore.data?.[0]?.stockQty;
+
+    r = await call('GET', `/parties/${partyId}`, { token: wToken });
+    const balBeforeReturn = r.data?.balance;
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId, invoiceId: warrantyInvoice,
+        items: [{ itemId: setId, qty: 1, rate: 640 }],
+        reason: 'Ek piece me awaaz aa rahi thi',
+      },
+    });
+    check('credit note ban gaya', r.status === 201, `${r.message}`);
+    check('credit note ka number CRN se shuru hua', /^CRN\/\d{2}-\d{2}\/0001$/.test(r.data?.returnNo || ''),
+      `${r.data?.returnNo}`);
+    check('note pe "Credit Note" likha aaya', r.data?.label === 'Credit Note', `${r.data?.label}`);
+    check('amount in words bana', Boolean(r.data?.amountInWords));
+    const creditNote = r.data?._id;
+    const creditTotal = r.data?.grandTotal;
+
+    r = await call('GET', '/items?q=Clutch Plate Set', { token: wToken });
+    check('sale return se stock BADHA', r.data?.[0]?.stockQty === clutchStockBefore + 1,
+      `${clutchStockBefore} -> ${r.data?.[0]?.stockQty}`);
+
+    r = await call('GET', `/items/${setId}/movements`, { token: wToken });
+    check('SALE_RETURN ka movement bana', r.data?.[0]?.type === 'SALE_RETURN' && r.data?.[0]?.qty === 1,
+      JSON.stringify(r.data?.[0] && { t: r.data[0].type, q: r.data[0].qty }));
+
+    let ledger11 = await LedgerEntry.find({ refType: 'ReturnNote', refId: creditNote }).lean();
+    check('khate me SALE_RETURN credit bana',
+      ledger11.length === 1 && ledger11[0].credit === creditTotal && ledger11[0].debit === 0,
+      JSON.stringify(ledger11.map((e) => ({ t: e.type, c: e.credit }))));
+
+    r = await call('GET', `/parties/${partyId}`, { token: wToken });
+    check('retailer ka udhaar utna kam hua', r.data?.balance === round2(balBeforeReturn - creditTotal),
+      `${balBeforeReturn} -> ${r.data?.balance}`);
+
+    r = await call('GET', `/khata/${partyId}`, { token: wToken });
+    check('khate me "Maal wapas aaya" label dikha',
+      r.data?.entries?.some((e) => e.typeLabel === 'Maal wapas aaya'),
+      JSON.stringify(r.data?.entries?.slice(-2).map((e) => e.typeLabel)));
+
+    // ab sirf 1 bacha
+    r = await call('GET', `/returns/prefill/SALE_RETURN/${warrantyInvoice}`, { token: wToken });
+    check('prefill me bacha hua qty hi aaya', r.data?.items?.[0]?.qty === 1, `${r.data?.items?.[0]?.qty}`);
+    check('pehle wapas hua qty gina gaya', r.data?.items?.[0]?.returnedQty === 1,
+      `${r.data?.items?.[0]?.returnedQty}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId, invoiceId: warrantyInvoice,
+        items: [{ itemId: setId, qty: 5, rate: 640 }],
+      },
+    });
+    check('bill se zyada wapas nahi ho saka', r.status === 400 && /wapas ho sakta hai/.test(r.message || ''),
+      `${r.message}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: { type: 'SALE_RETURN', partyId: supplierId, items: [{ itemId: setId, qty: 1, rate: 100 }] },
+    });
+    check('supplier ka sale return block hua', r.status === 400, `${r.message}`);
+
+    console.log(`\n${Y}Maal wapas bheja (debit note)${N}`);
+
+    // Upar low-stock test ne Bearing 0 kar diya tha — wapas bhejne ke liye maal chahiye
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 25 } });
+
+    r = await call('GET', `/parties/${supplierId}`, { token: wToken });
+    const supBefore = r.data?.balance;
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'PURCHASE_RETURN', partyId: supplierId,
+        items: [{ itemId: bearingId, qty: 1, rate: 80 }],
+        reason: 'Maal kharab nikla',
+      },
+    });
+    check('debit note ban gaya', r.status === 201, `${r.message}`);
+    check('debit note ka number DBN se shuru hua', /^DBN\//.test(r.data?.returnNo || ''), `${r.data?.returnNo}`);
+    check('note pe "Debit Note" likha aaya', r.data?.label === 'Debit Note', `${r.data?.label}`);
+    const debitNote = r.data?._id;
+    const debitTotal = r.data?.grandTotal;
+
+    r = await call('GET', `/items/${bearingId}/movements`, { token: wToken });
+    check('PURCHASE_RETURN me stock GHATA', r.data?.[0]?.type === 'PURCHASE_RETURN' && r.data?.[0]?.qty === -1,
+      JSON.stringify(r.data?.[0] && { t: r.data[0].type, q: r.data[0].qty }));
+
+    r = await call('GET', `/parties/${supplierId}`, { token: wToken });
+    check('supplier ko dena utna kam hua', r.data?.balance === round2(supBefore - debitTotal),
+      `${supBefore} -> ${r.data?.balance}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'PURCHASE_RETURN', partyId: supplierId,
+        items: [{ itemId: bearingId, qty: 99999, rate: 80 }],
+      },
+    });
+    check('stock se zyada wapas nahi bhej sake', r.status === 400 && /stock sirf/.test(r.message || ''),
+      `${r.message}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken, body: { type: 'PURCHASE_RETURN', partyId, items: [{ itemId: bearingId, qty: 1, rate: 80 }] },
+    });
+    check('retailer ka purchase return block hua', r.status === 400, `${r.message}`);
+
+    console.log(`\n${Y}Return list aur delete${N}`);
+
+    r = await call('GET', '/returns', { token: wToken });
+    check('dono return list me aaye', r.data?.length === 2, `mile ${r.data?.length}`);
+
+    r = await call('GET', '/returns?type=SALE_RETURN', { token: wToken });
+    check('type filter chala', r.data?.length === 1 && r.data?.[0]?.type === 'SALE_RETURN',
+      `mile ${r.data?.length}`);
+
+    r = await call('GET', '/returns/stats', { token: wToken });
+    check('stats me dono tarah ke note gine',
+      r.data?.saleCount === 1 && r.data?.purchaseCount === 1,
+      JSON.stringify(r.data));
+
+    r = await call('GET', '/my/returns', { token: rToken });
+    check('retailer ko apna credit note dikha', r.data?.length === 1, `mile ${r.data?.length}`);
+
+    r = await call('GET', '/items?q=Clutch Plate Set', { token: wToken });
+    const stockBeforeDelete = r.data?.[0]?.stockQty;
+    r = await call('GET', `/parties/${partyId}`, { token: wToken });
+    const balBeforeDelete = r.data?.balance;
+
+    r = await call('DELETE', `/returns/${creditNote}`, { token: wToken });
+    check('credit note delete hua', r.data?.deleted === true, `${r.message}`);
+
+    r = await call('GET', '/items?q=Clutch Plate Set', { token: wToken });
+    check('delete pe stock wapas ghata', r.data?.[0]?.stockQty === stockBeforeDelete - 1,
+      `${stockBeforeDelete} -> ${r.data?.[0]?.stockQty}`);
+
+    r = await call('GET', `/parties/${partyId}`, { token: wToken });
+    check('delete pe udhaar wapas badha', r.data?.balance === round2(balBeforeDelete + creditTotal),
+      `${balBeforeDelete} -> ${r.data?.balance}`);
+
+    ledger11 = await LedgerEntry.find({ refType: 'ReturnNote', refId: creditNote }).lean();
+    check('delete pe khata entry bhi hat gayi', ledger11.length === 0, `${ledger11.length}`);
+
+    console.log(`\n${Y}Staff login${N}`);
+
+    r = await call('GET', '/staff', { token: wToken });
+    check('staff list me abhi sirf malik hai', r.data?.staff?.length === 1, `${r.data?.staff?.length}`);
+    check('malik owner mark hua', r.data?.staff?.[0]?.isOwner === true);
+    check('malik ke paas saari permission hai', r.data?.staff?.[0]?.permissions?.length === 9,
+      `${r.data?.staff?.[0]?.permissions?.length}`);
+    check('role ki list bhi aayi', r.data?.roles?.length === 4, `${r.data?.roles?.length}`);
+
+    r = await call('POST', '/staff', {
+      token: wToken,
+      body: { name: 'Munna Salesman', phone: '9000000011', password: 'staff123', staffRole: 'salesman' },
+    });
+    check('salesman ka login bana', r.status === 201, `${r.message}`);
+    check('salesman ko default permission mili',
+      r.data?.permissions?.includes('invoices') && !r.data?.permissions?.includes('khata'),
+      JSON.stringify(r.data?.permissions));
+    const salesmanId = r.data?._id;
+
+    r = await call('POST', '/staff', {
+      token: wToken,
+      body: { name: 'Doosra Malik', phone: '9000000012', password: 'staff123', staffRole: 'owner' },
+    });
+    check('doosra malik nahi ban saka', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/staff', {
+      token: wToken,
+      body: { name: 'Same Number', phone: WHOLESALER_PHONE, password: 'staff123', staffRole: 'manager' },
+    });
+    check('pehle se registered number reject hua', r.status === 409, `status ${r.status}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: '9000000011', password: 'staff123' } });
+    check('salesman login kar paya', r.status === 200 && r.data?.token, `${r.message}`);
+    check('session me staffRole aaya', r.data?.user?.staffRole === 'salesman', `${r.data?.user?.staffRole}`);
+    check('session me isOwner false hai', r.data?.user?.isOwner === false, `${r.data?.user?.isOwner}`);
+    const staffToken = r.data?.token;
+
+    r = await call('GET', '/items', { token: staffToken });
+    check('salesman items dekh saka', r.status === 200, `status ${r.status}`);
+
+    r = await call('POST', '/invoices', {
+      token: staffToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 100 }] },
+    });
+    check('salesman bill bana saka', r.status === 201, `${r.message}`);
+
+    r = await call('GET', '/khata', { token: staffToken });
+    check('salesman khata NAHI khol saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/reports/sale', { token: staffToken });
+    check('salesman report NAHI dekh saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/purchases', { token: staffToken });
+    check('salesman purchase NAHI dekh saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/staff', { token: staffToken });
+    check('salesman staff list NAHI dekh saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('PUT', '/business/me', { token: staffToken, body: { name: 'Hack Attempt' } });
+    check('salesman dukaan ki settings NAHI badal saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/backup/download', { token: staffToken });
+    check('salesman backup NAHI le saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/business/me', { token: wToken });
+    check('malik ki dukaan ka naam nahi badla', r.data?.name === 'Ramesh Auto Parts', `${r.data?.name}`);
+
+    // permission badlo
+    r = await call('PUT', `/staff/${salesmanId}`, {
+      token: wToken, body: { permissions: ['items', 'orders', 'invoices', 'khata'] },
+    });
+    check('malik ne permission badal di', r.data?.permissions?.includes('khata'),
+      JSON.stringify(r.data?.permissions));
+
+    r = await call('GET', '/khata', { token: staffToken });
+    check('ab salesman khata khol saka', r.status === 200, `status ${r.status}`);
+
+    // role badlo to naye role ki default permission lag jaye
+    r = await call('PUT', `/staff/${salesmanId}`, { token: wToken, body: { staffRole: 'accountant' } });
+    check('role badalne pe naye role ki permission lagi',
+      r.data?.permissions?.includes('reports') && !r.data?.permissions?.includes('purchases'),
+      JSON.stringify(r.data?.permissions));
+
+    // block
+    r = await call('PUT', `/staff/${salesmanId}`, { token: wToken, body: { isActive: false } });
+    check('staff block ho gaya', r.data?.isActive === false);
+
+    r = await call('GET', '/items', { token: staffToken });
+    check('block hone par purana token bhi nahi chala', r.status === 403, `status ${r.status}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: '9000000011', password: 'staff123' } });
+    check('block hone par login bhi nahi hua', r.status === 403, `status ${r.status}`);
+
+    await call('PUT', `/staff/${salesmanId}`, { token: wToken, body: { isActive: true } });
+
+    console.log(`\n${Y}Apna password badalna${N}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: '9000000011', password: 'staff123' } });
+    const staffToken2 = r.data?.token;
+
+    r = await call('POST', '/staff/change-password', {
+      token: staffToken2, body: { currentPassword: 'galat', newPassword: 'naya1234' },
+    });
+    check('galat purana password reject hua', r.status === 400, `${r.message}`);
+
+    r = await call('POST', '/staff/change-password', {
+      token: staffToken2, body: { currentPassword: 'staff123', newPassword: 'naya1234' },
+    });
+    check('password badal gaya', r.status === 200, `${r.message}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: '9000000011', password: 'naya1234' } });
+    check('naye password se login hua', r.status === 200, `${r.message}`);
+
+    r = await call('DELETE', `/staff/${salesmanId}`, { token: wToken });
+    check('staff hata diya', r.data?.deleted === true, `${r.message}`);
+
+    const ownerId = (await call('GET', '/staff', { token: wToken })).data?.staff?.[0]?._id;
+    r = await call('DELETE', `/staff/${ownerId}`, { token: wToken });
+    check('malik ko koi hata nahi saka', r.status === 400, `${r.message}`);
+
+    console.log(`\n${Y}Data backup${N}`);
+
+    r = await call('GET', '/backup/summary', { token: wToken });
+    check('backup summary aayi', typeof r.data?.invoices === 'number', JSON.stringify(r.data));
+    check('staff ki ginti bhi aayi', r.data?.staff === 1, `${r.data?.staff}`);
+
+    const backupRes = await fetch(`${BASE}/backup/download`, {
+      headers: { Authorization: `Bearer ${wToken}` },
+    });
+    const backupJson = await backupRes.json();
+    check('backup download hua', backupRes.status === 200, `status ${backupRes.status}`);
+    check('backup me app ka naam aur version hai',
+      backupJson.meta?.app === 'Rakh Rakhav' && backupJson.meta?.version === 1,
+      JSON.stringify(backupJson.meta));
+    check('backup me saara data hai',
+      backupJson.data?.items?.length > 0 && backupJson.data?.invoices?.length > 0
+      && backupJson.data?.parties?.length > 0 && backupJson.data?.ledger?.length > 0,
+      JSON.stringify(backupJson.meta?.counts));
+    check('backup me password NAHI hai',
+      !JSON.stringify(backupJson).includes('passwordHash'), 'password leak ho gaya!');
+    check('backup file ke naam ke saath aayi',
+      /attachment; filename=".*backup-/.test(backupRes.headers.get('content-disposition') || ''),
+      `${backupRes.headers.get('content-disposition')}`);
+
+    const csvRes11 = await fetch(`${BASE}/backup/csv/khata`, {
+      headers: { Authorization: `Bearer ${wToken}` },
+    });
+    const csvText11 = await csvRes11.text();
+    check('khata ki CSV mili', csvRes11.status === 200, `status ${csvRes11.status}`);
+    check('CSV me header row hai', csvText11.includes('date,party,type'), csvText11.slice(0, 50));
+
+    r = await call('GET', '/backup/csv/kuchbhi', { token: wToken });
+    check('anjaan CSV ka naam reject hua', r.status === 404, `status ${r.status}`);
+
+    console.log(`\n${Y}Tenant isolation (Part 11)${N}`);
+
+    r = await call('GET', '/returns', { token: rToken });
+    check('retailer saare return nahi dekh saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('POST', '/returns', {
+      token: rToken, body: { type: 'SALE_RETURN', partyId, items: [{ itemId: bearingId, qty: 1, rate: 10 }] },
+    });
+    check('retailer khud return nahi bana saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/staff', { token: rToken });
+    check('retailer staff list nahi dekh saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/backup/download', { token: rToken });
+    check('retailer backup nahi le saka', r.status === 403, `status ${r.status}`);
 
     // ---------------------------------------------------------- Validation
     console.log(`\n${Y}Validation${N}`);

@@ -41,6 +41,17 @@ export async function postEntry({
     refType, refId, refNo, note, createdBy: userId,
   });
 
+  // Purani date pe entry daali? To ye entry beech me ghus gayi hai aur uske
+  // aage wali sab entries ka running balance khisak gaya — dobara jod do.
+  const laterExists = await LedgerEntry.exists({
+    businessId, partyId, _id: { $ne: entry._id }, date: { $gt: date },
+  });
+  if (laterExists) {
+    const balance = await recalcBalances(businessId, partyId);
+    const fresh = await LedgerEntry.findById(entry._id).lean();
+    return { entry: fresh, balance };
+  }
+
   return { entry, balance: round2(party.balance) };
 }
 
@@ -49,16 +60,46 @@ export async function reverseEntriesFor({ businessId, refType, refId, userId = n
   const entries = await LedgerEntry.find({ businessId, refType, refId }).lean();
   if (!entries.length) return { reversed: 0 };
 
-  for (const e of entries) {
-    // Ulta karo: jo debit tha wo credit, jo credit tha wo debit
-    await Party.updateOne(
-      { _id: e.partyId, businessId },
-      { $inc: { balance: round2(e.credit - e.debit) } }
-    );
-  }
+  const partyIds = [...new Set(entries.map((e) => String(e.partyId)))];
 
   await LedgerEntry.deleteMany({ businessId, refType, refId });
+
+  // Beech ki entry hatne se aage wali saari entries ka running balance galat ho
+  // jata hai — isliye us party ka poora khata dobara jod dete hain.
+  for (const partyId of partyIds) {
+    await recalcBalances(businessId, partyId);
+  }
+
   return { reversed: entries.length };
+}
+
+/**
+ * Ek party ke poore khate ka running balance dobara ginta hai.
+ *
+ * Kab chahiye:
+ *   - koi entry beech me se hat jaye (bill cancel, payment/return delete)
+ *   - koi entry PURANI date pe daali jaye (aage wali sab peeche khisak jati hain)
+ *
+ * Party.balance bhi yahin set hota hai — isliye khata aur balance kabhi
+ * alag nahi ho sakte. Ye khud hi theek kar deta hai.
+ */
+export async function recalcBalances(businessId, partyId) {
+  const entries = await LedgerEntry.find({ businessId, partyId })
+    .sort({ date: 1, createdAt: 1 })
+    .select('_id debit credit')
+    .lean();
+
+  let running = 0;
+  const ops = [];
+  for (const e of entries) {
+    running = round2(running + (e.debit || 0) - (e.credit || 0));
+    ops.push({ updateOne: { filter: { _id: e._id }, update: { $set: { balanceAfter: running } } } });
+  }
+
+  if (ops.length) await LedgerEntry.bulkWrite(ops);
+  await Party.updateOne({ _id: partyId, businessId }, { $set: { balance: running } });
+
+  return running;
 }
 
 export async function getLedger(businessId, partyId, { limit = 100 } = {}) {

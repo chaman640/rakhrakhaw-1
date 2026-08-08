@@ -15,6 +15,11 @@ export const summary = asyncHandler(async (req, res) =>
 export const partyLedger = asyncHandler(async (req, res) =>
   ok(res, await service.getPartyLedger(req.businessId, req.params.partyId, req.query)));
 
+export const remind = asyncHandler(async (req, res) => {
+  const result = await service.sendReminder(req.businessId, req.params.partyId, req.body);
+  return ok(res, result, 'Yaad dila diya — inke app me alert chala gaya');
+});
+
 /* ----------------------------------------------------------- retailer ka side */
 
 export const myKhata = asyncHandler(async (req, res) =>

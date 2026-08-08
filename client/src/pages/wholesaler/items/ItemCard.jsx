@@ -31,7 +31,8 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) 
           <button onClick={() => onEdit(item)} className="min-w-0 text-left">
             <p className="truncate font-medium text-slate-900">{item.name}</p>
             <p className="truncate text-xs text-slate-500">
-              {[item.sku, item.category].filter(Boolean).join(' · ') || 'Bina category'}
+              {[item.brand, item.sku, item.category].filter(Boolean).join(' · ') || 'Bina category'}
+              {item.rack && <span className="text-slate-400"> · {item.rack}</span>}
             </p>
           </button>
           <button

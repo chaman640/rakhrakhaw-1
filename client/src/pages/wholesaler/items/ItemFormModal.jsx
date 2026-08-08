@@ -10,10 +10,26 @@ const GST_RATES = ['0', '0.25', '3', '5', '12', '18', '28'];
 
 const blank = {
   name: '', sku: '', description: '', categoryId: '', unit: 'PCS',
-  purchasePrice: '', salePrice: '', wholesalePrice: '',
-  openingStock: '', lowStockAt: '5',
-  hsn: '', gstRate: '0', visibleToRetailers: true,
+  brand: '', modelNo: '', barcode: '',
+  purchasePrice: '', salePrice: '', wholesalePrice: '', mrp: '',
+  openingStock: '', lowStockAt: '5', rack: '', minOrderQty: '',
+  hsn: '', gstRate: '0',
+  warrantyMonths: '0', warrantyNote: '',
+  visibleToRetailers: true,
 };
+
+// Jo warranty aam taur pe di jaati hai — type karne ki zarurat na pade
+const WARRANTY_PRESETS = [
+  { value: '0', label: 'Nahi hai' },
+  { value: '1', label: '1 mahina' },
+  { value: '3', label: '3 mahine' },
+  { value: '6', label: '6 mahine' },
+  { value: '12', label: '1 saal' },
+  { value: '18', label: '1.5 saal' },
+  { value: '24', label: '2 saal' },
+  { value: '36', label: '3 saal' },
+  { value: '60', label: '5 saal' },
+];
 
 export default function ItemFormModal({ open, onClose, item, categories, onSaved, onCategoryAdded }) {
   const { gstEnabled, business } = useAuth();
@@ -42,13 +58,21 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         description: item.description || '',
         categoryId: item.categoryId || '',
         unit: item.unit || 'PCS',
+        brand: item.brand || '',
+        modelNo: item.modelNo || '',
+        barcode: item.barcode || '',
         purchasePrice: String(item.purchasePrice ?? ''),
         salePrice: String(item.salePrice ?? ''),
         wholesalePrice: String(item.wholesalePrice ?? ''),
+        mrp: String(item.mrp ?? ''),
         openingStock: '',
         lowStockAt: String(item.lowStockAt ?? 5),
+        rack: item.rack || '',
+        minOrderQty: String(item.minOrderQty ?? ''),
         hsn: item.hsn || '',
         gstRate: String(item.gstRate ?? 0),
+        warrantyMonths: String(item.warrantyMonths ?? 0),
+        warrantyNote: item.warrantyNote || '',
         visibleToRetailers: item.visibleToRetailers !== false,
       });
       setPhoto({ url: item.imageUrl || '', pendingFile: null });
@@ -121,12 +145,20 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       description: form.description.trim(),
       categoryId: form.categoryId || null,
       unit: form.unit,
+      brand: form.brand.trim(),
+      modelNo: form.modelNo.trim(),
+      barcode: form.barcode.trim(),
       purchasePrice: Number(form.purchasePrice || 0),
       salePrice: Number(form.salePrice || 0),
       wholesalePrice: Number(form.wholesalePrice || 0),
+      mrp: Number(form.mrp || 0),
       lowStockAt: Number(form.lowStockAt || 0),
+      rack: form.rack.trim(),
+      minOrderQty: Number(form.minOrderQty || 0),
       hsn: form.hsn.trim(),
       gstRate: Number(form.gstRate || 0),
+      warrantyMonths: Number(form.warrantyMonths || 0),
+      warrantyNote: form.warrantyNote.trim(),
       visibleToRetailers: form.visibleToRetailers,
     };
     if (!isEdit) payload.openingStock = Number(form.openingStock || 0);
@@ -230,7 +262,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         {/* ---- Prices ---- */}
         <div className="rounded-lg border border-slate-200 p-4">
           <h4 className="mb-3 text-sm font-semibold text-slate-900">Price</h4>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input label="Purchase price" type="number" step="0.01" min="0" prefix="₹"
               value={form.purchasePrice} onChange={set('purchasePrice')}
               hint="Aapko kitne ka pada" error={fieldErrors.purchasePrice} />
@@ -240,6 +272,9 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             <Input label="Wholesale price" type="number" step="0.01" min="0" prefix="₹"
               value={form.wholesalePrice} onChange={set('wholesalePrice')}
               hint="Retailers ko yahi dikhega" error={fieldErrors.wholesalePrice} />
+            <Input label="MRP" type="number" step="0.01" min="0" prefix="₹"
+              value={form.mrp} onChange={set('mrp')}
+              hint="Packet pe chhapa hua rate — retailer ko dikhega" error={fieldErrors.mrp} />
           </div>
 
           {margin && (
@@ -250,6 +285,27 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
               {' '}per {form.unit} ({margin.percent.toFixed(1)}%)
             </p>
           )}
+        </div>
+
+        {/* ---- Pehchan ---- */}
+        <div className="rounded-lg border border-slate-200 p-4">
+          <h4 className="mb-1 text-sm font-semibold text-slate-900">Pehchan</h4>
+          <p className="mb-3 text-xs text-slate-500">
+            Bharna zaroori nahi — par bhar denge to search me foran mil jayega
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Company / Brand" placeholder="SKF, Bosch, Rolon..."
+              value={form.brand} onChange={set('brand')} />
+            <Input label="Model / Serial number" placeholder="6203-2RS"
+              value={form.modelNo} onChange={set('modelNo')}
+              hint="Part number ya serial — dono chalega" />
+            <Input label="Barcode" placeholder="8901234567890"
+              value={form.barcode} onChange={set('barcode')}
+              hint="Scanner se search karne ke liye" />
+            <Input label="Rack / jagah" placeholder="A-3"
+              value={form.rack} onChange={set('rack')}
+              hint="Godown me kahan rakha hai" />
+          </div>
         </div>
 
         {/* ---- Stock ---- */}
@@ -267,6 +323,9 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             <Input label="Low stock warning" type="number" min="0" suffix={form.unit}
               value={form.lowStockAt} onChange={set('lowStockAt')}
               hint="Itne se kam hone par alert" />
+            <Input label="Kam se kam order" type="number" min="0" suffix={form.unit}
+              value={form.minOrderQty} onChange={set('minOrderQty')}
+              hint="Retailer isse kam order nahi kar payega (0 = koi rok nahi)" />
           </div>
         </div>
 
@@ -282,6 +341,30 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             </div>
           </div>
         )}
+
+        {/* ---- Warranty ---- */}
+        <div className="rounded-lg border border-slate-200 p-4">
+          <h4 className="mb-1 text-sm font-semibold text-slate-900">Warranty</h4>
+          <p className="mb-3 text-xs text-slate-500">
+            Warranty daal denge to retailer ko catalog aur bill — dono jagah dikhegi
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Select label="Kitne din ki" value={form.warrantyMonths} placeholder=""
+              onChange={set('warrantyMonths')} options={WARRANTY_PRESETS} />
+            <Input label="Warranty ki shart" placeholder="Company warranty, bill ke saath"
+              value={form.warrantyNote} onChange={set('warrantyNote')}
+              disabled={form.warrantyMonths === '0'}
+              hint={form.warrantyMonths === '0' ? 'Pehle warranty chunein' : 'Bill pe chhapegi'} />
+          </div>
+          {form.warrantyMonths !== '0' && (
+            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+              Retailer ko dikhega: <span className="font-medium">
+                {WARRANTY_PRESETS.find((w) => w.value === form.warrantyMonths)?.label} warranty
+              </span>
+              {form.warrantyNote && ` — ${form.warrantyNote}`}
+            </p>
+          )}
+        </div>
 
         {/* ---- Extra ---- */}
         <Textarea label="Description" rows={2} value={form.description} onChange={set('description')}

@@ -1,0 +1,78 @@
+import mongoose from 'mongoose';
+import { RETURN_TYPES, TAX_TYPES, UNITS } from '../config/constants.js';
+
+/**
+ * Maal wapas aane ka document.
+ *
+ * SALE_RETURN     — retailer ne humein maal wapas kiya  -> CREDIT NOTE
+ *                   stock BADHTA hai, uska udhaar GHATTA hai
+ * PURCHASE_RETURN — humne supplier ko maal wapas kiya    -> DEBIT NOTE
+ *                   stock GHATTA hai, supplier ko dena GHATTA hai
+ *
+ * Ye Invoice se alag model hai (usme milane se dono gande ho jate).
+ * GST me bhi credit note ka apna alag number series hota hai.
+ */
+const returnItemSchema = new mongoose.Schema(
+  {
+    itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
+    name: { type: String, required: true },
+    hsn: { type: String, default: '' },
+    unit: { type: String, enum: UNITS, default: 'PCS' },
+    qty: { type: Number, required: true, min: 0 },
+    rate: { type: Number, required: true, min: 0 },
+    discount: { type: Number, default: 0 },
+    taxableValue: { type: Number, default: 0 },
+    gstRate: { type: Number, default: 0 },
+    cgst: { type: Number, default: 0 },
+    sgst: { type: Number, default: 0 },
+    igst: { type: Number, default: 0 },
+    total: { type: Number, default: 0 },
+    reason: { type: String, default: '' },   // is line ka apna karan
+  },
+  { _id: false }
+);
+
+const returnNoteSchema = new mongoose.Schema(
+  {
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
+
+    type: { type: String, enum: Object.values(RETURN_TYPES), required: true, index: true },
+    returnNo: { type: String, required: true },
+    returnDate: { type: Date, default: Date.now },
+
+    // Kis bill/purchase ka maal wapas aaya (marzi se — bina bill ke bhi ho sakta hai)
+    invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', default: null },
+    purchaseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Purchase', default: null },
+    againstNo: { type: String, default: '' },   // dikhane ke liye
+
+    // GST ka snapshot — bill ki tarah
+    gstEnabled: { type: Boolean, default: false },
+    taxType: { type: String, enum: Object.values(TAX_TYPES), default: TAX_TYPES.NONE },
+
+    items: { type: [returnItemSchema], default: [] },
+
+    subTotal: { type: Number, default: 0 },
+    discountTotal: { type: Number, default: 0 },
+    taxableTotal: { type: Number, default: 0 },
+    cgstTotal: { type: Number, default: 0 },
+    sgstTotal: { type: Number, default: 0 },
+    igstTotal: { type: Number, default: 0 },
+    roundOff: { type: Number, default: 0 },
+    grandTotal: { type: Number, default: 0 },
+
+    businessSnapshot: { type: Object, default: () => ({}) },
+    partySnapshot: { type: Object, default: () => ({}) },
+
+    reason: { type: String, default: '' },
+    notes: { type: String, default: '' },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  },
+  { timestamps: true }
+);
+
+returnNoteSchema.index({ businessId: 1, returnNo: 1 }, { unique: true });
+returnNoteSchema.index({ businessId: 1, returnDate: -1 });
+returnNoteSchema.index({ businessId: 1, partyId: 1 });
+
+export default mongoose.model('ReturnNote', returnNoteSchema);

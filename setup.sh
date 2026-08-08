@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rakh Rakhav — auto setup (Part 9)
+# Rakh Rakhav — auto setup (Part 11)
 # Project dhoondhti hai, folder theek karti hai, .env sambhalti hai (aapki purani
 # .env kabhi nahi mitati), npm install karti hai, MongoDB test karti hai, aur app chalu kar deti hai.
 
@@ -117,6 +117,15 @@ if [ -f "$BACKUP/client.env" ] && [ ! -f client/.env ]; then
 elif [ ! -f client/.env ]; then
   cp client/.env.example client/.env
 fi
+
+# Purane version me client/.env me VITE_API_URL=http://localhost:5000/api hota tha.
+# Ab client aur server ek hi URL pe chalte hain, isliye ye line ulta nuksan karti hai —
+# build me localhost chhap jata hai aur live site pe koi API call chalti hi nahi.
+if grep -q "^VITE_API_URL=" client/.env 2>/dev/null; then
+  sed -i.bak 's|^VITE_API_URL=|# hata diya (ab relative /api use hota hai) — VITE_API_URL=|' client/.env
+  rm -f client/.env.bak
+  ok "client/.env se purana VITE_API_URL hata diya (ab ek hi URL wala tarika hai)"
+fi
 ok "client/.env ready"
 
 # Naye keys jo .env.example me hain par purani .env me nahi — chup-chaap jod do
@@ -224,6 +233,11 @@ if [ "$MONGO_OK" = "1" ]; then
   echo
   echo "Agli baar sirf ye:  cd $PROJ && ./start.sh"
   echo "Browser:            http://localhost:5173"
+  echo
+  echo "${BLU}Internet pe live karna hai (teacher ko dikhane ke liye)?${NC}"
+  echo "  Poora tarika likha hai:  $PROJ/DEPLOY.md"
+  echo "  Pehle yahin dekh lena:   cd $PROJ && npm run preview   → http://localhost:5000"
+  echo "  (preview me client+server ek hi URL pe chalte hain, bilkul Render jaisa)"
   echo
   sleep 2
   exec ./start.sh

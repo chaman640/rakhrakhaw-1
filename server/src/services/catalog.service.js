@@ -41,7 +41,7 @@ export async function listCatalog(businessId, partyId, q) {
       .skip(sortByRate ? 0 : skip)
       .limit(sortByRate ? 500 : q.limit)
       .populate('categoryId', 'name')
-      .select('name sku unit imageUrl description stockQty lowStockAt salePrice wholesalePrice categoryId createdAt')
+      .select('name sku unit imageUrl description stockQty lowStockAt salePrice wholesalePrice categoryId createdAt brand modelNo mrp warrantyMonths warrantyNote minOrderQty')
       .lean(),
     Item.countDocuments(filter),
   ]);
@@ -77,7 +77,25 @@ function decorate(item) {
     stockQty,
     inStock: stockQty > 0,
     isLowStock: stockQty > 0 && stockQty <= Number(item.lowStockAt || 0),
+
+    // Part 11 — retailer ko ye bhi dikhna chahiye
+    brand: item.brand || '',
+    modelNo: item.modelNo || '',
+    mrp: Number(item.mrp || 0),
+    warrantyMonths: Number(item.warrantyMonths || 0),
+    warrantyText: warrantyText(item.warrantyMonths),
+    warrantyNote: item.warrantyNote || '',
+    minOrderQty: Number(item.minOrderQty || 0),
   };
+}
+
+/** 18 -> "1 saal 6 mahine". Model ka virtual .lean() pe nahi milta, isliye yahan dobara. */
+export function warrantyText(months) {
+  const m = Number(months || 0);
+  if (!m) return '';
+  const years = Math.floor(m / 12);
+  const rest = m % 12;
+  return [years && `${years} saal`, rest && `${rest} mahine`].filter(Boolean).join(' ');
 }
 
 export async function getCatalogItem(businessId, partyId, id) {

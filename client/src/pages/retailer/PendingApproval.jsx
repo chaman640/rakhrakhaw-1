@@ -16,6 +16,8 @@ export default function PendingApproval() {
   }, [refresh]);
 
   useEffect(() => {
+    // Approve hote hi seedha catalog — abhi to bandaa order hi karna chahta hai.
+    // Baad ke logins pe HomeRedirect use /home pe le jata hai.
     if (partyStatus === 'active') navigate('/shop', { replace: true });
   }, [partyStatus, navigate]);
 

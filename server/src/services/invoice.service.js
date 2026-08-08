@@ -131,7 +131,7 @@ export async function prefillFromOrder(businessId, orderId) {
   if (order.status === ORDER_STATUS.CANCELLED) throw ApiError.badRequest('Cancel order ka bill nahi banta');
 
   const items = await Item.find({ _id: { $in: order.items.map((i) => i.itemId) }, businessId })
-    .select('name hsn gstRate unit stockQty').lean();
+    .select('name hsn gstRate unit stockQty warrantyMonths warrantyNote').lean();
   const map = new Map(items.map((i) => [String(i._id), i]));
 
   return {
@@ -149,6 +149,7 @@ export async function prefillFromOrder(businessId, orderId) {
         rate: l.rate,                     // order ka rate hi chalega
         discount: 0,
         hsn: item?.hsn || '',
+        warrantyMonths: item?.warrantyMonths || 0,
         gstRate: item?.gstRate ?? 0,
         stockQty: item?.stockQty ?? 0,
       };
@@ -180,7 +181,7 @@ export async function createInvoice(businessId, payload, userId) {
   // Items ki detail
   const itemIds = payload.items.map((i) => i.itemId);
   const dbItems = await Item.find({ _id: { $in: itemIds }, businessId })
-    .select('name hsn gstRate unit stockQty').lean();
+    .select('name hsn gstRate unit stockQty warrantyMonths warrantyNote').lean();
   const itemMap = new Map(dbItems.map((i) => [String(i._id), i]));
 
   const lines = payload.items.map((l, idx) => {
@@ -191,6 +192,8 @@ export async function createInvoice(businessId, payload, userId) {
       name: item.name,
       hsn: item.hsn || '',
       unit: item.unit,
+      warrantyMonths: item.warrantyMonths || 0,
+      warrantyNote: item.warrantyNote || '',
       qty: l.qty,
       rate: l.rate,
       discount: l.discount || 0,

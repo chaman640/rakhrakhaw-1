@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
+import { protect, requireRole, requireOwner } from '../middleware/auth.js';
 import { withTenant } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { uploadImage, handleUploadError } from '../middleware/uploadImage.js';
@@ -18,12 +18,12 @@ router.get('/states', ctrl.listStates);
 router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
 
 router.get('/me', ctrl.getMyBusiness);
-router.put('/me', validate({ body: updateBusinessSchema }), ctrl.updateMyBusiness);
+router.put('/me', requireOwner, validate({ body: updateBusinessSchema }), ctrl.updateMyBusiness);
 
-router.post('/logo', uploadImage.single('logo'), handleUploadError, ctrl.uploadLogo);
-router.delete('/logo', ctrl.deleteLogo);
+router.post('/logo', requireOwner, uploadImage.single('logo'), handleUploadError, ctrl.uploadLogo);
+router.delete('/logo', requireOwner, ctrl.deleteLogo);
 
-router.post('/invite/regenerate', ctrl.regenerateInvite);
+router.post('/invite/regenerate', requireOwner, ctrl.regenerateInvite);
 
 router.get('/retailers', validate({ query: retailerListQuerySchema }), ctrl.listRetailers);
 router.post('/retailers/:id/approve', validate({ params: partyIdParamSchema }), ctrl.approveRetailer);

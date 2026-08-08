@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus, Package, IndianRupee, TriangleAlert, XCircle, Tag,
-  Upload, Download, Pencil, Boxes, Trash2, EyeOff, Eye,
+  Upload, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -161,9 +161,16 @@ export default function Items() {
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate font-medium text-slate-900">{row.name}</p>
+              <p className="flex items-center gap-1.5 truncate font-medium text-slate-900">
+                {row.name}
+                {row.warrantyMonths > 0 && (
+                  <ShieldCheck size={13} className="shrink-0 text-emerald-600"
+                    aria-label={`${row.warrantyText} warranty`} />
+                )}
+              </p>
               <p className="truncate text-xs text-slate-500">
-                {[row.sku, row.category].filter(Boolean).join(' · ') || '—'}
+                {[row.brand, row.sku, row.category].filter(Boolean).join(' · ') || '—'}
+                {row.rack && <span className="text-slate-400"> · {row.rack}</span>}
               </p>
             </div>
           </div>
@@ -262,7 +269,7 @@ export default function Items() {
       {/* ---- Filters ---- */}
       <Card className="mb-5" padding={false}>
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
-          <SearchInput value={q} onChange={setQ} placeholder="Naam, SKU ya HSN se dhundhein..."
+          <SearchInput value={q} onChange={setQ} placeholder="Naam, brand, SKU, model ya barcode..."
             className="lg:w-72" />
 
           <Chips

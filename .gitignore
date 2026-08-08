@@ -1,5 +1,21 @@
-node_modules
-dist
+# Kabhi commit mat karna
+node_modules/
 .env
+.env.local
+server/.env
+client/.env
+
+# Build ka output — Render khud banata hai
+dist/
+client/dist/
+client/dist-test/
+
+# Local uploads (Cloudinary use karein production me)
+server/uploads/
+
+# Baaki
 .DS_Store
 *.log
+npm-debug.log*
+.vscode/
+.idea/

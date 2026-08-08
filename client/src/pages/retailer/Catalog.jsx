@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Check, Store, Tag } from 'lucide-react';
+import { Package, ShoppingCart, Check, Store, Tag, ShieldCheck } from 'lucide-react';
 import api from '@/lib/api';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -182,24 +182,43 @@ function ItemCard({ item, qty, onQty, onAdd, adding, added }) {
 
       <div className="flex flex-1 flex-col p-3">
         <p className="line-clamp-2 text-sm font-medium text-slate-900">{item.name}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-500">{item.category || item.sku || ' '}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-500">
+          {item.brand || item.category || item.sku || ' '}
+          {item.modelNo && <span className="text-slate-400"> · {item.modelNo}</span>}
+        </p>
 
-        <div className="mt-2 flex items-baseline gap-1">
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
           <span className="tabular text-lg font-semibold text-slate-900">{formatMoney(item.rate)}</span>
           <span className="text-xs text-slate-500">/ {item.unit}</span>
+          {/* MRP tabhi jab wo rate se zyada ho — warna "MRP ₹100, rate ₹120" mazaak lagta hai */}
+          {item.mrp > item.rate && (
+            <span className="text-xs text-slate-400 line-through">{formatMoney(item.mrp)}</span>
+          )}
         </div>
+
+        {item.warrantyText && (
+          <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
+            <ShieldCheck size={10} /> {item.warrantyText} warranty
+          </span>
+        )}
 
         <p className={cn('mt-1 text-xs',
           !item.inStock ? 'text-red-600' : item.isLowStock ? 'text-amber-600' : 'text-slate-500')}>
           {item.inStock ? `${formatQty(item.stockQty, item.unit)} available` : 'Stock khatam'}
         </p>
 
+        {item.minOrderQty > 1 && (
+          <p className="mt-0.5 text-[11px] text-slate-400">
+            Kam se kam {formatQty(item.minOrderQty, item.unit)}
+          </p>
+        )}
+
         <div className="mt-3 flex-1" />
 
         {item.inStock ? (
           <div className="flex flex-col gap-2">
-            <QtyStepper value={qty} onChange={onQty} min={1} size="sm" unit={item.unit}
-              label={`${item.name} quantity`} />
+            <QtyStepper value={qty} onChange={onQty} min={Math.max(1, item.minOrderQty || 1)}
+              size="sm" unit={item.unit} label={`${item.name} quantity`} />
             <Button size="sm" className="w-full" loading={adding} onClick={onAdd}
               variant={added ? 'success' : 'primary'} icon={added ? Check : ShoppingCart}>
               {added ? 'Daal diya' : 'Daal dein'}

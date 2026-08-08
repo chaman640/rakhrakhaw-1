@@ -26,7 +26,7 @@ export function decideTaxType({ gstEnabled, businessStateCode, partyStateCode })
 /**
  * Har line ka hisaab + kul jod.
  *
- * lines: [{ itemId, name, hsn, unit, qty, rate, discount, gstRate }]
+ * lines: [{ itemId, name, hsn, unit, qty, rate, discount, gstRate, warrantyMonths?, warrantyNote? }]
  * extraDiscount: bill ke neeche wala alag discount (line ke discount ke alawa)
  */
 export function computeInvoice(lines, { gstEnabled, taxType, extraDiscount = 0 }) {
@@ -81,6 +81,8 @@ export function computeInvoice(lines, { gstEnabled, taxType, extraDiscount = 0 }
       name: l.name,
       hsn: l.hsn || '',
       unit: l.unit || 'PCS',
+      warrantyMonths: l.warrantyMonths || 0,
+      warrantyNote: l.warrantyNote || '',
       qty: l.qty,
       rate: l.rate,
       discount: round2(l.discount + share),

@@ -14,3 +14,4 @@ export { default as Payment } from './Payment.js';
 export { default as Notification } from './Notification.js';
 export { default as Counter } from './Counter.js';
 export { default as Cart } from './Cart.js';
+export { default as ReturnNote } from './ReturnNote.js';

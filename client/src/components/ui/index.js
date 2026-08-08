@@ -16,4 +16,5 @@ export { default as Chips } from './Chips';
 export { default as Pagination } from './Pagination';
 export { default as Combobox } from './Combobox';
 export { default as QtyStepper } from './QtyStepper';
+export { default as TrendChart } from './TrendChart';
 export { ToastProvider, useToast } from './Toast';

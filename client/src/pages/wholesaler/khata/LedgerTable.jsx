@@ -19,6 +19,8 @@ const typeTone = {
   PAYMENT_IN: 'green',
   PAYMENT_OUT: 'green',
   ADJUSTMENT: 'slate',
+  SALE_RETURN: 'amber',
+  PURCHASE_RETURN: 'amber',
 };
 
 export function BalanceLine({ balance, type = 'retailer', className = '' }) {
@@ -60,6 +62,7 @@ export default function LedgerTable({ data, loading, onRowClick }) {
   const link = (e) => {
     if (e.refType === 'Invoice' && e.refId) return `/invoices/${e.refId}`;
     if (e.refType === 'Purchase' && e.refId) return `/purchases/${e.refId}`;
+    if (e.refType === 'ReturnNote' && e.refId) return `/returns/${e.refId}`;
     return null;
   };
 

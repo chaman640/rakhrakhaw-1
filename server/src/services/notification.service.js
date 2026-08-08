@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { NOTIFICATION_TYPES } from '../config/constants.js';
 import { Notification, User, Business, Party } from '../models/index.js';
 
@@ -26,10 +27,48 @@ export async function notifyRetailer(businessId, partyId, payload) {
   return notify({ businessId, userId: party.linkedUserId, ...payload });
 }
 
-export async function listNotifications(userId, { onlyUnread = false, limit = 30 } = {}) {
+export async function listNotifications(userId, { onlyUnread = false, type = 'all', page = 1, limit = 30 } = {}) {
   const filter = { userId };
   if (onlyUnread) filter.isRead = false;
-  return Notification.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
+  if (type && type !== 'all') filter.type = type;
+
+  const skip = (page - 1) * limit;
+  const [rows, total, unread] = await Promise.all([
+    Notification.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Notification.countDocuments(filter),
+    Notification.countDocuments({ userId, isRead: false }),
+  ]);
+
+  return {
+    rows,
+    unread,
+    meta: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+  };
+}
+
+/** Type wise ginti — page ke chips pe dikhane ke liye */
+export async function notificationCounts(userId) {
+  const agg = await Notification.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    { $group: { _id: '$type', n: { $sum: 1 }, unread: { $sum: { $cond: ['$isRead', 0, 1] } } } },
+  ]);
+  const byType = Object.fromEntries(agg.map((a) => [a._id, { total: a.n, unread: a.unread }]));
+  return {
+    all: agg.reduce((s, a) => s + a.n, 0),
+    unread: agg.reduce((s, a) => s + a.unread, 0),
+    byType,
+  };
+}
+
+export async function removeNotification(userId, id) {
+  await Notification.deleteOne({ _id: id, userId });
+  return unreadCount(userId);
+}
+
+/** Padhi hui purani notifications hata do — list saaf rehti hai */
+export async function clearRead(userId) {
+  const res = await Notification.deleteMany({ userId, isRead: true });
+  return { deleted: res.deletedCount || 0 };
 }
 
 export async function unreadCount(userId) {

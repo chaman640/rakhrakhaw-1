@@ -5,9 +5,11 @@ import { validate } from '../middleware/validate.js';
 import { ROLES } from '../config/constants.js';
 import * as khataCtrl from '../controllers/khata.controller.js';
 import * as payCtrl from '../controllers/payment.controller.js';
+import * as returnCtrl from '../controllers/return.controller.js';
 import {
   ledgerQuerySchema, listPaymentsQuerySchema, claimPaymentSchema, idParamSchema,
 } from '../validators/payment.validator.js';
+import { listReturnsQuerySchema } from '../validators/return.validator.js';
 
 /**
  * Retailer ka apna khata + UPI se paisa bhejne ka claim.
@@ -21,5 +23,9 @@ router.get('/khata', validate({ query: ledgerQuerySchema }), khataCtrl.myKhata);
 router.get('/payments', validate({ query: listPaymentsQuerySchema }), payCtrl.myList);
 router.post('/payments', validate({ body: claimPaymentSchema }), payCtrl.myClaim);
 router.get('/payments/:id', validate({ params: idParamSchema }), payCtrl.myDetail);
+
+// Part 11 — retailer apne return dekhe
+router.get('/returns', validate({ query: listReturnsQuerySchema }), returnCtrl.myList);
+router.get('/returns/:id', validate({ params: idParamSchema }), returnCtrl.myDetail);
 
 export default router;

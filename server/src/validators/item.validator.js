@@ -12,6 +12,16 @@ export const createItemSchema = z.object({
   categoryId: objectId.or(z.literal('')).nullable().optional(),
   unit: z.enum(UNITS).optional().default('PCS'),
 
+  // Part 11 — pehchan, warranty, godown
+  brand: z.string().trim().max(60).optional().default(''),
+  modelNo: z.string().trim().max(60).optional().default(''),
+  barcode: z.string().trim().max(60).optional().default(''),
+  warrantyMonths: z.coerce.number().min(0).max(240).optional().default(0),
+  warrantyNote: z.string().trim().max(200).optional().default(''),
+  rack: z.string().trim().max(40).optional().default(''),
+  minOrderQty: z.coerce.number().min(0).max(100000).optional().default(0),
+  mrp: money.optional().default(0),
+
   purchasePrice: money.optional().default(0),
   salePrice: money.optional().default(0),
   wholesalePrice: money.optional().default(0),
@@ -33,6 +43,15 @@ export const updateItemSchema = z.object({
   categoryId: objectId.or(z.literal('')).nullable().optional(),
   unit: z.enum(UNITS).optional(),
 
+  brand: z.string().trim().max(60).optional(),
+  modelNo: z.string().trim().max(60).optional(),
+  barcode: z.string().trim().max(60).optional(),
+  warrantyMonths: z.coerce.number().min(0).max(240).optional(),
+  warrantyNote: z.string().trim().max(200).optional(),
+  rack: z.string().trim().max(40).optional(),
+  minOrderQty: z.coerce.number().min(0).max(100000).optional(),
+  mrp: money.optional(),
+
   purchasePrice: money.optional(),
   salePrice: money.optional(),
   wholesalePrice: money.optional(),
@@ -50,6 +69,7 @@ export const updateItemSchema = z.object({
 export const listItemsQuerySchema = z.object({
   q: z.string().trim().max(100).optional().default(''),
   categoryId: objectId.or(z.literal('')).or(z.literal('none')).optional().default(''),
+  brand: z.string().trim().max(60).optional().default(''),
   stock: z.enum(['all', 'low', 'out', 'in']).optional().default('all'),
   status: z.enum(['active', 'inactive', 'all']).optional().default('active'),
   sort: z.enum(['name', '-name', 'stockQty', '-stockQty', 'createdAt', '-createdAt', 'salePrice', '-salePrice'])

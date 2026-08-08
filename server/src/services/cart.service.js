@@ -84,11 +84,25 @@ export async function getCart(businessId, partyId) {
 async function assertOrderable(businessId, itemId) {
   const item = await Item.findOne({
     _id: itemId, businessId, isActive: true, visibleToRetailers: true,
-  }).select('name stockQty unit').lean();
+  }).select('name stockQty unit minOrderQty').lean();
 
   if (!item) throw ApiError.notFound('Ye item available nahi hai');
   if (item.stockQty <= 0) throw ApiError.badRequest(`${item.name} abhi khatam hai`);
   return item;
+}
+
+/**
+ * Kam se kam order ki rok (Part 11).
+ * Cart ka KUL qty dekhta hai, sirf abhi jodi hui qty nahi — warna 1+1 kar ke
+ * koi bhi limit se bach jata.
+ */
+function assertMinQty(item, totalQty) {
+  const min = Number(item.minOrderQty || 0);
+  if (min > 1 && totalQty < min) {
+    throw ApiError.badRequest(
+      `${item.name} kam se kam ${min} ${item.unit} lena padega`
+    );
+  }
 }
 
 /** Add — pehle se cart me hai to qty jud jati hai */
@@ -102,8 +116,11 @@ export async function addToCart(businessId, partyId, { itemId, qty }) {
   );
 
   const existing = cart.items.find((i) => String(i.itemId) === String(itemId));
-  if (existing) existing.qty = round2(existing.qty + qty);
-  else cart.items.push({ itemId, qty: round2(qty) });
+  const newQty = round2((existing?.qty || 0) + qty);
+  assertMinQty(item, newQty);
+
+  if (existing) existing.qty = newQty;
+  else cart.items.push({ itemId, qty: newQty });
 
   await cart.save();
   return { cart: await getCart(businessId, partyId), message: `${item.name} cart me daal diya` };
@@ -117,7 +134,8 @@ export async function setCartQty(businessId, partyId, itemId, qty) {
   if (qty <= 0) {
     cart.items = cart.items.filter((i) => String(i.itemId) !== String(itemId));
   } else {
-    await assertOrderable(businessId, itemId);
+    const item = await assertOrderable(businessId, itemId);
+    assertMinQty(item, round2(qty));
     const existing = cart.items.find((i) => String(i.itemId) === String(itemId));
     if (existing) existing.qty = round2(qty);
     else cart.items.push({ itemId, qty: round2(qty) });

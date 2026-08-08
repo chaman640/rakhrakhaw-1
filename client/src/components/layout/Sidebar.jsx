@@ -6,11 +6,14 @@ import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { wholesalerNav, retailerNav } from './navConfig';
 
+const STAFF_LABEL = { manager: 'Manager', salesman: 'Salesman', accountant: 'Munshi' };
+
 export default function Sidebar({ open, onClose }) {
-  const { isRetailer, business, user } = useAuth();
+  const { isRetailer, business, user, can, staffRole } = useAuth();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
-  const nav = isRetailer ? retailerNav : wholesalerNav;
+  // Staff ko sirf uske kaam ka menu dikhega
+  const nav = isRetailer ? retailerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
   const badges = { cartCount, newOrders };
 
   return (
@@ -40,7 +43,7 @@ export default function Sidebar({ open, onClose }) {
                 {business?.name || 'Rakh Rakhav'}
               </p>
               <p className="truncate text-xs text-slate-500">
-                {isRetailer ? 'Retailer' : 'Wholesaler'}
+                {isRetailer ? 'Retailer' : (staffRole && staffRole !== 'owner' ? STAFF_LABEL[staffRole] : 'Wholesaler')}
               </p>
             </div>
           </div>

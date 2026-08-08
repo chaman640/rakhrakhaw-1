@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
-import { PARTY_TYPES, LEDGER_TYPES } from '../config/constants.js';
+import { PARTY_TYPES, LEDGER_TYPES, NOTIFICATION_TYPES } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { Party, LedgerEntry, Business, Invoice } from '../models/index.js';
+import { notifyRetailer } from './notification.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -13,6 +14,8 @@ const TYPE_LABEL = {
   PAYMENT_IN: 'Paisa aaya',
   PAYMENT_OUT: 'Paisa diya',
   ADJUSTMENT: 'Adjustment',
+  SALE_RETURN: 'Maal wapas aaya',
+  PURCHASE_RETURN: 'Maal wapas bheja',
 };
 
 /* ------------------------------------------------------------- khata list */
@@ -171,6 +174,35 @@ export async function getMyKhata(businessId, partyId, opts) {
       : null,
     shopName: business?.name,
   };
+}
+
+
+/* --------------------------------------------------- udhaar ki yaad dilana */
+
+/**
+ * "Bhaiya, paisa bhej dijiye" — app ke andar hi.
+ *
+ * SMS nahi, WhatsApp nahi — sirf notification. Retailer app khole to dikh jayega,
+ * aur usi jagah se UPI se paisa bhi bhej sakta hai.
+ */
+export async function sendReminder(businessId, partyId, { message = '' } = {}) {
+  const party = await Party.findOne({ _id: partyId, businessId })
+    .select('name shopName balance linkedUserId').lean();
+  if (!party) throw ApiError.notFound('Party nahi mili');
+  if (party.balance <= 0) throw ApiError.badRequest('Inka hisaab barabar hai, yaad dilane ki zarurat nahi');
+  if (!party.linkedUserId) throw ApiError.badRequest('Ye abhi app pe nahi aaya — phone karna padega');
+
+  const business = await Business.findById(businessId).select('name').lean();
+
+  await notifyRetailer(businessId, partyId, {
+    type: NOTIFICATION_TYPES.PAYMENT_REMINDER,
+    title: `${business?.name || 'Wholesaler'} ne yaad dilaya hai`,
+    body: message || `${round2(party.balance)} baaki hai — bhej dijiye`,
+    link: '/my-khata',
+    data: { balance: round2(party.balance) },
+  });
+
+  return { sent: true, balance: round2(party.balance) };
 }
 
 export { TYPE_LABEL };

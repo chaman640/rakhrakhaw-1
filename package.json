@@ -1,0 +1,18 @@
+{
+  "name": "rakhrakhav",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rakh Rakhav — Wholesaler + Retailer platform (client + server, ek hi URL pe)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "install:all": "npm install --prefix server --include=dev && npm install --prefix client --include=dev",
+    "build": "npm run install:all && npm run build --prefix client && node scripts/check-build.mjs",
+    "start": "node server/src/index.js",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "smoke": "npm run smoke --prefix server",
+    "preview": "npm run build && npm start"
+  }
+}

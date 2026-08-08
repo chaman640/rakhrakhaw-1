@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ORDER_STATUS } from '../config/constants.js';
+import { ORDER_STATUS, NOTIFICATION_TYPES } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
 
@@ -35,5 +35,7 @@ export const idParamSchema = z.object({ id: objectId });
 
 export const notificationQuerySchema = z.object({
   onlyUnread: z.enum(['true', 'false']).optional().default('false'),
+  type: z.enum([...Object.values(NOTIFICATION_TYPES), 'all']).optional().default('all'),
+  page: z.coerce.number().min(1).optional().default(1),
   limit: z.coerce.number().min(1).max(100).optional().default(30),
 });

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import RequireAuth from './RequireAuth';
+import RequirePermission from './RequirePermission';
 import { useAuth } from '@/context/AuthContext';
 
 import Login from '@/pages/auth/Login';
@@ -28,17 +29,20 @@ import { MyBills, MyBillDetail } from '@/pages/retailer/MyBills';
 import Khata from '@/pages/wholesaler/Khata';
 import Payments from '@/pages/wholesaler/Payments';
 import MyKhata from '@/pages/retailer/MyKhata';
+import Dashboard from '@/pages/wholesaler/Dashboard';
+import Reports from '@/pages/wholesaler/Reports';
+import RetailerHome from '@/pages/retailer/Home';
+import Notifications from '@/pages/Notifications';
+import Returns from '@/pages/wholesaler/Returns';
+import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
+import ReturnDetail from '@/pages/wholesaler/returns/ReturnDetail';
 import RetailerProfile from '@/pages/retailer/Profile';
-import ComingSoon from '@/pages/ComingSoon';
-
-// Jo pages abhi nahi bane
-const soon = (title, part, description) => <ComingSoon title={title} part={part} description={description} />;
 
 function HomeRedirect() {
   const { user, loading, isApproved } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'retailer') return <Navigate to={isApproved ? '/shop' : '/pending'} replace />;
+  if (user.role === 'retailer') return <Navigate to={isApproved ? '/home' : '/pending'} replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -68,23 +72,26 @@ export default function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route path="/dashboard" element={soon('Dashboard', 10, 'Aaj ki sale, due, low stock')} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/orders/:id" element={<WholesalerOrderDetail />} />
-        <Route path="/items" element={<Items />} />
-        <Route path="/retailers" element={<Retailers />} />
-        <Route path="/retailers/:id" element={<PartyDetail type="retailer" />} />
-        <Route path="/suppliers" element={<Suppliers />} />
-        <Route path="/suppliers/:id" element={<PartyDetail type="supplier" />} />
-        <Route path="/purchases" element={<Purchases />} />
-        <Route path="/purchases/new" element={<PurchaseForm />} />
-        <Route path="/purchases/:id" element={<PurchaseDetail />} />
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoices/new" element={<InvoiceForm />} />
-        <Route path="/invoices/:id" element={<InvoiceDetail />} />
-        <Route path="/khata" element={<Khata />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/reports" element={soon('Reports', 10, 'Sale aur stock summary')} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/orders" element={<RequirePermission permission="orders"><Orders /></RequirePermission>} />
+        <Route path="/orders/:id" element={<RequirePermission permission="orders"><WholesalerOrderDetail /></RequirePermission>} />
+        <Route path="/items" element={<RequirePermission permission="items"><Items /></RequirePermission>} />
+        <Route path="/retailers" element={<RequirePermission permission="parties"><Retailers /></RequirePermission>} />
+        <Route path="/retailers/:id" element={<RequirePermission permission="parties"><PartyDetail type="retailer" /></RequirePermission>} />
+        <Route path="/suppliers" element={<RequirePermission permission="parties"><Suppliers /></RequirePermission>} />
+        <Route path="/suppliers/:id" element={<RequirePermission permission="parties"><PartyDetail type="supplier" /></RequirePermission>} />
+        <Route path="/purchases" element={<RequirePermission permission="purchases"><Purchases /></RequirePermission>} />
+        <Route path="/purchases/new" element={<RequirePermission permission="purchases"><PurchaseForm /></RequirePermission>} />
+        <Route path="/purchases/:id" element={<RequirePermission permission="purchases"><PurchaseDetail /></RequirePermission>} />
+        <Route path="/invoices" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
+        <Route path="/invoices/new" element={<RequirePermission permission="invoices"><InvoiceForm /></RequirePermission>} />
+        <Route path="/invoices/:id" element={<RequirePermission permission="invoices"><InvoiceDetail /></RequirePermission>} />
+        <Route path="/khata" element={<RequirePermission permission="khata"><Khata /></RequirePermission>} />
+        <Route path="/payments" element={<RequirePermission permission="khata"><Payments /></RequirePermission>} />
+        <Route path="/returns" element={<RequirePermission permission="returns"><Returns /></RequirePermission>} />
+        <Route path="/returns/new" element={<RequirePermission permission="returns"><ReturnForm /></RequirePermission>} />
+        <Route path="/returns/:id" element={<RequirePermission permission="returns"><ReturnDetail /></RequirePermission>} />
+        <Route path="/reports" element={<RequirePermission permission="reports"><Reports /></RequirePermission>} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 
@@ -103,7 +110,24 @@ export default function AppRoutes() {
         <Route path="/my-bills" element={<MyBills />} />
         <Route path="/my-bills/:id" element={<MyBillDetail />} />
         <Route path="/my-khata" element={<MyKhata />} />
-        <Route path="/notifications" element={soon('Notifications', 10)} />
+        <Route path="/home" element={<RetailerHome />} />
+      </Route>
+
+      {/* ---- Dono roles ---- */}
+      {/*
+        Notifications dono ke liye ek hi page hai. Ise role wale group ke ANDAR
+        rakhne se dikkat hoti hai: React Router pehla matching route uthata hai,
+        to retailer wholesaler wale group me phans kar redirect ho jata tha.
+        Isliye alag group, bina roles ke.
+      */}
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
+        <Route path="/notifications" element={<Notifications />} />
       </Route>
 
       {/* Profile pending retailer ko bhi chahiye */}
