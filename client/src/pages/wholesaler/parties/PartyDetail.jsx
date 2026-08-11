@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, Pencil, UserCheck, Ban, Trash2, Phone, MapPin, FileText,
+  Pencil, UserCheck, Ban, Trash2, Phone, MapPin, FileText,
   IndianRupee, ShoppingCart, Tag, LogIn,
 } from 'lucide-react';
 import api from '@/lib/api';
@@ -82,13 +82,6 @@ export default function PartyDetail({ type }) {
 
   return (
     <>
-      <button
-        onClick={() => navigate(isRetailer ? '/retailers' : '/suppliers')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
-      >
-        <ArrowLeft size={16} /> {isRetailer ? 'Saare retailers' : 'Saare suppliers'}
-      </button>
-
       {/* ---- Header ---- */}
       <Card className="mb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -130,7 +123,7 @@ export default function PartyDetail({ type }) {
       </Card>
 
       {/* ---- Stats ---- */}
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={isRetailer ? 'Udhaar baaki' : 'Dena hai'} value={formatMoney(party.balance)}
           icon={IndianRupee} tone={party.balance > 0 ? 'amber' : 'green'}
           sub={party.creditLimit ? `Limit ${formatMoney(party.creditLimit)}` : 'Koi limit nahi'} />

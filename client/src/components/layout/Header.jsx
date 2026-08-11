@@ -1,37 +1,94 @@
 import { useState } from 'react';
-import { Menu, LogOut, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, LogOut, ChevronDown, Store } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import NotificationBell from './NotificationBell';
 
-export default function Header({ onMenuClick, title }) {
-  const { user, logout } = useAuth();
+/**
+ * Peeche jaane ko kuch hai bhi ya nahi.
+ *
+ * React Router har history entry me `idx` rakhta hai — 0 ka matlab hai "ye is
+ * tab ki pehli entry hai", yaani peeche browser ka khali page hai.
+ *
+ * Pehle yahan `location.key === 'default'` dekha tha, par wo galat nikla: login
+ * ke baad ya `<Navigate replace>` chalne ke baad key badal jati hai, jabki
+ * history me peeche kuch hota hi nahi. Us halat me back dabane se user seedha
+ * app se bahar (khali page pe) chala jata tha.
+ */
+function canGoBack() {
+  const idx = window.history.state?.idx;
+  return typeof idx === 'number' ? idx > 0 : window.history.length > 1;
+}
+
+/**
+ * Upar wali patti.
+ *
+ * Pehle yahan baayein taraf teen line wala button tha. Wo ab NEECHE chala gaya
+ * (BottomNav me), aur uski jagah **back** aa gaya — kyunki phone pe sabse zyada
+ * yahi chahiye hota hai: "ek kadam peeche".
+ *
+ * Root page (jo neeche wali patti me hai) pe back nahi dikhta — wahan se peeche
+ * jaane ki koi jagah hai hi nahi. Uski jagah dukaan ka naam dikhta hai.
+ */
+export default function Header({ title, showBack, backTo }) {
+  const { user, business, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:px-6">
-      <button
-        onClick={onMenuClick}
-        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden focus-ring"
-        aria-label="Menu"
-      >
-        <Menu size={20} />
-      </button>
+  /**
+   * Peeche jaana.
+   *
+   * History me kuch ho to seedha peeche. Na ho (link se seedha khola, ya
+   * refresh kiya) to `backTo` pe — jo AppLayout tay karta hai: sub-page se
+   * uski list pe, aur list se ghar (dashboard/home) pe.
+   */
+  const goBack = () => {
+    if (canGoBack()) navigate(-1);
+    else navigate(backTo || '/', { replace: true });
+  };
 
-      <h2 className="flex-1 truncate text-sm font-medium text-slate-700">{title}</h2>
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-slate-200 bg-white px-3 sm:h-16 sm:gap-3 sm:px-4 lg:px-6">
+      {showBack ? (
+        <button
+          onClick={goBack}
+          aria-label="Peeche jayein"
+          // -ml-1 + p-2 = tap ka ghera bada, par dikhne me chipka hua nahi
+          className="-ml-1 shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 active:bg-slate-200 focus-ring"
+        >
+          <ArrowLeft size={20} />
+        </button>
+      ) : (
+        // Root page pe dukaan ki pehchan — mobile pe sidebar dikhti hi nahi,
+        // to user ko pata to chale ki wo kis dukaan me hai
+        <div className="flex min-w-0 shrink-0 items-center gap-2 lg:hidden">
+          {business?.logoUrl ? (
+            <img src={business.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-white">
+              <Store size={16} />
+            </div>
+          )}
+        </div>
+      )}
+
+      <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 sm:text-base">
+        {title || business?.name || 'Rakh Rakhav'}
+      </h2>
 
       <NotificationBell />
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="flex items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2 hover:bg-slate-100 focus-ring"
+          aria-label="Apna account"
+          className="flex items-center gap-1 rounded-lg py-1.5 pl-1.5 pr-1 hover:bg-slate-100 focus-ring sm:gap-2 sm:pr-2"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
             {(user?.name || '?').charAt(0).toUpperCase()}

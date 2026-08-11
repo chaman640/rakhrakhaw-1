@@ -83,7 +83,7 @@ export default function MyOrders() {
         action={<Button icon={Store} variant="secondary" onClick={() => navigate('/shop')}>Catalog</Button>}
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard label="Kul orders" value={summary.total} icon={FileText} tone="brand" />
         <StatCard label="Chal rahe hain" value={summary.chalu} icon={Clock} tone="amber" />
         <StatCard label="Kul keemat" value={formatMoney(summary.amount)} icon={IndianRupee} tone="green" />

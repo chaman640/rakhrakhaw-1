@@ -110,7 +110,7 @@ export default function Purchases() {
         action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>Nayi purchase</Button>}
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Kul purchases" value={stats.totalPurchases} icon={Truck} tone="brand" />
         <StatCard label="Kul kharch" value={formatMoney(stats.totalAmount)} icon={IndianRupee} tone="brand" />
         <StatCard label="Is mahine" value={formatMoney(stats.thisMonthAmount)} icon={Calendar} tone="green"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Info, Undo2 } from 'lucide-react';
+import { Plus, Trash2, Save, Info, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
@@ -201,11 +201,6 @@ export default function ReturnForm() {
 
   return (
     <>
-      <button onClick={() => navigate('/returns')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-        <ArrowLeft size={16} /> Saare returns
-      </button>
-
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">Naya return</h1>

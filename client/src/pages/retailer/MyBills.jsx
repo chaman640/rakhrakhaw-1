@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, ChevronRight, ArrowLeft, Printer, IndianRupee, TriangleAlert } from 'lucide-react';
+import { FileText, ChevronRight, Printer, IndianRupee, TriangleAlert } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
@@ -77,7 +77,7 @@ export function MyBills() {
     <>
       <PageHeader title="Mere bills" subtitle="Wholesaler ke bheje hue saare bill" />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4">
         <StatCard label="Is page ke bills" value={meta.total} icon={FileText} tone="brand" />
         <StatCard label="Is page ka baaki" value={formatMoney(totalDue)} icon={TriangleAlert}
           tone={totalDue > 0 ? 'amber' : 'green'} />
@@ -152,11 +152,7 @@ export function MyBillDetail() {
 
   return (
     <>
-      <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
-        <button onClick={() => navigate('/my-bills')}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-          <ArrowLeft size={16} /> Mere saare bills
-        </button>
+      <div className="no-print mb-4 flex flex-wrap items-center justify-end gap-3">
         <div className="flex gap-2">
           {invoice.dueAmount > 0 && (
             <Button variant="secondary" size="sm" icon={IndianRupee} disabled>

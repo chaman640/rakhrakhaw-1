@@ -223,7 +223,9 @@ export default function Reports() {
               : 'Date range badal kar dekhein.'}
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Badi screen — poori table */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
@@ -269,6 +271,58 @@ export default function Reports() {
               </tfoot>
             </table>
           </div>
+
+          {/*
+            PHONE WALI REPORT.
+
+            Report ke column har report me alag hote hain (server bhejta hai),
+            isliye yahan bhi wahi columns istemaal karke har row ka ek card
+            bana dete hain: pehla column upar naam ki tarah, baaki "naam:
+            ginti" jodi banke neeche. Sabse aakhir me KUL wali patti.
+
+            Pehle ye 640px ki table thi — phone pe aakhri do column, jinme
+            asli ginti hoti hai, dikhte hi nahi the.
+          */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {report.rows.map((r, ri) => (
+              <div key={r._id || r.label || ri} className="px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-slate-900">{cell(r, report.columns[0])}</span>
+                  {r.overLimit && <Badge tone="red">Limit paar</Badge>}
+                </div>
+                <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                  {report.columns.slice(1).map((c, i) => (
+                    <div key={c.key} className="flex gap-1.5">
+                      <dt className="text-slate-400">{c.header}</dt>
+                      <dd className={isNum(c, i + 1) ? 'tabular font-medium text-slate-700' : 'text-slate-700'}>
+                        {cell(r, c)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+
+            <div className="bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {report.totals.label || 'KUL'}
+              </p>
+              <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {report.columns.slice(1).map((c) => (
+                  report.totals[c.key] === undefined ? null : (
+                    <div key={c.key} className="flex gap-1.5">
+                      <dt className="text-slate-400">{c.header}</dt>
+                      <dd className="tabular font-semibold text-slate-900">
+                        {c.money ? formatMoney(report.totals[c.key])
+                          : report.totals[c.key].toLocaleString('en-IN')}
+                      </dd>
+                    </div>
+                  )
+                ))}
+              </dl>
+            </div>
+          </div>
+          </>
         )}
       </Card>
 

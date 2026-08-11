@@ -1026,9 +1026,166 @@ Browser ke print window me "Save as PDF" chunne se saaf PDF milta hai, aur text 
 
 ---
 
+## UI ka niyam — mobile pehle (Part 12)
+
+Dukaandaar ka asli device **phone** hai. Laptop kabhi-kabhi khulta hai. Isliye
+har screen pehle 390px pe theek honi chahiye, uske baad badi screen pe.
+
+### Neeche wali patti (bottom nav)
+
+Phone aur tablet pe char sabse zyada chalne wale kaam angoothe ke neeche fix
+hain, aur paanchve khane me **Menu** (wahi purana teen-line wala button, jo
+pehle upar-baayein kone me tha — jahan ek haath maal me lage hue angootha
+pahunchta hi nahi):
+
+| | Wholesaler | Retailer |
+|---|---|---|
+| 1 | Dashboard | Home |
+| 2 | Orders | Catalog |
+| 3 | Payments | Cart |
+| 4 | Items | My Orders |
+| 5 | **Menu** | **Menu** |
+
+- Ye patti `lg` se chhoti screen pe hi hai (`lg:hidden`) — desktop pe poori
+  sidebar dikhti hai, do jagah ek hi menu dena bekaar hai.
+- Har khaana kam se kam **56px** uncha hai (`min-h-14`).
+- `pb-[env(safe-area-inset-bottom)]` — iPhone ke home wale dande ke peeche
+  na chali jaye.
+- Content ke neeche `pb-20` jagah chhodi hai, warna page ka aakhri button
+  patti ke peeche chhup jata hai.
+- Menu ki daraz `z-[60]` pe hai aur patti `z-40` pe — daraz patti ke UPAR
+  aati hai, warna uske aakhri do item dab jate the.
+
+Kaun se char khane honge, wo `client/src/components/layout/navConfig.js` ke
+`bottomNavFor()` me hai. Staff ko jo permission nahi mili, wo item apne aap
+nikal jata hai aur uski jagah agla item aa jata hai.
+
+### Back button
+
+Upar wali patti me baayein taraf ab **back** hai (pehle wahan teen line thi).
+
+```js
+// Header.jsx
+function canGoBack() {
+  const idx = window.history.state?.idx;
+  return typeof idx === 'number' ? idx > 0 : window.history.length > 1;
+}
+```
+
+`location.key === 'default'` se mat dekhna — login ke baad ya
+`<Navigate replace>` chalne ke baad key badal jati hai jabki history khali
+hoti hai, aur back dabane pe user seedha app se **bahar** (khali page pe)
+chala jata tha.
+
+History khali ho to `backTo` pe jate hain, jo AppLayout tay karta hai:
+
+```
+/invoices/123  ->  /invoices    (apni list pe)
+/invoices      ->  /dashboard   (ghar pe)
+```
+
+Doosri line zaroori hai — pehle yahan hamesha section ka apna rasta jata tha,
+yaani `/settings` pe back dabane se `/settings` hi khulta tha aur kuch hota
+hua dikhta hi nahi tha.
+
+Jo page neeche wali patti me hai, uspe back nahi dikhta (wahan se peeche
+jaane ki jagah hai hi nahi) — uski jagah dukaan ka logo dikhta hai.
+
+### Table phone pe: card ban jati hai
+
+**Ye sabse bada niyam hai.** `<table>` 600px se chhoti nahi hoti aur phone
+390px ka hota hai. Matlab aakhri column — jisme aksar Total ya button hota
+hai — screen se bahar reh jata tha. Dukaandaar ko pata hi nahi chalta ki
+wahan kuch hai.
+
+Asli bug jo isi wajah se mila: **phone pe `/retailers` par `Approve` button
+tha hi nahi.** Naya retailer register karta tha aur phone pe baitha
+wholesaler use approve hi nahi kar pata tha.
+
+Ab `components/ui/Table.jsx` khud dono roop banata hai:
+
+```
+md se badi screen  ->  poori table
+md se chhoti       ->  har row ka apna card
+```
+
+Column ki jagah `mobile` se tay hoti hai (na do to apne aap tay hoti hai):
+
+| `mobile` | kahan aata hai |
+|---|---|
+| `title` | sabse upar mota naam (pehla column) |
+| `badge` | naam ke saamne daayein (`status`/`paymentStatus` apne aap) |
+| `actions` | daayein kone me button (`actions` key ya khali header apne aap) |
+| `select` | sabse baayein checkbox |
+| `meta` | neeche "naam: ginti" jodi (baaki sab) |
+| `block` | neeche poori chaudai me (jaise bharne wala dabba) |
+| `hidden` | phone pe mat dikhao |
+
+Jin page pe apna banaya hua phone wala roop hai, wo `<Table>` ko
+`hidden md:block` me lapet kar rakhte hain.
+
+### DOM me pehle DESKTOP, phir MOBILE
+
+```jsx
+<div className="hidden md:block"> ...table... </div>   {/* pehle */}
+<div className="md:hidden">       ...cards... </div>   {/* baad me */}
+```
+
+Ye order **badalna mat**. Ek hi cheez do baar DOM me hoti hai (ek chhupi
+hui), aur test `.first()` (desktop) ya `.last()` (mobile) se pakadte hain.
+Order palat do to `.first()` chhupe hue element pe chala jata hai aur
+`isVisible()` false de deta hai — 3 purane test isi wajah se toote the.
+
+Naya assertion likhte waqt bhi yaad rakhein: jo cheez dono roop me hai, uspe
+`.first()`/`.last()` lagana padega warna Playwright strict mode error dega.
+
+### Jo table card nahi ban sakti
+
+Bill/credit note ka print wala roop **kaagaz jaisa** dikhna chahiye, isliye
+wo table hi rehti hai. Phone pe wo apne dabbe ke andar side me khiskati hai:
+
+```jsx
+<div className="sheet-scroll overflow-x-auto">
+  <table className="min-w-[600px] ..."> {/* GST on ho to */}
+</div>
+```
+
+`index.css` ke `@media print` me `.sheet-scroll` ka `overflow` aur andar ki
+table ka `min-width` hata diya jata hai — warna kaagaz pe bill kat jata.
+Neeche ek chhoti line bhi likhi hai ki table ko side me khiskana hai, warna
+user samajhta hai ki bas itna hi hai.
+
+### Chhoti cheezein jo phone pe bahut farak karti hain
+
+- **Tap ka ghera 44px**: dikhne me switch 44×24 ka hi hai, par button poora
+  44×44 hai. 24px unchi patti pe har teesri baar ungli chook jati hai.
+- **Stat card do-do karke**: `grid-cols-2 ... lg:grid-cols-4`. Pehle chaar
+  tile poori screen kha jate the aur asli list dekhne ke liye neeche
+  khiskana padta tha. Aadhi chaudai me icon upar chala jata hai aur naam ko
+  do line milti hain.
+- **Button wali line `flex-wrap`**: `flex shrink-0` mat likhna — PurchaseDetail
+  pe teen button ek line me nahi aate the aur `Delete` screen se bahar nikal
+  jata tha.
+- **Form ke item card**: bill/purchase me maal 720px ki table me bharte the.
+  Ek item bharne me teen baar screen side me ghumani padti thi. Ab phone pe
+  har item ka apna card hai (`components/ui/LineItemCard.jsx`), aur har
+  dabbe ke upar uski apni likhaayi hai.
+
+### Ise kaise jaancha jata hai
+
+```bash
+cd client && npm run check   # bina import kiye naam pakadta hai
+```
+
+Vite build ye galti nahi pakadta — wo runtime pe `ReferenceError` banti hai
+aur page safed ho jata hai. `client/scripts/check-imports.mjs` isi liye hai.
+
+Layout ke liye teen viewport pe (360 / 390 / 820) har page ka side-scroll
+aur patti ke peeche chhupa content jaancha jata hai.
+
 ## Aage ke parts
 
-**11 part ban chuke hain.**
+**11 part ban chuke hain. Uske baad UI ko mobile-first kiya gaya (upar "UI ka niyam" dekhein).**
 
 ### Production pe jaane se pehle — ye baaki hai
 

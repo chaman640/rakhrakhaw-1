@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer, XCircle, Share2, ShoppingCart, Undo2 } from 'lucide-react';
+import { Printer, XCircle, Share2, ShoppingCart, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { Card, Button, Badge, Spinner, Modal, Textarea, useToast } from '@/components/ui';
@@ -63,11 +63,6 @@ export default function InvoiceDetail() {
   return (
     <>
       <div className="no-print">
-        <button onClick={() => navigate('/invoices')}
-          className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-          <ArrowLeft size={16} /> Saare bills
-        </button>
-
         <Card className="mb-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

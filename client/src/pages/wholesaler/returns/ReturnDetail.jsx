@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Trash2, Undo2, FileText } from 'lucide-react';
+import { Printer, Trash2, Undo2, FileText } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney, formatDate, formatQty } from '@/lib/format';
 import { Card, Button, Badge, Spinner, ConfirmModal, useToast } from '@/components/ui';
+import { cn } from '@/lib/cn';
 
 const TYPE_LABEL = { SALE_RETURN: 'Maal wapas aaya', PURCHASE_RETURN: 'Maal wapas bheja' };
 const NOTE_LABEL = { SALE_RETURN: 'CREDIT NOTE', PURCHASE_RETURN: 'DEBIT NOTE' };
@@ -58,11 +59,7 @@ export default function ReturnDetail() {
 
   return (
     <>
-      <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
-        <button onClick={() => navigate('/returns')}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-          <ArrowLeft size={16} /> Saare returns
-        </button>
+      <div className="no-print mb-4 flex flex-wrap items-center justify-end gap-3">
         <div className="flex gap-2">
           <Button variant="secondary" icon={Printer} onClick={() => window.print()}>Print</Button>
           <Button variant="danger" icon={Trash2} onClick={() => setConfirmDelete(true)}>Delete</Button>
@@ -114,7 +111,12 @@ export default function ReturnDetail() {
           {gst && party.gstin && <p className="text-xs text-slate-600">GSTIN: {party.gstin}</p>}
         </div>
 
-        <table className="mt-3 w-full text-xs">
+        {/* Phone pe ginti wali table apne dabbe me khiskati hai — warna
+            column ek doosre se chipak jate the. Print pe ye hat jata hai. */}
+        <div className={cn('sheet-scroll mt-3 overflow-x-auto', gst && 'sm:overflow-visible')}>
+        <table className={cn('w-full text-xs [&_td]:pr-2 [&_th]:pr-2',
+          '[&_td:last-child]:pr-0 [&_th:last-child]:pr-0',
+          gst ? 'min-w-[600px]' : 'min-w-[340px]')}>
           <thead>
             <tr className="border-b border-slate-300 text-left">
               <th className="w-8 py-2 font-semibold">#</th>
@@ -149,6 +151,13 @@ export default function ReturnDetail() {
             ))}
           </tbody>
         </table>
+        </div>
+
+        {gst && (
+          <p className="no-print mt-1 text-[10px] text-slate-400 sm:hidden">
+            GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →
+          </p>
+        )}
 
         <div className="mt-4 flex justify-end">
           <dl className="w-full max-w-xs space-y-1.5 text-xs">

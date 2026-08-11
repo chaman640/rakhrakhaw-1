@@ -1,4 +1,5 @@
 import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
+import { cn } from '@/lib/cn';
 
 const TAX_LABEL = { CGST_SGST: 'CGST + SGST', IGST: 'IGST', NONE: '' };
 
@@ -81,8 +82,23 @@ export default function InvoicePrint({ invoice }) {
         </div>
       </div>
 
-      {/* ---- Items ---- */}
-      <table className="mt-4 w-full border-collapse text-xs">
+      {/*
+        ---- Items ----
+
+        Ye bill ka asli roop hai — kaagaz jaisa. Phone 390px ka hota hai aur
+        GST wale bill me 8 column hote hain, to sab ek doosre se chipak jate
+        the ("10 PCS₹10.00" — ginti padhi hi nahi jati thi).
+
+        Isliye table ki apni ek kam se kam chaudai hai aur wo apne dabbe ke
+        andar side me khiskati hai. Baaki bill (dukaan ka naam, kiska bill,
+        hisaab) phone ki chaudai me hi rehta hai — sirf ginti wali table
+        khiskati hai. Chhapte waqt ye dono cheezein hat jati hain (index.css
+        me .sheet-scroll dekho).
+      */}
+      <div className={cn('sheet-scroll mt-4 overflow-x-auto', gst && 'sm:overflow-visible')}>
+      <table className={cn('w-full border-collapse text-xs [&_td]:pr-2 [&_th]:pr-2',
+        '[&_td:last-child]:pr-0 [&_th:last-child]:pr-0',
+        gst ? 'min-w-[600px]' : 'min-w-[340px]')}>
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-2 font-semibold">#</th>
@@ -142,6 +158,15 @@ export default function InvoicePrint({ invoice }) {
           ))}
         </tbody>
       </table>
+      </div>
+
+      {/* Table kat rahi hai ye pata chalna chahiye — warna user samajhta hai
+          ki bas itna hi hai. Kaagaz pe ye line nahi chhapti. */}
+      {gst && (
+        <p className="no-print mt-1 text-[10px] text-slate-400 sm:hidden">
+          GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →
+        </p>
+      )}
 
       {/* ---- Totals ---- */}
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:justify-between">

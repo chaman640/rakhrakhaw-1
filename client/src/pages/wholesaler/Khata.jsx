@@ -60,7 +60,7 @@ export default function Khata() {
         action={<Button icon={Wallet} onClick={() => navigate('/payments')}>Payments</Button>}
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Lena hai (retailers se)" value={formatMoney(summary.receivable || 0)}
           icon={TrendingUp} tone={summary.receivable > 0 ? 'amber' : 'green'}
           sub={`${summary.retailersWithDue || 0} dukaan pe udhaar`} />

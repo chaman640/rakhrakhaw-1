@@ -110,7 +110,7 @@ export default function Orders() {
     <>
       <PageHeader title="Orders" subtitle="Retailers ke bheje hue order" />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Naye order" value={c.PLACED || 0} icon={ShoppingCart}
           tone={c.PLACED ? 'amber' : 'brand'} sub="jinpe kaam shuru nahi hua" />
         <StatCard label="Chal rahe hain" value={stats.open} icon={Clock} tone="brand"

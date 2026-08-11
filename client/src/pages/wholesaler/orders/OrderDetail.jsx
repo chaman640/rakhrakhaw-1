@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Package, Phone, XCircle, CheckCircle2, Pencil, Save, X,
+  Package, Phone, XCircle, CheckCircle2, Pencil, Save, X,
   TriangleAlert, FileText, Printer, Store,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney, formatQty, formatDateTime, formatPhone } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Spinner, ConfirmModal, Modal, Textarea,
-  QtyStepper, useToast,
+  QtyStepper, ReadLineItem, ReadField, useToast,
 } from '@/components/ui';
 import { STATUS_TONE, STATUS_LABEL } from '../Orders';
 import { cn } from '@/lib/cn';
@@ -86,11 +86,6 @@ export default function OrderDetail() {
 
   return (
     <>
-      <button onClick={() => navigate('/orders')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 no-print">
-        <ArrowLeft size={16} /> Saare orders
-      </button>
-
       {/* ---- Header ---- */}
       <Card className="mb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -230,7 +225,8 @@ export default function OrderDetail() {
             <p className="mt-0.5 text-sm text-slate-500">Har item ke saamne abhi ka stock bhi dikha hai</p>
           </div>
 
-          <div className="overflow-x-auto border-t border-slate-200">
+          {/* Badi screen — table */}
+          <div className="hidden overflow-x-auto border-t border-slate-200 md:block">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -268,6 +264,25 @@ export default function OrderDetail() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Phone — har item ki apni line */}
+          <div className="divide-y divide-slate-100 border-t border-slate-200 md:hidden">
+            {order.items.map((it, i) => (
+              <ReadLineItem key={i} title={it.name} total={formatMoney(it.amount)}>
+                <ReadField label="Mangi" value={formatQty(it.qty, it.unit)} />
+                <ReadField label="Rate" value={formatMoney(it.rate)} />
+                {it.itemGone ? (
+                  <div className="flex gap-1.5">
+                    <dt className="text-slate-400">Stock</dt>
+                    <dd><Badge tone="red">Item hat gaya</Badge></dd>
+                  </div>
+                ) : (
+                  <ReadField label="Abhi stock" value={formatQty(it.currentStock, it.unit)}
+                    tone={it.enough ? undefined : 'red'} />
+                )}
+              </ReadLineItem>
+            ))}
           </div>
 
           <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">

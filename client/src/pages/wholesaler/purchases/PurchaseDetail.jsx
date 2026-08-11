@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Trash2, Truck, Package, Printer, Undo2 } from 'lucide-react';
+import { Trash2, Truck, Package, Printer, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
 import {
-  Card, CardHeader, Button, Badge, Spinner, ConfirmModal, useToast,
+  Card, CardHeader, Button, Badge, Spinner, ConfirmModal,
+  ReadLineItem, ReadField, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -58,11 +59,6 @@ export default function PurchaseDetail() {
 
   return (
     <>
-      <button onClick={() => navigate('/purchases')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 no-print">
-        <ArrowLeft size={16} /> Saari purchases
-      </button>
-
       <Card className="mb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -84,7 +80,9 @@ export default function PurchaseDetail() {
             )}
           </div>
 
-          <div className="flex shrink-0 gap-2 no-print">
+          {/* Phone pe teen button ek line me nahi aate — Delete bahar nikal
+              jata tha. Isliye chhoti screen pe wrap, badi pe pehle jaisa. */}
+          <div className="flex flex-wrap gap-2 no-print sm:shrink-0">
             <Button variant="secondary" size="sm" icon={Undo2}
               onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${p._id}`)}>
               Maal wapas bheja
@@ -100,7 +98,8 @@ export default function PurchaseDetail() {
           <div className="px-5 py-4">
             <h3 className="text-base font-semibold text-slate-900">Maal</h3>
           </div>
-          <div className="overflow-x-auto border-t border-slate-200">
+          {/* Badi screen — table */}
+          <div className="hidden overflow-x-auto border-t border-slate-200 md:block">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -132,6 +131,26 @@ export default function PurchaseDetail() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Phone — har item ki apni line */}
+          <div className="divide-y divide-slate-100 border-t border-slate-200 md:hidden">
+            {p.items.map((it, i) => (
+              <ReadLineItem
+                key={i}
+                title={it.name}
+                total={formatMoney(it.total)}
+                sub={it.discount > 0 && (
+                  <p className="text-xs text-emerald-700">Discount {formatMoney(it.discount)}</p>
+                )}
+              >
+                <ReadField label="Qty" value={formatQty(it.qty, it.unit)} />
+                <ReadField label="Rate" value={formatMoney(it.rate)} />
+                {gstEnabled && (
+                  <ReadField label="GST" value={`${it.gstRate}% · ${formatMoney(it.taxAmount)}`} />
+                )}
+              </ReadLineItem>
+            ))}
           </div>
 
           {p.notes && (

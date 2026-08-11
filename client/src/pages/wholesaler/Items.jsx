@@ -258,7 +258,7 @@ export default function Items() {
       />
 
       {/* ---- Stats ---- */}
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Kul items" value={stats.totalItems} icon={Package} tone="brand" />
         <StatCard label="Stock ki keemat" value={formatMoney(stats.stockValue)} icon={IndianRupee}
           tone="green" sub="Purchase price se" />

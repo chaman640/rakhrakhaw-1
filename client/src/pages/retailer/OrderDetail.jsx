@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Package, XCircle, Store, Clock, Receipt } from 'lucide-react';
+import { CheckCircle2, Package, XCircle, Store, Clock, Receipt } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty, formatDateTime } from '@/lib/format';
@@ -64,11 +64,6 @@ export default function OrderDetail() {
 
   return (
     <>
-      <button onClick={() => navigate('/my-orders')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-        <ArrowLeft size={16} /> Mere saare orders
-      </button>
-
       {isNew && (
         <Card className="mb-5 border-emerald-200 bg-emerald-50">
           <div className="flex items-start gap-3">

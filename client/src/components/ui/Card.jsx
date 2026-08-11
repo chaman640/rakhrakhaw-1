@@ -41,16 +41,26 @@ export function StatCard({ label, value, sub, icon: Icon, tone = 'brand' }) {
     amber: 'bg-amber-50 text-amber-700',
     red: 'bg-red-50 text-red-700',
   };
+  /*
+    Phone pe ye tile do-do karke ek line me aate hain (aadhi chaudai). Pehle
+    ye poori chaudai lete the — Khata kholo to chaar tile hi poori screen kha
+    jate the aur asli list dekhne ke liye neeche khiskana padta tha.
+
+    Aadhi chaudai me icon aur likhaayi ek line me nahi aate, isliye phone pe
+    icon upar chala jata hai aur naam ko do line milti hain (truncate nahi,
+    warna "Lena hai (retailers se)" kat kar "Lena hai (re..." reh jata tha).
+  */
   return (
-    <Card className="flex items-center gap-4">
+    <Card className="flex flex-col items-start gap-2 p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5">
       {Icon && (
-        <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-lg', tones[tone])}>
-          <Icon size={20} />
+        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-11 sm:w-11', tones[tone])}>
+          <Icon size={18} className="sm:hidden" />
+          <Icon size={20} className="hidden sm:block" />
         </div>
       )}
-      <div className="min-w-0">
-        <p className="truncate text-sm text-slate-500">{label}</p>
-        <p className="tabular mt-0.5 text-xl font-semibold text-slate-900">{value}</p>
+      <div className="min-w-0 w-full">
+        <p className="text-sm leading-snug text-slate-500 sm:truncate">{label}</p>
+        <p className="tabular mt-0.5 truncate text-lg font-semibold text-slate-900 sm:text-xl">{value}</p>
         {sub && <p className="mt-0.5 truncate text-xs text-slate-400">{sub}</p>}
       </div>
     </Card>

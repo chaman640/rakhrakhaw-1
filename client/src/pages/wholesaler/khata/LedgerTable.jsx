@@ -69,15 +69,19 @@ export default function LedgerTable({ data, loading, onRowClick }) {
     return null;
   };
 
+  const notice = truncated && (
+    <p className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+      Kul {total} lena-dena hain — yahan sirf aakhri {shown} dikha rahe hain.
+      Purana dekhna ho to upar se date lagayein. Neeche wala &ldquo;Baaki&rdquo; poora
+      hisaab hi hai.
+    </p>
+  );
+
   return (
-    <div className="overflow-x-auto">
-      {truncated && (
-        <p className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-          Kul {total} lena-dena hain — yahan sirf aakhri {shown} dikha rahe hain.
-          Purana dekhna ho to upar se date lagayein. Neeche wala &ldquo;Baaki&rdquo; poora
-          hisaab hi hai.
-        </p>
-      )}
+    <>
+    {/* Badi screen — poori table */}
+    <div className="hidden overflow-x-auto md:block">
+      {notice}
       <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
@@ -142,5 +146,80 @@ export default function LedgerTable({ data, loading, onRowClick }) {
         </tfoot>
       </table>
     </div>
+
+    {/*
+      PHONE WALA KHATA.
+
+      Table me paanch column the (Date, Kya hua, Badha, Ghata, Baaki) — 640px.
+      Phone 390px ka hai, to "Baaki" hamesha screen se bahar rehta tha. Aur
+      khata me dukaandaar sabse pehle wahi dekhta hai: "ab kitna baaki hai".
+
+      Isliye phone pe har lena-dena apni ek line hai: kya hua aur kitna ka
+      badla upar, aur uske saamne us waqt ka baaki. Neeche kul ka jod alag
+      patti me.
+    */}
+    <div className="md:hidden">
+      {notice}
+
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-2.5">
+        <span className="text-xs font-medium text-slate-500">Shuruaat ka hisaab</span>
+        <span className="tabular text-xs font-medium text-slate-600">{formatMoney(opening)}</span>
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {entries.map((e) => {
+          const to = link(e);
+          return (
+            <div key={e._id} className="px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={typeTone[e.type] || 'slate'}>{e.typeLabel || e.type}</Badge>
+                    {e.refNo && (
+                      to && onRowClick ? (
+                        <button onClick={() => onRowClick(to)}
+                          className="text-xs font-medium text-brand-700 underline-offset-2 hover:underline">
+                          {e.refNo}
+                        </button>
+                      ) : <span className="text-xs text-slate-500">{e.refNo}</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">{formatDate(e.date)}</p>
+                  {e.note && <p className="mt-0.5 text-xs text-slate-400">{e.note}</p>}
+                </div>
+
+                <div className="shrink-0 text-right">
+                  {e.debit > 0 && (
+                    <p className="tabular text-sm font-medium text-slate-800">+ {formatMoney(e.debit)}</p>
+                  )}
+                  {e.credit > 0 && (
+                    <p className="tabular text-sm font-medium text-emerald-700">− {formatMoney(e.credit)}</p>
+                  )}
+                  <p className="tabular mt-0.5 text-xs text-slate-400">
+                    baaki {formatMoney(e.balanceAfter)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="border-t-2 border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="flex items-center justify-between text-xs">
+          <span className="uppercase tracking-wide text-slate-500">Kul badha</span>
+          <span className="tabular font-medium text-slate-900">{formatMoney(totalDebit)}</span>
+        </div>
+        <div className="mt-1 flex items-center justify-between text-xs">
+          <span className="uppercase tracking-wide text-slate-500">Kul ghata</span>
+          <span className="tabular font-medium text-emerald-700">{formatMoney(totalCredit)}</span>
+        </div>
+        <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
+          <span className="text-sm font-semibold text-slate-900">Baaki</span>
+          <span className="tabular text-base font-semibold text-slate-900">{formatMoney(data.closing)}</span>
+        </div>
+      </div>
+    </div>
+    </>
   );
 }

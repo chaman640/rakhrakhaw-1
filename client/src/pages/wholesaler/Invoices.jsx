@@ -99,7 +99,7 @@ export default function Invoices() {
         action={<Button icon={Plus} onClick={() => navigate('/invoices/new')}>Naya bill</Button>}
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Kul bills" value={stats.totalInvoices || 0} icon={FileText} tone="brand" />
         <StatCard label="Kul sale" value={formatMoney(stats.totalAmount || 0)} icon={IndianRupee} tone="green" />
         <StatCard label="Is mahine" value={formatMoney(stats.monthAmount || 0)} icon={Calendar} tone="brand"

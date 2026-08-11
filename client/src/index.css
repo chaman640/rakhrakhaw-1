@@ -64,4 +64,13 @@ body {
   table { page-break-inside: auto; }
   tr { page-break-inside: avoid; page-break-after: auto; }
   thead { display: table-header-group; }
+
+  /*
+    Bill ki table phone pe side me khiskati hai (overflow-x-auto + min-width).
+    Chhapte waqt wo dono cheezein nuksaan karti hain — kagaz pe khiskana hota
+    hi nahi, aur min-width se table kagaz se chaudi ho jati hai. Isliye print
+    pe donon hata dete hain.
+  */
+  .sheet-scroll { overflow: visible !important; }
+  .sheet-scroll > table { min-width: 0 !important; }
 }

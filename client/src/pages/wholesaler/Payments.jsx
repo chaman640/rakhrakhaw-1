@@ -201,7 +201,7 @@ export default function Payments() {
         action={<Button icon={Plus} onClick={() => setFormOpen(true)}>Paisa entry</Button>}
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Aaj aaya" value={formatMoney(stats.todayAmount || 0)} icon={IndianRupee}
           tone="green" sub={`${stats.todayCount || 0} payment`} />
         <StatCard label="Is mahine" value={formatMoney(stats.monthAmount || 0)} icon={Calendar}

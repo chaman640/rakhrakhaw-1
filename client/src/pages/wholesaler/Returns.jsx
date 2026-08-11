@@ -102,7 +102,7 @@ export default function Returns() {
         action={<Button icon={Plus} onClick={() => navigate('/returns/new')}>Naya return</Button>}
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Wapas aaya (kul)" value={formatMoney(stats.saleAmount || 0)}
           icon={ArrowDownLeft} tone="amber" sub={`${stats.saleCount || 0} credit note`} />
         <StatCard label="Is mahine wapas aaya" value={formatMoney(stats.saleMonthAmount || 0)}

@@ -152,7 +152,7 @@ export default function PartyList({ type }) {
         }
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={isRetailer ? 'Kul retailers' : 'Kul suppliers'} value={stats.total}
           icon={isRetailer ? Users : Truck} tone="brand" />
         {isRetailer && <StatCard label="Approval baaki" value={stats.pending} icon={Clock} tone="amber" />}
@@ -206,33 +206,59 @@ export default function PartyList({ type }) {
               <Table columns={columns} rows={rows} loading={loading} />
             </div>
 
+            {/*
+              Phone wala roop.
+
+              Pehle yahan poora card ek hi <button> tha aur usme Approve/Block
+              tha hi nahi — yaani phone pe baitha wholesaler naye retailer ko
+              approve hi nahi kar pata tha (button sirf badi screen wali table
+              me tha, jo phone pe chhupi rehti hai). Ab card do hisso me hai:
+              upar wala hissa kholne ke liye, neeche kaam ke button.
+            */}
             <div className="md:hidden">
               {loading ? (
                 <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
               ) : rows.map((r) => (
-                <button
-                  key={r._id}
-                  onClick={() => navigate(`${basePath}/${r._id}`)}
-                  className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700">
-                    {(r.shopName || r.name).charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-slate-900">{r.shopName || r.name}</p>
-                    <p className="truncate text-xs text-slate-500">{formatPhone(r.phone)}</p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      {isRetailer && <Badge tone={statusTone[r.status]}>{statusLabel[r.status]}</Badge>}
-                      {r.balance > 0 && <span className="tabular text-xs text-amber-700">{formatMoney(r.balance)}</span>}
-                      {r.customRateCount > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-brand-700">
-                          <Tag size={11} /> {r.customRateCount}
-                        </span>
+                <div key={r._id} className="border-b border-slate-100 last:border-0">
+                  <button
+                    onClick={() => navigate(`${basePath}/${r._id}`)}
+                    className="flex w-full items-center gap-3 p-4 text-left"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700">
+                      {(r.shopName || r.name).charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-slate-900">{r.shopName || r.name}</p>
+                      <p className="truncate text-xs text-slate-500">{formatPhone(r.phone)}</p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        {isRetailer && <Badge tone={statusTone[r.status]}>{statusLabel[r.status]}</Badge>}
+                        {r.balance > 0 && <span className="tabular text-xs text-amber-700">{formatMoney(r.balance)}</span>}
+                        {r.customRateCount > 0 && (
+                          <span className="flex items-center gap-1 text-xs text-brand-700">
+                            <Tag size={11} /> {r.customRateCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="shrink-0 text-slate-300" />
+                  </button>
+
+                  {isRetailer && (
+                    <div className="flex justify-end gap-2 px-4 pb-3">
+                      {r.status !== 'active' ? (
+                        <Button size="sm" variant="success" icon={UserCheck}
+                          onClick={() => changeStatus(r, 'active')}>
+                          Approve
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="secondary" icon={Ban}
+                          onClick={() => changeStatus(r, 'blocked')}>
+                          Block
+                        </Button>
                       )}
                     </div>
-                  </div>
-                  <ChevronRight size={18} className="shrink-0 text-slate-300" />
-                </button>
+                  )}
+                </div>
               ))}
             </div>
 

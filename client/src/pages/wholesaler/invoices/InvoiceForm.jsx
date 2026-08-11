@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Info, FileText } from 'lucide-react';
+import { Plus, Trash2, Save, Info, FileText } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Textarea, Select,
-  Combobox, Badge, useToast,
+  Combobox, Badge, LineItemCard, NumField, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -189,11 +189,6 @@ export default function InvoiceForm() {
 
   return (
     <>
-      <button onClick={() => navigate(orderId ? `/orders/${orderId}` : '/invoices')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-        <ArrowLeft size={16} /> {orderId ? 'Order pe wapas' : 'Saare bills'}
-      </button>
-
       <PageHeader
         title="Naya bill"
         subtitle={[preview && `Number: ${preview}`, orderNo && `Order ${orderNo} ke against`]
@@ -235,7 +230,8 @@ export default function InvoiceForm() {
               <Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>Row</Button>
             </div>
 
-            <div className="overflow-x-auto border-t border-slate-200">
+            {/* Badi screen — ek nazar me poori table */}
+            <div className="hidden overflow-x-auto border-t border-slate-200 md:block">
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -311,6 +307,52 @@ export default function InvoiceForm() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Phone — har item ka apna card, kahin khiskana nahi padta */}
+            <div className="divide-y divide-slate-100 border-t border-slate-200 md:hidden">
+              {rows.map((r, idx) => {
+                const qty = Number(r.qty || 0);
+                const taxable = round2(qty * Number(r.rate || 0) - Number(r.discount || 0));
+                const tax = gstEnabled ? round2((taxable * Number(r.gstRate || 0)) / 100) : 0;
+                const short = r.itemId && qty > r.stockQty;
+                return (
+                  <LineItemCard
+                    key={r.key}
+                    index={idx}
+                    onRemove={() => removeRow(r.key)}
+                    total={r.itemId ? formatMoney(taxable + tax) : '—'}
+                    picker={(
+                      <Combobox
+                        placeholder="Item dhundhein" display={r.name} value={r.itemId}
+                        onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
+                        emptyText="Koi item nahi mila"
+                      />
+                    )}
+                    note={r.itemId && (
+                      <p className={cn('mt-1.5 text-xs', short ? 'font-medium text-red-600' : 'text-slate-400')}>
+                        Stock: {formatQty(r.stockQty, r.unit)}
+                        {short && ' — itna hai hi nahi'}
+                      </p>
+                    )}
+                  >
+                    <NumField label="Qty" srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
+                      invalid={short} value={r.qty}
+                      onChange={(e) => setRow(r.key, { qty: e.target.value })} />
+                    <NumField label="Rate" srLabel={`Item ${idx + 1} rate`} step="0.01" min="0"
+                      value={r.rate}
+                      onChange={(e) => setRow(r.key, { rate: e.target.value })} />
+                    <NumField label="Discount" srLabel={`Item ${idx + 1} discount`} step="0.01" min="0"
+                      value={r.discount}
+                      onChange={(e) => setRow(r.key, { discount: e.target.value })} />
+                    {gstEnabled && (
+                      <NumField label="GST %" srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
+                        value={r.gstRate}
+                        onChange={(e) => setRow(r.key, { gstRate: e.target.value })} />
+                    )}
+                  </LineItemCard>
+                );
+              })}
             </div>
 
             <div className="border-t border-slate-200 px-5 py-3">

@@ -103,6 +103,9 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
       header: `${partyName} ka rate`,
       align: 'right',
       width: 170,
+      // Phone pe ye bharne wala dabba apni poori line leta hai — chhoti jodi
+      // ke beech me ghusa hua input dabana mushkil hota hai
+      mobile: 'block',
       render: (r) => (
         <input
           type="number"
@@ -117,7 +120,9 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
           aria-label={`${r.name} ka rate`}
           className={cn(
-            'tabular h-9 w-32 rounded-lg border px-2 text-right text-sm focus-ring',
+            // Phone pe poori chaudai aur 44px uncha (ungli ke liye),
+            // badi screen pe pehle jaisa chhota dabba
+            'tabular h-11 w-full rounded-lg border px-2 text-right text-sm focus-ring md:h-9 md:w-32',
             r.customRate !== null ? 'border-brand-400 bg-brand-50 font-medium' : 'border-slate-300'
           )}
         />
@@ -127,6 +132,8 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
       key: 'source',
       header: 'Lagega',
       align: 'right',
+      // Jo rate asal me lagega — phone pe wahi sabse pehle dikhna chahiye
+      mobile: 'badge',
       render: (r) => (
         <div className="flex flex-col items-end gap-1">
           <span className="tabular font-medium text-slate-900">{formatMoney(r.rate)}</span>
