@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
+  History,
 } from 'lucide-react';
 
 // Wholesaler ka poora menu (sidebar / hamburger).
@@ -15,9 +16,14 @@ export const wholesalerNav = [
   { to: '/purchases', label: 'Purchases', icon: Truck, part: 5, perm: 'purchases' },
   { to: '/invoices', label: 'Invoices', icon: FileText, part: 8, perm: 'invoices' },
   { to: '/returns', label: 'Return', icon: Undo2, part: 11, perm: 'returns' },
-  { to: '/khata', label: 'Khata', icon: BookOpen, part: 9, perm: 'khata' },
-  { to: '/payments', label: 'Payments', icon: Wallet, part: 9, perm: 'khata' },
+  { to: '/khata', label: 'Khata', icon: BookOpen, part: 9, perm: 'khata:view' },
+  // Payments PAISA ENTRY ka page hai, sirf dekhne ka nahi. Isliye ismein
+  // `khata:create` chahiye — warna salesman ko (jise khata sirf dekhna hai)
+  // ye menu dikh jata tha aur page khul bhi jata tha.
+  { to: '/payments', label: 'Payments', icon: Wallet, part: 9, perm: 'khata:create' },
   { to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports' },
+  // "Kisne kya kiya" — sirf unhe jo staff dekh sakte hain
+  { to: '/activity', label: 'Kaam ka record', icon: History, part: 12, perm: 'staff' },
   { to: '/settings', label: 'Settings', icon: Settings, part: 2 },
 ];
 

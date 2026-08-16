@@ -41,6 +41,22 @@ const partySchema = new mongoose.Schema(
     inviteUsedAt: { type: Date, default: null },
     linkedUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
+    /**
+     * Ye retailer kiske naam hai.
+     *
+     * Jis salesman ko "sirf apna kaam" wali hadd lagi hai, use wahi retailer
+     * dikhte hain jo uske naam hain (ya jo usne khud jode). Isi ek field se
+     * uske order, bill aur khata bhi tay hote hain — kyunki wo sab retailer
+     * ke saath chalte hain.
+     *
+     * Khali chhod dein to retailer "sabka" hai — sirf hadd wale staff ko wo
+     * nahi dikhega, baaki sabko dikhega.
+     */
+    assignedToUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+
+    // Kisne jodha — jab tak kisi ke naam na ho, isi se maalikana tay hota hai
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+
     notes: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
   },
@@ -50,5 +66,8 @@ const partySchema = new mongoose.Schema(
 // Ek business me ek phone number ek hi baar (retailer aur supplier alag alag)
 partySchema.index({ businessId: 1, type: 1, phone: 1 }, { unique: true });
 partySchema.index({ businessId: 1, name: 1 });
+// "Mere retailer" har list pe nikalte hain — isliye ye do sath me
+partySchema.index({ businessId: 1, assignedToUserId: 1 });
+partySchema.index({ businessId: 1, createdBy: 1 });
 
 export default mongoose.model('Party', partySchema);

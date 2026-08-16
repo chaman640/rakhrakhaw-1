@@ -1,38 +1,62 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok, created } from '../utils/response.js';
 import * as service from '../services/payment.service.js';
+import { logAction } from '../services/audit.service.js';
 
 /* --------------------------------------------------------- wholesaler ka side */
 
 export const list = asyncHandler(async (req, res) => {
-  const { payments, meta } = await service.listPayments(req.businessId, req.query);
+  const { payments, meta } = await service.listPayments(req.businessId, req.query, req.user);
   return res.json({ success: true, message: 'OK', data: payments, meta });
 });
 
 export const stats = asyncHandler(async (req, res) =>
-  ok(res, await service.getStats(req.businessId)));
+  ok(res, await service.getStats(req.businessId, req.user)));
 
 export const detail = asyncHandler(async (req, res) =>
-  ok(res, await service.getPayment(req.businessId, req.params.id)));
+  ok(res, await service.getPayment(req.businessId, req.params.id, { viewer: req.user })));
 
 export const create = asyncHandler(async (req, res) => {
   const { payment, advance } = await service.createPayment(req.businessId, req.body, req.user._id);
   const extra = advance > 0 ? ` — ₹${advance} advance jama hai` : '';
+
+  await logAction(req, {
+    action: 'payment.create',
+    entityType: 'Payment', entityId: payment._id, entityLabel: payment.paymentNo,
+    summary: `${payment.paymentNo} — ₹${payment.amount} ${payment.direction === 'OUT' ? 'diya' : 'liya'} (${payment.mode})`,
+  });
+
   return created(res, { ...payment, advance }, `${payment.paymentNo} entry ho gaya${extra}`);
 });
 
 export const confirm = asyncHandler(async (req, res) => {
-  const payment = await service.confirmPayment(req.businessId, req.params.id, req.user._id);
+  const payment = await service.confirmPayment(req.businessId, req.params.id, req.user._id, req.user);
+  await logAction(req, {
+    action: 'payment.confirm',
+    entityType: 'Payment', entityId: payment._id, entityLabel: payment.paymentNo,
+    summary: `${payment.paymentNo} confirm kiya — ₹${payment.amount} khate me laga`,
+  });
   return ok(res, payment, `${payment.paymentNo} confirm ho gaya — khate me lag gaya`);
 });
 
 export const reject = asyncHandler(async (req, res) => {
-  const payment = await service.rejectPayment(req.businessId, req.params.id, req.body, req.user._id);
+  const payment = await service.rejectPayment(req.businessId, req.params.id, req.body, req.user._id, req.user);
+  await logAction(req, {
+    action: 'payment.reject',
+    entityType: 'Payment', entityId: payment._id, entityLabel: payment.paymentNo,
+    summary: `${payment.paymentNo} reject kiya${req.body?.reason ? ` — ${req.body.reason}` : ''}`,
+  });
   return ok(res, payment, `${payment.paymentNo} reject kar diya`);
 });
 
 export const remove = asyncHandler(async (req, res) => {
-  const result = await service.deletePayment(req.businessId, req.params.id, req.user._id);
+  const result = await service.deletePayment(req.businessId, req.params.id, req.user._id, req.user);
+  // Paisa mitana — ye wo kaam hai jiska sawal sabse zyada poochha jata hai
+  await logAction(req, {
+    action: 'payment.delete',
+    entityType: 'Payment', entityId: req.params.id, entityLabel: result.paymentNo || '',
+    summary: `${result.paymentNo || 'Payment'} mitaya${result.amount ? ` — ₹${result.amount}` : ''}`,
+  });
   return ok(res, result, result.message);
 });
 

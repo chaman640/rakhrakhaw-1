@@ -5,6 +5,7 @@ import {
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { Order, Cart, Item, Party, Business, Counter } from '../models/index.js';
+import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
 import { resolveRates } from './rate.service.js';
 import { getCart, clearCart } from './cart.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
@@ -104,6 +105,8 @@ export async function getOrder(businessId, id, { partyId = null } = {}) {
   };
 }
 
+// Ye RETAILER ke apne app ke liye hai — usme `partyId` pehle se lag jata hai,
+// isliye staff wali hadd yahan lagti hi nahi
 export async function listOrders(businessId, q, { partyId = null } = {}) {
   const filter = { businessId };
   if (partyId) filter.partyId = partyId;
@@ -175,8 +178,17 @@ export async function myOrderSummary(businessId, partyId) {
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Order list ke saath har status ka count — chips pe dikhane ke liye */
-export async function listOrdersForWholesaler(businessId, q) {
-  const filter = { businessId };
+/** Hadd wale staff ke liye: ye order iske retailer ka hai bhi ya nahi */
+async function assertCanTouch(businessId, id, viewer) {
+  if (!isScoped(viewer)) return;
+  const doc = await Order.findOne({ _id: id, businessId }).select('partyId').lean();
+  if (!(await canSeeDoc(doc, businessId, viewer))) {
+    throw ApiError.notFound('Order nahi mila');
+  }
+}
+
+export async function listOrdersForWholesaler(businessId, q, viewer = null) {
+  let filter = { businessId };
 
   if (q.status === 'open') filter.status = { $in: [ORDER_STATUS.PLACED, ORDER_STATUS.PACKED, ORDER_STATUS.READY] };
   else if (q.status !== 'all') filter.status = q.status;
@@ -195,6 +207,10 @@ export async function listOrdersForWholesaler(businessId, q) {
       .select('_id').lean();
     filter.$or = [{ orderNo: rx }, { partyId: { $in: parties.map((p) => p._id) } }];
   }
+
+  // Order kisi ka apna nahi hota — wo us RETAILER ka hai jisne bheja. Isliye
+  // hadd bhi retailer se hi lagti hai.
+  filter = await scopeByParty(filter, businessId, viewer);
 
   const skip = (q.page - 1) * q.limit;
   const [orders, total] = await Promise.all([
@@ -216,19 +232,24 @@ export async function listOrdersForWholesaler(businessId, q) {
   };
 }
 
-export async function getOrderStats(businessId) {
+export async function getOrderStats(businessId, viewer = null) {
   const bid = new mongoose.Types.ObjectId(businessId);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
+  // Upar ki ginti aur neeche ki list ek jaisi honi chahiye
+  const mine = isScoped(viewer)
+    ? { partyId: { $in: toObjectIds(await ownPartyIds(businessId, viewer)) } }
+    : {};
+
   const [byStatus, [today]] = await Promise.all([
     Order.aggregate([
-      { $match: { businessId: bid } },
+      { $match: { businessId: bid, ...mine } },
       { $group: { _id: '$status', n: { $sum: 1 }, amount: { $sum: '$itemsTotal' } } },
     ]),
     Order.aggregate([
-      { $match: { businessId: bid, createdAt: { $gte: todayStart } } },
+      { $match: { businessId: bid, ...mine, createdAt: { $gte: todayStart } } },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$itemsTotal' } } },
     ]),
   ]);
@@ -250,8 +271,13 @@ export async function getOrderStats(businessId) {
 }
 
 /** Detail ke saath har line ka ABHI ka stock — wholesaler ko pata rahe kya bhej sakta hai */
-export async function getOrderForWholesaler(businessId, id) {
+export async function getOrderForWholesaler(businessId, id, viewer = null) {
   const order = await getOrder(businessId, id);
+
+  // id URL me daal kar doosre ka order na khul jaye
+  if (!(await canSeeDoc(order, businessId, viewer))) {
+    throw ApiError.notFound('Order nahi mila');
+  }
 
   const items = await Item.find({ _id: { $in: order.items.map((i) => i.itemId) }, businessId })
     .select('stockQty unit name').lean();
@@ -283,7 +309,8 @@ const STATUS_MESSAGE = {
 };
 
 /** Status aage badhana — sirf allowed transition */
-export async function updateStatus(businessId, id, { status, note }, userId) {
+export async function updateStatus(businessId, id, { status, note }, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
   const order = await Order.findOne({ _id: id, businessId });
   if (!order) throw ApiError.notFound('Order nahi mila');
 
@@ -315,7 +342,8 @@ export async function updateStatus(businessId, id, { status, note }, userId) {
 }
 
 /** Wholesaler kabhi bhi cancel kar sakta hai — delivered ke alawa */
-export async function cancelOrder(businessId, id, { reason }, userId) {
+export async function cancelOrder(businessId, id, { reason }, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
   const order = await Order.findOne({ _id: id, businessId });
   if (!order) throw ApiError.notFound('Order nahi mila');
 
@@ -350,7 +378,8 @@ export async function cancelOrder(businessId, id, { reason }, userId) {
  * qty 0 bhej do to wo line hat jayegi. Rate wahi rehta hai jo order ke waqt tha.
  * Delivered/cancelled order me kuch nahi badal sakta.
  */
-export async function updateOrderItems(businessId, id, { items, note }, userId) {
+export async function updateOrderItems(businessId, id, { items, note }, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
   const order = await Order.findOne({ _id: id, businessId });
   if (!order) throw ApiError.notFound('Order nahi mila');
 

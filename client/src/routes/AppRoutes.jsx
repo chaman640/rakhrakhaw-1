@@ -7,8 +7,10 @@ import { useAuth } from '@/context/AuthContext';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import Join from '@/pages/auth/Join';
+import JoinStaff from '@/pages/auth/JoinStaff';
 import PendingApproval from '@/pages/retailer/PendingApproval';
 import Settings from '@/pages/wholesaler/Settings';
+import Activity from '@/pages/wholesaler/Activity';
 import Items from '@/pages/wholesaler/Items';
 import Retailers from '@/pages/wholesaler/Retailers';
 import Suppliers from '@/pages/wholesaler/Suppliers';
@@ -53,6 +55,8 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/join/:inviteCode" element={<Join />} />
+      {/* Staff invite link — login se pehle khulti hai, kyunki abhi account hai hi nahi */}
+      <Route path="/join-staff/:token" element={<JoinStaff />} />
 
       {/* ---- Retailer: approval screen (approve na hone par bhi khulti hai) ---- */}
       <Route
@@ -81,17 +85,18 @@ export default function AppRoutes() {
         <Route path="/suppliers" element={<RequirePermission permission="parties"><Suppliers /></RequirePermission>} />
         <Route path="/suppliers/:id" element={<RequirePermission permission="parties"><PartyDetail type="supplier" /></RequirePermission>} />
         <Route path="/purchases" element={<RequirePermission permission="purchases"><Purchases /></RequirePermission>} />
-        <Route path="/purchases/new" element={<RequirePermission permission="purchases"><PurchaseForm /></RequirePermission>} />
+        <Route path="/purchases/new" element={<RequirePermission permission="purchases:create"><PurchaseForm /></RequirePermission>} />
         <Route path="/purchases/:id" element={<RequirePermission permission="purchases"><PurchaseDetail /></RequirePermission>} />
         <Route path="/invoices" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
-        <Route path="/invoices/new" element={<RequirePermission permission="invoices"><InvoiceForm /></RequirePermission>} />
+        <Route path="/invoices/new" element={<RequirePermission permission="invoices:create"><InvoiceForm /></RequirePermission>} />
         <Route path="/invoices/:id" element={<RequirePermission permission="invoices"><InvoiceDetail /></RequirePermission>} />
-        <Route path="/khata" element={<RequirePermission permission="khata"><Khata /></RequirePermission>} />
-        <Route path="/payments" element={<RequirePermission permission="khata"><Payments /></RequirePermission>} />
+        <Route path="/khata" element={<RequirePermission permission="khata:view"><Khata /></RequirePermission>} />
+        <Route path="/payments" element={<RequirePermission permission="khata:create"><Payments /></RequirePermission>} />
         <Route path="/returns" element={<RequirePermission permission="returns"><Returns /></RequirePermission>} />
-        <Route path="/returns/new" element={<RequirePermission permission="returns"><ReturnForm /></RequirePermission>} />
+        <Route path="/returns/new" element={<RequirePermission permission="returns:create"><ReturnForm /></RequirePermission>} />
         <Route path="/returns/:id" element={<RequirePermission permission="returns"><ReturnDetail /></RequirePermission>} />
         <Route path="/reports" element={<RequirePermission permission="reports"><Reports /></RequirePermission>} />
+        <Route path="/activity" element={<RequirePermission permission="staff:view"><Activity /></RequirePermission>} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 

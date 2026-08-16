@@ -8,13 +8,28 @@ import { round2 } from '../utils/money.js';
 import {
   Party, User, Item, PartyItemRate, Order, Invoice, Payment, LedgerEntry, Purchase, ReturnNote,
 } from '../models/index.js';
+import { scopeParties, isScoped, canSeeParty } from '../utils/scope.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/**
+ * Hadd wale staff ke liye: ye party iski hai bhi ya nahi.
+ *
+ * "Nahi mili" hi bolte hain, "ijazat nahi" nahi — warna galat jawab se hi
+ * pata chal jata ki us id pe kuch hai. Chhoti baat hai, par isi se doosre
+ * salesman ke retailer ginne ja sakte hain.
+ */
+async function assertVisible(businessId, id, viewer) {
+  if (!(await canSeeParty(id, businessId, viewer))) {
+    throw ApiError.notFound('Party nahi mili');
+  }
+}
+
 /* ------------------------------------------------------------------ list */
 
-export async function listParties(businessId, q) {
-  const filter = { businessId };
+export async function listParties(businessId, q, viewer = null) {
+  // "Sirf apna kaam" wale ko sirf uske naam wale retailer/supplier dikhte hain
+  let filter = { businessId };
   if (q.type !== 'all') filter.type = q.type;
   if (q.status !== 'all') filter.status = q.status;
 
@@ -22,6 +37,8 @@ export async function listParties(businessId, q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
     filter.$or = [{ name: rx }, { shopName: rx }, { phone: rx }, { gstin: rx }];
   }
+
+  filter = scopeParties(filter, viewer);
 
   const skip = (q.page - 1) * q.limit;
 
@@ -46,11 +63,17 @@ export async function listParties(businessId, q) {
   };
 }
 
-export async function getStats(businessId, type = PARTY_TYPES.RETAILER) {
+export async function getStats(businessId, type = PARTY_TYPES.RETAILER, viewer = null) {
   const bid = new mongoose.Types.ObjectId(businessId);
 
+  // Ginti bhi utni hi honi chahiye jitna data dikh raha hai — warna upar
+  // "42 retailer" likha aata aur neeche list me 6 dikhte
+  const match = isScoped(viewer)
+    ? { businessId: bid, type, $or: [{ assignedToUserId: viewer._id }, { createdBy: viewer._id }] }
+    : { businessId: bid, type };
+
   const [rows] = await Party.aggregate([
-    { $match: { businessId: bid, type } },
+    { $match: match },
     {
       $group: {
         _id: null,
@@ -74,9 +97,15 @@ export async function getStats(businessId, type = PARTY_TYPES.RETAILER) {
 
 /* --------------------------------------------------------------- get one */
 
-export async function getParty(businessId, id) {
+export async function getParty(businessId, id, viewer = null) {
   const party = await Party.findOne({ _id: id, businessId }).lean();
   if (!party) throw ApiError.notFound('Party nahi mili');
+
+  // Sirf list chhupa dena kaafi nahi — id URL me daali ja sakti hai. Bina is
+  // check ke "sirf apna kaam" sirf dikhawa reh jata.
+  if (!(await canSeeParty(id, businessId, viewer))) {
+    throw ApiError.notFound('Party nahi mili');
+  }
 
   const [customRateCount, linkedUser, orderCount, invoiceCount] = await Promise.all([
     PartyItemRate.countDocuments({ businessId, partyId: id }),
@@ -121,6 +150,9 @@ export async function createParty(businessId, payload, userId) {
     // Wholesaler khud add kar raha hai to seedha active. Retailer khud link se
     // aaya to Part 2 me pending banta hai.
     status: PARTY_STATUS.ACTIVE,
+    createdBy: userId || null,
+    // Kiske naam karna hai — payload me aaya to wahi, warna jisne jodha usi ka
+    assignedToUserId: payload.assignedToUserId || userId || null,
   });
 
   // Purana hisaab khata me pehli entry ban jata hai (Part 9 isi pe aage badhega)
@@ -142,7 +174,8 @@ export async function createParty(businessId, payload, userId) {
 
 /* -------------------------------------------------------------- update */
 
-export async function updateParty(businessId, id, payload) {
+export async function updateParty(businessId, id, payload, viewer = null) {
+  await assertVisible(businessId, id, viewer);
   const party = await Party.findOne({ _id: id, businessId });
   if (!party) throw ApiError.notFound('Party nahi mili');
 
@@ -173,13 +206,19 @@ export async function updateParty(businessId, id, payload) {
     if (payload[f] !== undefined) party[f] = payload[f];
   }
 
+  // Kiske naam hai — khali bhejein to "sabka" ho jata hai
+  if (payload.assignedToUserId !== undefined) {
+    party.assignedToUserId = payload.assignedToUserId || null;
+  }
+
   await party.save();
   return getParty(businessId, id);
 }
 
 /* -------------------------------------------------------------- status */
 
-export async function setStatus(businessId, id, status) {
+export async function setStatus(businessId, id, status, viewer = null) {
+  await assertVisible(businessId, id, viewer);
   const party = await Party.findOne({ _id: id, businessId });
   if (!party) throw ApiError.notFound('Party nahi mili');
 
@@ -200,7 +239,8 @@ export async function setStatus(businessId, id, status) {
  * Party ka koi order/invoice/payment/purchase hai to delete NAHI hoti — sirf blocked.
  * Warna purane bill ka "kiske naam" hi gayab ho jayega.
  */
-export async function deleteParty(businessId, id) {
+export async function deleteParty(businessId, id, viewer = null) {
+  await assertVisible(businessId, id, viewer);
   const party = await Party.findOne({ _id: id, businessId });
   if (!party) throw ApiError.notFound('Party nahi mili');
 
@@ -253,7 +293,8 @@ export async function deleteParty(businessId, id) {
 /**
  * Har item ke saath dikhata hai: is party ka effective rate aur wo kahan se aaya.
  */
-export async function listRates(businessId, partyId, q) {
+export async function listRates(businessId, partyId, q, viewer = null) {
+  await assertVisible(businessId, partyId, viewer);
   const party = await Party.findOne({ _id: partyId, businessId }).select('name type').lean();
   if (!party) throw ApiError.notFound('Party nahi mili');
 
@@ -308,7 +349,8 @@ export async function listRates(businessId, partyId, q) {
   };
 }
 
-export async function setRate(businessId, partyId, itemId, rate) {
+export async function setRate(businessId, partyId, itemId, rate, viewer = null) {
+  await assertVisible(businessId, partyId, viewer);
   const [party, item] = await Promise.all([
     Party.findOne({ _id: partyId, businessId }).select('name').lean(),
     Item.findOne({ _id: itemId, businessId }).select('name').lean(),
@@ -342,7 +384,8 @@ const ROUNDERS = {
 /**
  * "Suresh ko har cheez wholesale se 5% kam" — ek click me sab items pe rate lag jata hai.
  */
-export async function bulkSetRates(businessId, partyId, { mode, value, categoryId, roundTo }) {
+export async function bulkSetRates(businessId, partyId, { mode, value, categoryId, roundTo }, viewer = null) {
+  await assertVisible(businessId, partyId, viewer);
   const party = await Party.findOne({ _id: partyId, businessId }).select('name').lean();
   if (!party) throw ApiError.notFound('Party nahi mili');
 

@@ -3,7 +3,10 @@ import { env } from '../config/env.js';
 import ApiError from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import User from '../models/User.js';
-import { ROLES, STAFF_ROLES } from '../config/constants.js';
+import { ROLES } from '../config/constants.js';
+import {
+  STAFF_ROLES, MODULE_LABEL, ACTION_LABEL, userCan as permCheck,
+} from '../config/permissions.js';
 
 function readToken(req) {
   const header = req.headers.authorization || '';
@@ -37,23 +40,37 @@ export const requireRole = (...roles) => (req, res, next) => {
 };
 
 /**
- * Staff ki permission check (Part 11).
+ * Staff ki ijazat ka check.
  *
- * `protect` .lean() use karta hai isliye model ka .can() yahan nahi milta —
- * wahi logic plain object pe:
- *   - owner  -> hamesha haan
- *   - staff  -> uske permissions array me hona chahiye
+ * `protect` .lean() use karta hai isliye model ka `.can()` yahan milta hi
+ * nahi — isliye asli faisla `config/permissions.js` ke `userCan()` se hota
+ * hai, jo plain object pe bhi chalta hai. Poore app me faisla lene ki jagah
+ * wahi ek hai.
  */
-export function userCan(user, permission) {
-  if (!user || user.role !== ROLES.WHOLESALER) return false;
-  if ((user.staffRole || STAFF_ROLES.OWNER) === STAFF_ROLES.OWNER) return true;
-  return (user.permissions || []).includes(permission);
-}
+export { userCan } from '../config/permissions.js';
 
-export const requirePermission = (permission) => (req, res, next) => {
+/**
+ * Ek kaam ki ijazat maango — `requirePermission('invoices:create')`.
+ *
+ * Do naam bhi de sakte hain, tab kisi EK ka hona kaafi hai:
+ *   requirePermission('khata:create', 'khata:edit')
+ *
+ * Mana karte waqt error me saaf likha jata hai ki kis cheez ki ijazat nahi
+ * mili — warna staff ko sirf "ijazat nahi hai" dikhta hai aur malik ko phone
+ * karke pata hi nahi chalta ki kaunsa checkbox lagana hai.
+ */
+export const requirePermission = (...permissions) => (req, res, next) => {
   if (!req.user) return next(ApiError.unauthorized());
-  if (!userCan(req.user, permission)) {
-    return next(ApiError.forbidden('Aapko is kaam ki ijazat nahi hai — malik se kahiye'));
+
+  const allowed = permissions.some((p) => permCheck(req.user, p));
+  if (!allowed) {
+    const [first] = permissions;
+    const [module, action] = String(first).split(':');
+    const what = `${MODULE_LABEL[module] || module} — ${ACTION_LABEL[action] || action}`;
+    return next(ApiError.forbidden(
+      `Aapko is kaam ki ijazat nahi hai (${what}). Malik se kahiye ki Settings → Staff me de dein.`,
+      { needed: permissions }
+    ));
   }
   next();
 };

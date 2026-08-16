@@ -20,6 +20,7 @@ import dashboardRoutes from './dashboard.routes.js';
 import returnRoutes from './return.routes.js';
 import staffRoutes from './staff.routes.js';
 import backupRoutes from './backup.routes.js';
+import auditRoutes from './audit.routes.js';
 
 const router = Router();
 
@@ -67,5 +68,8 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/returns', returnRoutes);
 router.use('/staff', staffRoutes);
 router.use('/backup', backupRoutes);
+
+// Part 12 — sub-account, ijazat aur "kisne kya kiya"
+router.use('/activity', auditRoutes);
 
 export default router;

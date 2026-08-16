@@ -10,6 +10,8 @@ import { amountInWords } from '../utils/amountInWords.js';
 import {
   Invoice, Order, Party, Item, Business, Counter, StockMovement, Payment, ReturnNote,
 } from '../models/index.js';
+import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
+import { assertInvoiceWithinLimits } from '../utils/limits.js';
 import { computeInvoice, decideTaxType, hsnSummary } from './gst.service.js';
 import { applyStockChange } from './stock.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
@@ -21,8 +23,8 @@ const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /* ------------------------------------------------------------------ list */
 
-export async function listInvoices(businessId, q) {
-  const filter = { businessId };
+export async function listInvoices(businessId, q, viewer = null) {
+  let filter = { businessId };
   if (q.status === 'active') filter.isCancelled = false;
   else if (q.status === 'cancelled') filter.isCancelled = true;
   if (q.partyId) filter.partyId = q.partyId;
@@ -62,16 +64,24 @@ export async function listInvoices(businessId, q) {
   };
 }
 
-export async function getStats(businessId) {
+export async function getStats(businessId, viewer = null) {
   const bid = new mongoose.Types.ObjectId(businessId);
   const monthStart = new Date();
   monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
+  // Ginti bhi utni hi jitna data dikhta hai
+  const mine = isScoped(viewer)
+    ? { $or: [
+      { partyId: { $in: toObjectIds(await ownPartyIds(businessId, viewer)) } },
+      { createdBy: viewer._id },
+    ] }
+    : {};
+
   const [[all], [month], [today]] = await Promise.all([
     Invoice.aggregate([
-      { $match: { businessId: bid, isCancelled: false } },
+      { $match: { businessId: bid, isCancelled: false, ...mine } },
       { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$grandTotal' }, due: { $sum: '$dueAmount' } } },
     ]),
     Invoice.aggregate([
@@ -105,12 +115,20 @@ export async function nextNumber(businessId) {
 
 /* --------------------------------------------------------------- get one */
 
-export async function getInvoice(businessId, id, { partyId = null } = {}) {
+export async function getInvoice(businessId, id, { partyId = null, viewer = null } = {}) {
   const filter = { _id: id, businessId };
   if (partyId) filter.partyId = partyId;
 
   const invoice = await Invoice.findOne(filter).populate('partyId', 'name shopName phone gstin address').lean();
   if (!invoice) throw ApiError.notFound('Bill nahi mila');
+
+  // URL me id badal kar doosre ka bill na khul jaye
+  if (viewer && !(await canSeeDoc(
+    { partyId: invoice.partyId?._id || invoice.partyId, createdBy: invoice.createdBy },
+    businessId, viewer
+  ))) {
+    throw ApiError.notFound('Bill nahi mila');
+  }
 
   return {
     ...invoice,
@@ -209,7 +227,7 @@ async function undoHalfInvoice(businessId, state, userId) {
   await step('adhoora bill hatana', () => Invoice.deleteOne({ _id: invoice._id, businessId }));
 }
 
-export async function createInvoice(businessId, payload, userId) {
+export async function createInvoice(businessId, payload, userId, viewer = null) {
   const business = await Business.findById(businessId).lean();
   if (!business) throw ApiError.notFound('Business nahi mila');
 
@@ -291,6 +309,13 @@ export async function createInvoice(businessId, payload, userId) {
 
   const paidAmount = round2(Math.min(payload.paidAmount || 0, totals.grandTotal));
   const dueAmount = round2(totals.grandTotal - paidAmount);
+
+  // ---- Paise ki hadd ----
+  //
+  // Ye jaanch YAHAN hai — number lene se aur stock ghatane se PEHLE. Baad me
+  // karte to bill number kharch ho jata aur stock chhu liya jata, aur phir
+  // sab ulta karna padta. Sabse sasta rokna wo hai jo shuru me ruk jaye.
+  assertInvoiceWithinLimits(viewer, totals, paidAmount);
 
   const { number: invoiceNo } = await Counter.nextNumber({
     businessId, key: COUNTER_KEYS.INVOICE,
@@ -463,7 +488,11 @@ export async function createInvoice(businessId, payload, userId) {
  * Bill delete nahi hota — cancel hota hai. Number wahin rehta hai (legal record),
  * par stock wapas aa jata hai aur khata ulta ho jata hai.
  */
-export async function cancelInvoice(businessId, id, { reason }, userId) {
+export async function cancelInvoice(businessId, id, { reason }, userId, viewer = null) {
+  if (isScoped(viewer)) {
+    const doc = await Invoice.findOne({ _id: id, businessId }).select('partyId createdBy').lean();
+    if (!(await canSeeDoc(doc, businessId, viewer))) throw ApiError.notFound('Bill nahi mila');
+  }
   const invoice = await Invoice.findOne({ _id: id, businessId });
   if (!invoice) throw ApiError.notFound('Bill nahi mila');
   if (invoice.isCancelled) throw ApiError.badRequest('Ye bill pehle se cancel hai');

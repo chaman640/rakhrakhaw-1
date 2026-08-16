@@ -1,4 +1,11 @@
-import { Purchase } from '../models/index.js';
+import { Purchase, User } from '../models/index.js';
+import {
+  ROLES,
+} from './constants.js';
+import {
+  STAFF_ROLES, SCOPES, expandLegacyPermissions, hasLegacyPermission,
+  scopeForRole, limitsForRole,
+} from './permissions.js';
 
 /**
  * Purane data me chhoote hue field bhar dena.
@@ -31,6 +38,41 @@ export async function runBackfills() {
     }
   } catch (err) {
     problems.push(`Purchase.taxableTotal: ${err.message}`);
+  }
+
+  // ---- Purani staff permission ko naye roop me ----
+  //
+  // Pehle ijazat sirf module ki hoti thi (`invoices`), ab kaam ke saath hoti
+  // hai (`invoices:create`). Purane staff ki list waise ki waise rehti to
+  // agli subah munshi bill nahi bana pata aur kisi ko samajh nahi aata kyun.
+  //
+  // Purane `invoices` ka matlab tha "is module me sab kuch" — isliye use uske
+  // saare kaam me khol dete hain. Ijazat chupchaap KAM karna sabse bura hota:
+  // kaam ruk jata hai aur wajah kahin likhi nahi hoti.
+  try {
+    const legacy = await User.find({
+      role: ROLES.WHOLESALER,
+      staffRole: { $ne: STAFF_ROLES.OWNER },
+      permissions: { $exists: true, $ne: [] },
+    }).select('permissions staffRole scope limits');
+
+    let changed = 0;
+    for (const user of legacy) {
+      if (!hasLegacyPermission(user.permissions)) continue;
+      user.permissions = expandLegacyPermissions(user.permissions);
+      // Ye do field pehle the hi nahi — role ke hisaab se bhar dete hain
+      if (!user.scope) user.scope = scopeForRole(user.staffRole) || SCOPES.ALL;
+      if (!user.limits || user.limits.canSellOnCredit === undefined) {
+        user.limits = limitsForRole(user.staffRole);
+      }
+      await user.save();
+      changed += 1;
+    }
+    if (changed) {
+      done.push(`${changed} purane staff ki ijazat naye roop me badal di (kisi ka haq kam nahi hua)`);
+    }
+  } catch (err) {
+    problems.push(`User.permissions: ${err.message}`);
   }
 
   if (done.length) {

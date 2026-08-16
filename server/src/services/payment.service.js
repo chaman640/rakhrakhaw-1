@@ -5,6 +5,7 @@ import {
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { Payment, Party, Invoice, Counter, Business, LedgerEntry } from '../models/index.js';
+import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
 import { postEntry, reverseEntriesFor, recalcBalances } from './ledger.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
 
@@ -12,8 +13,17 @@ const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /* ------------------------------------------------------------------ list */
 
-export async function listPayments(businessId, q) {
-  const filter = { businessId };
+/** Hadd wale staff ke liye: ye payment iske retailer ka hai bhi ya nahi */
+async function assertCanTouch(businessId, id, viewer) {
+  if (!isScoped(viewer)) return;
+  const doc = await Payment.findOne({ _id: id, businessId }).select('partyId createdBy').lean();
+  if (!(await canSeeDoc(doc, businessId, viewer))) {
+    throw ApiError.notFound('Payment nahi mila');
+  }
+}
+
+export async function listPayments(businessId, q, viewer = null) {
+  let filter = { businessId };
   if (q.partyId) filter.partyId = q.partyId;
   if (q.direction !== 'all') filter.direction = q.direction;
   if (q.mode !== 'all') filter.mode = q.mode;
@@ -52,22 +62,29 @@ export async function listPayments(businessId, q) {
   };
 }
 
-export async function getStats(businessId) {
+export async function getStats(businessId, viewer = null) {
   const bid = new mongoose.Types.ObjectId(businessId);
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
+  const mine = isScoped(viewer)
+    ? { $or: [
+      { partyId: { $in: toObjectIds(await ownPartyIds(businessId, viewer)) } },
+      { createdBy: viewer._id },
+    ] }
+    : {};
+
   const [[today], [month], [pending]] = await Promise.all([
     Payment.aggregate([
-      { $match: { businessId: bid, status: 'confirmed', direction: 'IN', date: { $gte: todayStart } } },
+      { $match: { businessId: bid, ...mine, status: 'confirmed', direction: 'IN', date: { $gte: todayStart } } },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]),
     Payment.aggregate([
-      { $match: { businessId: bid, status: 'confirmed', direction: 'IN', date: { $gte: monthStart } } },
+      { $match: { businessId: bid, ...mine, status: 'confirmed', direction: 'IN', date: { $gte: monthStart } } },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]),
     Payment.aggregate([
-      { $match: { businessId: bid, status: 'pending' } },
+      { $match: { businessId: bid, ...mine, status: 'pending' } },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]),
   ]);
@@ -82,7 +99,7 @@ export async function getStats(businessId) {
   };
 }
 
-export async function getPayment(businessId, id, { partyId = null } = {}) {
+export async function getPayment(businessId, id, { partyId = null, viewer = null } = {}) {
   const filter = { _id: id, businessId };
   if (partyId) filter.partyId = partyId;
   const payment = await Payment.findOne(filter).populate('partyId', 'name shopName phone type').lean();
@@ -420,7 +437,8 @@ export async function claimPayment(businessId, partyId, payload, userId) {
 
 /* --------------------------------------------------------------- confirm */
 
-export async function confirmPayment(businessId, id, userId) {
+export async function confirmPayment(businessId, id, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
   /**
    * PEHLE JHANDA GAADO, PHIR KAAM KARO.
    *
@@ -487,7 +505,8 @@ export async function confirmPayment(businessId, id, userId) {
   return getPayment(businessId, id);
 }
 
-export async function rejectPayment(businessId, id, { reason }, userId) {
+export async function rejectPayment(businessId, id, { reason }, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
   // Confirm ki tarah yahan bhi jhanda pehle. Warna ek hi payment pe confirm aur
   // reject ek saath chal sakte the: payment "reject" dikhti aur khate me credit
   // pada reh jata.
@@ -519,7 +538,8 @@ export async function rejectPayment(businessId, id, { reason }, userId) {
 
 /* ---------------------------------------------------------------- delete */
 
-export async function deletePayment(businessId, id, userId) {
+export async function deletePayment(businessId, id, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
   /**
    * Payment PEHLE hata lete hain (`findOneAndDelete`), phir uska asar ulta karte hain.
    *

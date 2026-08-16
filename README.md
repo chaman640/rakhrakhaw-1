@@ -1183,9 +1183,155 @@ aur page safed ho jata hai. `client/scripts/check-imports.mjs` isi liye hai.
 Layout ke liye teen viewport pe (360 / 390 / 820) har page ka side-scroll
 aur patti ke peeche chhupa content jaancha jata hai.
 
+## Sub-account — kaun kya kar sakta hai (Part 12)
+
+Dukaan me sirf malik nahi hota. Salesman, munshi, godown wala, CA — sabko
+alag alag cheez chahiye. Pehle ijazat sirf itni thi: "Orders ka access hai ya
+nahi". Uska matlab tha ki jise order DEKHNE diya, wo order MITA bhi sakta tha.
+CA ko sirf hisaab dikhana mumkin hi nahi tha.
+
+Ab teen cheezein alag alag hain, aur teeno chahiye:
+
+| | Kya batati hai | Kahan likhi hai |
+|---|---|---|
+| **Ijazat** | kaunsa kaam kar sakta hai | `config/permissions.js` |
+| **Hadd** | kis KE data pe kar sakta hai | `utils/scope.js` |
+| **Paisa** | kitne tak | `utils/limits.js` |
+
+### Ijazat = `module:kaam`
+
+```
+invoices:create   →  "bill bana sakta hai"
+khata:view        →  "hisaab sirf dekh sakta hai"
+```
+
+Das module × chaar-paanch kaam = **38 alag ijazat**. Poore app me ijazat
+hamesha isi shakal me likhi jati hai — route pe bhi, client pe bhi.
+
+| Module | Kaam |
+|---|---|
+| items, purchases, orders, invoices, returns | view · create · edit · delete |
+| parties | view · create · edit · delete · **approve** |
+| khata | view · create · edit · delete · **approve** |
+| reports | view · **export** |
+| staff | view · create · edit · delete |
+| settings | view · edit |
+
+### Aath role
+
+| Role | Kya kar sakta hai |
+|---|---|
+| **Malik** | Sab kuch. Ise koi chhed nahi sakta |
+| **Sah-malik** | Malik jitna hi. Ek se zyada ho sakte hain |
+| **Manager** | Poori dukaan — staff aur settings chhod kar |
+| **Salesman** | Order aur bill banata hai. Mitata kuch nahi. Sirf apne retailer |
+| **Munshi** | Paisa aur hisaab. Stock se lena-dena nahi |
+| **CA / Auditor** | **Sirf dekhna.** Ek bhi cheez badal nahi sakta |
+| **Godown incharge** | Maal andar-bahar. Paisa dikhta hi nahi |
+| **Cash counter** | Sirf paisa lena-dena |
+| **Apni marzi se** | Malik khud har tick lagata hai |
+
+Role sirf SHURUAAT hai — malik har aadmi ke liye alag se ghata-badha sakta
+hai. Asli sach hamesha uski `permissions` list hai, role nahi.
+
+**Do niyam jo poore system ki jaan hain:**
+
+1. **Malik ko koi chhed nahi sakta** — na hata sakta, na role badal sakta,
+   khud bhi nahi. Warna ek galti se dukaan ka koi malik hi na bachta.
+2. **Sah-malik sirf malik bana sakta hai.** Agar sah-malik doosre sah-malik
+   bana/hata pata, to ek sah-malik baaki sabko nikaal kar poori dukaan pe
+   kabza kar leta.
+
+### Hadd — "sirf apna kaam"
+
+Salesman pe `scope: 'own'` lagta hai. Use wahi retailer dikhte hain jo uske
+naam hain (`Party.assignedToUserId`) ya jo usne khud jode (`Party.createdBy`).
+
+**Order, bill, khata aur payment ka apna maalik nahi hota** — wo us RETAILER
+ke saath chalte hain jiska wo hai. Isliye pehle "mere retailer" nikalte hain,
+phir unhi ka baaki sab. Ek jagah niyam badlo, sab jagah lag jata hai.
+
+**Sirf list chhupana kaafi nahi hai.** Id URL me daali ja sakti hai, isliye
+har `getX(id)` aur har badalne wale kaam pe bhi check lagta hai — aur wo
+"ijazat nahi" nahi, **"nahi mila"** bolta hai. Warna galat jawab se hi pata
+chal jata ki us id pe kuch hai.
+
+Ginti bhi wahi dikhti hai jitni list — warna upar "42 retailer" likha aata
+aur neeche 6 dikhte.
+
+### Paise ki hadd
+
+```js
+limits: {
+  maxDiscountPercent: 10,      // null = koi hadd nahi
+  maxInvoiceAmount: 50000,     // null = koi hadd nahi
+  canSellOnCredit: false,      // poora paisa usi waqt lena hoga
+}
+```
+
+`null` aur `0` ALAG hain. `null` = "jitna marzi", `0` = "bilkul nahi". Khali
+dabba hamesha `null` banta hai — ye galti aasani se ho jati hai.
+
+Jaanch bill save hone se **pehle** hoti hai — number lene aur stock ghatane
+se pehle. Baad me karte to bill number kharch ho jata aur stock chhu liya
+jata, phir sab ulta karna padta.
+
+### Kisne kya kiya (register)
+
+`AuditLog` + `services/audit.service.js` — **ek hi darwaza**. Kabhi seedha
+`AuditLog.create()` mat likhna; wahi wajah jo stock aur ledger ki hai.
+
+Sambhalte hain: kisne (naam aur role SAATH me, sirf id nahi — staff hat jaye
+to bhi register padha ja sake), kya kiya, kis cheez pe, aur **kya se kya**
+(sirf badle hue field: `salePrice 12 → 25`).
+
+**Register kabhi asli kaam nahi rokta.** Likhna fail ho jaye to sirf log
+hota hai. Ulta hota to ek din database bharne par poori dukaan ruk jati.
+
+### Staff ko link se jodna
+
+Malik ek link banata hai jisme role aur ijazat **pehle se tay** hoti hai.
+Link WhatsApp pe bhej deta hai; aane wala khud apna password banata hai —
+malik ko wo kabhi pata nahi chalta.
+
+Token ka **hash** rakhte hain, token nahi (API key ki tarah). Link ek baar
+chalti hai, waqt ke baad khatam, aur malik jab chahe rad kar sakta hai.
+
+Link **pehle claim hoti hai** (`usedAt` atomically), phir account banta hai.
+Ulta karte to do log ek hi link ek saath khol kar do account bana lete.
+Account na bane to link wapas khul jati hai — warna aadmi ke paas na account
+hota na chalne wali link.
+
+### Purani ijazat kabhi nahi chhinti
+
+Startup pe backfill purani `['invoices']` ko `invoices:view/create/edit/delete`
+me badal deta hai. **Aur `userCan()` bhi purane roop ko samajhta hai** —
+backfill kisi wajah se na chale to bhi kaam nahi rukta.
+
+> Niyam: format badalne se kisi ka haq **CHHIN nahi sakta**. Chupchaap kam kar
+> dena sabse bura hota — agli subah munshi bill nahi bana pata aur wajah
+> kahin likhi nahi hoti.
+
+### Naya route jodte waqt
+
+```js
+router.get('/',    requirePermission('invoices:view'),   ctrl.list);
+router.post('/',   requirePermission('invoices:create'), ctrl.create);
+router.put('/:id', requirePermission('invoices:edit'),   ctrl.update);
+router.delete('/:id', requirePermission('invoices:delete'), ctrl.remove);
+```
+
+Aur list wali service me `viewer` (yaani `req.user`) zaroor bhejna — warna
+hadd lagti hi nahi aur "sirf apna kaam" sirf dikhawa reh jata hai.
+
+**Dhyan:** "dekhne" aur "karne" wale page alag hote hain. `/khata` hisaab
+DEKHNE ka hai (`khata:view`), `/payments` paisa ENTRY karne ka
+(`khata:create`). Ek hi module ki ijazat dono pe laga dene se salesman ko
+payment ka page bhi khul jata tha — ye galti test me pakdi gayi thi.
+
 ## Aage ke parts
 
-**11 part ban chuke hain. Uske baad UI ko mobile-first kiya gaya (upar "UI ka niyam" dekhein).**
+**11 part + mobile-first UI + sub-account system ban chuka hai (upar "UI ka niyam" aur "Sub-account" dekhein).**
 
 ### Production pe jaane se pehle — ye baaki hai
 

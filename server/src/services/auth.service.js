@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 import { env } from '../config/env.js';
-import { ROLES, PARTY_TYPES, PARTY_STATUS, PERMISSIONS } from '../config/constants.js';
+import { ROLES, PARTY_TYPES, PARTY_STATUS,  } from '../config/constants.js';
+import { ALL_PERMISSIONS, STAFF_ROLE_LABEL } from '../config/permissions.js';
 import ApiError from '../utils/ApiError.js';
 import { normalizePhone } from '../utils/phone.js';
 import { getStateCode } from '../config/states.js';
@@ -11,6 +12,13 @@ import { generateInviteCode } from '../utils/generateCode.js';
 import { businessForUser } from '../utils/businessView.js';
 import { User, Business, Party } from '../models/index.js';
 
+/**
+ * Token banane wala.
+ *
+ * Bahar bhi chahiye hota hai (jaise invite link se judte hi login kara dena),
+ * isliye `signTokenFor` naam se export bhi kar dete hain — taaki koi doosri
+ * jagah apna alag jwt.sign na likh baithe aur do tarah ke token ban jayen.
+ */
 function signToken(user) {
   return jwt.sign({ sub: user._id.toString(), role: user.role }, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn,
@@ -27,12 +35,29 @@ function publicUser(user) {
     businessId: user.businessId,
     partyId: user.partyId,
 
-    // Part 11 — client isi se menu aur buttons chhupata hai
+    // Client isi se menu aur button chhupata hai. Server phir bhi har request
+    // pe khud check karta hai — ye sirf dikhawe ke liye hai, suraksha ke liye
+    // nahi. (Client pe kuch bhi chhupana suraksha nahi hoti.)
     staffRole,
+    staffRoleLabel: STAFF_ROLE_LABEL[staffRole] || staffRole,
     isOwner: user.role === 'wholesaler' && staffRole === 'owner',
     permissions: user.role === 'wholesaler'
-      ? (staffRole === 'owner' ? Object.values(PERMISSIONS) : (user.permissions || []))
+      ? (staffRole === 'owner' ? ALL_PERMISSIONS : (user.permissions || []))
       : [],
+
+    // "Sirf apna kaam" wala hai kya — client isse "sabka data" wale filter
+    // aur tab chhupa deta hai
+    scope: user.role === 'wholesaler' ? (staffRole === 'owner' ? 'all' : (user.scope || 'all')) : 'all',
+
+    // Paise ki hadd — form me pehle hi bata dena behtar hai, save karke
+    // "ijazat nahi" dikhane se
+    limits: user.role === 'wholesaler' && staffRole !== 'owner'
+      ? {
+        maxDiscountPercent: user.limits?.maxDiscountPercent ?? null,
+        maxInvoiceAmount: user.limits?.maxInvoiceAmount ?? null,
+        canSellOnCredit: user.limits?.canSellOnCredit !== false,
+      }
+      : { maxDiscountPercent: null, maxInvoiceAmount: null, canSellOnCredit: true },
   };
 }
 
@@ -200,6 +225,8 @@ export async function login({ phone, password }) {
 }
 
 /** /auth/me — user + business + (retailer ke liye) party status */
+export const signTokenFor = signToken;
+
 export async function buildSession(user) {
   const business = user.businessId
     ? await Business.findById(user.businessId).lean()

@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { ROLES, STAFF_ROLES, PERMISSIONS } from '../config/constants.js';
+import { ROLES } from '../config/constants.js';
+import {
+  STAFF_ROLES, SCOPES, DEFAULT_LIMITS, isValidPermission, userCan,
+} from '../config/permissions.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -25,11 +28,46 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(STAFF_ROLES),
       default: STAFF_ROLES.OWNER,
     },
-    // Owner chahe to role ke default permissions badal sakta hai
+    /**
+     * Ijazat ki poori list — `module:kaam` ki shakal me (jaise `invoices:create`).
+     *
+     * Role se shuruaat hoti hai, par malik har aadmi ke liye alag se ghata-badha
+     * sakta hai. Isliye asli sach YAHI list hai, role nahi — role sirf naam hai.
+     */
     permissions: {
-      type: [{ type: String, enum: Object.values(PERMISSIONS) }],
+      type: [{
+        type: String,
+        validate: {
+          validator: isValidPermission,
+          message: (p) => `"${p.value}" naam ki koi ijazat hai hi nahi`,
+        },
+      }],
       default: [],
     },
+
+    /**
+     * Kitna data dikhega.
+     *
+     *   all — poori dukaan ka
+     *   own — sirf jo isne khud banaya, aur jo retailer iske naam pe hain
+     *
+     * Salesman ke liye `own` default hai: do salesman ek doosre ke retailer
+     * aur unke rate na dekh payein.
+     */
+    scope: { type: String, enum: Object.values(SCOPES), default: SCOPES.ALL },
+
+    /**
+     * Paise ki hadd. `null` = koi hadd nahi.
+     *
+     * DHYAN: 0 aur null alag hain. 0 ka matlab "bilkul nahi", null ka matlab
+     * "jitna marzi". Khali dabba hamesha null banta hai.
+     */
+    limits: {
+      maxDiscountPercent: { type: Number, default: DEFAULT_LIMITS.maxDiscountPercent, min: 0, max: 100 },
+      maxInvoiceAmount: { type: Number, default: DEFAULT_LIMITS.maxInvoiceAmount, min: 0 },
+      canSellOnCredit: { type: Boolean, default: DEFAULT_LIMITS.canSellOnCredit },
+    },
+
     createdByUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     isActive: { type: Boolean, default: true },
@@ -48,9 +86,13 @@ userSchema.methods.checkPassword = function (plain) {
 
 /** Owner ko hamesha sab kuch — chahe permissions array khali ho */
 userSchema.methods.can = function (permission) {
-  if (this.role !== 'wholesaler') return false;
-  if (this.staffRole === STAFF_ROLES.OWNER) return true;
-  return (this.permissions || []).includes(permission);
+  return userCan(this, permission);
+};
+
+/** Sirf apna data dikhega? */
+userSchema.methods.isScoped = function () {
+  return this.scope === SCOPES.OWN
+    && (this.staffRole || STAFF_ROLES.OWNER) !== STAFF_ROLES.OWNER;
 };
 
 userSchema.set('toJSON', {

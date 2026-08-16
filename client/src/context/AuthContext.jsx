@@ -54,6 +54,19 @@ export function AuthProvider({ children }) {
     return res.data;
   }, [applySession]);
 
+  /**
+   * Staff invite link se judna.
+   *
+   * Account bante hi login bhi ho jata hai — warna naya aadmi account banata,
+   * phir login page pe jata, phir wahi phone aur password dobara likhta.
+   */
+  const joinAsStaff = useCallback(async (token, payload) => {
+    const res = await api.post(`/staff/invites/${token}/accept`, payload);
+    localStorage.setItem(TOKEN_KEY, res.data.token);
+    applySession(res.data);
+    return res.data;
+  }, [applySession]);
+
   const logout = useCallback(async () => {
     try { await api.post('/auth/logout'); } catch { /* token expire ho chuka hoga */ }
     localStorage.removeItem(TOKEN_KEY);
@@ -63,7 +76,7 @@ export function AuthProvider({ children }) {
   const value = {
     user, business, party, loading,
     setBusiness,
-    login, logout, signupWholesaler, signupRetailer,
+    login, logout, signupWholesaler, signupRetailer, joinAsStaff,
     refresh: loadSession,
     isWholesaler: user?.role === 'wholesaler',
     isRetailer: user?.role === 'retailer',
@@ -73,12 +86,37 @@ export function AuthProvider({ children }) {
     // GST on/off — poori app isi flag se tax fields dikhati/chhupati hai
     gstEnabled: Boolean(business?.gstEnabled),
 
-    // ---- Staff (Part 11) ----
-    // Malik ko sab kuch. Staff ko sirf jitni ijazat hai utna menu aur button.
+    /* ──────────────── Staff, ijazat aur hadd ────────────────
+     *
+     * Yahan jo bhi chhupta hai wo sirf DIKHAWE ke liye hai. Asli rok server
+     * pe lagti hai — har request pe. Client pe button chhupana suraksha nahi
+     * hoti, wo bas user ko wo cheez nahi dikhati jo wo kar nahi sakta.
+     */
     isOwner: Boolean(user?.isOwner),
     staffRole: user?.staffRole || null,
+    staffRoleLabel: user?.staffRoleLabel || '',
     permissions: user?.permissions || [],
-    can: (permission) => Boolean(user?.isOwner) || (user?.permissions || []).includes(permission),
+
+    /**
+     * `can('invoices:create')` — ek khaas kaam ki ijazat.
+     *
+     * Bina `:` ke naam bhi chalta hai (`can('invoices')`), tab matlab hota
+     * hai "is module me kuch bhi kar sakta hai?" — menu dikhane ke liye wahi
+     * chahiye hota hai.
+     */
+    can: (permission) => {
+      if (user?.isOwner) return true;
+      const list = user?.permissions || [];
+      if (!permission) return false;
+      if (String(permission).includes(':')) return list.includes(permission);
+      return list.some((p) => p.startsWith(`${permission}:`));
+    },
+
+    // "Sirf apna kaam" wala hai kya
+    isScoped: user?.scope === 'own' && !user?.isOwner,
+
+    // Paise ki hadd — form pehle hi bata deta hai, save karne ke baad nahi
+    limits: user?.limits || { maxDiscountPercent: null, maxInvoiceAmount: null, canSellOnCredit: true },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

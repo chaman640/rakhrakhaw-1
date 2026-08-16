@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { round2 } from '../utils/money.js';
-import { ORDER_STATUS, PARTY_TYPES, PERMISSIONS } from '../config/constants.js';
+import { ORDER_STATUS, PARTY_TYPES } from '../config/constants.js';
 import { userCan } from '../middleware/auth.js';
 import {
   Invoice, Order, Party, Item, Payment, Purchase, Notification,
@@ -231,24 +231,24 @@ export async function getWholesalerDashboard(businessId, user = null) {
   };
 
   // Jiski ijazat nahi, wo hissa response se hi nikal do
-  if (!can(PERMISSIONS.KHATA)) {
+  if (!can('khata:view')) {
     delete full.khata;
     delete full.collection;
     full.todo.pendingPayments = 0;
   }
-  if (!can(PERMISSIONS.ITEMS)) {
+  if (!can('items:view')) {
     delete full.stock;
     full.todo.lowStock = 0;
   }
-  if (!can(PERMISSIONS.ORDERS)) {
+  if (!can('orders:view')) {
     delete full.orders;
     full.todo.newOrders = 0;
   }
-  if (!can(PERMISSIONS.PARTIES)) {
+  if (!can('parties:view')) {
     delete full.topRetailers;
     full.todo.pendingRetailers = 0;
   }
-  if (!can(PERMISSIONS.INVOICES)) {
+  if (!can('invoices:view')) {
     delete full.sale;
   }
   // Mahine ka jod, 14 din ka trend aur top items — ye report wali baat hai.
@@ -258,7 +258,7 @@ export async function getWholesalerDashboard(businessId, user = null) {
   // graph aur sabse zyada bikne wale item dekh leta tha. Ab dono jagah ek hi
   // niyam hai. "Aaj kitna bika" uske paas rehne dete hain — bill to wo khud
   // banata hai.
-  if (!can(PERMISSIONS.REPORTS)) {
+  if (!can('reports:view')) {
     delete full.trend;
     delete full.topItems;
     if (full.sale) {
@@ -268,9 +268,9 @@ export async function getWholesalerDashboard(businessId, user = null) {
   }
   // Activity feed me har cheez mil-jul kar aati hai — jo dekh nahi sakta, wo row hata do
   full.activity = (full.activity || []).filter((a) =>
-    (a.type === 'invoice' && can(PERMISSIONS.INVOICES))
-    || (a.type === 'order' && can(PERMISSIONS.ORDERS))
-    || (a.type === 'payment' && can(PERMISSIONS.KHATA)));
+    (a.type === 'invoice' && can('invoices:view'))
+    || (a.type === 'order' && can('orders:view'))
+    || (a.type === 'payment' && can('khata:view')));
 
   return full;
 }

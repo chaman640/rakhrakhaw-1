@@ -3,6 +3,7 @@ import ApiError from '../utils/ApiError.js';
 import { PARTY_TYPES, LEDGER_TYPES, NOTIFICATION_TYPES } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { Party, LedgerEntry, Business, Invoice } from '../models/index.js';
+import { scopeParties, isScoped, canSeeParty } from '../utils/scope.js';
 import { notifyRetailer } from './notification.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -20,8 +21,8 @@ const TYPE_LABEL = {
 
 /* ------------------------------------------------------------- khata list */
 
-export async function listKhata(businessId, q) {
-  const filter = { businessId };
+export async function listKhata(businessId, q, viewer = null) {
+  let filter = { businessId };
   if (q.type !== 'all') filter.type = q.type;
   if (q.filter === 'due') filter.balance = { $gt: 0 };
   else if (q.filter === 'clear') filter.balance = { $lte: 0 };
@@ -30,6 +31,9 @@ export async function listKhata(businessId, q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
     filter.$or = [{ name: rx }, { shopName: rx }, { phone: rx }];
   }
+
+  // Khata bhi retailer ke saath chalta hai — jiske retailer nahi, uska khata bhi nahi
+  filter = scopeParties(filter, viewer);
 
   const skip = (q.page - 1) * q.limit;
   const sort = q.sort === 'name' ? { name: 1 }
@@ -61,11 +65,15 @@ export async function listKhata(businessId, q) {
   };
 }
 
-export async function getKhataSummary(businessId) {
+export async function getKhataSummary(businessId, viewer = null) {
   const bid = new mongoose.Types.ObjectId(businessId);
 
+  const mine = isScoped(viewer)
+    ? { $or: [{ assignedToUserId: viewer._id }, { createdBy: viewer._id }] }
+    : {};
+
   const [rows] = await Party.aggregate([
-    { $match: { businessId: bid } },
+    { $match: { businessId: bid, ...mine } },
     {
       $group: {
         _id: null,
@@ -113,9 +121,13 @@ export async function getKhataSummary(businessId) {
  * isliye running balance dobara ginne ki zarurat nahi — bas ye dhyan rakhna
  * hai ki limit lagne par KAUNSI entries kati.
  */
-export async function getPartyLedger(businessId, partyId, { from, to, limit = 200 } = {}) {
+export async function getPartyLedger(businessId, partyId, { from, to, limit = 200, viewer = null } = {}) {
   const party = await Party.findOne({ _id: partyId, businessId }).lean();
   if (!party) throw ApiError.notFound('Party nahi mili');
+
+  if (!(await canSeeParty(partyId, businessId, viewer))) {
+    throw ApiError.notFound('Party nahi mili');
+  }
 
   const filter = { businessId, partyId };
   if (from || to) {
@@ -203,7 +215,10 @@ export async function getMyKhata(businessId, partyId, opts) {
  * SMS nahi, WhatsApp nahi — sirf notification. Retailer app khole to dikh jayega,
  * aur usi jagah se UPI se paisa bhi bhej sakta hai.
  */
-export async function sendReminder(businessId, partyId, { message = '' } = {}) {
+export async function sendReminder(businessId, partyId, { message = '' } = {}, viewer = null) {
+  if (!(await canSeeParty(partyId, businessId, viewer))) {
+    throw ApiError.notFound('Party nahi mili');
+  }
   const party = await Party.findOne({ _id: partyId, businessId })
     .select('name shopName balance linkedUserId').lean();
   if (!party) throw ApiError.notFound('Party nahi mili');
