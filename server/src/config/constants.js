@@ -134,4 +134,5 @@ export const COUNTER_KEYS = {
   PAYMENT: 'payment',
   SALE_RETURN: 'saleReturn',
   PURCHASE_RETURN: 'purchaseReturn',
+  EXPENSE: 'expense',
 };

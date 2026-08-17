@@ -36,6 +36,7 @@ import Reports from '@/pages/wholesaler/Reports';
 import RetailerHome from '@/pages/retailer/Home';
 import Notifications from '@/pages/Notifications';
 import Returns from '@/pages/wholesaler/Returns';
+import Expenses from '@/pages/wholesaler/Expenses';
 import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
 import ReturnDetail from '@/pages/wholesaler/returns/ReturnDetail';
 import RetailerProfile from '@/pages/retailer/Profile';
@@ -124,6 +125,7 @@ export default function AppRoutes() {
         <Route path="/returns" element={<RequirePermission permission="returns"><Returns /></RequirePermission>} />
         <Route path="/returns/new" element={<RequirePermission permission="returns:create"><ReturnForm /></RequirePermission>} />
         <Route path="/returns/:id" element={<RequirePermission permission="returns"><ReturnDetail /></RequirePermission>} />
+        <Route path="/expenses" element={<RequirePermission permission="expenses"><Expenses /></RequirePermission>} />
         <Route path="/reports" element={<RequirePermission permission="reports"><Reports /></RequirePermission>} />
         <Route path="/activity" element={<RequirePermission permission="staff:view"><Activity /></RequirePermission>} />
         <Route path="/settings" element={<Settings />} />

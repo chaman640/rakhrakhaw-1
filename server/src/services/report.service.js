@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { round2 } from '../utils/money.js';
 import { PARTY_TYPES } from '../config/constants.js';
-import { Invoice, Purchase, Item, Party, StockMovement, Payment } from '../models/index.js';
+import { Invoice, Purchase, Item, Party, StockMovement, Payment, ReturnNote } from '../models/index.js';
+import { expenseTotals } from './expense.service.js';
 import { scopeMatch, scopeByParty, scopeParties } from '../utils/scope.js';
 
 /**
@@ -46,7 +47,8 @@ const SALE_COLUMNS = {
     { key: 'qty', header: 'Quantity' },
     { key: 'taxable', header: 'Taxable', money: true },
     { key: 'total', header: 'Kul sale', money: true },
-    { key: 'profit', header: 'Munafa (andaza)', money: true },
+    { key: 'cost', header: 'Maal ki lagat', money: true },
+    { key: 'profit', header: 'Munafa', money: true },
   ],
   party: [
     { key: 'label', header: 'Retailer' },
@@ -95,27 +97,50 @@ export async function saleReport(businessId, q = {}, viewer = null) {
           qty: { $sum: '$items.qty' },
           taxable: { $sum: '$items.taxableValue' },
           total: { $sum: '$items.total' },
+          // Bill ke saath jami hui lagat — jitni line me hai utni hi
+          snapCost: { $sum: { $multiply: ['$items.qty', { $ifNull: ['$items.costPrice', 0] }] } },
+          // Kitni quantity aisi hai jiski lagat bill me hai hi nahi (purane bill)
+          snapQty: {
+            $sum: { $cond: [{ $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }, '$items.qty', 0] },
+          },
         },
       },
       { $sort: { total: -1 } },
       { $limit: 500 },
     ]);
 
-    // Munafa ka andaza — item ka aaj ka purchase price se
+    /*
+      MUNAFA — lagat kahan se aati hai.
+
+      Pehle yahan sirf item ka AAJ ka purchase price lagta tha. Uska matlab ye
+      tha ki supplier ne rate badhaya aur aapne app me naya rate daala — to
+      pichhle mahine ka munafa bhi apne aap badal gaya. Jo hisaab ho chuka hai
+      wo badalna nahi chahiye.
+
+      Ab bill ke saath uski apni lagat jam jati hai. Purane bill me wo hai
+      nahi, isliye unke liye aaj ka rate hi maanna padta hai — isliye neeche
+      dono ka jod hai: jitni quantity ki lagat bill me hai utni bill se, baaki
+      aaj ke rate se.
+    */
     const items = await Item.find({ businessId, _id: { $in: agg.map((a) => a._id) } })
       .select('purchasePrice').lean();
     const costMap = Object.fromEntries(items.map((i) => [String(i._id), i.purchasePrice || 0]));
 
-    rows = agg.map((a) => ({
-      _id: a._id,
-      label: a.label,
-      unit: a.unit,
-      bills: a.bills.length,
-      qty: round2(a.qty),
-      taxable: round2(a.taxable),
-      total: round2(a.total),
-      profit: round2(a.taxable - a.qty * (costMap[String(a._id)] || 0)),
-    }));
+    rows = agg.map((a) => {
+      const oldQty = round2(a.qty - a.snapQty);           // jinki lagat bill me nahi thi
+      const cost = round2(a.snapCost + oldQty * (costMap[String(a._id)] || 0));
+      return {
+        _id: a._id,
+        label: a.label,
+        unit: a.unit,
+        bills: a.bills.length,
+        qty: round2(a.qty),
+        taxable: round2(a.taxable),
+        total: round2(a.total),
+        cost,
+        profit: round2(a.taxable - cost),
+      };
+    });
   } else if (groupBy === 'party') {
     const agg = await Invoice.aggregate([
       { $match: match },
@@ -616,7 +641,154 @@ function sumRows(rows, columns) {
   return totals;
 }
 
+
+/* ═══════════════════════════════════════════════ 7. FAYDA-NUKSAN (P&L) */
+
+const PL_COLUMNS = [
+  { key: 'label', header: 'Cheez' },
+  { key: 'amount', header: 'Rakam', money: true },
+];
+
+/**
+ * FAYDA-NUKSAN — "mahine ke aakhir me bacha kitna?"
+ *
+ * Poora hisaab paanch line ka hai, aur har line ka matlab saaf hona chahiye:
+ *
+ *     Sale (bina GST)          jitna maal becha
+ *   − Maal wapas aaya          jo laut kar aa gaya
+ *   ─────────────────────
+ *   = Asli sale
+ *   − Maal ki lagat            us maal ne aapko kitne ka pada
+ *   ─────────────────────
+ *   = Maal ka fayda            (gross profit)
+ *   − Dukaan ka kharch         chai, petrol, tankhwah, kiraya...
+ *   ─────────────────────
+ *   = Asli fayda               (net profit)
+ *
+ * TEEN FAISLE jo samajhne layak hain:
+ *
+ * 1. GST sale me nahi ginte. Wo paisa aapka hai hi nahi — sarkar ka hai, aap
+ *    sirf ikattha karke aage bhejte hain. Use kamaai maan lena sabse aam aur
+ *    sabse mehanga dhokha hai.
+ *
+ * 2. PURCHASE seedha kharch nahi hai. Aaj ₹1 lakh ka maal khareeda aur kuch
+ *    nahi becha — nuksaan nahi hua, paisa maal me badal gaya. Maal ki lagat
+ *    tabhi ginti hai jab wo maal BIK jata hai. Isliye yahan purchase ki koi
+ *    line nahi hai, aur "maal ki lagat" bike hue maal ki hai.
+ *
+ * 3. Ye NAKAD ka hisaab nahi hai. Udhaar becha hua maal bhi sale me hai, chahe
+ *    paisa abhi tak na aaya ho. "Kitna paisa aaya" wo alag sawal hai — uske
+ *    liye Khata aur Payment page hai.
+ */
+export async function profitLossReport(businessId, q = {}, viewer = null) {
+  const { start, end } = range(q);
+
+  let saleMatch = {
+    businessId: oid(businessId), isCancelled: false, invoiceDate: { $gte: start, $lte: end },
+  };
+  saleMatch = await scopeMatch(saleMatch, businessId, viewer, { alsoMine: true });
+
+  let returnMatch = {
+    businessId: oid(businessId), type: 'SALE_RETURN', returnDate: { $gte: start, $lte: end },
+  };
+  returnMatch = await scopeMatch(returnMatch, businessId, viewer, { alsoMine: true });
+
+  /*
+    Lagat do hisso me nikalti hai: jitni line me lagat likhi hai wo seedha, aur
+    jitni line me nahi hai (purane bill) uski quantity alag — uske liye aaj ka
+    rate lagana padta hai. Isi wajah se neeche `snapQty` bhi ginte hain.
+  */
+  const costPipeline = (dateField) => [
+    { $unwind: '$items' },
+    {
+      $group: {
+        _id: '$items.itemId',
+        qty: { $sum: '$items.qty' },
+        taxable: { $sum: '$items.taxableValue' },
+        snapCost: { $sum: { $multiply: ['$items.qty', { $ifNull: ['$items.costPrice', 0] }] } },
+        snapQty: { $sum: { $cond: [{ $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }, '$items.qty', 0] } },
+      },
+    },
+  ];
+
+  const [saleAgg, saleLines, returnAgg, returnLines, expenses] = await Promise.all([
+    Invoice.aggregate([
+      { $match: saleMatch },
+      { $group: { _id: null, bills: { $sum: 1 }, taxable: { $sum: '$taxableTotal' }, grand: { $sum: '$grandTotal' }, tax: { $sum: { $add: ['$cgstTotal', '$sgstTotal', '$igstTotal'] } } } },
+    ]),
+    Invoice.aggregate([{ $match: saleMatch }, ...costPipeline()]),
+    ReturnNote.aggregate([
+      { $match: returnMatch },
+      { $group: { _id: null, notes: { $sum: 1 }, taxable: { $sum: '$taxableTotal' } } },
+    ]),
+    ReturnNote.aggregate([{ $match: returnMatch }, ...costPipeline()]),
+    expenseTotals(businessId, { start, end }, viewer),
+  ]);
+
+  // Purane bill ke liye aaj ka rate — dono taraf (sale aur wapasi) ke liye
+  const itemIds = [...new Set([...saleLines, ...returnLines].map((l) => String(l._id)))];
+  const items = await Item.find({ businessId, _id: { $in: itemIds } }).select('purchasePrice').lean();
+  const costMap = Object.fromEntries(items.map((i) => [String(i._id), i.purchasePrice || 0]));
+
+  const costOf = (lines) => round2(lines.reduce((sum, l) => {
+    const missingQty = Math.max(0, l.qty - l.snapQty);
+    return sum + l.snapCost + missingQty * (costMap[String(l._id)] || 0);
+  }, 0));
+
+  const saleTaxable = round2(saleAgg[0]?.taxable || 0);
+  const returnTaxable = round2(returnAgg[0]?.taxable || 0);
+  const netSale = round2(saleTaxable - returnTaxable);
+
+  const saleCost = costOf(saleLines);
+  const returnCost = costOf(returnLines);
+  const netCost = round2(saleCost - returnCost);
+
+  const grossProfit = round2(netSale - netCost);
+  const netProfit = round2(grossProfit - expenses.total);
+
+  const rows = [
+    { key: 'sale', label: 'Sale (bina GST)', amount: saleTaxable },
+    ...(returnTaxable > 0 ? [{ key: 'saleReturn', label: 'Maal wapas aaya', amount: -returnTaxable }] : []),
+    { key: 'netSale', label: 'Asli sale', amount: netSale, strong: true },
+    { key: 'cogs', label: 'Maal ki lagat', amount: -netCost },
+    { key: 'gross', label: 'Maal ka fayda', amount: grossProfit, strong: true },
+    ...expenses.byCategory.map((c) => ({
+      key: `exp:${c.category}`, label: `   ${c.label}`, amount: -c.amount, muted: true,
+    })),
+    { key: 'expense', label: 'Dukaan ka kharch', amount: -expenses.total, strong: true },
+    { key: 'net', label: 'Asli fayda', amount: netProfit, strong: true, big: true },
+  ];
+
+  return {
+    columns: PL_COLUMNS,
+    rows,
+    totals: {},
+    meta: {
+      title: 'Fayda-Nuksan',
+      from: start, to: end,
+      bills: saleAgg[0]?.bills || 0,
+      returns: returnAgg[0]?.notes || 0,
+      gstCollected: round2(saleAgg[0]?.tax || 0),
+      saleWithGst: round2(saleAgg[0]?.grand || 0),
+      sale: saleTaxable,
+      saleReturn: returnTaxable,
+      netSale,
+      cost: netCost,
+      grossProfit,
+      expenses: expenses.total,
+      expenseCount: expenses.count,
+      expenseByCategory: expenses.byCategory,
+      netProfit,
+      // Munafe ka pratishat — "100 ke maal pe kitna bacha"
+      grossMarginPct: netSale > 0 ? round2((grossProfit / netSale) * 100) : 0,
+      netMarginPct: netSale > 0 ? round2((netProfit / netSale) * 100) : 0,
+    },
+  };
+}
+
 export const REPORTS = {
+  // Fayda-Nuksan sabse pehle — yahi wo sawal hai jo har dukaandaar poochta hai
+  pl: profitLossReport,
   sale: saleReport,
   purchase: purchaseReport,
   stock: stockReport,

@@ -18,6 +18,8 @@ const returnItemSchema = new mongoose.Schema(
     name: { type: String, required: true },
     hsn: { type: String, default: '' },
     unit: { type: String, enum: UNITS, default: 'PCS' },
+    // Bill jaisa hi snapshot — wajah Invoice.js me likhi hai
+    costPrice: { type: Number, default: 0 },
     qty: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0 },

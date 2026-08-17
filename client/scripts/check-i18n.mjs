@@ -39,9 +39,25 @@ const used = new Set();
 let errors = 0;
 let risky = 0;
 
+/*
+  HAR file dekhni hai, sirf wo nahi jisme i18n ka import maujood hai.
+
+  Pehle yahan ek shart thi: "jis file me `from '@/lib/i18n'` likha ho, sirf
+  wahi jaancho". Wo ulti pad gayi — kyunki jo file `t('...')` likhti hai par
+  import karna BHOOL jati hai, wo bilkul yahi file hoti hai jo browser me
+  "t is not defined" dekar poora page safed kar deti hai. Aur jaanch usi ko
+  chhod deti thi.
+
+  Aisa ek baar sach me hua: Combobox me `aria-label={t('Band karein')}` likha
+  gaya, import chhoot gaya, aur `npm run check` khush raha. Pakda tab jab bill
+  banate waqt item ka box khulna hi band ho gaya.
+
+  Isliye ab shart hai: file me `t(` dikhe — chahe import ho ya na ho — to
+  jaanch hogi.
+*/
 for (const file of files) {
   const src = fs.readFileSync(file, 'utf8');
-  if (!src.includes("from '@/lib/i18n'")) continue;
+  if (!src.includes("from '@/lib/i18n'") && !/\bt\(/.test(src)) continue;
 
   let ast;
   try {
@@ -58,7 +74,12 @@ for (const file of files) {
       if (callee.type !== 'Identifier' || callee.name !== 't') return;
 
       const binding = p.scope.getBinding('t');
-      if (!binding || binding.kind !== 'module') {
+      if (!binding) {
+        console.error(`✗ ${file}:${p.node.loc.start.line}  \`t\` istemal hua par import nahi — page khulte hi "t is not defined" aayega`);
+        errors += 1;
+        return;
+      }
+      if (binding.kind !== 'module') {
         console.error(`✗ ${file}:${p.node.loc.start.line}  yahan \`t\` anuvaad wala nahi hai — page khulte hi tootega`);
         errors += 1;
         return;
@@ -69,6 +90,8 @@ for (const file of files) {
     },
 
     Scopable(p) {
+      // `t` khud jahan banta hai (lib/i18n.js) wo chetavni nahi hai
+      if (file.replace(/\\/g, '/').endsWith('src/lib/i18n.js')) return;
       // sirf chetavni — abhi tootta nahi, par aage tod sakta hai
       const own = p.scope.bindings?.t;
       if (own && own.kind !== 'module') {

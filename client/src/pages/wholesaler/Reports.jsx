@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   BarChart3, Download, Printer, TrendingUp, Truck, Package, BookOpen,
-  Receipt, Wallet, RotateCcw,
+  Receipt, Wallet, RotateCcw, Scale,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { downloadText } from '@/lib/download';
@@ -10,9 +10,18 @@ import { formatMoney } from '@/lib/format';
 import {
   PageHeader, Card, Button, Chips, Input, Select, Spinner, EmptyState, Badge, useToast,
 } from '@/components/ui';
+import ProfitLoss from './reports/ProfitLoss';
 import { t } from '@/lib/i18n';
 
 const TABS = [
+  /*
+    Fayda-Nuksan sabse pehle.
+
+    Baaki saari report "kya hua" batati hain. Ye ek hi report us sawal ka jawab
+    deti hai jo har dukaandaar mahine ke aakhir me poochta hai — "bacha kitna?"
+    Isliye Reports kholte hi yahi saamne hai.
+  */
+  { value: 'pl', label: 'Fayda-Nuksan', icon: Scale },
   { value: 'sale', label: 'Sale', icon: TrendingUp },
   { value: 'purchase', label: 'Purchase', icon: Truck },
   { value: 'stock', label: 'Stock', icon: Package },
@@ -58,7 +67,7 @@ export default function Reports() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState(searchParams.get('tab') || 'sale');
+  const [tab, setTab] = useState(searchParams.get('tab') || 'pl');
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(todayStr());
   const [groupBy, setGroupBy] = useState('day');
@@ -104,7 +113,7 @@ export default function Reports() {
     setReport(null);
     setLoading(true);
     setGroupBy(GROUP_OPTIONS[tab] ? GROUP_OPTIONS[tab][0].value : 'day');
-    setSearchParams(tab === 'sale' ? {} : { tab }, { replace: true });
+    setSearchParams(tab === 'pl' ? {} : { tab }, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -211,7 +220,20 @@ export default function Reports() {
       {/* ---- GST ka alag summary ---- */}
       {tab === 'gst' && report?.meta?.split && <GstSummary meta={report.meta} />}
 
-      {/* ---- Table ---- */}
+      {/*
+        Fayda-Nuksan ka apna roop.
+
+        Baaki report table hain — har line ek jaisi. Ye bayaan hai: kuch line
+        jodti hain, kuch ghatati hain. Table me wo farak mit jata hai, isliye
+        iske liye alag component hai.
+      */}
+      {tab === 'pl' ? (
+        loading ? (
+          <Card><div className="flex justify-center py-16 text-slate-400"><Spinner size={24} /></div></Card>
+        ) : (
+          <ProfitLoss meta={report?.meta} />
+        )
+      ) : (
       <Card padding={false} className="report-sheet">
         {loading ? (
           <div className="flex justify-center py-16 text-slate-400"><Spinner size={24} /></div>
@@ -326,6 +348,7 @@ export default function Reports() {
           </>
         )}
       </Card>
+      )}
 
       {report?.meta?.deadAfterDays && (
         <p className="mt-3 text-xs text-slate-400">

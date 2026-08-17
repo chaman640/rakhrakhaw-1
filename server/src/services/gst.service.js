@@ -83,6 +83,9 @@ export function computeInvoice(lines, { gstEnabled, taxType, extraDiscount = 0 }
       unit: l.unit || 'PCS',
       warrantyMonths: l.warrantyMonths || 0,
       warrantyNote: l.warrantyNote || '',
+      // Lagat sirf aage bhej dete hain — ispe koi hisaab nahi hota. Ye bill
+      // ke saath jam jati hai taaki munafa baad me badle nahi (Invoice model).
+      costPrice: l.costPrice || 0,
       qty: l.qty,
       rate: l.rate,
       discount: round2(l.discount + share),

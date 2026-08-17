@@ -152,8 +152,9 @@ export default function PartyPicker({ value, onChange, disabled }) {
           fetchOptions={fetchParties}
           emptyText={t('Koi active retailer nahi mila')}
         />
+        {/* -my-1.5 + py-2 = dikhne me link, par tap ka ghera 32px+ */}
         <button type="button" onClick={() => setMode('phone')}
-          className="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:underline">
+          className="-my-1.5 mt-1 flex items-center gap-1.5 rounded py-2 text-xs font-medium text-brand-700 hover:underline focus-ring">
           <Phone size={13} /> {t('Number se dhundhein')}
         </button>
       </div>
@@ -217,8 +218,8 @@ export default function PartyPicker({ value, onChange, disabled }) {
       )}
 
       <button type="button" onClick={() => setMode('name')}
-        className={cn('mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:underline',
-          state === 'new' && 'mt-3')}>
+        className={cn('mt-1 flex items-center gap-1.5 rounded py-2 text-xs font-medium text-brand-700 hover:underline focus-ring',
+          state === 'new' && 'mt-2')}>
         <Search size={13} /> {t('Number yaad nahi? Naam se dhundhein')}
       </button>
     </div>

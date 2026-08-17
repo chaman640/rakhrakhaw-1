@@ -26,6 +26,8 @@ export const MODULES = {
   INVOICES: 'invoices',
   RETURNS: 'returns',
   KHATA: 'khata',
+  // Dukaan ka kharch — chai, petrol, tankhwah, kiraya... (Part 15 step 3)
+  EXPENSES: 'expenses',
   REPORTS: 'reports',
   STAFF: 'staff',
   SETTINGS: 'settings',
@@ -60,6 +62,7 @@ export const MODULE_ACTIONS = {
   [MODULES.INVOICES]: ['view', 'create', 'edit', 'delete'],
   [MODULES.RETURNS]: ['view', 'create', 'edit', 'delete'],
   [MODULES.KHATA]: ['view', 'create', 'edit', 'delete', 'approve'],
+  [MODULES.EXPENSES]: ['view', 'create', 'edit', 'delete'],
   [MODULES.REPORTS]: ['view', 'export'],
   [MODULES.STAFF]: ['view', 'create', 'edit', 'delete'],
   [MODULES.SETTINGS]: ['view', 'edit'],
@@ -108,6 +111,7 @@ export const ROLE_PERMISSIONS = {
     ...all(M.ITEMS), ...all(M.PARTIES), ...all(M.PURCHASES), ...all(M.ORDERS),
     ...all(M.INVOICES), ...all(M.RETURNS),
     ...only(M.KHATA, 'view', 'create', 'edit', 'approve'),
+    ...only(M.EXPENSES, 'view', 'create', 'edit'),
     ...all(M.REPORTS),
     ...only(M.SETTINGS, 'view'),
   ],
@@ -129,6 +133,7 @@ export const ROLE_PERMISSIONS = {
     ...only(M.INVOICES, 'view', 'create', 'edit'),
     ...only(M.RETURNS, 'view', 'create'),
     ...only(M.KHATA, 'view', 'create', 'edit', 'approve'),
+    ...only(M.EXPENSES, 'view', 'create', 'edit'),
     ...all(M.REPORTS),
   ],
 
@@ -142,6 +147,7 @@ export const ROLE_PERMISSIONS = {
     ...only(M.INVOICES, 'view'),
     ...only(M.RETURNS, 'view'),
     ...only(M.KHATA, 'view'),
+    ...only(M.EXPENSES, 'view'),
     ...all(M.REPORTS),
   ],
 
@@ -158,6 +164,8 @@ export const ROLE_PERMISSIONS = {
     ...only(M.PARTIES, 'view'),
     ...only(M.INVOICES, 'view'),
     ...only(M.KHATA, 'view', 'create'),
+    // Chai-paani, petrol jaisa roz ka kharch counter wala hi likhta hai
+    ...only(M.EXPENSES, 'view', 'create'),
     ...only(M.REPORTS, 'view'),
   ],
 
@@ -199,6 +207,7 @@ export const MODULE_LABEL = {
   [MODULES.INVOICES]: 'Bill',
   [MODULES.RETURNS]: 'Maal wapasi',
   [MODULES.KHATA]: 'Khata aur payment',
+  [MODULES.EXPENSES]: 'Dukaan ka kharch',
   [MODULES.REPORTS]: 'Reports',
   [MODULES.STAFF]: 'Staff',
   [MODULES.SETTINGS]: 'Settings',

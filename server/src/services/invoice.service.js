@@ -324,7 +324,7 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
   // Items ki detail
   const itemIds = payload.items.map((i) => i.itemId);
   const dbItems = await Item.find({ _id: { $in: itemIds }, businessId })
-    .select('name hsn gstRate unit stockQty warrantyMonths warrantyNote').lean();
+    .select('name hsn gstRate unit stockQty warrantyMonths warrantyNote purchasePrice').lean();
   const itemMap = new Map(dbItems.map((i) => [String(i._id), i]));
 
   const lines = payload.items.map((l, idx) => {
@@ -337,6 +337,8 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
       unit: item.unit,
       warrantyMonths: item.warrantyMonths || 0,
       warrantyNote: item.warrantyNote || '',
+      // Aaj ki lagat bill ke saath jam jati hai — Invoice model me wajah likhi hai
+      costPrice: item.purchasePrice || 0,
       qty: l.qty,
       rate: l.rate,
       discount: l.discount || 0,

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Search, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import Spinner from './Spinner';
+import { t } from '@/lib/i18n';
 
 /**
  * Search karke chunne wala dropdown.
@@ -118,8 +119,10 @@ export default function Combobox({
               placeholder={placeholder}
               className="h-10 w-full rounded-lg border border-brand-400 bg-white pl-9 pr-8 text-sm focus-ring"
             />
+            {/* p-2 (36px ghera) — p-1 pe ye 22px ka tha aur ungli se chookta tha */}
             <button type="button" onClick={() => { setOpen(false); setQuery(''); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100">
+              aria-label={t('Band karein')}
+              className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded text-slate-400 hover:bg-slate-100">
               <X size={14} />
             </button>
           </>

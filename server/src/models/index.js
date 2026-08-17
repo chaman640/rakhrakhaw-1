@@ -17,3 +17,4 @@ export { default as Cart } from './Cart.js';
 export { default as ReturnNote } from './ReturnNote.js';
 export { default as AuditLog } from './AuditLog.js';
 export { default as StaffInvite } from './StaffInvite.js';
+export { default as Expense } from './Expense.js';

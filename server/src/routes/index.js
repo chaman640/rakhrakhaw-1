@@ -18,6 +18,7 @@ import myKhataRoutes from './myKhata.routes.js';
 import reportRoutes from './report.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import returnRoutes from './return.routes.js';
+import expenseRoutes from './expense.routes.js';
 import staffRoutes from './staff.routes.js';
 import backupRoutes from './backup.routes.js';
 import auditRoutes from './audit.routes.js';
@@ -66,6 +67,7 @@ router.use('/dashboard', dashboardRoutes);
 
 // Part 11 — maal wapas
 router.use('/returns', returnRoutes);
+router.use('/expenses', expenseRoutes);
 router.use('/staff', staffRoutes);
 router.use('/backup', backupRoutes);
 

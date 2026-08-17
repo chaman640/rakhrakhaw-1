@@ -11,6 +11,23 @@ const invoiceItemSchema = new mongoose.Schema(
     warrantyMonths: { type: Number, default: 0 },
     warrantyNote: { type: String, default: '' },
     unit: { type: String, enum: UNITS, default: 'PCS' },
+
+    /* ---- Maal ki LAGAT ka snapshot (Part 15 step 3) ----
+     *
+     * Bill banate waqt is item ka purchase price kya tha.
+     *
+     * Ye jodna zaroori tha, aur wajah ek asli galti thi: pehle munafa item ke
+     * AAJ ke purchase price se ginte the. Matlab supplier ne rate badha diya
+     * aur aapne app me naya rate daal diya — to PICHHLE mahine ka munafa bhi
+     * apne aap ghat gaya. Jo hisaab kabhi badalna hi nahi chahiye tha, wo
+     * chup-chaap badal jata tha.
+     *
+     * Ab lagat bill ke saath hi jam jati hai. Purane bill (jinme ye nahi hai)
+     * ke liye aaj ka rate hi maan lete hain — usse behtar kuch hai nahi, par
+     * naye bill ka hisaab pakka rehta hai.
+     */
+    costPrice: { type: Number, default: 0 },
+
     qty: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0 },

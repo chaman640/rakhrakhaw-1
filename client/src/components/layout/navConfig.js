@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  History, House, UserCircle,
+  History, House, UserCircle, Wallet2,
 } from 'lucide-react';
 
 // Wholesaler ka poora menu (sidebar / hamburger).
@@ -23,6 +23,7 @@ export const wholesalerNav = [
   // `khata:create` chahiye — warna salesman ko (jise khata sirf dekhna hai)
   // ye menu dikh jata tha aur page khul bhi jata tha.
   { to: '/payments', label: 'Payments', icon: Wallet, part: 9, perm: 'khata:create' },
+  { to: '/expenses', label: 'Kharch', icon: Wallet2, part: 15, perm: 'expenses' },
   { to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports' },
   // "Kisne kya kiya" — sirf unhe jo staff dekh sakte hain
   { to: '/activity', label: 'Kaam ka record', icon: History, part: 12, perm: 'staff' },

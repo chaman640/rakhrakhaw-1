@@ -282,7 +282,7 @@ export async function createReturn(businessId, payload, userId) {
 
   const itemIds = payload.items.map((i) => i.itemId);
   const dbItems = await Item.find({ _id: { $in: itemIds }, businessId })
-    .select('name hsn gstRate unit stockQty').lean();
+    .select('name hsn gstRate unit stockQty purchasePrice').lean();
   const itemMap = new Map(dbItems.map((i) => [String(i._id), i]));
 
   const lines = payload.items.map((l, idx) => {
@@ -294,6 +294,9 @@ export async function createReturn(businessId, payload, userId) {
       name: item.name,
       hsn: item.hsn || '',
       unit: item.unit,
+      // Bill ki tarah yahan bhi lagat jam jati hai — Fayda-Nuksan me wapas
+      // aaye maal ki lagat isi se ghatati hai (Invoice model me poori wajah)
+      costPrice: item.purchasePrice || 0,
       qty: l.qty,
       rate: l.rate,
       discount: l.discount || 0,
