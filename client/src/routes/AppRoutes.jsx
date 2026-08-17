@@ -39,13 +39,36 @@ import Returns from '@/pages/wholesaler/Returns';
 import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
 import ReturnDetail from '@/pages/wholesaler/returns/ReturnDetail';
 import RetailerProfile from '@/pages/retailer/Profile';
+import WholesalerProfile from '@/pages/wholesaler/Profile';
+import WholesalerHome from '@/pages/wholesaler/Home';
+
+/**
+ * EK RASTA, DO ROOP.
+ *
+ * `/home` aur `/profile` dono roles ke liye hain, par andar alag page khulta
+ * hai. Do alag route banane ki koshish nahi karni chahiye: React Router pehla
+ * milta hua rasta uthata hai, isliye retailer wholesaler wale group me phans
+ * kar bahar phenk diya jata (yahi galti `/notifications` pe ek baar ho chuki
+ * hai — neeche uska note hai). Isliye route ek hi hai aur role ka faisla
+ * yahan andar hota hai.
+ */
+function HomeByRole() {
+  const { isRetailer } = useAuth();
+  return isRetailer ? <RetailerHome /> : <WholesalerHome />;
+}
+
+function ProfileByRole() {
+  const { isRetailer } = useAuth();
+  return isRetailer ? <RetailerProfile /> : <WholesalerProfile />;
+}
 
 function HomeRedirect() {
   const { user, loading, isApproved } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'retailer') return <Navigate to={isApproved ? '/home' : '/pending'} replace />;
-  return <Navigate to="/dashboard" replace />;
+  // Wholesaler bhi ab Home pe — roz ka kaam wahi hai
+  return <Navigate to="/home" replace />;
 }
 
 export default function AppRoutes() {
@@ -89,6 +112,12 @@ export default function AppRoutes() {
         <Route path="/purchases/:id" element={<RequirePermission permission="purchases"><PurchaseDetail /></RequirePermission>} />
         <Route path="/invoices" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
         <Route path="/invoices/new" element={<RequirePermission permission="invoices:create"><InvoiceForm /></RequirePermission>} />
+        {/*
+          "Add Sale" aur "Naya bill" EK HI cheez hain — do alag form banane ka
+          matlab hota do jagah hisaab, do jagah bug. Isliye rasta alag hai,
+          page wahi. Home ka bada button yahin bhejta hai.
+        */}
+        <Route path="/sale/new" element={<RequirePermission permission="invoices:create"><InvoiceForm /></RequirePermission>} />
         <Route path="/invoices/:id" element={<RequirePermission permission="invoices"><InvoiceDetail /></RequirePermission>} />
         <Route path="/khata" element={<RequirePermission permission="khata:view"><Khata /></RequirePermission>} />
         <Route path="/payments" element={<RequirePermission permission="khata:create"><Payments /></RequirePermission>} />
@@ -115,7 +144,6 @@ export default function AppRoutes() {
         <Route path="/my-bills" element={<MyBills />} />
         <Route path="/my-bills/:id" element={<MyBillDetail />} />
         <Route path="/my-khata" element={<MyKhata />} />
-        <Route path="/home" element={<RetailerHome />} />
       </Route>
 
       {/* ---- Dono roles ---- */}
@@ -133,17 +161,22 @@ export default function AppRoutes() {
         }
       >
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/home" element={<HomeByRole />} />
       </Route>
 
-      {/* Profile pending retailer ko bhi chahiye */}
+      {/*
+        Profile pending retailer ko bhi chahiye — isliye `allowUnapproved`.
+        Home nahi: jo abhi approve hi nahi hua uske liye Home me kuch hai hi
+        nahi, use /pending pe hi rehna chahiye.
+      */}
       <Route
         element={
-          <RequireAuth roles={['retailer']} allowUnapproved>
+          <RequireAuth allowUnapproved>
             <AppLayout />
           </RequireAuth>
         }
       >
-        <Route path="/profile" element={<RetailerProfile />} />
+        <Route path="/profile" element={<ProfileByRole />} />
       </Route>
 
       <Route path="/" element={<HomeRedirect />} />

@@ -9,6 +9,7 @@ import {
   PageHeader, Card, Badge, Spinner, EmptyState, Chips, Select, Input,
   Pagination, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 /**
  * KISNE KYA KIYA.
@@ -90,7 +91,7 @@ export default function Activity() {
   return (
     <>
       <PageHeader
-        title="Kaam ka record"
+        title={t('Kaam ka record')}
         subtitle={isScoped
           ? 'Aapka kiya hua kaam'
           : 'Kisne kya kiya, kab kiya — sab yahan likha jata hai'}
@@ -103,15 +104,15 @@ export default function Activity() {
           <div className="grid gap-3 sm:grid-cols-3">
             {!isScoped && staff.length > 1 && (
               <Select
-                label="Kisne kiya"
+                label={t('Kisne kiya')}
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                placeholder="Sab log"
+                placeholder={t('Sab log')}
                 options={staff.map((s) => ({ value: s._id, label: `${s.name} (${s.staffRoleLabel})` }))}
               />
             )}
-            <Input label="Kab se" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-            <Input label="Kab tak" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <Input label={t('Kab se')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <Input label={t('Kab tak')} type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
       </Card>
@@ -122,8 +123,8 @@ export default function Activity() {
         ) : !rows.length ? (
           <EmptyState
             icon={History}
-            title="Abhi koi record nahi"
-            message="Bill banega, paisa aayega ya koi setting badlegi — sab yahan likha jayega."
+            title={t('Abhi koi record nahi')}
+            message={t('Bill banega, paisa aayega ya koi setting badlegi — sab yahan likha jayega.')}
           />
         ) : (
           <>
@@ -181,7 +182,7 @@ export default function Activity() {
       </Card>
 
       <p className="mt-3 text-xs text-slate-400">
-        Record apne aap banta hai — ise koi mita nahi sakta, malik bhi nahi.
+        {t('Record apne aap banta hai — ise koi mita nahi sakta, malik bhi nahi.')}
       </p>
     </>
   );

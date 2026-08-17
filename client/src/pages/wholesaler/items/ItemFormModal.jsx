@@ -4,6 +4,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney } from '@/lib/format';
 import { Modal, Button, Input, Select, Textarea, Switch, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', 'LTR', 'ML', 'MTR', 'FT', 'BAG', 'BUNDLE'];
 const GST_RATES = ['0', '0.25', '3', '5', '12', '18', '28'];
@@ -190,7 +191,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       description={isEdit ? item?.name : 'Stock, price aur category bharein'}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} type="button">Cancel</Button>
+          <Button variant="secondary" onClick={onClose} type="button">{t('Cancel')}</Button>
           <Button onClick={handleSubmit} loading={saving || uploading} type="button">
             {isEdit ? 'Save karein' : 'Add karein'}
           </Button>
@@ -216,7 +217,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             </Button>
             {photo.url && (
               <Button type="button" variant="ghost" size="sm" icon={Trash2} onClick={removePhoto}>
-                Hatayein
+                {t('Hatayein')}
               </Button>
             )}
           </div>
@@ -224,36 +225,36 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
 
         {/* ---- Basic ---- */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Item ka naam" required autoFocus placeholder="Bearing 6203"
+          <Input label={t('Item ka naam')} required autoFocus placeholder={t('Bearing 6203')}
             value={form.name} onChange={set('name')} error={fieldErrors.name}
             containerClassName="sm:col-span-2" />
 
-          <Input label="Code / SKU" placeholder="BRG-6203" value={form.sku} onChange={set('sku')}
-            hint="Apni pehchaan ke liye, marzi ho to chhod dein" />
+          <Input label={t('Code / SKU')} placeholder={t('BRG-6203')} value={form.sku} onChange={set('sku')}
+            hint={t('Apni pehchaan ke liye, marzi ho to chhod dein')} />
 
-          <Select label="Unit" options={UNITS} value={form.unit} onChange={set('unit')} placeholder="" />
+          <Select label={t('Unit')} options={UNITS} value={form.unit} onChange={set('unit')} placeholder="" />
 
           <div className="sm:col-span-2">
             {!addingCategory ? (
               <div className="flex items-end gap-2">
                 <Select
-                  label="Category"
-                  placeholder="Bina category"
+                  label={t('Category')}
+                  placeholder={t('Bina category')}
                   options={categories.map((c) => ({ value: c._id, label: c.name }))}
                   value={form.categoryId}
                   onChange={set('categoryId')}
                 />
                 <Button type="button" variant="secondary" icon={Plus} onClick={() => setAddingCategory(true)}>
-                  Nayi
+                  {t('Nayi')}
                 </Button>
               </div>
             ) : (
               <div className="flex items-end gap-2">
-                <Input label="Nayi category ka naam" value={newCategory} autoFocus
+                <Input label={t('Nayi category ka naam')} value={newCategory} autoFocus
                   onChange={(e) => setNewCategory(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }} />
-                <Button type="button" onClick={addCategory}>Add</Button>
-                <Button type="button" variant="ghost" onClick={() => setAddingCategory(false)}>Cancel</Button>
+                <Button type="button" onClick={addCategory}>{t('Add')}</Button>
+                <Button type="button" variant="ghost" onClick={() => setAddingCategory(false)}>{t('Cancel')}</Button>
               </div>
             )}
           </div>
@@ -261,20 +262,20 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
 
         {/* ---- Prices ---- */}
         <div className="rounded-lg border border-slate-200 p-4">
-          <h4 className="mb-3 text-sm font-semibold text-slate-900">Price</h4>
+          <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('Price')}</h4>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Input label="Purchase price" type="number" step="0.01" min="0" prefix="₹"
+            <Input label={t('Purchase price')} type="number" step="0.01" min="0" prefix="₹"
               value={form.purchasePrice} onChange={set('purchasePrice')}
-              hint="Aapko kitne ka pada" error={fieldErrors.purchasePrice} />
-            <Input label="Sale price" type="number" step="0.01" min="0" prefix="₹"
+              hint={t('Aapko kitne ka pada')} error={fieldErrors.purchasePrice} />
+            <Input label={t('Sale price')} type="number" step="0.01" min="0" prefix="₹"
               value={form.salePrice} onChange={set('salePrice')}
-              hint="Counter / default rate" error={fieldErrors.salePrice} />
-            <Input label="Wholesale price" type="number" step="0.01" min="0" prefix="₹"
+              hint={t('Counter / default rate')} error={fieldErrors.salePrice} />
+            <Input label={t('Wholesale price')} type="number" step="0.01" min="0" prefix="₹"
               value={form.wholesalePrice} onChange={set('wholesalePrice')}
-              hint="Retailers ko yahi dikhega" error={fieldErrors.wholesalePrice} />
+              hint={t('Retailers ko yahi dikhega')} error={fieldErrors.wholesalePrice} />
             <Input label="MRP" type="number" step="0.01" min="0" prefix="₹"
               value={form.mrp} onChange={set('mrp')}
-              hint="Packet pe chhapa hua rate — retailer ko dikhega" error={fieldErrors.mrp} />
+              hint={t('Packet pe chhapa hua rate — retailer ko dikhega')} error={fieldErrors.mrp} />
           </div>
 
           {margin && (
@@ -289,43 +290,43 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
 
         {/* ---- Pehchan ---- */}
         <div className="rounded-lg border border-slate-200 p-4">
-          <h4 className="mb-1 text-sm font-semibold text-slate-900">Pehchan</h4>
+          <h4 className="mb-1 text-sm font-semibold text-slate-900">{t('Pehchan')}</h4>
           <p className="mb-3 text-xs text-slate-500">
-            Bharna zaroori nahi — par bhar denge to search me foran mil jayega
+            {t('Bharna zaroori nahi — par bhar denge to search me foran mil jayega')}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Company / Brand" placeholder="SKF, Bosch, Rolon..."
+            <Input label={t('Company / Brand')} placeholder={t('SKF, Bosch, Rolon...')}
               value={form.brand} onChange={set('brand')} />
-            <Input label="Model / Serial number" placeholder="6203-2RS"
+            <Input label={t('Model / Serial number')} placeholder={t('6203-2RS')}
               value={form.modelNo} onChange={set('modelNo')}
-              hint="Part number ya serial — dono chalega" />
-            <Input label="Barcode" placeholder="8901234567890"
+              hint={t('Part number ya serial — dono chalega')} />
+            <Input label={t('Barcode')} placeholder="8901234567890"
               value={form.barcode} onChange={set('barcode')}
-              hint="Scanner se search karne ke liye" />
-            <Input label="Rack / jagah" placeholder="A-3"
+              hint={t('Scanner se search karne ke liye')} />
+            <Input label={t('Rack / jagah')} placeholder={t('A-3')}
               value={form.rack} onChange={set('rack')}
-              hint="Godown me kahan rakha hai" />
+              hint={t('Godown me kahan rakha hai')} />
           </div>
         </div>
 
         {/* ---- Stock ---- */}
         <div className="rounded-lg border border-slate-200 p-4">
-          <h4 className="mb-3 text-sm font-semibold text-slate-900">Stock</h4>
+          <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('Stock')}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             {isEdit ? (
-              <Input label="Abhi ka stock" value={`${item.stockQty} ${item.unit}`} disabled
-                hint='Badalne ke liye list me "Stock" button dabayein' />
+              <Input label={t('Abhi ka stock')} value={`${item.stockQty} ${item.unit}`} disabled
+                hint={t('Badalne ke liye list me "Stock" button dabayein')} />
             ) : (
-              <Input label="Opening stock" type="number" step="0.01" suffix={form.unit}
+              <Input label={t('Opening stock')} type="number" step="0.01" suffix={form.unit}
                 value={form.openingStock} onChange={set('openingStock')}
-                hint="Abhi kitna maal pada hai" />
+                hint={t('Abhi kitna maal pada hai')} />
             )}
-            <Input label="Low stock warning" type="number" min="0" suffix={form.unit}
+            <Input label={t('Low stock warning')} type="number" min="0" suffix={form.unit}
               value={form.lowStockAt} onChange={set('lowStockAt')}
-              hint="Itne se kam hone par alert" />
-            <Input label="Kam se kam order" type="number" min="0" suffix={form.unit}
+              hint={t('Itne se kam hone par alert')} />
+            <Input label={t('Kam se kam order')} type="number" min="0" suffix={form.unit}
               value={form.minOrderQty} onChange={set('minOrderQty')}
-              hint="Retailer isse kam order nahi kar payega (0 = koi rok nahi)" />
+              hint={t('Retailer isse kam order nahi kar payega (0 = koi rok nahi)')} />
           </div>
         </div>
 
@@ -334,9 +335,9 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           <div className="rounded-lg border border-slate-200 p-4">
             <h4 className="mb-3 text-sm font-semibold text-slate-900">GST</h4>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="HSN code" placeholder="8482" value={form.hsn} onChange={set('hsn')}
-                hint="Tax invoice pe chhapega" />
-              <Select label="GST rate" value={form.gstRate} onChange={set('gstRate')} placeholder=""
+              <Input label={t('HSN code')} placeholder="8482" value={form.hsn} onChange={set('hsn')}
+                hint={t('Tax invoice pe chhapega')} />
+              <Select label={t('GST rate')} value={form.gstRate} onChange={set('gstRate')} placeholder=""
                 options={GST_RATES.map((r) => ({ value: r, label: `${r}%` }))} />
             </div>
           </div>
@@ -344,14 +345,14 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
 
         {/* ---- Warranty ---- */}
         <div className="rounded-lg border border-slate-200 p-4">
-          <h4 className="mb-1 text-sm font-semibold text-slate-900">Warranty</h4>
+          <h4 className="mb-1 text-sm font-semibold text-slate-900">{t('Warranty')}</h4>
           <p className="mb-3 text-xs text-slate-500">
-            Warranty daal denge to retailer ko catalog aur bill — dono jagah dikhegi
+            {t('Warranty daal denge to retailer ko catalog aur bill — dono jagah dikhegi')}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select label="Kitne din ki" value={form.warrantyMonths} placeholder=""
+            <Select label={t('Kitne din ki')} value={form.warrantyMonths} placeholder=""
               onChange={set('warrantyMonths')} options={WARRANTY_PRESETS} />
-            <Input label="Warranty ki shart" placeholder="Company warranty, bill ke saath"
+            <Input label={t('Warranty ki shart')} placeholder={t('Company warranty, bill ke saath')}
               value={form.warrantyNote} onChange={set('warrantyNote')}
               disabled={form.warrantyMonths === '0'}
               hint={form.warrantyMonths === '0' ? 'Pehle warranty chunein' : 'Bill pe chhapegi'} />
@@ -367,15 +368,15 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         </div>
 
         {/* ---- Extra ---- */}
-        <Textarea label="Description" rows={2} value={form.description} onChange={set('description')}
-          placeholder="Koi khaas baat jo yaad rakhni ho" />
+        <Textarea label={t('Description')} rows={2} value={form.description} onChange={set('description')}
+          placeholder={t('Koi khaas baat jo yaad rakhni ho')} />
 
         <Switch
           id="visible-to-retailers"
           checked={form.visibleToRetailers}
           onChange={(v) => setForm((f) => ({ ...f, visibleToRetailers: v }))}
-          label="Retailers ko dikhayein"
-          description="Off karne par ye item retailer ke catalog me nahi aayega"
+          label={t('Retailers ko dikhayein')}
+          description={t('Off karne par ye item retailer ke catalog me nahi aayega')}
         />
       </form>
     </Modal>

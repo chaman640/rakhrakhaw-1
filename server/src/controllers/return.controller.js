@@ -4,7 +4,7 @@ import * as service from '../services/return.service.js';
 import { logAction } from '../services/audit.service.js';
 
 export const list = asyncHandler(async (req, res) => {
-  const { returns, meta } = await service.listReturns(req.businessId, req.query);
+  const { returns, meta } = await service.listReturns(req.businessId, req.query, req.user);
   return res.json({ success: true, message: 'OK', data: returns, meta });
 });
 
@@ -15,7 +15,7 @@ export const prefill = asyncHandler(async (req, res) =>
   ok(res, await service.prefillFromDoc(req.businessId, req.params.type, req.params.docId)));
 
 export const detail = asyncHandler(async (req, res) =>
-  ok(res, await service.getReturn(req.businessId, req.params.id)));
+  ok(res, await service.getReturn(req.businessId, req.params.id, { viewer: req.user })));
 
 export const create = asyncHandler(async (req, res) => {
   const note = await service.createReturn(req.businessId, req.body, req.user._id);
@@ -28,7 +28,7 @@ export const create = asyncHandler(async (req, res) => {
 });
 
 export const remove = asyncHandler(async (req, res) => {
-  const result = await service.deleteReturn(req.businessId, req.params.id, req.user._id);
+  const result = await service.deleteReturn(req.businessId, req.params.id, req.user._id, req.user);
   await logAction(req, {
     action: 'return.delete',
     entityType: 'ReturnNote', entityId: req.params.id, entityLabel: result.returnNo || '',

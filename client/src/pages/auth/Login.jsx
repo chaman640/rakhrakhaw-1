@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
 import { Button, Input } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export default function Login() {
   const { login } = useAuth();
@@ -25,7 +26,7 @@ export default function Login() {
       if (data.user.role === 'retailer') {
         navigate(data.party?.status === 'active' ? (from || '/shop') : '/pending', { replace: true });
       } else {
-        navigate(from || '/dashboard', { replace: true });
+        navigate(from || '/home', { replace: true });
       }
     } catch (err) {
       setError(err.message);
@@ -36,20 +37,20 @@ export default function Login() {
 
   return (
     <AuthShell
-      title="Rakh Rakhav"
-      subtitle="Apne phone number se login karein"
+      title={t('Rakh Rakhav')}
+      subtitle={t('Apne phone number se login karein')}
       footer={
         <>
           Nayi dukaan hai?{' '}
           <Link to="/signup" className="font-medium text-brand-700 hover:underline">
-            Wholesaler account banayein
+            {t('Wholesaler account banayein')}
           </Link>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Phone number"
+          label={t('Phone number')}
           required
           type="tel"
           inputMode="numeric"
@@ -60,7 +61,7 @@ export default function Login() {
           onChange={set('phone')}
         />
         <Input
-          label="Password"
+          label={t('Password')}
           required
           type="password"
           autoComplete="current-password"
@@ -76,11 +77,11 @@ export default function Login() {
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
-          Login
+          {t('Login')}
         </Button>
 
         <p className="text-center text-xs text-slate-500">
-          Retailer ho? Apne wholesaler ka bheja hua link kholo.
+          {t('Retailer ho? Apne wholesaler ka bheja hua link kholo.')}
         </p>
       </form>
     </AuthShell>

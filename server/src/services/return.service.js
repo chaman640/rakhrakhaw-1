@@ -9,6 +9,7 @@ import { amountInWords } from '../utils/amountInWords.js';
 import {
   ReturnNote, Invoice, Purchase, Party, Item, Business, Counter,
 } from '../models/index.js';
+import { scopeByParty, isScoped, canSeeDoc } from '../utils/scope.js';
 import { applyStockChange } from './stock.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { decideTaxType, computeInvoice, hsnSummary } from './gst.service.js';
@@ -40,8 +41,8 @@ const CONFIG = {
 
 /* ------------------------------------------------------------------ list */
 
-export async function listReturns(businessId, q) {
-  const filter = { businessId };
+export async function listReturns(businessId, q, viewer = null) {
+  let filter = { businessId };
   if (q.type !== 'all') filter.type = q.type;
   if (q.partyId) filter.partyId = q.partyId;
 
@@ -60,6 +61,16 @@ export async function listReturns(businessId, q) {
       { partyId: { $in: parties.map((p) => p._id) } },
     ];
   }
+
+  /*
+    Wapasi bhi party ke saath chalti hai, isliye wahi hadd yahan bhi.
+
+    Ek baat khaas: PURCHASE_RETURN ki party supplier hoti hai, aur supplier
+    kisi ke "naam" nahi hote. Matlab hadd wale aadmi ko purchase return tabhi
+    dikhega jab usne khud banaya ho (`alsoMine`) — jo theek hai, kyunki
+    supplier wala kaam uske hisse me hai hi nahi.
+  */
+  filter = await scopeByParty(filter, businessId, viewer, { alsoMine: true });
 
   const skip = (q.page - 1) * q.limit;
   const [rows, total] = await Promise.all([
@@ -110,12 +121,23 @@ export async function getStats(businessId) {
   };
 }
 
-export async function getReturn(businessId, id, { partyId = null } = {}) {
+export async function getReturn(businessId, id, { partyId = null, viewer = null } = {}) {
   const filter = { _id: id, businessId };
   if (partyId) filter.partyId = partyId;
 
   const note = await ReturnNote.findOne(filter).populate('partyId', 'name shopName phone type').lean();
   if (!note) throw ApiError.notFound('Ye return nahi mila');
+
+  /*
+    List se chhupa dena aadha kaam hai — id to URL me haath se bhi daali ja
+    sakti hai. Isliye khud kholne par bhi wahi hadd, aur jawab "nahi mila" hi
+    hai, "ijazat nahi" nahi — warna "nahi mila" aur "hai par tumhara nahi" ka
+    farak batakar hum khud hi bata dete ki uska wajood hai.
+  */
+  if (viewer && !(await canSeeDoc(
+    { partyId: note.partyId?._id || note.partyId, createdBy: note.createdBy },
+    businessId, viewer,
+  ))) throw ApiError.notFound('Ye return nahi mila');
 
   return {
     ...note,
@@ -394,9 +416,14 @@ export async function createReturn(businessId, payload, userId) {
 
 /* ---------------------------------------------------------------- delete */
 
-export async function deleteReturn(businessId, id, userId) {
+export async function deleteReturn(businessId, id, userId, viewer = null) {
   const note = await ReturnNote.findOne({ _id: id, businessId });
   if (!note) throw ApiError.notFound('Ye return nahi mila');
+
+  // Mitane se pehle bhi wahi hadd — dekh na sakne wali cheez mitani to bilkul nahi
+  if (isScoped(viewer) && !(await canSeeDoc(note, businessId, viewer))) {
+    throw ApiError.notFound('Ye return nahi mila');
+  }
 
   const cfg = CONFIG[note.type];
 

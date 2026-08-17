@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
 import { Button, Input, Spinner } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 /**
  * Retailer yahan aata hai jab wholesaler ka WhatsApp link kholta hai.
@@ -63,14 +64,14 @@ export default function Join() {
 
   if (linkError) {
     return (
-      <AuthShell title="Link kaam nahi kar raha">
+      <AuthShell title={t('Link kaam nahi kar raha')}>
         <div className="flex flex-col items-center py-4 text-center">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
             <AlertCircle size={20} />
           </div>
           <p className="text-sm text-slate-600">{linkError}</p>
           <Link to="/login" className="mt-4 text-sm font-medium text-brand-700 hover:underline">
-            Login page pe jayein
+            {t('Login page pe jayein')}
           </Link>
         </div>
       </AuthShell>
@@ -92,30 +93,30 @@ export default function Join() {
         <>
           Pehle se account hai?{' '}
           <Link to="/login" className="font-medium text-brand-700 hover:underline">
-            Login karein
+            {t('Login karein')}
           </Link>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Aapki dukaan ka naam"
+          label={t('Aapki dukaan ka naam')}
           required
-          placeholder="Suresh Auto Store"
+          placeholder={t('Suresh Auto Store')}
           value={form.shopName}
           onChange={set('shopName')}
           error={fieldErrors.shopName}
         />
         <Input
-          label="Aapka naam"
+          label={t('Aapka naam')}
           required
-          placeholder="Suresh Kumar"
+          placeholder={t('Suresh Kumar')}
           value={form.name}
           onChange={set('name')}
           error={fieldErrors.name}
         />
         <Input
-          label="Phone number"
+          label={t('Phone number')}
           required
           type="tel"
           inputMode="numeric"
@@ -126,11 +127,11 @@ export default function Join() {
           error={fieldErrors.phone}
         />
         <Input
-          label="Password banayein"
+          label={t('Password banayein')}
           required
           type="password"
           autoComplete="new-password"
-          placeholder="Kam se kam 6 character"
+          placeholder={t('Kam se kam 6 character')}
           value={form.password}
           onChange={set('password')}
           error={fieldErrors.password}
@@ -143,7 +144,7 @@ export default function Join() {
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
-          Register karein
+          {t('Register karein')}
         </Button>
 
         <p className="text-center text-xs text-slate-500">

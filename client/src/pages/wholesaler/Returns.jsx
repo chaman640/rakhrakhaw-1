@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Undo2, Plus, ChevronRight, PackageX, ArrowDownLeft, ArrowUpRight, Calendar,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Table, Badge, SearchInput, Chips,
-  Input, Pagination, EmptyState, useToast,
+  Input, Pagination, EmptyState, SkeletonRows, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const TYPE_LABEL = {
   SALE_RETURN: 'Maal wapas aaya',
@@ -23,10 +25,7 @@ export default function Returns() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [stats, setStats] = useState({});
-  const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q);
@@ -35,31 +34,26 @@ export default function Returns() {
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/returns', {
-        params: { q: debouncedQ, type, from: from || undefined, to: to || undefined, page, limit: 25 },
-      });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, type, from, to, page]);
+  const params = { q: debouncedQ, type, from: from || undefined, to: to || undefined, page, limit: 25 };
+
+  // Purana turant, naya peeche-peeche
+  const { rows, meta, loading } = useListQuery(
+    ['returns', params],
+    () => api.get('/returns', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  /** Kuch badla — jo bhi iss pe tika hai wo apne aap taaza ho jayega */
+  const refresh = () => bust('returns', 'khata', 'items', 'dashboard');
 
   useEffect(() => {
     api.get('/returns/stats').then((r) => setStats(r.data)).catch(() => {});
   }, []);
-  useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debouncedQ, type, from, to]);
 
   const columns = [
     {
-      key: 'returnNo', header: 'Note',
+      key: 'returnNo', header: t('Note'),
       render: (r) => (
         <button onClick={() => navigate(`/returns/${r._id}`)} className="text-left">
           <p className="font-medium text-slate-900">{r.returnNo}</p>
@@ -67,27 +61,27 @@ export default function Returns() {
         </button>
       ),
     },
-    { key: 'party', header: 'Party', render: (r) => r.party?.name || '—' },
+    { key: 'party', header: t('Party'), render: (r) => r.party?.name || '—' },
     {
-      key: 'type', header: 'Kya hua',
+      key: 'type', header: t('Kya hua'),
       render: (r) => <Badge tone={TYPE_TONE[r.type]}>{TYPE_LABEL[r.type]}</Badge>,
     },
     {
-      key: 'againstNo', header: 'Kis bill ka',
+      key: 'againstNo', header: t('Kis bill ka'),
       render: (r) => (r.againstNo
         ? <span className="text-slate-600">{r.againstNo}</span>
-        : <span className="text-slate-400">Bina bill</span>),
+        : <span className="text-slate-400">{t('Bina bill')}</span>),
     },
-    { key: 'itemCount', header: 'Item', align: 'right' },
+    { key: 'itemCount', header: t('Item'), align: 'right' },
     {
-      key: 'grandTotal', header: 'Amount', align: 'right',
+      key: 'grandTotal', header: t('Amount'), align: 'right',
       render: (r) => <span className="font-medium">{formatMoney(r.grandTotal)}</span>,
     },
     {
       key: 'actions', header: '', align: 'right',
       render: (r) => (
         <button onClick={() => navigate(`/returns/${r._id}`)}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Kholein">
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label={t('Kholein')}>
           <ChevronRight size={18} />
         </button>
       ),
@@ -97,32 +91,32 @@ export default function Returns() {
   return (
     <>
       <PageHeader
-        title="Return"
-        subtitle="Maal wapas aaya ya bheja — stock aur khata dono apne aap theek ho jate hain"
-        action={<Button icon={Plus} onClick={() => navigate('/returns/new')}>Naya return</Button>}
+        title={t('Return')}
+        subtitle={t('Maal wapas aaya ya bheja — stock aur khata dono apne aap theek ho jate hain')}
+        action={<Button icon={Plus} onClick={() => navigate('/returns/new')}>{t('Naya return')}</Button>}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Wapas aaya (kul)" value={formatMoney(stats.saleAmount || 0)}
+        <StatCard label={t('Wapas aaya (kul)')} value={formatMoney(stats.saleAmount || 0)}
           icon={ArrowDownLeft} tone="amber" sub={`${stats.saleCount || 0} credit note`} />
-        <StatCard label="Is mahine wapas aaya" value={formatMoney(stats.saleMonthAmount || 0)}
+        <StatCard label={t('Is mahine wapas aaya')} value={formatMoney(stats.saleMonthAmount || 0)}
           icon={Calendar} tone="amber" />
-        <StatCard label="Wapas bheja (kul)" value={formatMoney(stats.purchaseAmount || 0)}
+        <StatCard label={t('Wapas bheja (kul)')} value={formatMoney(stats.purchaseAmount || 0)}
           icon={ArrowUpRight} tone="brand" sub={`${stats.purchaseCount || 0} debit note`} />
-        <StatCard label="Is mahine wapas bheja" value={formatMoney(stats.purchaseMonthAmount || 0)}
+        <StatCard label={t('Is mahine wapas bheja')} value={formatMoney(stats.purchaseMonthAmount || 0)}
           icon={Calendar} tone="brand" />
       </div>
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <SearchInput value={q} onChange={setQ} placeholder="Note number, bill ya party..."
+          <SearchInput value={q} onChange={setQ} placeholder={t('Note number, bill ya party...')}
             className="w-full sm:w-56" />
           <Chips value={type}
             onChange={(v) => { setType(v); setSearchParams(v === 'all' ? {} : { type: v }); }}
             options={[
-              { value: 'all', label: 'Dono' },
-              { value: 'SALE_RETURN', label: 'Wapas aaya' },
-              { value: 'PURCHASE_RETURN', label: 'Wapas bheja' },
+              { value: 'all', label: t('Dono') },
+              { value: 'SALE_RETURN', label: t('Wapas aaya') },
+              { value: 'PURCHASE_RETURN', label: t('Wapas bheja') },
             ]} />
           <div className="w-36"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div className="w-36"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
@@ -133,9 +127,9 @@ export default function Returns() {
         {!loading && !rows.length ? (
           <EmptyState
             icon={PackageX}
-            title="Abhi koi return nahi"
+            title={t('Abhi koi return nahi')}
             message="Retailer maal wapas kare ya aap supplier ko wapas bhejein — yahin entry karein. Bill kholkar 'Maal wapas aaya' dabana sabse aasan hai."
-            action={<Button icon={Plus} onClick={() => navigate('/returns/new')}>Pehla return</Button>}
+            action={<Button icon={Plus} onClick={() => navigate('/returns/new')}>{t('Pehla return')}</Button>}
           />
         ) : (
           <>
@@ -143,7 +137,7 @@ export default function Returns() {
               <Table columns={columns} rows={rows} loading={loading} />
             </div>
             <div className="md:hidden">
-              {loading ? <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+              {loading ? <SkeletonRows />
                 : rows.map((r) => (
                   <button key={r._id} onClick={() => navigate(`/returns/${r._id}`)}
                     className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0">

@@ -5,11 +5,13 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDateTime, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Table, Badge, SearchInput, Chips,
-  Select, Input, Pagination, EmptyState, useToast,
+  Select, Input, Pagination, EmptyState, SkeletonRows, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export const STATUS_TONE = {
   PLACED: 'blue', PACKED: 'amber', READY: 'brand', DELIVERED: 'green', CANCELLED: 'red',
@@ -22,11 +24,8 @@ export default function Orders() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [stats, setStats] = useState({ counts: {}, open: 0, openAmount: 0, todayCount: 0, todayAmount: 0 });
   const [retailers, setRetailers] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q);
@@ -40,21 +39,17 @@ export default function Orders() {
     try { setStats((await api.get('/orders/stats')).data); } catch { /* chup-chaap */ }
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/orders', {
-        params: { q: debouncedQ, status, partyId, from: from || undefined, to: to || undefined, page, limit: 25 },
-      });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, status, partyId, from, to, page]);
+  const params = { q: debouncedQ, status, partyId, from: from || undefined, to: to || undefined, page, limit: 25 };
+
+  // Purana turant, naya peeche-peeche
+  const { rows, meta, loading } = useListQuery(
+    ['orders', params],
+    () => api.get('/orders', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  /** Kuch badla — jo bhi iss pe tika hai wo apne aap taaza ho jayega */
+  const refresh = () => bust('orders', 'khata', 'dashboard');
 
   useEffect(() => {
     loadStats();
@@ -63,13 +58,12 @@ export default function Orders() {
     const id = setInterval(loadStats, 45000);
     return () => clearInterval(id);
   }, [loadStats]);
-  useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debouncedQ, status, partyId, from, to]);
 
   const columns = [
     {
       key: 'orderNo',
-      header: 'Order',
+      header: t('Order'),
       render: (r) => (
         <button onClick={() => navigate(`/orders/${r._id}`)} className="text-left">
           <p className="font-medium text-slate-900">{r.orderNo}</p>
@@ -79,7 +73,7 @@ export default function Orders() {
     },
     {
       key: 'party',
-      header: 'Retailer',
+      header: t('Retailer'),
       render: (r) => (
         <div>
           <p className="font-medium text-slate-900">{r.party?.name || '—'}</p>
@@ -87,17 +81,17 @@ export default function Orders() {
         </div>
       ),
     },
-    { key: 'itemCount', header: 'Items', align: 'right', render: (r) => r.itemCount },
-    { key: 'itemsTotal', header: 'Kul', align: 'right', render: (r) => formatMoney(r.itemsTotal) },
+    { key: 'itemCount', header: t('Items'), align: 'right', render: (r) => r.itemCount },
+    { key: 'itemsTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.itemsTotal) },
     {
-      key: 'status', header: 'Status',
+      key: 'status', header: t('Status'),
       render: (r) => <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>,
     },
     {
       key: 'actions', header: '', align: 'right',
       render: (r) => (
         <button onClick={() => navigate(`/orders/${r._id}`)}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Kholein">
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label={t('Kholein')}>
           <ChevronRight size={18} />
         </button>
       ),
@@ -108,33 +102,33 @@ export default function Orders() {
 
   return (
     <>
-      <PageHeader title="Orders" subtitle="Retailers ke bheje hue order" />
+      <PageHeader title={t('Orders')} subtitle={t('Retailers ke bheje hue order')} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Naye order" value={c.PLACED || 0} icon={ShoppingCart}
+        <StatCard label={t('Naye order')} value={c.PLACED || 0} icon={ShoppingCart}
           tone={c.PLACED ? 'amber' : 'brand'} sub="jinpe kaam shuru nahi hua" />
-        <StatCard label="Chal rahe hain" value={stats.open} icon={Clock} tone="brand"
+        <StatCard label={t('Chal rahe hain')} value={stats.open} icon={Clock} tone="brand"
           sub={formatMoney(stats.openAmount)} />
-        <StatCard label="Aaj ke order" value={stats.todayCount} icon={Calendar} tone="green"
+        <StatCard label={t('Aaj ke order')} value={stats.todayCount} icon={Calendar} tone="green"
           sub={formatMoney(stats.todayAmount)} />
-        <StatCard label="De diye" value={c.DELIVERED || 0} icon={IndianRupee} tone="green" />
+        <StatCard label={t('De diye')} value={c.DELIVERED || 0} icon={IndianRupee} tone="green" />
       </div>
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <SearchInput value={q} onChange={setQ} placeholder="Order number ya retailer..."
+          <SearchInput value={q} onChange={setQ} placeholder={t('Order number ya retailer...')}
             className="w-full sm:w-56" />
           <Chips value={status} onChange={setStatus}
             options={[
-              { value: 'open', label: 'Chalu', count: stats.open },
-              { value: 'PLACED', label: 'Naye', count: c.PLACED },
-              { value: 'PACKED', label: 'Pack ho rahe', count: c.PACKED },
-              { value: 'READY', label: 'Tayyar', count: c.READY },
-              { value: 'DELIVERED', label: 'De diye' },
-              { value: 'all', label: 'Sab' },
+              { value: 'open', label: t('Chalu'), count: stats.open },
+              { value: 'PLACED', label: t('Naye'), count: c.PLACED },
+              { value: 'PACKED', label: t('Pack ho rahe'), count: c.PACKED },
+              { value: 'READY', label: t('Tayyar'), count: c.READY },
+              { value: 'DELIVERED', label: t('De diye') },
+              { value: 'all', label: t('Sab') },
             ]} />
           <div className="w-44">
-            <Select placeholder="Sab retailers" value={partyId}
+            <Select placeholder={t('Sab retailers')} value={partyId}
               onChange={(e) => setPartyId(e.target.value)}
               options={retailers.map((r) => ({ value: r._id, label: r.shopName || r.name }))} />
           </div>
@@ -148,7 +142,7 @@ export default function Orders() {
           <EmptyState
             icon={ShoppingCart}
             title={status === 'open' ? 'Koi chalu order nahi' : 'Is filter me koi order nahi'}
-            message="Retailers apne app se order bhejenge to yahan turant dikh jayenge — aur bell bhi bajegi."
+            message={t('Retailers apne app se order bhejenge to yahan turant dikh jayenge — aur bell bhi bajegi.')}
           />
         ) : (
           <>
@@ -156,7 +150,7 @@ export default function Orders() {
               <Table columns={columns} rows={rows} loading={loading} />
             </div>
             <div className="md:hidden">
-              {loading ? <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+              {loading ? <SkeletonRows />
                 : rows.map((r) => (
                   <button key={r._id} onClick={() => navigate(`/orders/${r._id}`)}
                     className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0">

@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { formatMoney, formatDateTime } from '@/lib/format';
 import { Card, Table, Badge, EmptyState, useToast } from '@/components/ui';
 import { STATUS_TONE, STATUS_LABEL } from '../Orders';
+import { t } from '@/lib/i18n';
 
 /** Retailer detail ka "Orders" tab */
 export default function PartyOrdersTab({ partyId, partyName }) {
@@ -23,7 +24,7 @@ export default function PartyOrdersTab({ partyId, partyName }) {
 
   const columns = [
     {
-      key: 'orderNo', header: 'Order',
+      key: 'orderNo', header: t('Order'),
       render: (r) => (
         <div>
           <p className="font-medium text-slate-900">{r.orderNo}</p>
@@ -31,10 +32,10 @@ export default function PartyOrdersTab({ partyId, partyName }) {
         </div>
       ),
     },
-    { key: 'itemCount', header: 'Items', align: 'right', render: (r) => r.itemCount },
-    { key: 'itemsTotal', header: 'Kul', align: 'right', render: (r) => formatMoney(r.itemsTotal) },
+    { key: 'itemCount', header: t('Items'), align: 'right', render: (r) => r.itemCount },
+    { key: 'itemsTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.itemsTotal) },
     {
-      key: 'status', header: 'Status',
+      key: 'status', header: t('Status'),
       render: (r) => <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>,
     },
     {
@@ -46,13 +47,13 @@ export default function PartyOrdersTab({ partyId, partyName }) {
   return (
     <Card padding={false}>
       <div className="px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">Iske orders</h3>
+        <h3 className="text-base font-semibold text-slate-900">{t('Iske orders')}</h3>
       </div>
 
       {!loading && !rows.length ? (
         <EmptyState
           icon={ShoppingCart}
-          title="Abhi koi order nahi"
+          title={t('Abhi koi order nahi')}
           message={`${partyName} ne apne app se abhi tak koi order nahi bheja.`}
         />
       ) : (

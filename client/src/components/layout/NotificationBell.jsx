@@ -6,6 +6,7 @@ import { useNotifications } from '@/context/NotificationContext';
 import { formatDateTime } from '@/lib/format';
 import { Spinner } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const ICONS = {
   NEW_ORDER: ShoppingCart,
@@ -74,7 +75,7 @@ export default function NotificationBell() {
           {/* Phone pe screen se bahar na nikle — wahan poori width, desktop pe bell ke neeche */}
           <div className="fixed inset-x-2 top-16 z-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-1 sm:w-96">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-900">Notifications</p>
+              <p className="text-sm font-semibold text-slate-900">{t('Notifications')}</p>
               {count > 0 && (
                 <button onClick={readAll}
                   className="flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
@@ -88,7 +89,7 @@ export default function NotificationBell() {
                 <div className="flex justify-center py-8 text-slate-400"><Spinner size={20} /></div>
               ) : !rows.length ? (
                 <p className="px-4 py-10 text-center text-sm text-slate-500">
-                  Abhi koi notification nahi
+                  {t('Abhi koi notification nahi')}
                 </p>
               ) : (
                 rows.map((n) => {
@@ -124,7 +125,7 @@ export default function NotificationBell() {
               onClick={() => { setOpen(false); navigate('/notifications'); }}
               className="w-full border-t border-slate-200 py-2.5 text-center text-xs font-medium text-brand-700 hover:bg-slate-50"
             >
-              Saari notifications dekhein
+              {t('Saari notifications dekhein')}
             </button>
           </div>
         </>

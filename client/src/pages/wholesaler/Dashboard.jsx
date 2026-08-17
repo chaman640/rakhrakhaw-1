@@ -11,6 +11,7 @@ import { formatMoney, formatQty, formatDateTime } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Spinner, TrendChart, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const ACTIVITY_ICON = { invoice: Receipt, order: ShoppingCart, payment: Wallet };
 
@@ -46,22 +47,22 @@ export default function Dashboard() {
 
   const todo = [
     d.todo?.newOrders > 0 && {
-      label: `${d.todo?.newOrders} naya order`, sub: 'Pack karna hai',
+      label: `${d.todo?.newOrders} naya order`, sub: t('Pack karna hai'),
       icon: ShoppingCart, tone: 'brand', to: '/orders', perm: 'orders',
     },
     d.todo?.pendingPayments > 0 && {
-      label: `${d.todo?.pendingPayments} payment`, sub: 'Confirm karna hai',
+      label: `${d.todo?.pendingPayments} payment`, sub: t('Confirm karna hai'),
       icon: Clock, tone: 'amber', to: '/payments?status=pending', perm: 'khata',
     },
     d.todo?.pendingRetailers > 0 && {
-      label: `${d.todo?.pendingRetailers} retailer`, sub: 'Approve karna hai',
+      label: `${d.todo?.pendingRetailers} retailer`, sub: t('Approve karna hai'),
       icon: UserCheck, tone: 'blue', to: '/retailers', perm: 'parties',
     },
     d.todo?.lowStock > 0 && {
-      label: `${d.todo?.lowStock} item kam`, sub: 'Mangwa lein',
+      label: `${d.todo?.lowStock} item kam`, sub: t('Mangwa lein'),
       icon: TriangleAlert, tone: 'red', to: '/reports?tab=stock&filter=low', perm: 'reports',
     },
-  ].filter(Boolean).filter((t) => !t.perm || can(t.perm));
+  ].filter(Boolean).filter((row) => !row.perm || can(row.perm));
 
   return (
     <>
@@ -80,19 +81,19 @@ export default function Dashboard() {
       {/* ---- Aaj kya karna hai ---- */}
       {todo.length > 0 && (
         <Card className="mb-5 border-brand-200 bg-brand-50/40">
-          <CardHeader title="Aaj ye dekh lijiye" />
+          <CardHeader title={t('Aaj ye dekh lijiye')} />
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {todo.map((t) => (
-              <button key={t.label} onClick={() => navigate(t.to)}
+            {todo.map((row) => (
+              <button key={row.label} onClick={() => navigate(row.to)}
                 className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-left transition-colors hover:border-brand-300 focus-ring">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
                   { brand: 'bg-brand-50 text-brand-700', amber: 'bg-amber-50 text-amber-700',
-                    blue: 'bg-blue-50 text-blue-700', red: 'bg-red-50 text-red-700' }[t.tone]}`}>
-                  <t.icon size={17} />
+                    blue: 'bg-blue-50 text-blue-700', red: 'bg-red-50 text-red-700' }[row.tone]}`}>
+                  <row.icon size={17} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-900">{t.label}</p>
-                  <p className="truncate text-xs text-slate-500">{t.sub}</p>
+                  <p className="truncate text-sm font-medium text-slate-900">{t(row.label)}</p>
+                  <p className="truncate text-xs text-slate-500">{row.sub}</p>
                 </div>
                 <ArrowRight size={15} className="shrink-0 text-slate-300" />
               </button>
@@ -108,7 +109,7 @@ export default function Dashboard() {
         <Card>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm text-slate-500">Aaj ki sale</p>
+              <p className="text-sm text-slate-500">{t('Aaj ki sale')}</p>
               {/* Hero number — proportional figures, tabular nahi */}
               <p className="mt-1 text-3xl font-semibold text-slate-900">{formatMoney(d.sale.today)}</p>
               <p className="mt-1 text-xs text-slate-400">{d.sale.todayBills} bill</p>
@@ -121,23 +122,23 @@ export default function Dashboard() {
             <p className={`mt-3 flex items-center gap-1 text-xs font-medium ${
               d.sale.changePct >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {d.sale.changePct >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-              {Math.abs(d.sale.changePct)}% <span className="font-normal text-slate-400">kal se</span>
+              {Math.abs(d.sale.changePct)}% <span className="font-normal text-slate-400">{t('kal se')}</span>
             </p>
           )}
         </Card>
         )}
 
         {d.sale && (
-          <StatBox label="Is mahine" value={formatMoney(d.sale.month)} sub={`${d.sale.monthBills} bill`}
+          <StatBox label={t('Is mahine')} value={formatMoney(d.sale.month)} sub={`${d.sale.monthBills} bill`}
             icon={FileText} tone="brand" onClick={() => navigate('/invoices')} />
         )}
         {d.collection && (
-          <StatBox label="Aaj paisa aaya" value={formatMoney(d.collection.today)}
+          <StatBox label={t('Aaj paisa aaya')} value={formatMoney(d.collection.today)}
             sub={`Mahine me ${formatMoney(d.collection.month)}`}
             icon={Wallet} tone="green" onClick={() => navigate('/payments')} />
         )}
         {d.khata && (
-          <StatBox label="Udhaar baaki" value={formatMoney(d.khata.receivable)}
+          <StatBox label={t('Udhaar baaki')} value={formatMoney(d.khata.receivable)}
             sub={`${d.khata.activeRetailers} active retailer`} icon={BookOpen}
             tone={d.khata.receivable > 0 ? 'amber' : 'green'} onClick={() => navigate('/khata')} />
         )}
@@ -154,29 +155,29 @@ export default function Dashboard() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
           {d.orders && (
           <Card>
-            <CardHeader title="Orders"
-              action={<Button size="sm" variant="ghost" onClick={() => navigate('/orders')}>Sab</Button>} />
+            <CardHeader title={t('Orders')}
+              action={<Button size="sm" variant="ghost" onClick={() => navigate('/orders')}>{t('Sab')}</Button>} />
             <div className="space-y-2.5">
-              <OrderLine label="Naye" value={d.orders.new} tone="blue" />
-              <OrderLine label="Pack ho rahe" value={d.orders.packed} tone="amber" />
-              <OrderLine label="Tayyar hain" value={d.orders.ready} tone="brand" />
-              <OrderLine label="De diye" value={d.orders.delivered} tone="green" />
+              <OrderLine label={t('Naye')} value={d.orders.new} tone="blue" />
+              <OrderLine label={t('Pack ho rahe')} value={d.orders.packed} tone="amber" />
+              <OrderLine label={t('Tayyar hain')} value={d.orders.ready} tone="brand" />
+              <OrderLine label={t('De diye')} value={d.orders.delivered} tone="green" />
             </div>
           </Card>
           )}
 
           {d.stock && (
           <Card>
-            <CardHeader title="Stock"
-              action={<Button size="sm" variant="ghost" onClick={() => navigate('/items')}>Items</Button>} />
+            <CardHeader title={t('Stock')}
+              action={<Button size="sm" variant="ghost" onClick={() => navigate('/items')}>{t('Items')}</Button>} />
             <dl className="space-y-2.5 text-sm">
-              <div className="flex justify-between"><dt className="text-slate-500">Kul item</dt>
+              <div className="flex justify-between"><dt className="text-slate-500">{t('Kul item')}</dt>
                 <dd className="font-medium text-slate-900">{d.stock.items}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Stock ki keemat</dt>
+              <div className="flex justify-between"><dt className="text-slate-500">{t('Stock ki keemat')}</dt>
                 <dd className="tabular font-medium text-slate-900">{formatMoney(d.stock.value)}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Kam bache</dt>
+              <div className="flex justify-between"><dt className="text-slate-500">{t('Kam bache')}</dt>
                 <dd className={`font-medium ${d.stock.low ? 'text-amber-700' : 'text-slate-900'}`}>{d.stock.low}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Khatam</dt>
+              <div className="flex justify-between"><dt className="text-slate-500">{t('Khatam')}</dt>
                 <dd className={`font-medium ${d.stock.outOfStock ? 'text-red-600' : 'text-slate-900'}`}>{d.stock.outOfStock}</dd></div>
             </dl>
           </Card>
@@ -187,9 +188,9 @@ export default function Dashboard() {
       {/* ---- Kam stock ---- */}
       {d.stock?.lowItems?.length > 0 && (
         <Card className="mb-5 border-amber-200">
-          <CardHeader title="Ye khatam hone wale hain" subtitle="Supplier ko phone kar dijiye"
+          <CardHeader title={t('Ye khatam hone wale hain')} subtitle={t('Supplier ko phone kar dijiye')}
             action={<Button size="sm" variant="secondary" icon={Truck}
-              onClick={() => navigate('/purchases/new')}>Purchase</Button>} />
+              onClick={() => navigate('/purchases/new')}>{t('Purchase')}</Button>} />
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {d.stock.lowItems.map((i) => (
               <div key={i._id}
@@ -214,20 +215,20 @@ export default function Dashboard() {
       <div className="grid gap-5 lg:grid-cols-3">
         {d.topItems && (
         <Card>
-          <CardHeader title="Sabse zyada bike" subtitle="Is mahine" />
+          <CardHeader title={t('Sabse zyada bike')} subtitle={t('Is mahine')} />
           {!d.topItems.length ? <Empty text="Abhi koi sale nahi" /> : (
             <ol className="space-y-3">
-              {d.topItems.map((t, i) => (
-                <li key={t._id} className="flex items-center gap-3">
+              {d.topItems.map((row, i) => (
+                <li key={row._id} className="flex items-center gap-3">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-500">{formatQty(t.qty, t.unit)}</p>
+                    <p className="truncate text-sm font-medium text-slate-900">{row.name}</p>
+                    <p className="text-xs text-slate-500">{formatQty(row.qty, row.unit)}</p>
                   </div>
                   <span className="tabular shrink-0 text-sm font-medium text-slate-900">
-                    {formatMoney(t.amount)}
+                    {formatMoney(row.amount)}
                   </span>
                 </li>
               ))}
@@ -238,22 +239,22 @@ export default function Dashboard() {
 
         {d.topRetailers && (
         <Card>
-          <CardHeader title="Top retailers" subtitle="Is mahine" />
+          <CardHeader title={t('Top retailers')} subtitle={t('Is mahine')} />
           {!d.topRetailers.length ? <Empty text="Abhi koi bill nahi" /> : (
             <ol className="space-y-3">
-              {d.topRetailers.map((t, i) => (
-                <li key={t._id}>
-                  <button onClick={() => navigate(`/retailers/${t._id}?tab=khata`)}
+              {d.topRetailers.map((row, i) => (
+                <li key={row._id}>
+                  <button onClick={() => navigate(`/retailers/${row._id}?tab=khata`)}
                     className="flex w-full items-center gap-3 text-left">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900">{t.name}</p>
-                      <p className="text-xs text-slate-500">{t.bills} bill</p>
+                      <p className="truncate text-sm font-medium text-slate-900">{row.name}</p>
+                      <p className="text-xs text-slate-500">{row.bills} bill</p>
                     </div>
                     <span className="tabular shrink-0 text-sm font-medium text-slate-900">
-                      {formatMoney(t.amount)}
+                      {formatMoney(row.amount)}
                     </span>
                   </button>
                 </li>
@@ -264,7 +265,7 @@ export default function Dashboard() {
         )}
 
         <Card>
-          <CardHeader title="Abhi abhi kya hua" />
+          <CardHeader title={t('Abhi abhi kya hua')} />
           {!d.activity?.length ? <Empty text="Kuch nahi hua abhi tak" /> : (
             <ul className="space-y-3">
               {d.activity?.map((a, i) => {
@@ -296,15 +297,15 @@ export default function Dashboard() {
 
       {/* ---- Quick actions (mobile pe kaam ke) ---- */}
       <div className="mt-5 flex flex-wrap gap-2">
-        {can('invoices') && <Button icon={Plus} onClick={() => navigate('/invoices/new')}>Naya bill</Button>}
+        {can('invoices') && <Button icon={Plus} onClick={() => navigate('/invoices/new')}>{t('Naya bill')}</Button>}
         {can('purchases') && (
-          <Button variant="secondary" icon={Truck} onClick={() => navigate('/purchases/new')}>Purchase</Button>
+          <Button variant="secondary" icon={Truck} onClick={() => navigate('/purchases/new')}>{t('Purchase')}</Button>
         )}
         {can('khata') && (
-          <Button variant="secondary" icon={Wallet} onClick={() => navigate('/payments')}>Paisa entry</Button>
+          <Button variant="secondary" icon={Wallet} onClick={() => navigate('/payments')}>{t('Paisa entry')}</Button>
         )}
         {can('items') && (
-          <Button variant="secondary" icon={Package} onClick={() => navigate('/items')}>Items</Button>
+          <Button variant="secondary" icon={Package} onClick={() => navigate('/items')}>{t('Items')}</Button>
         )}
       </div>
     </>

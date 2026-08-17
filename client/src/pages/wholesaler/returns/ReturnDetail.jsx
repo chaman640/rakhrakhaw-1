@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { formatMoney, formatDate, formatQty } from '@/lib/format';
 import { Card, Button, Badge, Spinner, ConfirmModal, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const TYPE_LABEL = { SALE_RETURN: 'Maal wapas aaya', PURCHASE_RETURN: 'Maal wapas bheja' };
 const NOTE_LABEL = { SALE_RETURN: 'CREDIT NOTE', PURCHASE_RETURN: 'DEBIT NOTE' };
@@ -61,8 +62,8 @@ export default function ReturnDetail() {
     <>
       <div className="no-print mb-4 flex flex-wrap items-center justify-end gap-3">
         <div className="flex gap-2">
-          <Button variant="secondary" icon={Printer} onClick={() => window.print()}>Print</Button>
-          <Button variant="danger" icon={Trash2} onClick={() => setConfirmDelete(true)}>Delete</Button>
+          <Button variant="secondary" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
+          <Button variant="danger" icon={Trash2} onClick={() => setConfirmDelete(true)}>{t('Delete')}</Button>
         </div>
       </div>
 
@@ -120,15 +121,15 @@ export default function ReturnDetail() {
           <thead>
             <tr className="border-b border-slate-300 text-left">
               <th className="w-8 py-2 font-semibold">#</th>
-              <th className="py-2 font-semibold">Item</th>
+              <th className="py-2 font-semibold">{t('Item')}</th>
               {gst && <th className="py-2 font-semibold">HSN</th>}
-              <th className="py-2 text-right font-semibold">Qty</th>
-              <th className="py-2 text-right font-semibold">Rate</th>
-              {gst && <th className="py-2 text-right font-semibold">Taxable</th>}
+              <th className="py-2 text-right font-semibold">{t('Qty')}</th>
+              <th className="py-2 text-right font-semibold">{t('Rate')}</th>
+              {gst && <th className="py-2 text-right font-semibold">{t('Taxable')}</th>}
               {gst && !isIgst && <th className="py-2 text-right font-semibold">CGST</th>}
               {gst && !isIgst && <th className="py-2 text-right font-semibold">SGST</th>}
               {gst && isIgst && <th className="py-2 text-right font-semibold">IGST</th>}
-              <th className="py-2 text-right font-semibold">Amount</th>
+              <th className="py-2 text-right font-semibold">{t('Amount')}</th>
             </tr>
           </thead>
           <tbody>
@@ -155,13 +156,13 @@ export default function ReturnDetail() {
 
         {gst && (
           <p className="no-print mt-1 text-[10px] text-slate-400 sm:hidden">
-            GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →
+            {t('GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →')}
           </p>
         )}
 
         <div className="mt-4 flex justify-end">
           <dl className="w-full max-w-xs space-y-1.5 text-xs">
-            <Line label="Taxable" value={formatMoney(note.taxableTotal)} />
+            <Line label={t('Taxable')} value={formatMoney(note.taxableTotal)} />
             {gst && !isIgst && (
               <>
                 <Line label="CGST" value={formatMoney(note.cgstTotal)} />
@@ -169,10 +170,10 @@ export default function ReturnDetail() {
               </>
             )}
             {gst && isIgst && <Line label="IGST" value={formatMoney(note.igstTotal)} />}
-            {note.roundOff !== 0 && <Line label="Round off" value={formatMoney(note.roundOff)} />}
+            {note.roundOff !== 0 && <Line label={t('Round off')} value={formatMoney(note.roundOff)} />}
             <div className="border-t border-slate-300 pt-1.5">
               <div className="flex justify-between">
-                <dt className="text-sm font-bold text-slate-900">Kul</dt>
+                <dt className="text-sm font-bold text-slate-900">{t('Kul')}</dt>
                 <dd className="tabular text-sm font-bold text-slate-900">{formatMoney(note.grandTotal)}</dd>
               </div>
             </div>
@@ -181,13 +182,13 @@ export default function ReturnDetail() {
 
         {note.amountInWords && (
           <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-600">
-            <span className="font-medium">Rupees in words:</span> {note.amountInWords}
+            <span className="font-medium">{t('Rupees in words:')}</span> {note.amountInWords}
           </p>
         )}
 
         {note.reason && (
           <p className="mt-2 text-xs text-slate-600">
-            <span className="font-medium">Karan:</span> {note.reason}
+            <span className="font-medium">{t('Karan:')}</span> {note.reason}
           </p>
         )}
         {note.notes && <p className="mt-1 text-xs text-slate-600">{note.notes}</p>}

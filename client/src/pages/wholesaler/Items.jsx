@@ -10,7 +10,7 @@ import { downloadText } from '@/lib/download';
 import { formatMoney, formatQty } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Select, Table, Badge,
-  SearchInput, Chips, Pagination, EmptyState, ConfirmModal, useToast,
+  SearchInput, Chips, Pagination, EmptyState, ConfirmModal, SkeletonRows, useToast,
 } from '@/components/ui';
 
 import ItemFormModal from './items/ItemFormModal';
@@ -18,6 +18,7 @@ import StockModal from './items/StockModal';
 import CategoryModal from './items/CategoryModal';
 import ImportModal from './items/ImportModal';
 import ItemCard from './items/ItemCard';
+import { t } from '@/lib/i18n';
 
 const SORTS = [
   { value: 'name', label: 'Naam (A-Z)' },
@@ -135,7 +136,7 @@ export default function Items() {
             checked={allSelected}
             onChange={toggleSelectAll}
             className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
-            aria-label="Sab chunein"
+            aria-label={t('Sab chunein')}
           />
         ),
         render: (row) => (
@@ -150,7 +151,7 @@ export default function Items() {
       },
       {
         key: 'name',
-        header: 'Item',
+        header: t('Item'),
         render: (row) => (
           <div className="flex items-center gap-3">
             {row.imageUrl ? (
@@ -178,7 +179,7 @@ export default function Items() {
       },
       {
         key: 'stockQty',
-        header: 'Stock',
+        header: t('Stock'),
         align: 'right',
         render: (row) => (
           <button onClick={() => setStockItem(row)} className="focus-ring rounded">
@@ -188,11 +189,11 @@ export default function Items() {
           </button>
         ),
       },
-      { key: 'purchasePrice', header: 'Purchase', align: 'right', render: (r) => formatMoney(r.purchasePrice) },
-      { key: 'salePrice', header: 'Sale', align: 'right', render: (r) => formatMoney(r.salePrice) },
+      { key: 'purchasePrice', header: t('Purchase'), align: 'right', render: (r) => formatMoney(r.purchasePrice) },
+      { key: 'salePrice', header: t('Sale'), align: 'right', render: (r) => formatMoney(r.salePrice) },
       {
         key: 'wholesalePrice',
-        header: 'Wholesale',
+        header: t('Wholesale'),
         align: 'right',
         render: (r) => (
           <span className={r.wholesalePrice ? 'font-medium text-slate-900' : 'text-slate-400'}>
@@ -215,14 +216,14 @@ export default function Items() {
           <button
             onClick={() => setStockItem(row)}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            title="Stock badlein"
+            title={t('Stock badlein')}
           >
             <Boxes size={16} />
           </button>
           <button
             onClick={() => { setFormItem(row); setFormOpen(true); }}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            title="Edit"
+            title={t('Edit')}
           >
             <Pencil size={16} />
           </button>
@@ -237,21 +238,21 @@ export default function Items() {
   return (
     <>
       <PageHeader
-        title="Items"
-        subtitle="Aapka saara maal, stock aur rate"
+        title={t('Items')}
+        subtitle={t('Aapka saara maal, stock aur rate')}
         action={
           <>
             <Button variant="secondary" icon={Tag} onClick={() => setCategoryOpen(true)}>
-              <span className="hidden sm:inline">Categories</span>
+              <span className="hidden sm:inline">{t('Categories')}</span>
             </Button>
             <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>
-              <span className="hidden sm:inline">Import</span>
+              <span className="hidden sm:inline">{t('Import')}</span>
             </Button>
             <Button variant="secondary" icon={Download} onClick={handleExport}>
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden sm:inline">{t('Export')}</span>
             </Button>
             <Button icon={Plus} onClick={() => { setFormItem(null); setFormOpen(true); }}>
-              Naya item
+              {t('Naya item')}
             </Button>
           </>
         }
@@ -259,34 +260,34 @@ export default function Items() {
 
       {/* ---- Stats ---- */}
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Kul items" value={stats.totalItems} icon={Package} tone="brand" />
-        <StatCard label="Stock ki keemat" value={formatMoney(stats.stockValue)} icon={IndianRupee}
+        <StatCard label={t('Kul items')} value={stats.totalItems} icon={Package} tone="brand" />
+        <StatCard label={t('Stock ki keemat')} value={formatMoney(stats.stockValue)} icon={IndianRupee}
           tone="green" sub="Purchase price se" />
-        <StatCard label="Low stock" value={stats.lowStock} icon={TriangleAlert} tone="amber" />
-        <StatCard label="Khatam" value={stats.outOfStock} icon={XCircle} tone="red" />
+        <StatCard label={t('Low stock')} value={stats.lowStock} icon={TriangleAlert} tone="amber" />
+        <StatCard label={t('Khatam')} value={stats.outOfStock} icon={XCircle} tone="red" />
       </div>
 
       {/* ---- Filters ---- */}
       <Card className="mb-5" padding={false}>
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
-          <SearchInput value={q} onChange={setQ} placeholder="Naam, brand, SKU, model ya barcode..."
+          <SearchInput value={q} onChange={setQ} placeholder={t('Naam, brand, SKU, model ya barcode...')}
             className="lg:w-72" />
 
           <Chips
             value={stock}
             onChange={setStock}
             options={[
-              { value: 'all', label: 'Sab' },
-              { value: 'low', label: 'Low stock', count: stats.lowStock },
-              { value: 'out', label: 'Khatam', count: stats.outOfStock },
+              { value: 'all', label: t('Sab') },
+              { value: 'low', label: t('Low stock'), count: stats.lowStock },
+              { value: 'out', label: t('Khatam'), count: stats.outOfStock },
             ]}
           />
 
           <div className="flex flex-1 gap-3 lg:max-w-md">
-            <Select placeholder="Sab categories" value={categoryId}
+            <Select placeholder={t('Sab categories')} value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               options={[
-                { value: 'none', label: 'Bina category' },
+                { value: 'none', label: t('Bina category') },
                 ...categories.map((c) => ({ value: c._id, label: `${c.name} (${c.itemCount})` })),
               ]} />
             <Select placeholder="" value={sort} onChange={(e) => setSort(e.target.value)} options={SORTS} />
@@ -299,15 +300,15 @@ export default function Items() {
             <span className="text-sm font-medium text-brand-900">{selected.length} chune gaye</span>
             <div className="flex-1" />
             <Button size="sm" variant="secondary" icon={Eye} onClick={() => runBulk('showToRetailers')}>
-              Dikhayein
+              {t('Dikhayein')}
             </Button>
             <Button size="sm" variant="secondary" icon={EyeOff} onClick={() => runBulk('hideFromRetailers')}>
-              Chhupayein
+              {t('Chhupayein')}
             </Button>
             <Button size="sm" variant="danger" icon={Trash2} onClick={() => setConfirmBulk('delete')}>
-              Delete
+              {t('Delete')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected([])}>Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected([])}>{t('Cancel')}</Button>
           </div>
         )}
       </Card>
@@ -326,15 +327,15 @@ export default function Items() {
             action={
               hasFilters ? (
                 <Button variant="secondary" onClick={() => { setQ(''); setCategoryId(''); setStock('all'); }}>
-                  Filter hatayein
+                  {t('Filter hatayein')}
                 </Button>
               ) : (
                 <div className="flex gap-2">
                   <Button icon={Plus} onClick={() => { setFormItem(null); setFormOpen(true); }}>
-                    Pehla item add karein
+                    {t('Pehla item add karein')}
                   </Button>
                   <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>
-                    CSV import
+                    {t('CSV import')}
                   </Button>
                 </div>
               )
@@ -350,7 +351,7 @@ export default function Items() {
             {/* Mobile */}
             <div className="md:hidden">
               {loading ? (
-                <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+                <SkeletonRows />
               ) : (
                 items.map((item) => (
                   <ItemCard
@@ -398,7 +399,7 @@ export default function Items() {
         onConfirm={() => runBulk('delete')}
         loading={busy}
         title={`${selected.length} item delete karein?`}
-        message="Jo item kisi purane bill ya purchase me hain wo delete nahi honge — sirf hide ho jayenge, taaki purane record kharab na hon."
+        message={t('Jo item kisi purane bill ya purchase me hain wo delete nahi honge — sirf hide ho jayenge, taaki purane record kharab na hon.')}
         confirmLabel="Haan, delete karein"
       />
     </>

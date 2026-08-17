@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const sizes = {
   sm: 'max-w-sm',
@@ -26,7 +27,7 @@ export default function Modal({ open, onClose, title, description, children, foo
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="scrim absolute inset-0 backdrop-blur-[2px]" onClick={onClose} />
 
       <div
         className={cn(
@@ -45,7 +46,7 @@ export default function Modal({ open, onClose, title, description, children, foo
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-ring"
-            aria-label="Band karein"
+            aria-label={t('Band karein')}
           >
             <X size={18} />
           </button>
@@ -77,7 +78,7 @@ export function ConfirmModal({ open, onClose, onConfirm, title, message, confirm
             onClick={onClose}
             className="h-9 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-ring"
           >
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             onClick={onConfirm}

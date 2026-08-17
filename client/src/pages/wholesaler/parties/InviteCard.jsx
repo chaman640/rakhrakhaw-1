@@ -3,6 +3,7 @@ import { Copy, Check, RefreshCw, MessageCircle, Link2 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, Button, Switch, ConfirmModal, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 /** Retailers page aur Settings dono me yahi card use hota hai */
 export default function InviteCard({ compact = false }) {
@@ -64,12 +65,11 @@ export default function InviteCard({ compact = false }) {
     return (
       <Card>
         <CardHeader
-          title="Retailer invite link"
-          subtitle="Naye retailer jodne ka link"
+          title={t('Retailer invite link')}
+          subtitle={t('Naye retailer jodne ka link')}
         />
         <p className="text-sm text-slate-500">
-          Ye link sirf dukaan ke malik ke paas rehta hai. Kisi naye retailer ko jodna ho
-          to unse link mangwa lijiye.
+          {t('Ye link sirf dukaan ke malik ke paas rehta hai. Kisi naye retailer ko jodna ho to unse link mangwa lijiye.')}
         </p>
       </Card>
     );
@@ -79,8 +79,8 @@ export default function InviteCard({ compact = false }) {
     <>
       <Card>
         <CardHeader
-          title="Retailer invite link"
-          subtitle="Yahi ek link apne saare retailers ko WhatsApp pe bhej dein"
+          title={t('Retailer invite link')}
+          subtitle={t('Yahi ek link apne saare retailers ko WhatsApp pe bhej dein')}
         />
 
         <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
@@ -93,10 +93,10 @@ export default function InviteCard({ compact = false }) {
             {copied ? 'Copy ho gaya' : 'Copy karein'}
           </Button>
           <Button size="sm" variant="secondary" icon={MessageCircle} onClick={shareOnWhatsapp}>
-            WhatsApp pe bhejein
+            {t('WhatsApp pe bhejein')}
           </Button>
           <Button size="sm" variant="ghost" icon={RefreshCw} onClick={() => setConfirm(true)}>
-            Naya link banayein
+            {t('Naya link banayein')}
           </Button>
         </div>
 
@@ -106,15 +106,15 @@ export default function InviteCard({ compact = false }) {
               id="invite-enabled"
               checked={biz.inviteEnabled !== false}
               onChange={(v) => toggleSetting('inviteEnabled', v)}
-              label="Link chalu rakhein"
-              description="Band karne par koi naya retailer register nahi kar payega"
+              label={t('Link chalu rakhein')}
+              description={t('Band karne par koi naya retailer register nahi kar payega')}
             />
             <Switch
               id="auto-approve"
               checked={Boolean(biz.autoApproveRetailers)}
               onChange={(v) => toggleSetting('autoApproveRetailers', v)}
-              label="Apne aap approve kar do"
-              description="On karne par link se aane wala har retailer turant catalog dekh sakega"
+              label={t('Apne aap approve kar do')}
+              description={t('On karne par link se aane wala har retailer turant catalog dekh sakega')}
             />
           </div>
         )}
@@ -125,8 +125,8 @@ export default function InviteCard({ compact = false }) {
         onClose={() => setConfirm(false)}
         onConfirm={regenerate}
         loading={busy}
-        title="Naya link banayein?"
-        message="Purana link turant band ho jayega. Jinko purana link bheja tha wo register nahi kar payenge — unhe naya link dobara bhejna padega. Jo retailers pehle se jud chuke hain unpe koi asar nahi hoga."
+        title={t('Naya link banayein?')}
+        message={t('Purana link turant band ho jayega. Jinko purana link bheja tha wo register nahi kar payenge — unhe naya link dobara bhejna padega. Jo retailers pehle se jud chuke hain unpe koi asar nahi hoga.')}
         confirmLabel="Haan, naya banayein"
       />
     </>

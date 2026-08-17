@@ -1,6 +1,7 @@
 import { cn } from '@/lib/cn';
-import Spinner from './Spinner';
+import { SkeletonTable, SkeletonRows } from './Skeleton';
 import EmptyState from './EmptyState';
+import { t } from '@/lib/i18n';
 
 /**
  * columns: [{ key, header, align, width, render(row, index), className, mobile }]
@@ -45,11 +46,14 @@ export default function Table({
   rowKey = (row, i) => row._id || row.id || i,
   className,
 }) {
+  // Pehli baar: ghoomte chakkar ki jagah us cheez ka DHANCHA jo aane wali hai.
+  // Isse data aane par kuch kudta nahi — bas rang bhar jata hai.
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-slate-400">
-        <Spinner /> <span className="text-sm">Load ho raha hai...</span>
-      </div>
+      <>
+        <div className="hidden md:block"><SkeletonTable cols={Math.max(3, columns.length)} /></div>
+        <div className="md:hidden"><SkeletonRows /></div>
+      </>
     );
   }
 
@@ -84,7 +88,7 @@ export default function Table({
                   col.align === 'center' && 'text-center'
                 )}
               >
-                {col.header}
+                {t(col.header)}
               </th>
             ))}
           </tr>
@@ -150,7 +154,7 @@ export default function Table({
             <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
               {metaCols.map((c) => (
                 <div key={c.key} className="flex gap-1.5">
-                  <dt className="text-slate-400">{c.header}</dt>
+                  <dt className="text-slate-400">{t(c.header)}</dt>
                   <dd className={cn('text-slate-700', c.align === 'right' && 'tabular font-medium')}>
                     {draw(c, row, i)}
                   </dd>
@@ -161,7 +165,7 @@ export default function Table({
 
           {blockCols.map((c) => (
             <div key={c.key} className="mt-3" onClick={(e) => e.stopPropagation()}>
-              <p className="mb-1 text-xs font-medium text-slate-500">{c.header}</p>
+              <p className="mb-1 text-xs font-medium text-slate-500">{t(c.header)}</p>
               {draw(c, row, i)}
             </div>
           ))}

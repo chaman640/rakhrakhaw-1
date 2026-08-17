@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { round2 } from '../utils/money.js';
 import { PARTY_TYPES } from '../config/constants.js';
 import { Invoice, Purchase, Item, Party, StockMovement, Payment } from '../models/index.js';
+import { scopeMatch, scopeByParty, scopeParties } from '../utils/scope.js';
 
 /**
  * Saari reports ek jagah.
@@ -57,16 +58,26 @@ const SALE_COLUMNS = {
   ],
 };
 
-export async function saleReport(businessId, q = {}) {
+export async function saleReport(businessId, q = {}, viewer = null) {
   const { start, end } = range(q);
   const groupBy = ['day', 'item', 'party'].includes(q.groupBy) ? q.groupBy : 'day';
 
-  const match = {
+  let match = {
     businessId: oid(businessId),
     isCancelled: false,
     invoiceDate: { $gte: start, $lte: end },
   };
   if (q.partyId) match.partyId = oid(q.partyId);
+
+  /*
+    Report bhi utni hi dikhni chahiye jitni list.
+
+    Ye sabse chupa hua chhed tha: bill ki list to hadd me aa gayi, par report
+    poori dukaan ka jod dikhati rehti — aur "Retailer ke hisaab se" wali
+    report to seedha SAARE retailer ke naam aur unka udhaar ek table me rakh
+    deti thi. Jo list me chhupaya tha wo report ek click me khol deti.
+  */
+  match = await scopeMatch(match, businessId, viewer, { alsoMine: true });
 
   let rows = [];
 
@@ -379,10 +390,11 @@ const OUTSTANDING_COLUMNS = [
  * Udhaar kitna purana hai — yahi asli kaam ki cheez hai.
  * Bucket bill ki date se bante hain, party ke balance se nahi.
  */
-export async function outstandingReport(businessId, q = {}) {
+export async function outstandingReport(businessId, q = {}, viewer = null) {
   const type = q.type === 'supplier' ? PARTY_TYPES.SUPPLIER : PARTY_TYPES.RETAILER;
 
-  const parties = await Party.find({ businessId, type, balance: { $gt: 0 } })
+  // Udhaar report seedhi party pe bani hai, isliye party wali hadd hi kaafi hai
+  const parties = await Party.find(scopeParties({ businessId, type, balance: { $gt: 0 } }, viewer))
     .sort({ balance: -1 }).limit(500)
     .select('name shopName phone balance creditLimit').lean();
   if (!parties.length) {
@@ -453,13 +465,17 @@ const GST_COLUMNS = [
  * GSTR-1 jaisa summary — CA ko dene layak.
  * B2B = jis retailer ka GSTIN hai, B2C = baaki.
  */
-export async function gstReport(businessId, q = {}) {
+export async function gstReport(businessId, q = {}, viewer = null) {
   const { start, end } = range(q);
 
-  const invoices = await Invoice.find({
+  let filter = {
     businessId, isCancelled: false, gstEnabled: true,
     invoiceDate: { $gte: start, $lte: end },
-  }).select('items partySnapshot taxableTotal cgstTotal sgstTotal igstTotal grandTotal taxType').lean();
+  };
+  filter = await scopeByParty(filter, businessId, viewer, { alsoMine: true });
+
+  const invoices = await Invoice.find(filter)
+    .select('items partySnapshot taxableTotal cgstTotal sgstTotal igstTotal grandTotal taxType').lean();
 
   // HSN wise
   const hsnMap = {};
@@ -539,11 +555,16 @@ const PAYMENT_COLUMNS = [
   { key: 'outTotal', header: 'Kul diya', money: true },
 ];
 
-export async function paymentReport(businessId, q = {}) {
+export async function paymentReport(businessId, q = {}, viewer = null) {
   const { start, end } = range(q);
 
+  const match = await scopeMatch(
+    { businessId: oid(businessId), status: 'confirmed', date: { $gte: start, $lte: end } },
+    businessId, viewer, { alsoMine: true },
+  );
+
   const agg = await Payment.aggregate([
-    { $match: { businessId: oid(businessId), status: 'confirmed', date: { $gte: start, $lte: end } } },
+    { $match: match },
     {
       $group: {
         _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, mode: '$mode', dir: '$direction' },
@@ -604,8 +625,8 @@ export const REPORTS = {
   payment: paymentReport,
 };
 
-export async function runReport(name, businessId, q) {
+export async function runReport(name, businessId, q, viewer = null) {
   const fn = REPORTS[name];
   if (!fn) return null;
-  return fn(businessId, q);
+  return fn(businessId, q, viewer);
 }

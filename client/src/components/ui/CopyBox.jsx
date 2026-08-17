@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 /**
  * Copy karne layak dabba — link, code, kuch bhi.
@@ -39,7 +40,7 @@ export default function CopyBox({ label, value, className }) {
         <button
           type="button"
           onClick={copy}
-          aria-label="Copy karein"
+          aria-label={t('Copy karein')}
           className={cn(
             // min-w/h 44px — phone pe ungli se dabana hota hai
             'flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors focus-ring',

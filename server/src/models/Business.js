@@ -64,6 +64,29 @@ const businessSchema = new mongoose.Schema(
     },
     upiName: { type: String, trim: true, default: '' },
 
+    /* ---- Bank ka khata (Part 15) ----
+     *
+     * Ye SIRF bill pe likhne ke liye hai — QR isse nahi banta.
+     *
+     * Wajah samajh lena zaroori hai, warna baar baar yahi sawal aayega:
+     * UPI ka QR ek "pata" (VPA) maangta hai — `naam@bank`. Account number aur
+     * IFSC se koi aisa QR ban hi nahi sakta jise GPay/PhonePe padh len; wo
+     * NEFT/IMPS ka rasta hai, jo aadmi apne bank app me haath se bharta hai.
+     *
+     * Isliye do alag cheezein hain: QR ke liye UPI ID, aur "mere account me
+     * daal do" ke liye ye account detail — jo bill pe likhi jayegi.
+     */
+    bankName: { type: String, trim: true, default: '' },
+    bankAccountName: { type: String, trim: true, default: '' },
+    bankAccountNumber: { type: String, trim: true, default: '' },
+    bankIfsc: {
+      type: String, trim: true, uppercase: true, default: '',
+      validate: {
+        validator: (v) => !v || /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v),
+        message: 'IFSC aisa hota hai: HDFC0001234 (4 akshar, phir 0, phir 6)',
+      },
+    },
+
     // Invoice settings (Part 8 me use honge)
     invoicePrefix: { type: String, default: 'INV', trim: true },
     orderPrefix: { type: String, default: 'ORD', trim: true },

@@ -3,6 +3,7 @@ import { Upload, Download, FileText, AlertTriangle, CheckCircle2 } from 'lucide-
 import api from '@/lib/api';
 import { downloadText, readFileAsText } from '@/lib/download';
 import { Modal, Button, Badge, Spinner, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export default function ImportModal({ open, onClose, onImported }) {
   const toast = useToast();
@@ -70,11 +71,11 @@ export default function ImportModal({ open, onClose, onImported }) {
       open={open}
       onClose={() => { onClose(); reset(); }}
       size="lg"
-      title="CSV se items import karein"
-      description="Excel/Google Sheet se seedha 500 item ek saath"
+      title={t('CSV se items import karein')}
+      description={t('Excel/Google Sheet se seedha 500 item ek saath')}
       footer={
         <>
-          <Button variant="secondary" onClick={() => { onClose(); reset(); }}>Cancel</Button>
+          <Button variant="secondary" onClick={() => { onClose(); reset(); }}>{t('Cancel')}</Button>
           {preview && (
             <Button onClick={commit} loading={committing} disabled={!canImport}>
               {canImport ? `${s.willCreate + s.willUpdate} item import karein` : 'Kuch import nahi ho sakta'}
@@ -86,25 +87,24 @@ export default function ImportModal({ open, onClose, onImported }) {
       <div className="space-y-5">
         {/* Step 1 */}
         <div className="rounded-lg border border-slate-200 p-4">
-          <p className="mb-2 text-sm font-medium text-slate-900">1. Sample file download karein</p>
+          <p className="mb-2 text-sm font-medium text-slate-900">{t('1. Sample file download karein')}</p>
           <p className="mb-3 text-sm text-slate-500">
-            Isi format me apne items bhar kar wapas upload karein. Column: name (zaroori), sku,
-            category, unit, purchasePrice, salePrice, wholesalePrice, stockQty, lowStockAt, hsn, gstRate.
+            {t('Isi format me apne items bhar kar wapas upload karein. Column: name (zaroori), sku, category, unit, purchasePrice, salePrice, wholesalePrice, stockQty, lowStockAt, hsn, gstRate.')}
           </p>
           <Button type="button" variant="secondary" size="sm" icon={Download} onClick={downloadSample}>
-            Sample CSV
+            {t('Sample CSV')}
           </Button>
         </div>
 
         {/* Step 2 */}
         <div className="rounded-lg border border-slate-200 p-4">
-          <p className="mb-3 text-sm font-medium text-slate-900">2. Apni file upload karein</p>
+          <p className="mb-3 text-sm font-medium text-slate-900">{t('2. Apni file upload karein')}</p>
           <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
             onChange={pickFile} data-testid="csv-input" />
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="secondary" size="sm" icon={Upload} loading={loading}
               onClick={() => fileRef.current?.click()}>
-              CSV chunein
+              {t('CSV chunein')}
             </Button>
             {fileName && (
               <span className="flex items-center gap-1.5 text-sm text-slate-600">
@@ -116,20 +116,20 @@ export default function ImportModal({ open, onClose, onImported }) {
 
         {loading && (
           <div className="flex items-center justify-center gap-2 py-6 text-slate-400">
-            <Spinner /> <span className="text-sm">File padhi ja rahi hai...</span>
+            <Spinner /> <span className="text-sm">{t('File padhi ja rahi hai...')}</span>
           </div>
         )}
 
         {/* Step 3 — preview */}
         {preview && s && (
           <div className="rounded-lg border border-slate-200 p-4">
-            <p className="mb-3 text-sm font-medium text-slate-900">3. Check karein, phir import</p>
+            <p className="mb-3 text-sm font-medium text-slate-900">{t('3. Check karein, phir import')}</p>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Kul rows" value={s.total} />
-              <Stat label="Naye" value={s.willCreate} tone="green" />
-              <Stat label="Update" value={s.willUpdate} tone="blue" />
-              <Stat label="Error" value={s.withErrors} tone={s.withErrors ? 'red' : 'slate'} />
+              <Stat label={t('Kul rows')} value={s.total} />
+              <Stat label={t('Naye')} value={s.willCreate} tone="green" />
+              <Stat label={t('Update')} value={s.willUpdate} tone="blue" />
+              <Stat label={t('Error')} value={s.withErrors} tone={s.withErrors ? 'red' : 'slate'} />
             </div>
 
             {s.newCategories?.length > 0 && (
@@ -164,7 +164,7 @@ export default function ImportModal({ open, onClose, onImported }) {
 
             {preview.truncated && (
               <p className="mt-2 text-xs text-slate-500">
-                Preview me sirf pehli 200 rows dikhayi hain — import saari hongi.
+                {t('Preview me sirf pehli 200 rows dikhayi hain — import saari hongi.')}
               </p>
             )}
           </div>

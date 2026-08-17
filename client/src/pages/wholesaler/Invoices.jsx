@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, IndianRupee, Calendar, TriangleAlert, ChevronRight, Plus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery, useListQuery } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Table, Badge, SearchInput, Chips,
-  Select, Input, Pagination, EmptyState, useToast,
+  Select, Input, Pagination, EmptyState, SkeletonCards, SkeletonRows, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const payTone = { unpaid: 'red', partial: 'amber', paid: 'green' };
 const payLabel = { unpaid: 'Udhaar', partial: 'Kuch mila', paid: 'Mil gaya' };
@@ -17,12 +19,6 @@ const payLabel = { unpaid: 'Udhaar', partial: 'Kuch mila', paid: 'Mil gaya' };
 export default function Invoices() {
   const toast = useToast();
   const navigate = useNavigate();
-
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
-  const [stats, setStats] = useState({});
-  const [retailers, setRetailers] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q);
@@ -32,33 +28,31 @@ export default function Invoices() {
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/invoices', {
-        params: { q: debouncedQ, paymentStatus, partyId, from: from || undefined, to: to || undefined, page, limit: 25 },
-      });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, paymentStatus, partyId, from, to, page]);
+  const params = {
+    q: debouncedQ, paymentStatus, partyId,
+    from: from || undefined, to: to || undefined, page, limit: 25,
+  };
 
-  useEffect(() => {
-    api.get('/invoices/stats').then((r) => setStats(r.data)).catch(() => {});
-    api.get('/parties', { params: { type: 'retailer', limit: 200 } })
-      .then((r) => setRetailers(r.data)).catch(() => {});
-  }, []);
-  useEffect(() => { load(); }, [load]);
+  // Purana turant, naya peeche-peeche — `loading` sirf sabse pehli baar
+  const { rows, meta, loading } = useListQuery(
+    ['invoices', params],
+    () => api.get('/invoices', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  const { data: stats = {} } = useQuery(
+    ['invoices', 'stats'], () => api.get('/invoices/stats').then((r) => r.data),
+  );
+  const { data: retailers = [] } = useQuery(
+    ['parties', 'retailer', 'chunne-ke-liye'],
+    () => api.get('/parties', { params: { type: 'retailer', limit: 200 } }).then((r) => r.data),
+  );
+
   useEffect(() => { setPage(1); }, [debouncedQ, paymentStatus, partyId, from, to]);
 
   const columns = [
     {
-      key: 'invoiceNo', header: 'Bill',
+      key: 'invoiceNo', header: t('Bill'),
       render: (r) => (
         <button onClick={() => navigate(`/invoices/${r._id}`)} className="text-left">
           <p className="font-medium text-slate-900">{r.invoiceNo}</p>
@@ -66,25 +60,25 @@ export default function Invoices() {
         </button>
       ),
     },
-    { key: 'party', header: 'Retailer', render: (r) => r.party?.name || '—' },
-    { key: 'grandTotal', header: 'Kul', align: 'right', render: (r) => formatMoney(r.grandTotal) },
+    { key: 'party', header: t('Retailer'), render: (r) => r.party?.name || '—' },
+    { key: 'grandTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.grandTotal) },
     {
-      key: 'dueAmount', header: 'Baaki', align: 'right',
+      key: 'dueAmount', header: t('Baaki'), align: 'right',
       render: (r) => (r.dueAmount > 0
         ? <span className="tabular font-medium text-amber-700">{formatMoney(r.dueAmount)}</span>
         : <span className="text-slate-400">—</span>),
     },
     {
-      key: 'paymentStatus', header: 'Status',
+      key: 'paymentStatus', header: t('Status'),
       render: (r) => (r.isCancelled
-        ? <Badge tone="red">Cancelled</Badge>
+        ? <Badge tone="red">{t('Cancelled')}</Badge>
         : <Badge tone={payTone[r.paymentStatus]}>{payLabel[r.paymentStatus]}</Badge>),
     },
     {
       key: 'actions', header: '', align: 'right',
       render: (r) => (
         <button onClick={() => navigate(`/invoices/${r._id}`)}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Kholein">
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label={t('Kholein')}>
           <ChevronRight size={18} />
         </button>
       ),
@@ -94,33 +88,33 @@ export default function Invoices() {
   return (
     <>
       <PageHeader
-        title="Invoices"
-        subtitle="Bill banate hi stock ghatta hai aur khata banta hai"
-        action={<Button icon={Plus} onClick={() => navigate('/invoices/new')}>Naya bill</Button>}
+        title={t('Invoices')}
+        subtitle={t('Bill banate hi stock ghatta hai aur khata banta hai')}
+        action={<Button icon={Plus} onClick={() => navigate('/invoices/new')}>{t('Naya bill')}</Button>}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Kul bills" value={stats.totalInvoices || 0} icon={FileText} tone="brand" />
-        <StatCard label="Kul sale" value={formatMoney(stats.totalAmount || 0)} icon={IndianRupee} tone="green" />
-        <StatCard label="Is mahine" value={formatMoney(stats.monthAmount || 0)} icon={Calendar} tone="brand"
+        <StatCard label={t('Kul bills')} value={stats.totalInvoices || 0} icon={FileText} tone="brand" />
+        <StatCard label={t('Kul sale')} value={formatMoney(stats.totalAmount || 0)} icon={IndianRupee} tone="green" />
+        <StatCard label={t('Is mahine')} value={formatMoney(stats.monthAmount || 0)} icon={Calendar} tone="brand"
           sub={`${stats.monthCount || 0} bill`} />
-        <StatCard label="Udhaar baaki" value={formatMoney(stats.totalDue || 0)} icon={TriangleAlert}
+        <StatCard label={t('Udhaar baaki')} value={formatMoney(stats.totalDue || 0)} icon={TriangleAlert}
           tone={stats.totalDue > 0 ? 'amber' : 'green'} />
       </div>
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <SearchInput value={q} onChange={setQ} placeholder="Bill number ya retailer..."
+          <SearchInput value={q} onChange={setQ} placeholder={t('Bill number ya retailer...')}
             className="w-full sm:w-56" />
           <Chips value={paymentStatus} onChange={setPaymentStatus}
             options={[
-              { value: 'all', label: 'Sab' },
-              { value: 'unpaid', label: 'Udhaar' },
-              { value: 'partial', label: 'Kuch mila' },
-              { value: 'paid', label: 'Mil gaya' },
+              { value: 'all', label: t('Sab') },
+              { value: 'unpaid', label: t('Udhaar') },
+              { value: 'partial', label: t('Kuch mila') },
+              { value: 'paid', label: t('Mil gaya') },
             ]} />
           <div className="w-44">
-            <Select placeholder="Sab retailers" value={partyId}
+            <Select placeholder={t('Sab retailers')} value={partyId}
               onChange={(e) => setPartyId(e.target.value)}
               options={retailers.map((r) => ({ value: r._id, label: r.shopName || r.name }))} />
           </div>
@@ -133,9 +127,9 @@ export default function Invoices() {
         {!loading && !rows.length ? (
           <EmptyState
             icon={FileText}
-            title="Abhi koi bill nahi"
+            title={t('Abhi koi bill nahi')}
             message="Order tayyar ho jaye to uspe 'Bill banayein' dabaein — ya yahin se seedha naya bill banayein."
-            action={<Button icon={Plus} onClick={() => navigate('/invoices/new')}>Pehla bill</Button>}
+            action={<Button icon={Plus} onClick={() => navigate('/invoices/new')}>{t('Pehla bill')}</Button>}
           />
         ) : (
           <>
@@ -143,7 +137,7 @@ export default function Invoices() {
               <Table columns={columns} rows={rows} loading={loading} />
             </div>
             <div className="md:hidden">
-              {loading ? <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+              {loading ? <SkeletonRows />
                 : rows.map((r) => (
                   <button key={r._id} onClick={() => navigate(`/invoices/${r._id}`)}
                     className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0">
@@ -154,7 +148,7 @@ export default function Invoices() {
                       </p>
                       <div className="mt-1.5 flex items-center gap-2">
                         {r.isCancelled
-                          ? <Badge tone="red">Cancelled</Badge>
+                          ? <Badge tone="red">{t('Cancelled')}</Badge>
                           : <Badge tone={payTone[r.paymentStatus]}>{payLabel[r.paymentStatus]}</Badge>}
                         <span className="tabular text-sm font-medium text-slate-900">
                           {formatMoney(r.grandTotal)}

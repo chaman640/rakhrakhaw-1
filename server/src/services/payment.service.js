@@ -42,6 +42,10 @@ export async function listPayments(businessId, q, viewer = null) {
     filter.$or = [{ paymentNo: rx }, { reference: rx }, { partyId: { $in: parties.map((p) => p._id) } }];
   }
 
+  // Bill ki tarah yahan bhi hadd lagti hai — paisa kis party se aaya, ye bhi
+  // utni hi niji baat hai (dekho invoice.service.js me isi jagah ka note)
+  filter = await scopeByParty(filter, businessId, viewer, { alsoMine: true });
+
   const skip = (q.page - 1) * q.limit;
   const [payments, total] = await Promise.all([
     Payment.find(filter).sort({ date: -1, createdAt: -1 }).skip(skip).limit(q.limit)

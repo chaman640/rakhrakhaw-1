@@ -9,6 +9,7 @@ import {
   Switch, Badge, LineItemCard, NumField, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const emptyRow = () => ({ key: Math.random().toString(36).slice(2), itemId: '', name: '', unit: 'PCS',
@@ -138,7 +139,7 @@ export default function PurchaseForm() {
   return (
     <>
       <PageHeader
-        title="Nayi purchase"
+        title={t('Nayi purchase')}
         subtitle={preview ? `Number: ${preview}` : 'Supplier se aaya maal'}
       />
 
@@ -146,24 +147,24 @@ export default function PurchaseForm() {
         <div className="space-y-5 lg:col-span-2">
           {/* ---- Supplier + bill ---- */}
           <Card>
-            <CardHeader title="Kisse aaya" />
+            <CardHeader title={t('Kisse aaya')} />
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="sm:col-span-1">
                 <Combobox
-                  label="Supplier" required
-                  placeholder="Supplier chunein"
+                  label={t('Supplier')} required
+                  placeholder={t('Supplier chunein')}
                   display={supplier?.label}
                   value={supplier?.value}
                   onChange={setSupplier}
                   fetchOptions={fetchSuppliers}
-                  emptyText="Koi supplier nahi mila"
+                  emptyText={t('Koi supplier nahi mila')}
                   onCreateNew={() => navigate('/suppliers')}
                   createNewLabel="Suppliers page pe jaayein"
                 />
               </div>
-              <Input label="Supplier ka bill number" value={billNo}
-                onChange={(e) => setBillNo(e.target.value)} placeholder="ST/2026/119" />
-              <Input label="Tareekh" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input label={t('Supplier ka bill number')} value={billNo}
+                onChange={(e) => setBillNo(e.target.value)} placeholder={t('ST/2026/119')} />
+              <Input label={t('Tareekh')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </Card>
 
@@ -171,10 +172,10 @@ export default function PurchaseForm() {
           <Card padding={false}>
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Maal</h3>
-                <p className="mt-0.5 text-sm text-slate-500">Jo item aaya hai, quantity aur rate ke saath</p>
+                <h3 className="text-base font-semibold text-slate-900">{t('Maal')}</h3>
+                <p className="mt-0.5 text-sm text-slate-500">{t('Jo item aaya hai, quantity aur rate ke saath')}</p>
               </div>
-              <Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>Row</Button>
+              <Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>{t('Row')}</Button>
             </div>
 
             {/* Badi screen — ek nazar me poori table */}
@@ -182,12 +183,12 @@ export default function PurchaseForm() {
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-3 py-2.5 text-left font-semibold">Item</th>
-                    <th className="w-24 px-3 py-2.5 text-right font-semibold">Qty</th>
-                    <th className="w-28 px-3 py-2.5 text-right font-semibold">Rate</th>
-                    <th className="w-24 px-3 py-2.5 text-right font-semibold">Discount</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">{t('Item')}</th>
+                    <th className="w-24 px-3 py-2.5 text-right font-semibold">{t('Qty')}</th>
+                    <th className="w-28 px-3 py-2.5 text-right font-semibold">{t('Rate')}</th>
+                    <th className="w-24 px-3 py-2.5 text-right font-semibold">{t('Discount')}</th>
                     {gstEnabled && <th className="w-20 px-3 py-2.5 text-right font-semibold">GST</th>}
-                    <th className="w-28 px-3 py-2.5 text-right font-semibold">Total</th>
+                    <th className="w-28 px-3 py-2.5 text-right font-semibold">{t('Total')}</th>
                     <th className="w-10 px-2 py-2.5"></th>
                   </tr>
                 </thead>
@@ -201,12 +202,12 @@ export default function PurchaseForm() {
                       <tr key={r.key} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2">
                           <Combobox
-                            placeholder="Item dhundhein"
+                            placeholder={t('Item dhundhein')}
                             display={r.name}
                             value={r.itemId}
                             onChange={(opt) => pickItem(r.key, opt)}
                             fetchOptions={fetchItems}
-                            emptyText="Koi item nahi mila"
+                            emptyText={t('Koi item nahi mila')}
                             onCreateNew={() => navigate('/items')}
                             createNewLabel="Items page pe jaayein"
                           />
@@ -273,9 +274,9 @@ export default function PurchaseForm() {
                     total={r.itemId ? formatMoney(taxable + tax) : '—'}
                     picker={(
                       <Combobox
-                        placeholder="Item dhundhein" display={r.name} value={r.itemId}
+                        placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
                         onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
-                        emptyText="Koi item nahi mila"
+                        emptyText={t('Koi item nahi mila')}
                         onCreateNew={() => navigate('/items')}
                         createNewLabel="Items page pe jaayein"
                       />
@@ -286,17 +287,17 @@ export default function PurchaseForm() {
                       </p>
                     )}
                   >
-                    <NumField label="Qty" srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
+                    <NumField label={t('Qty')} srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
                       value={r.qty}
                       onChange={(e) => setRow(r.key, { qty: e.target.value })} />
-                    <NumField label="Rate" srLabel={`Item ${idx + 1} rate`} step="0.01" min="0"
+                    <NumField label={t('Rate')} srLabel={`Item ${idx + 1} rate`} step="0.01" min="0"
                       value={r.rate}
                       onChange={(e) => setRow(r.key, { rate: e.target.value })} />
-                    <NumField label="Discount" srLabel={`Item ${idx + 1} discount`} step="0.01" min="0"
+                    <NumField label={t('Discount')} srLabel={`Item ${idx + 1} discount`} step="0.01" min="0"
                       value={r.discount}
                       onChange={(e) => setRow(r.key, { discount: e.target.value })} />
                     {gstEnabled && (
-                      <NumField label="GST %" srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
+                      <NumField label={t('GST %')} srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
                         value={r.gstRate}
                         onChange={(e) => setRow(r.key, { gstRate: e.target.value })} />
                     )}
@@ -306,40 +307,40 @@ export default function PurchaseForm() {
             </div>
 
             <div className="border-t border-slate-200 px-5 py-3">
-              <Button size="sm" variant="ghost" icon={Plus} onClick={addRow}>Aur item add karein</Button>
+              <Button size="sm" variant="ghost" icon={Plus} onClick={addRow}>{t('Aur item add karein')}</Button>
             </div>
           </Card>
 
           <Card>
-            <Textarea label="Note" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
-              placeholder="Gaadi number / kis truck se aaya" />
+            <Textarea label={t('Note')} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder={t('Gaadi number / kis truck se aaya')} />
           </Card>
         </div>
 
         {/* ---- Totals ---- */}
         <div className="space-y-5">
           <Card className="lg:sticky lg:top-20">
-            <CardHeader title="Hisaab" />
+            <CardHeader title={t('Hisaab')} />
 
             <dl className="space-y-2 text-sm">
-              <Row label="Kul maal" value={formatMoney(totals.subTotal)} />
+              <Row label={t('Kul maal')} value={formatMoney(totals.subTotal)} />
               {totals.discountTotal > 0 && (
-                <Row label="Discount" value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
+                <Row label={t('Discount')} value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
               )}
               {gstEnabled && <Row label="GST" value={formatMoney(totals.taxTotal)} />}
               {totals.roundOff !== 0 && (
-                <Row label="Round off" value={formatMoney(totals.roundOff)} tone="muted" />
+                <Row label={t('Round off')} value={formatMoney(totals.roundOff)} tone="muted" />
               )}
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                <dt className="font-semibold text-slate-900">Kul dena</dt>
+                <dt className="font-semibold text-slate-900">{t('Kul dena')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">{formatMoney(totals.grandTotal)}</dd>
               </div>
             </dl>
 
             <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
-              <Input label="Abhi kitna diya" type="number" step="0.01" min="0" prefix="₹"
+              <Input label={t('Abhi kitna diya')} type="number" step="0.01" min="0" prefix="₹"
                 value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
-                hint="Khali chhod do to poora udhaar" />
+                hint={t('Khali chhod do to poora udhaar')} />
 
               <div className={cn(
                 'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
@@ -355,14 +356,14 @@ export default function PurchaseForm() {
                 id="update-price"
                 checked={updatePrice}
                 onChange={setUpdatePrice}
-                label="Purchase price update karein"
-                description="Item ka purchase price is bill ke rate se badal jayega"
+                label={t('Purchase price update karein')}
+                description={t('Item ka purchase price is bill ke rate se badal jayega')}
               />
             </div>
 
             <Button className="mt-5 w-full" size="lg" icon={Save} loading={saving} onClick={save}
               disabled={!supplier || !filledRows.length}>
-              Save karein
+              {t('Save karein')}
             </Button>
 
             <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">

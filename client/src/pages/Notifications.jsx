@@ -11,6 +11,7 @@ import {
   PageHeader, Card, Button, Chips, Pagination, EmptyState, Spinner, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const TYPES = [
   { value: 'all', label: 'Sab' },
@@ -140,18 +141,18 @@ export default function Notifications() {
   return (
     <>
       <PageHeader
-        title="Notifications"
+        title={t('Notifications')}
         subtitle={counts.unread > 0 ? `${counts.unread} abhi tak padhi nahi` : 'Sab padh liya'}
         action={
           <>
             {counts.unread > 0 && (
               <Button variant="secondary" icon={CheckCheck} loading={busy} onClick={readAll}>
-                Sab padh liya
+                {t('Sab padh liya')}
               </Button>
             )}
             {counts.all > counts.unread && (
               <Button variant="ghost" icon={Trash2} loading={busy} onClick={clearRead}>
-                Purani hatayein
+                {t('Purani hatayein')}
               </Button>
             )}
           </>
@@ -161,11 +162,11 @@ export default function Notifications() {
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
           <Chips value={type} onChange={setType}
-            options={TYPES.map((t) => ({
-              ...t,
-              label: counts.byType?.[t.value]?.unread
-                ? `${t.label} (${counts.byType[t.value].unread})`
-                : t.label,
+            options={TYPES.map((ty) => ({
+              ...ty,
+              label: counts.byType?.[ty.value]?.unread
+                ? `${t(ty.label)} (${counts.byType[ty.value].unread})`
+                : t(ty.label),
             }))} />
           <button
             onClick={() => setOnlyUnread((v) => !v)}
@@ -177,7 +178,7 @@ export default function Notifications() {
                 : 'border-slate-300 text-slate-600 hover:bg-slate-50'
             )}
           >
-            Sirf nayi
+            {t('Sirf nayi')}
           </button>
         </div>
       </Card>
@@ -236,7 +237,7 @@ export default function Notifications() {
                     <button
                       onClick={(e) => removeOne(e, n)}
                       className="shrink-0 rounded-lg p-1.5 text-slate-300 opacity-0 transition-opacity hover:bg-slate-100 hover:text-red-600 focus-ring group-hover:opacity-100"
-                      aria-label="Ye notification hatayein"
+                      aria-label={t('Ye notification hatayein')}
                     >
                       <X size={15} />
                     </button>

@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Table, Badge, Button, Chips, Pagination,
-  EmptyState, Spinner, useToast,
+  EmptyState, Spinner, SkeletonRows, useToast,
 } from '@/components/ui';
 import InvoicePrint from '@/components/invoice/InvoicePrint';
 
@@ -105,7 +105,7 @@ export function MyBills() {
               <Table columns={columns} rows={rows} loading={loading} />
             </div>
             <div className="md:hidden">
-              {loading ? <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+              {loading ? <SkeletonRows />
                 : rows.map((r) => (
                   <button key={r._id} onClick={() => navigate(`/my-bills/${r._id}`)}
                     className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0">

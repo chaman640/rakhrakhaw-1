@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Users, Truck, UserCheck, Ban, IndianRupee, Clock, ChevronRight, Tag,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatPhone, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Table, Badge, SearchInput, Chips,
-  Pagination, EmptyState, useToast,
+  Pagination, EmptyState, SkeletonRows, useToast,
 } from '@/components/ui';
 import PartyFormModal from './PartyFormModal';
 import InviteCard from './InviteCard';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const statusTone = { pending: 'amber', active: 'green', blocked: 'red' };
 const statusLabel = { pending: 'Approval baaki', active: 'Active', blocked: 'Blocked' };
@@ -23,11 +25,6 @@ export default function PartyList({ type }) {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
-  const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, blocked: 0, totalDue: 0 });
-  const [loading, setLoading] = useState(true);
-
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q);
   const [status, setStatus] = useState('all');
@@ -36,32 +33,23 @@ export default function PartyList({ type }) {
   const [formOpen, setFormOpen] = useState(false);
   const [formParty, setFormParty] = useState(null);
 
-  const loadStats = useCallback(async () => {
-    try {
-      const res = await api.get('/parties/stats', { params: { type } });
-      setStats(res.data);
-    } catch { /* chup-chaap */ }
-  }, [type]);
+  const params = { type, status, q: debouncedQ, page, limit: 25 };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/parties', { params: { type, status, q: debouncedQ, page, limit: 25 } });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, status, debouncedQ, page]);
+  const { rows, meta, loading } = useListQuery(
+    ['parties', params],
+    () => api.get('/parties', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
 
-  useEffect(() => { loadStats(); }, [loadStats]);
-  useEffect(() => { load(); }, [load]);
+  const { data: stats = { total: 0, pending: 0, active: 0, blocked: 0, totalDue: 0 } } = useQuery(
+    ['parties', 'stats', type],
+    () => api.get('/parties/stats', { params: { type } }).then((r) => r.data),
+  );
+
   useEffect(() => { setPage(1); }, [debouncedQ, status]);
 
-  function refreshAll() { load(); loadStats(); }
+  // Kuch badla — list aur ginti dono apne aap taaza ho jayengi
+  const refreshAll = () => bust('parties', 'khata', 'dashboard');
 
   async function changeStatus(party, next) {
     try {
@@ -88,7 +76,7 @@ export default function PartyList({ type }) {
     },
     ...(isRetailer ? [{
       key: 'status',
-      header: 'Status',
+      header: t('Status'),
       render: (r) => <Badge tone={statusTone[r.status]}>{statusLabel[r.status]}</Badge>,
     }] : []),
     {
@@ -103,13 +91,13 @@ export default function PartyList({ type }) {
     },
     ...(isRetailer ? [{
       key: 'customRateCount',
-      header: 'Khaas rate',
+      header: t('Khaas rate'),
       align: 'right',
       render: (r) => (r.customRateCount
         ? <Badge tone="brand">{r.customRateCount} item</Badge>
         : <span className="text-slate-400">—</span>),
     }] : []),
-    { key: 'createdAt', header: 'Juda', render: (r) => formatDate(r.createdAt) },
+    { key: 'createdAt', header: t('Juda'), render: (r) => formatDate(r.createdAt) },
     {
       key: 'actions',
       header: '',
@@ -118,18 +106,18 @@ export default function PartyList({ type }) {
         <div className="flex items-center justify-end gap-1">
           {isRetailer && r.status !== 'active' && (
             <Button size="sm" variant="success" icon={UserCheck} onClick={() => changeStatus(r, 'active')}>
-              Approve
+              {t('Approve')}
             </Button>
           )}
           {isRetailer && r.status === 'active' && (
             <Button size="sm" variant="secondary" icon={Ban} onClick={() => changeStatus(r, 'blocked')}>
-              Block
+              {t('Block')}
             </Button>
           )}
           <button
             onClick={() => navigate(`${basePath}/${r._id}`)}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Kholein"
+            aria-label={t('Kholein')}
           >
             <ChevronRight size={18} />
           </button>
@@ -155,8 +143,8 @@ export default function PartyList({ type }) {
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={isRetailer ? 'Kul retailers' : 'Kul suppliers'} value={stats.total}
           icon={isRetailer ? Users : Truck} tone="brand" />
-        {isRetailer && <StatCard label="Approval baaki" value={stats.pending} icon={Clock} tone="amber" />}
-        <StatCard label="Active" value={stats.active} icon={UserCheck} tone="green" />
+        {isRetailer && <StatCard label={t('Approval baaki')} value={stats.pending} icon={Clock} tone="amber" />}
+        <StatCard label={t('Active')} value={stats.active} icon={UserCheck} tone="green" />
         <StatCard label={isRetailer ? 'Kul udhaar' : 'Kul dena hai'} value={formatMoney(stats.totalDue)}
           icon={IndianRupee} tone={stats.totalDue > 0 ? 'amber' : 'green'} />
       </div>
@@ -170,16 +158,16 @@ export default function PartyList({ type }) {
       <Card className="mb-5" padding={false}>
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
           <SearchInput value={q} onChange={setQ}
-            placeholder="Naam, dukaan ya phone se dhundhein..." className="lg:w-80" />
+            placeholder={t('Naam, dukaan ya phone se dhundhein...')} className="lg:w-80" />
           {isRetailer && (
             <Chips
               value={status}
               onChange={setStatus}
               options={[
-                { value: 'all', label: 'Sab' },
-                { value: 'pending', label: 'Approval baaki', count: stats.pending },
-                { value: 'active', label: 'Active', count: stats.active },
-                { value: 'blocked', label: 'Blocked', count: stats.blocked },
+                { value: 'all', label: t('Sab') },
+                { value: 'pending', label: t('Approval baaki'), count: stats.pending },
+                { value: 'active', label: t('Active'), count: stats.active },
+                { value: 'blocked', label: t('Blocked'), count: stats.blocked },
               ]}
             />
           )}
@@ -217,7 +205,7 @@ export default function PartyList({ type }) {
             */}
             <div className="md:hidden">
               {loading ? (
-                <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+                <SkeletonRows />
               ) : rows.map((r) => (
                 <div key={r._id} className="border-b border-slate-100 last:border-0">
                   <button
@@ -248,12 +236,12 @@ export default function PartyList({ type }) {
                       {r.status !== 'active' ? (
                         <Button size="sm" variant="success" icon={UserCheck}
                           onClick={() => changeStatus(r, 'active')}>
-                          Approve
+                          {t('Approve')}
                         </Button>
                       ) : (
                         <Button size="sm" variant="secondary" icon={Ban}
                           onClick={() => changeStatus(r, 'blocked')}>
-                          Block
+                          {t('Block')}
                         </Button>
                       )}
                     </div>

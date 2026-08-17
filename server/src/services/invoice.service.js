@@ -43,6 +43,21 @@ export async function listInvoices(businessId, q, viewer = null) {
     filter.$or = [{ invoiceNo: rx }, { partyId: { $in: parties.map((p) => p._id) } }];
   }
 
+  /*
+    "SIRF APNA KAAM" WALI HADD.
+
+    Ye line pehle yahan thi hi nahi — aur wo ek asli chhed tha. Ek bill KHOLNE
+    par to rok lagti thi (`getInvoice` me `canSeeDoc`), par LIST me sabke bill
+    aa jate the: doosre salesman ke retailer ka naam, uski rakam, uska bill
+    number — sab. Aadmi ko bill kholne ki zarurat hi nahi thi, list se hi pata
+    chal jata tha ki kaun kitna kharid raha hai.
+
+    `alsoMine` isliye ki jo bill usne KHUD banaya hai wo bhi dikhna chahiye,
+    chahe wo party baad me kisi aur ke naam ho gayi ho — warna apna hi kaam
+    gayab dikhta hai.
+  */
+  filter = await scopeByParty(filter, businessId, viewer, { alsoMine: true });
+
   const skip = (q.page - 1) * q.limit;
   const [invoices, total] = await Promise.all([
     Invoice.find(filter)
@@ -84,12 +99,15 @@ export async function getStats(businessId, viewer = null) {
       { $match: { businessId: bid, isCancelled: false, ...mine } },
       { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$grandTotal' }, due: { $sum: '$dueAmount' } } },
     ]),
+    // `...mine` teeno me — pehle sirf sabse upar wale me tha, isliye "Is
+    // mahine" aur "Aaj" wale tile poori dukaan ka jod dikhate the jabki neeche
+    // ki list sirf apni. Aadha sach poore jhooth se zyada uljhata hai.
     Invoice.aggregate([
-      { $match: { businessId: bid, isCancelled: false, invoiceDate: { $gte: monthStart } } },
+      { $match: { businessId: bid, isCancelled: false, ...mine, invoiceDate: { $gte: monthStart } } },
       { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$grandTotal' } } },
     ]),
     Invoice.aggregate([
-      { $match: { businessId: bid, isCancelled: false, invoiceDate: { $gte: todayStart } } },
+      { $match: { businessId: bid, isCancelled: false, ...mine, invoiceDate: { $gte: todayStart } } },
       { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$grandTotal' } } },
     ]),
   ]);
@@ -103,6 +121,63 @@ export async function getStats(businessId, viewer = null) {
     todayCount: today?.count || 0,
     todayAmount: round2(today?.total || 0),
   };
+}
+
+/**
+ * PARTY-WISE SALE — Home page ka doosra tab.
+ *
+ * "Kisne kitna kharida" ek hi nazar me. Ye aankda report page me bhi hai, par
+ * wo `reports` ki ijazat maangta hai — jo salesman ke paas nahi hoti. Aur
+ * apne retailer ka hisaab dekhna salesman ka roz ka kaam hai, mahine ki
+ * report nahi. Isliye wahi ginti yahan `invoices:view` ke neeche rakhi hai.
+ */
+export async function salesByParty(businessId, q = {}, viewer = null) {
+  const bid = new mongoose.Types.ObjectId(businessId);
+
+  const match = { businessId: bid, isCancelled: false };
+  if (q.from || q.to) {
+    match.invoiceDate = {};
+    if (q.from) match.invoiceDate.$gte = new Date(q.from);
+    if (q.to) { const to = new Date(q.to); to.setHours(23, 59, 59, 999); match.invoiceDate.$lte = to; }
+  }
+
+  const scoped = isScoped(viewer)
+    ? { $or: [
+      { partyId: { $in: toObjectIds(await ownPartyIds(businessId, viewer)) } },
+      { createdBy: viewer._id },
+    ] }
+    : {};
+
+  const rows = await Invoice.aggregate([
+    { $match: { ...match, ...scoped } },
+    {
+      $group: {
+        _id: '$partyId',
+        shopName: { $first: '$partySnapshot.shopName' },
+        name: { $first: '$partySnapshot.name' },
+        phone: { $first: '$partySnapshot.phone' },
+        bills: { $sum: 1 },
+        total: { $sum: '$grandTotal' },
+        paid: { $sum: '$paidAmount' },
+        due: { $sum: '$dueAmount' },
+        lastDate: { $max: '$invoiceDate' },
+      },
+    },
+    { $sort: { total: -1 } },
+    { $limit: 200 },
+  ]);
+
+  return rows.map((r) => ({
+    _id: r._id,
+    name: r.shopName || r.name || '—',
+    subName: r.shopName ? r.name : '',
+    phone: r.phone || '',
+    bills: r.bills,
+    total: round2(r.total),
+    paid: round2(r.paid),
+    due: round2(r.due),
+    lastDate: r.lastDate,
+  }));
 }
 
 export async function nextNumber(businessId) {
@@ -352,6 +427,12 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     businessSnapshot: {
       name: business.name, phone: business.phone, gstin: business.gstin,
       logoUrl: business.logoUrl, address: business.address,
+      // Bill pe QR aur "account me daal do" — dono isi snapshot se chhapte hain
+      upiId: business.upiId || '', upiName: business.upiName || '',
+      bankName: business.bankName || '',
+      bankAccountName: business.bankAccountName || '',
+      bankAccountNumber: business.bankAccountNumber || '',
+      bankIfsc: business.bankIfsc || '',
     },
     partySnapshot: {
       name: party.name, shopName: party.shopName, phone: party.phone,

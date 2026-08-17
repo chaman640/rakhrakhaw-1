@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Modal, Button, Input, Select, Textarea, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const blank = {
   name: '', shopName: '', phone: '', email: '',
@@ -98,58 +99,58 @@ export default function PartyFormModal({ open, onClose, party, type, onSaved }) 
         : 'Jinse aap maal khareedte hain')}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button>
           <Button onClick={submit} loading={saving}>{isEdit ? 'Save karein' : 'Add karein'}</Button>
         </>
       }
     >
       <form onSubmit={submit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Dukaan ka naam" placeholder={isRetailer ? 'Suresh Auto Store' : 'Sharma Traders'}
+          <Input label={t('Dukaan ka naam')} placeholder={isRetailer ? 'Suresh Auto Store' : 'Sharma Traders'}
             value={form.shopName} onChange={set('shopName')} error={fieldErrors.shopName} />
-          <Input label="Vyakti ka naam" required placeholder="Suresh Kumar"
+          <Input label={t('Vyakti ka naam')} required placeholder={t('Suresh Kumar')}
             value={form.name} onChange={set('name')} error={fieldErrors.name} />
-          <Input label="Phone" required type="tel" inputMode="numeric" prefix="+91"
+          <Input label={t('Phone')} required type="tel" inputMode="numeric" prefix="+91"
             placeholder="98765 43210" value={form.phone} onChange={set('phone')}
             error={fieldErrors.phone}
             hint={isRetailer && !isEdit ? 'Isi number se wo link kholkar login karega' : undefined} />
-          <Input label="Email" type="email" value={form.email} onChange={set('email')} error={fieldErrors.email} />
+          <Input label={t('Email')} type="email" value={form.email} onChange={set('email')} error={fieldErrors.email} />
         </div>
 
         <div className="rounded-lg border border-slate-200 p-4">
-          <h4 className="mb-3 text-sm font-semibold text-slate-900">Address aur GST</h4>
+          <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('Address aur GST')}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Address" value={form.address.line1} onChange={setAddr('line1')}
+            <Input label={t('Address')} value={form.address.line1} onChange={setAddr('line1')}
               containerClassName="sm:col-span-2" />
-            <Input label="Sheher" value={form.address.city} onChange={setAddr('city')} />
-            <Select label="State" placeholder="State chunein" options={states}
+            <Input label={t('Sheher')} value={form.address.city} onChange={setAddr('city')} />
+            <Select label={t('State')} placeholder={t('State chunein')} options={states}
               value={form.address.state} onChange={setAddr('state')}
-              hint="Bill pe IGST lagega ya CGST+SGST — isse tay hoga" />
-            <Input label="Pincode" inputMode="numeric" maxLength={6}
+              hint={t('Bill pe IGST lagega ya CGST+SGST — isse tay hoga')} />
+            <Input label={t('Pincode')} inputMode="numeric" maxLength={6}
               value={form.address.pincode} onChange={setAddr('pincode')}
               error={fieldErrors['address.pincode']} />
-            <Input label="GSTIN (agar hai)" value={form.gstin} className="uppercase"
+            <Input label={t('GSTIN (agar hai)')} value={form.gstin} className="uppercase"
               onChange={(e) => setForm((f) => ({ ...f, gstin: e.target.value.toUpperCase() }))}
-              placeholder="09AAACH7409R1ZZ" error={fieldErrors.gstin} />
+              placeholder={t('09AAACH7409R1ZZ')} error={fieldErrors.gstin} />
           </div>
         </div>
 
         <div className="rounded-lg border border-slate-200 p-4">
-          <h4 className="mb-3 text-sm font-semibold text-slate-900">Hisaab</h4>
+          <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('Hisaab')}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             {!isEdit && (
-              <Input label="Purana hisaab" type="number" step="0.01" prefix="₹"
+              <Input label={t('Purana hisaab')} type="number" step="0.01" prefix="₹"
                 value={form.openingBalance} onChange={set('openingBalance')}
                 hint={isRetailer ? 'Inka kitna udhaar pehle se hai' : 'Inka kitna paisa dena hai'} />
             )}
-            <Input label="Credit limit" type="number" step="1" min="0" prefix="₹"
+            <Input label={t('Credit limit')} type="number" step="1" min="0" prefix="₹"
               value={form.creditLimit} onChange={set('creditLimit')}
-              hint="0 = koi limit nahi" />
+              hint={t('0 = koi limit nahi')} />
           </div>
         </div>
 
-        <Textarea label="Note" rows={2} value={form.notes} onChange={set('notes')}
-          placeholder="Har mangal ko aata hai / cash me hi deta hai" />
+        <Textarea label={t('Note')} rows={2} value={form.notes} onChange={set('notes')}
+          placeholder={t('Har mangal ko aata hai / cash me hi deta hai')} />
       </form>
     </Modal>
   );

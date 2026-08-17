@@ -8,6 +8,7 @@ import {
   Card, CardHeader, Button, Input, Select, Textarea, Spinner,
   Combobox, Badge, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const emptyRow = () => ({
   key: Math.random().toString(36).slice(2),
@@ -41,7 +42,7 @@ export default function ReturnForm() {
   // URL me galat ?type= aa jaye (purana bookmark, typo) to bhi page khulna chahiye —
   // warna cfg undefined ho jata hai aur poora page blank ho jata hai
   const [type, setType] = useState(
-    TYPES.some((t) => t.value === presetType) ? presetType : 'SALE_RETURN'
+    TYPES.some((ty) => ty.value === presetType) ? presetType : 'SALE_RETURN'
   );
   const [party, setParty] = useState(null);
   const [partyState, setPartyState] = useState('');
@@ -53,7 +54,7 @@ export default function ReturnForm() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(Boolean(docId));
 
-  const cfg = TYPES.find((t) => t.value === type) || TYPES[0];
+  const cfg = TYPES.find((ty) => ty.value === type) || TYPES[0];
   const isSale = type === 'SALE_RETURN';
 
   // ---- Bill/purchase se prefill ----
@@ -203,7 +204,7 @@ export default function ReturnForm() {
     <>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">Naya return</h1>
+          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{t('Naya return')}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {isSale
               ? 'Maal wapas aayega — stock badhega aur retailer ka udhaar kam hoga'
@@ -217,18 +218,18 @@ export default function ReturnForm() {
         <div className="space-y-5 lg:col-span-2">
           {/* ---- Kaunsa return ---- */}
           <Card>
-            <CardHeader title="Kya hua" />
+            <CardHeader title={t('Kya hua')} />
             <div className="grid gap-2 sm:grid-cols-2">
-              {TYPES.map((t) => (
-                <button key={t.value} type="button" onClick={() => changeType(t.value)}
-                  aria-pressed={type === t.value}
+              {TYPES.map((ty) => (
+                <button key={ty.value} type="button" onClick={() => changeType(ty.value)}
+                  aria-pressed={type === ty.value}
                   disabled={Boolean(docId)}
                   className={`rounded-lg border p-3 text-left transition-colors focus-ring disabled:opacity-60 ${
-                    type === t.value
+                    type === ty.value
                       ? 'border-brand-500 bg-brand-50'
                       : 'border-slate-200 hover:bg-slate-50'}`}>
-                  <p className="text-sm font-medium text-slate-900">{t.label}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{t.note} banega</p>
+                  <p className="text-sm font-medium text-slate-900">{t(ty.label)}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{ty.note} banega</p>
                 </button>
               ))}
             </div>
@@ -241,10 +242,10 @@ export default function ReturnForm() {
                 display={party?.label}
                 onChange={(opt) => { setParty(opt); setPartyState(opt.raw?.address?.stateCode || ''); }}
                 fetchOptions={fetchParties}
-                placeholder="Naam ya phone se dhoondhein"
+                placeholder={t('Naam ya phone se dhoondhein')}
                 disabled={Boolean(against)}
               />
-              <Input label="Kab" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input label={t('Kab')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
 
             {against && (
@@ -257,8 +258,8 @@ export default function ReturnForm() {
 
           {/* ---- Items ---- */}
           <Card padding={false}>
-            <CardHeader className="p-5 pb-0" title="Kaunsa maal wapas"
-              action={<Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>Item</Button>} />
+            <CardHeader className="p-5 pb-0" title={t('Kaunsa maal wapas')}
+              action={<Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>{t('Item')}</Button>} />
 
             <div className="mt-2 divide-y divide-slate-100">
               {rows.map((r, i) => (
@@ -271,7 +272,7 @@ export default function ReturnForm() {
                         display={r.name}
                         onChange={(opt) => pickItem(r.key, opt)}
                         fetchOptions={fetchItems}
-                        placeholder="Item dhoondhein"
+                        placeholder={t('Item dhoondhein')}
                         disabled={Boolean(r.maxQty != null)}
                       />
                       {r.maxQty != null && (
@@ -310,7 +311,7 @@ export default function ReturnForm() {
 
                   {r.itemId && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Input placeholder="Is item ka karan (marzi se)" value={r.reason}
+                      <Input placeholder={t('Is item ka karan (marzi se)')} value={r.reason}
                         onChange={(e) => setRow(r.key, { reason: e.target.value })}
                         containerClassName="max-w-xs" />
                       <span className="tabular ml-auto text-sm font-medium text-slate-900">
@@ -324,7 +325,7 @@ export default function ReturnForm() {
           </Card>
 
           <Card>
-            <CardHeader title="Karan" subtitle="Note pe chhapega — baad me yaad rehta hai ki kyun wapas hua" />
+            <CardHeader title={t('Karan')} subtitle={t('Note pe chhapega — baad me yaad rehta hai ki kyun wapas hua')} />
             <div className="flex flex-wrap gap-2">
               {REASONS.map((rr) => (
                 <button key={rr} type="button" onClick={() => setReason(rr)}
@@ -336,9 +337,9 @@ export default function ReturnForm() {
               ))}
             </div>
             <div className="mt-3 space-y-3">
-              <Input label="Ya khud likhein" value={reason} onChange={(e) => setReason(e.target.value)}
-                placeholder="Jaise: 2 piece me awaaz aa rahi thi" />
-              <Textarea label="Note (marzi se)" rows={2} value={notes}
+              <Input label={t('Ya khud likhein')} value={reason} onChange={(e) => setReason(e.target.value)}
+                placeholder={t('Jaise: 2 piece me awaaz aa rahi thi')} />
+              <Textarea label={t('Note (marzi se)')} rows={2} value={notes}
                 onChange={(e) => setNotes(e.target.value)} />
             </div>
           </Card>
@@ -347,14 +348,14 @@ export default function ReturnForm() {
         {/* ---- Summary ---- */}
         <div>
           <Card className="lg:sticky lg:top-4">
-            <CardHeader title="Hisaab" />
+            <CardHeader title={t('Hisaab')} />
             <dl className="space-y-2.5 text-sm">
-              <Row label="Item" value={String(filled.length)} />
-              <Row label="Taxable" value={formatMoney(totals.taxable)} />
+              <Row label={t('Item')} value={String(filled.length)} />
+              <Row label={t('Taxable')} value={formatMoney(totals.taxable)} />
               {gstEnabled && (
                 <Row label={isIgst ? 'IGST' : 'CGST + SGST'} value={formatMoney(totals.tax)} />
               )}
-              {totals.roundOff !== 0 && <Row label="Round off" value={formatMoney(totals.roundOff)} />}
+              {totals.roundOff !== 0 && <Row label={t('Round off')} value={formatMoney(totals.roundOff)} />}
               <div className="border-t border-slate-200 pt-2.5">
                 <Row label={cfg.note} value={formatMoney(totals.grandTotal)} tone="big" />
               </div>
@@ -370,7 +371,7 @@ export default function ReturnForm() {
               {cfg.note} banayein
             </Button>
             <Button className="mt-2 w-full" variant="ghost" onClick={() => navigate('/returns')}>
-              Rehne dein
+              {t('Rehne dein')}
             </Button>
           </Card>
         </div>

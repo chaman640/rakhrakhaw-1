@@ -10,7 +10,7 @@ import * as dashboard from '../services/dashboard.service.js';
 export const run = asyncHandler(async (req, res) => {
   const fn = REPORTS[req.params.name];
   if (!fn) throw ApiError.notFound('Aisi koi report nahi hai');
-  return ok(res, await fn(req.businessId, req.query));
+  return ok(res, await fn(req.businessId, req.query, req.user));
 });
 
 /**
@@ -23,7 +23,7 @@ export const download = asyncHandler(async (req, res) => {
   const fn = REPORTS[req.params.name];
   if (!fn) throw ApiError.notFound('Aisi koi report nahi hai');
 
-  const report = await fn(req.businessId, req.query);
+  const report = await fn(req.businessId, req.query, req.user);
   const headers = report.columns.map((c) => c.header);
 
   const rows = report.rows.map((r) =>

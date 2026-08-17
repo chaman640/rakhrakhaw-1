@@ -4,6 +4,7 @@ import { Plus, Truck, ChevronRight } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney, formatDate } from '@/lib/format';
 import { Card, Table, Badge, Button, EmptyState, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const payTone = { unpaid: 'red', partial: 'amber', paid: 'green' };
 const payLabel = { unpaid: 'Udhaar', partial: 'Kuch diya', paid: 'Diya' };
@@ -25,7 +26,7 @@ export default function PartyPurchasesTab({ supplierId, supplierName }) {
 
   const columns = [
     {
-      key: 'purchaseNo', header: 'Purchase',
+      key: 'purchaseNo', header: t('Purchase'),
       render: (r) => (
         <Link to={`/purchases/${r._id}`} className="block">
           <p className="font-medium text-slate-900">{r.purchaseNo}</p>
@@ -33,35 +34,35 @@ export default function PartyPurchasesTab({ supplierId, supplierName }) {
         </Link>
       ),
     },
-    { key: 'itemCount', header: 'Items', align: 'right', render: (r) => r.itemCount },
-    { key: 'grandTotal', header: 'Kul', align: 'right', render: (r) => formatMoney(r.grandTotal) },
+    { key: 'itemCount', header: t('Items'), align: 'right', render: (r) => r.itemCount },
+    { key: 'grandTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.grandTotal) },
     {
-      key: 'dueAmount', header: 'Baaki', align: 'right',
+      key: 'dueAmount', header: t('Baaki'), align: 'right',
       render: (r) => (r.dueAmount > 0
         ? <span className="tabular font-medium text-amber-700">{formatMoney(r.dueAmount)}</span>
-        : <span className="text-slate-400">\u2014</span>),
+        : <span className="text-slate-400">—</span>),
     },
-    { key: 'paymentStatus', header: 'Status',
+    { key: 'paymentStatus', header: t('Status'),
       render: (r) => <Badge tone={payTone[r.paymentStatus]}>{payLabel[r.paymentStatus]}</Badge> },
   ];
 
   return (
     <Card padding={false}>
       <div className="flex items-center justify-between px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">Isse aaya maal</h3>
+        <h3 className="text-base font-semibold text-slate-900">{t('Isse aaya maal')}</h3>
         <Button size="sm" icon={Plus} onClick={() => navigate(`/purchases/new?supplier=${supplierId}`)}>
-          Nayi purchase
+          {t('Nayi purchase')}
         </Button>
       </div>
 
       {!loading && !rows.length ? (
         <EmptyState
           icon={Truck}
-          title="Abhi koi purchase nahi"
+          title={t('Abhi koi purchase nahi')}
           message={`${supplierName} se maal aaye to yahan entry karein \u2014 stock apne aap badh jayega.`}
           action={
             <Button icon={Plus} onClick={() => navigate(`/purchases/new?supplier=${supplierId}`)}>
-              Pehli purchase
+              {t('Pehli purchase')}
             </Button>
           }
         />

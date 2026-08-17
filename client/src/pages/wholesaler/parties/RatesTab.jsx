@@ -8,6 +8,7 @@ import {
   Pagination, Modal, EmptyState, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const sourceLabel = {
   custom: { label: 'Khaas rate', tone: 'brand' },
@@ -81,7 +82,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
   const columns = [
     {
       key: 'name',
-      header: 'Item',
+      header: t('Item'),
       render: (r) => (
         <div>
           <p className="font-medium text-slate-900">{r.name}</p>
@@ -89,10 +90,10 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
         </div>
       ),
     },
-    { key: 'purchasePrice', header: 'Purchase', align: 'right', render: (r) => formatMoney(r.purchasePrice) },
+    { key: 'purchasePrice', header: t('Purchase'), align: 'right', render: (r) => formatMoney(r.purchasePrice) },
     {
       key: 'wholesalePrice',
-      header: 'Wholesale',
+      header: t('Wholesale'),
       align: 'right',
       render: (r) => (r.wholesalePrice
         ? formatMoney(r.wholesalePrice)
@@ -130,7 +131,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
     },
     {
       key: 'source',
-      header: 'Lagega',
+      header: t('Lagega'),
       align: 'right',
       // Jo rate asal me lagega — phone pe wahi sabse pehle dikhna chahiye
       mobile: 'badge',
@@ -143,7 +144,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
     },
     {
       key: 'margin',
-      header: 'Fayda',
+      header: t('Fayda'),
       align: 'right',
       render: (r) => (r.margin === null
         ? <span className="text-slate-400">—</span>
@@ -159,10 +160,10 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
         <div className="flex items-start gap-3">
           <Info size={18} className="mt-0.5 shrink-0 text-brand-600" />
           <div className="text-sm text-slate-600">
-            <p className="font-medium text-slate-900">Rate lagne ka order</p>
+            <p className="font-medium text-slate-900">{t('Rate lagne ka order')}</p>
             <p className="mt-1">
-              1. Yahan set kiya hua <strong>khaas rate</strong> · 2. Item ka <strong>wholesale price</strong> ·
-              3. <strong>Sale price</strong>
+              1. Yahan set kiya hua <strong>{t('khaas rate')}</strong> · 2. Item ka <strong>{t('wholesale price')}</strong> ·
+              3. <strong>{t('Sale price')}</strong>
             </p>
             <p className="mt-1 text-slate-500">
               Box khali chhod dein to wholesale price hi lagega. {data.customCount > 0 && (
@@ -175,26 +176,26 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <SearchInput value={q} onChange={setQ} placeholder="Item dhundhein..."
+          <SearchInput value={q} onChange={setQ} placeholder={t('Item dhundhein...')}
             className="w-full sm:w-56" />
           <div className="w-40">
-            <Select placeholder="Sab categories" value={categoryId}
+            <Select placeholder={t('Sab categories')} value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               options={[
-                { value: 'none', label: 'Bina category' },
+                { value: 'none', label: t('Bina category') },
                 ...categories.map((c) => ({ value: c._id, label: c.name })),
               ]} />
           </div>
           <div className="w-48">
             <Select placeholder="" value={onlyCustom} onChange={(e) => setOnlyCustom(e.target.value)}
               options={[
-                { value: 'false', label: 'Saare items' },
-                { value: 'true', label: 'Sirf khaas rate wale' },
+                { value: 'false', label: t('Saare items') },
+                { value: 'true', label: t('Sirf khaas rate wale') },
               ]} />
           </div>
           <div className="flex-1" />
           <Button variant="secondary" icon={Percent} onClick={() => setBulkOpen(true)}>
-            Sab pe ek saath
+            {t('Sab pe ek saath')}
           </Button>
         </div>
       </Card>
@@ -262,11 +263,11 @@ function BulkRateModal({ open, onClose, partyId, partyName, categories, onDone }
       open={open}
       onClose={onClose}
       size="md"
-      title="Sab items pe ek saath rate"
+      title={t('Sab items pe ek saath rate')}
       description={partyName}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button>
           <Button onClick={apply} loading={busy} variant={isClear ? 'danger' : 'primary'}>
             {isClear ? 'Khaas rate hatayein' : 'Rate lagayein'}
           </Button>
@@ -275,15 +276,15 @@ function BulkRateModal({ open, onClose, partyId, partyName, categories, onDone }
     >
       <div className="space-y-4">
         <Select
-          label="Kya karna hai"
+          label={t('Kya karna hai')}
           placeholder=""
           value={mode}
           onChange={(e) => setMode(e.target.value)}
           options={[
-            { value: 'percentOffWholesale', label: 'Wholesale price se % kam' },
-            { value: 'percentOffSale', label: 'Sale price se % kam' },
-            { value: 'percentOnPurchase', label: 'Purchase price pe % jyada' },
-            { value: 'clear', label: 'Khaas rate hata do' },
+            { value: 'percentOffWholesale', label: t('Wholesale price se % kam') },
+            { value: 'percentOffSale', label: t('Sale price se % kam') },
+            { value: 'percentOnPurchase', label: t('Purchase price pe % jyada') },
+            { value: 'clear', label: t('Khaas rate hata do') },
           ]}
         />
 
@@ -294,25 +295,25 @@ function BulkRateModal({ open, onClose, partyId, partyName, categories, onDone }
               type="number" step="0.5" suffix="%"
               value={value} onChange={(e) => setValue(e.target.value)}
             />
-            <Select label="Rate round karein" placeholder="" value={roundTo}
+            <Select label={t('Rate round karein')} placeholder="" value={roundTo}
               onChange={(e) => setRoundTo(e.target.value)}
               options={[
-                { value: 'none', label: 'Nahi (paise ke saath)' },
-                { value: '0.5', label: 'Aadhe rupee me' },
-                { value: '1', label: 'Poore rupee me' },
-                { value: '5', label: '5 ke multiple me' },
-                { value: '10', label: '10 ke multiple me' },
+                { value: 'none', label: t('Nahi (paise ke saath)') },
+                { value: '0.5', label: t('Aadhe rupee me') },
+                { value: '1', label: t('Poore rupee me') },
+                { value: '5', label: t('5 ke multiple me') },
+                { value: '10', label: t('10 ke multiple me') },
               ]} />
           </div>
         )}
 
         <Select
-          label="Kaunse items pe"
-          placeholder="Saare items"
+          label={t('Kaunse items pe')}
+          placeholder={t('Saare items')}
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           options={[
-            { value: 'none', label: 'Bina category wale' },
+            { value: 'none', label: t('Bina category wale') },
             ...categories.map((c) => ({ value: c._id, label: c.name })),
           ]}
         />
@@ -322,7 +323,7 @@ function BulkRateModal({ open, onClose, partyId, partyName, categories, onDone }
           isClear ? 'bg-red-50 text-red-800' : 'bg-slate-50 text-slate-600'
         )}>
           {isClear ? (
-            <>Chune hue items ka khaas rate hat jayega — un par wapas wholesale price lagega.</>
+            <>{t('Chune hue items ka khaas rate hat jayega — un par wapas wholesale price lagega.')}</>
           ) : mode === 'percentOnPurchase' ? (
             <>Misal: purchase ₹100 aur {value || 0}% jyada → rate <strong>₹{(100 * (1 + Number(value || 0) / 100)).toFixed(2)}</strong></>
           ) : (

@@ -14,6 +14,8 @@ router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
 
 router.get('/stats', requirePermission('invoices:view'), ctrl.stats);
 router.get('/next-number', requirePermission('invoices:view'), ctrl.nextNumber);
+// Home ka "party wise" tab — "/:id" se pehle, warna ise id samajh liya jayega
+router.get('/by-party', requirePermission('invoices:view'), ctrl.byParty);
 router.get('/from-order/:orderId', requirePermission('invoices:view'), validate({ params: orderIdParamSchema }), ctrl.prefill);
 
 router.get('/', requirePermission('invoices:view'), validate({ query: listInvoicesQuerySchema }), ctrl.list);

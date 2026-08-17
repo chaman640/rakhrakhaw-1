@@ -6,6 +6,7 @@ import { formatMoney } from '@/lib/format';
 import { Card, CardHeader, Button, Input, useToast } from '@/components/ui';
 import LedgerTable, { BalanceLine } from '../khata/LedgerTable';
 import PaymentFormModal from '../payments/PaymentFormModal';
+import { t } from '@/lib/i18n';
 
 /**
  * Ek party ka poora khata — Retailer/Supplier detail page ke "Khata" tab me.
@@ -52,7 +53,7 @@ export default function PartyKhataTab({ party, onChanged }) {
               <p className="mt-1 text-xs text-slate-400">
                 Credit limit {formatMoney(party.creditLimit)}
                 {party.balance > party.creditLimit && (
-                  <span className="ml-1 font-medium text-red-600">— limit paar ho gayi</span>
+                  <span className="ml-1 font-medium text-red-600">{t('— limit paar ho gayi')}</span>
                 )}
               </p>
             )}
@@ -62,7 +63,7 @@ export default function PartyKhataTab({ party, onChanged }) {
             <Button icon={Wallet} onClick={() => setPayOpen(true)}>
               {isSupplier ? 'Paisa diya' : 'Paisa aaya'}
             </Button>
-            <Button variant="secondary" icon={Printer} onClick={() => window.print()}>Print</Button>
+            <Button variant="secondary" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
           </div>
         </div>
       </Card>
@@ -70,15 +71,15 @@ export default function PartyKhataTab({ party, onChanged }) {
       <Card padding={false}>
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
           <div className="w-36">
-            <Input label="Kab se" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <Input label={t('Kab se')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="w-36">
-            <Input label="Kab tak" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <Input label={t('Kab tak')} type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
           {(from || to) && (
             <Button variant="ghost" size="sm" icon={RotateCcw}
               onClick={() => { setFrom(''); setTo(''); }}>
-              Hatayein
+              {t('Hatayein')}
             </Button>
           )}
         </div>

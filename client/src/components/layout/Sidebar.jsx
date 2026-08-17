@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { wholesalerNav, retailerNav } from './navConfig';
+import { t } from '@/lib/i18n';
 
 const STAFF_LABEL = { manager: 'Manager', salesman: 'Salesman', accountant: 'Munshi' };
 
@@ -49,7 +50,7 @@ export default function Sidebar({ open, onClose }) {
     <>
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/50 lg:hidden"
+          className="scrim fixed inset-0 z-50 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -77,13 +78,13 @@ export default function Sidebar({ open, onClose }) {
                 {business?.name || 'Rakh Rakhav'}
               </p>
               <p className="truncate text-xs text-slate-500">
-                {isRetailer ? 'Retailer' : (staffRole && staffRole !== 'owner' ? STAFF_LABEL[staffRole] : 'Wholesaler')}
+                {isRetailer ? t('Retailer') : t(staffRole && staffRole !== 'owner' ? STAFF_LABEL[staffRole] : 'Wholesaler')}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Menu band karein"
+            aria-label={t('Menu band karein')}
             className="-mr-1 shrink-0 rounded-lg p-2 text-slate-400 hover:bg-slate-100 lg:hidden focus-ring"
           >
             <X size={18} />
@@ -110,7 +111,7 @@ export default function Sidebar({ open, onClose }) {
                 }
               >
                 <Icon size={18} className="shrink-0" />
-                <span className="flex-1 truncate">{label}</span>
+                <span className="flex-1 truncate">{t(label)}</span>
                 {badge > 0 && (
                   <span className="shrink-0 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">
                     {badge > 99 ? '99+' : badge}

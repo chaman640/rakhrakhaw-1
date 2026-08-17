@@ -119,6 +119,54 @@ export async function getParty(businessId, id, viewer = null) {
 
 /* -------------------------------------------------------------- create */
 
+/**
+ * PHONE SE PARTY DHOONDHNA — "Add Sale" ka pehla kadam.
+ *
+ * Dukaandaar bill banate waqt naam nahi, NUMBER se pehchanta hai. Isliye Add
+ * Sale phone se shuru hoti hai: number daalo, purana graahak nikal aaye to
+ * seedha aage; na ho to wahin ka wahin naya bana lo.
+ *
+ * Ek pech hai jise seedhe seedhe nahi sulajhaya ja sakta:
+ *
+ * Hadd wale salesman ko doosre ka retailer nahi dikhna chahiye — theek. Par
+ * agar hum bas "nahi mila" keh dein, to wo naya banane jayega aur database ka
+ * unique niyam (ek business me ek number ek hi baar) usse rok dega. Yaani
+ * gadbad wale message se pata to chal hi jayega ki number kisi ka hai — aur
+ * saath me ek aisi galti bhi dikhegi jo aadmi ki samajh me nahi aayegi.
+ *
+ * Isliye seedha keh dete hain: "ye number kisi aur ke naam hai" — bina naam,
+ * bina rakam, bina kuch aur. Sach bhi, aur kuch bataya bhi nahi.
+ */
+export async function lookupByPhone(businessId, { phone, type = PARTY_TYPES.RETAILER }, viewer = null) {
+  const normalized = normalizePhone(phone);
+
+  const party = await Party.findOne({ businessId, type, phone: normalized })
+    .select('name shopName phone status balance creditLimit address gstin assignedToUserId createdBy')
+    .lean();
+
+  if (!party) return { phone: normalized, party: null, takenByOther: false };
+
+  if (isScoped(viewer) && !(await canSeeParty(party._id, businessId, viewer))) {
+    return { phone: normalized, party: null, takenByOther: true };
+  }
+
+  return {
+    phone: normalized,
+    takenByOther: false,
+    party: {
+      _id: party._id,
+      name: party.name,
+      shopName: party.shopName,
+      phone: party.phone,
+      status: party.status,
+      balance: round2(party.balance || 0),
+      creditLimit: party.creditLimit || 0,
+      address: party.address || {},
+      gstin: party.gstin || '',
+    },
+  };
+}
+
 export async function createParty(businessId, payload, userId) {
   const phone = normalizePhone(payload.phone);
 

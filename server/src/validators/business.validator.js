@@ -24,6 +24,13 @@ export const updateBusinessSchema = z
 
     upiId: z.string().trim().max(64).or(z.literal('')).optional(),
     upiName: z.string().trim().max(80).optional(),
+
+    // Bank ka khata — bill pe likhne ke liye (QR isse nahi banta, Business
+    // model me wajah likhi hai)
+    bankName: z.string().trim().max(80).optional(),
+    bankAccountName: z.string().trim().max(120).optional(),
+    bankAccountNumber: z.string().trim().max(30).optional(),
+    bankIfsc: z.string().trim().toUpperCase().max(11).or(z.literal('')).optional(),
     invoicePrefix: z.string().trim().max(10).optional(),
     orderPrefix: z.string().trim().max(10).optional(),
     termsAndConditions: z.string().max(2000).optional(),

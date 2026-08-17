@@ -10,6 +10,7 @@ import { formatMoney } from '@/lib/format';
 import {
   PageHeader, Card, Button, Chips, Input, Select, Spinner, EmptyState, Badge, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const TABS = [
   { value: 'sale', label: 'Sale', icon: TrendingUp },
@@ -134,11 +135,11 @@ export default function Reports() {
   return (
     <>
       <PageHeader
-        title="Reports"
-        subtitle="Mahine ka hisaab, CA ko dene layak"
+        title={t('Reports')}
+        subtitle={t('Mahine ka hisaab, CA ko dene layak')}
         action={
           <>
-            <Button variant="secondary" icon={Printer} onClick={() => window.print()}>Print</Button>
+            <Button variant="secondary" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
             <Button icon={Download} loading={downloading} onClick={download}
               disabled={!report?.rows?.length}>
               CSV
@@ -149,12 +150,12 @@ export default function Reports() {
 
       {/* ---- Tabs ---- */}
       <div className="no-print mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
-        {TABS.map((t) => (
-          <button key={t.value} onClick={() => setTab(t.value)}
+        {TABS.map((tb) => (
+          <button key={tb.value} onClick={() => setTab(tb.value)}
             className={`relative flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors focus-ring ${
-              tab === t.value ? 'text-brand-700' : 'text-slate-500 hover:text-slate-800'}`}>
-            <t.icon size={15} /> {t.label}
-            {tab === t.value && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-600" />}
+              tab === tb.value ? 'text-brand-700' : 'text-slate-500 hover:text-slate-800'}`}>
+            <tb.icon size={15} /> {t(tb.label)}
+            {tab === tb.value && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-600" />}
           </button>
         ))}
       </div>
@@ -165,15 +166,15 @@ export default function Reports() {
           {needsDates && (
             <>
               <div className="w-36">
-                <Input label="Kab se" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                <Input label={t('Kab se')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
               <div className="w-36">
-                <Input label="Kab tak" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                <Input label={t('Kab tak')} type="date" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
               <div className="flex gap-1.5 pb-0.5">
-                <QuickRange label="Aaj" onPick={() => { setFrom(todayStr()); setTo(todayStr()); }} />
-                <QuickRange label="Is mahine" onPick={() => { setFrom(firstOfMonth()); setTo(todayStr()); }} />
-                <QuickRange label="30 din" onPick={() => {
+                <QuickRange label={t('Aaj')} onPick={() => { setFrom(todayStr()); setTo(todayStr()); }} />
+                <QuickRange label={t('Is mahine')} onPick={() => { setFrom(firstOfMonth()); setTo(todayStr()); }} />
+                <QuickRange label={t('30 din')} onPick={() => {
                   const d = new Date(); d.setDate(d.getDate() - 29);
                   setFrom(d.toISOString().slice(0, 10)); setTo(todayStr());
                 }} />
@@ -183,7 +184,7 @@ export default function Reports() {
 
           {GROUP_OPTIONS[tab] && (
             <div className="w-52">
-              <Select label="Kaise dekhein" value={groupBy} placeholder=""
+              <Select label={t('Kaise dekhein')} value={groupBy} placeholder=""
                 onChange={(e) => setGroupBy(e.target.value)} options={GROUP_OPTIONS[tab]} />
             </div>
           )}
@@ -200,8 +201,8 @@ export default function Reports() {
           {tab === 'outstanding' && (
             <Chips value={partyType} onChange={setPartyType}
               options={[
-                { value: 'retailer', label: 'Retailers se lena' },
-                { value: 'supplier', label: 'Suppliers ko dena' },
+                { value: 'retailer', label: t('Retailers se lena') },
+                { value: 'supplier', label: t('Suppliers ko dena') },
               ]} />
           )}
         </div>
@@ -217,7 +218,7 @@ export default function Reports() {
         ) : !report?.rows?.length ? (
           <EmptyState
             icon={BarChart3}
-            title="Is duration me kuch nahi mila"
+            title={t('Is duration me kuch nahi mila')}
             message={tab === 'gst'
               ? 'GST wale bill is duration me nahi bane. Settings me GST on hai?'
               : 'Date range badal kar dekhein.'}
@@ -247,7 +248,7 @@ export default function Reports() {
                           ? 'font-medium text-slate-900'
                           : isNum(c, i) ? 'tabular text-right text-slate-700' : 'text-slate-700'}`}>
                         {i === 0 && r.overLimit
-                          ? <span className="flex items-center gap-2">{cell(r, c)}<Badge tone="red">Limit paar</Badge></span>
+                          ? <span className="flex items-center gap-2">{cell(r, c)}<Badge tone="red">{t('Limit paar')}</Badge></span>
                           : cell(r, c)}
                       </td>
                     ))}
@@ -288,7 +289,7 @@ export default function Reports() {
               <div key={r._id || r.label || ri} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-slate-900">{cell(r, report.columns[0])}</span>
-                  {r.overLimit && <Badge tone="red">Limit paar</Badge>}
+                  {r.overLimit && <Badge tone="red">{t('Limit paar')}</Badge>}
                 </div>
                 <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                   {report.columns.slice(1).map((c, i) => (
@@ -370,10 +371,10 @@ function GstSummary({ meta }) {
             meta.netPayable > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
             {formatMoney(Math.abs(meta.netPayable))}
           </span>
-          {meta.netPayable < 0 && <span className="ml-1 text-xs text-emerald-700">(credit bacha hai)</span>}
+          {meta.netPayable < 0 && <span className="ml-1 text-xs text-emerald-700">{t('(credit bacha hai)')}</span>}
         </p>
         <p className="mt-1 text-xs text-slate-400">
-          Ye sirf andaza hai — asli return CA hi bharega. Yahan se CSV nikaal kar de dijiye.
+          {t('Ye sirf andaza hai — asli return CA hi bharega. Yahan se CSV nikaal kar de dijiye.')}
         </p>
       </div>
     </Card>

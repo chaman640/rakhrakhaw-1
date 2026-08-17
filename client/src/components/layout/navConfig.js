@@ -1,13 +1,15 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  History,
+  History, House, UserCircle,
 } from 'lucide-react';
 
 // Wholesaler ka poora menu (sidebar / hamburger).
 // `part` sirf reference ke liye. `perm` (Part 11) se staff ko wahi menu dikhta hai
 // jiski use ijazat hai — malik ko sab kuch.
 export const wholesalerNav = [
+  // Home sabse pehle — roz ka kaam yahi hai. Dashboard "hisaab" ke liye hai.
+  { to: '/home', label: 'Home', icon: House, part: 15, perm: 'invoices' },
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, part: 10 },
   { to: '/orders', label: 'Orders', icon: ShoppingCart, part: 7, badgeKey: 'newOrders', perm: 'orders' },
   { to: '/items', label: 'Items', icon: Package, part: 3, perm: 'items' },
@@ -24,6 +26,7 @@ export const wholesalerNav = [
   { to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports' },
   // "Kisne kya kiya" — sirf unhe jo staff dekh sakte hain
   { to: '/activity', label: 'Kaam ka record', icon: History, part: 12, perm: 'staff' },
+  { to: '/profile', label: 'Profile', icon: UserCircle, part: 15 },
   { to: '/settings', label: 'Settings', icon: Settings, part: 2 },
 ];
 
@@ -52,7 +55,7 @@ export const retailerNav = [
    hain ki naam kat jata hai aur galat button dab jata hai.
    ───────────────────────────────────────────────────────────────────────── */
 
-const BOTTOM_WHOLESALER = ['/dashboard', '/orders', '/payments', '/items'];
+const BOTTOM_WHOLESALER = ['/home', '/dashboard', '/payments', '/items'];
 const BOTTOM_RETAILER = ['/home', '/shop', '/cart', '/my-orders'];
 
 /**

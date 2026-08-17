@@ -7,12 +7,15 @@ import * as ctrl from '../controllers/party.controller.js';
 import {
   createPartySchema, updatePartySchema, listPartiesQuerySchema, statusSchema,
   idParamSchema, rateParamSchema, setRateSchema, listRatesQuerySchema, bulkRateSchema,
+  lookupQuerySchema,
 } from '../validators/party.validator.js';
 
 const router = Router();
 router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
 
 router.get('/stats', requirePermission('parties:view'), ctrl.stats);
+// Number se dhoondhna — "/:id" se PEHLE, warna "lookup" ko id samajh liya jayega
+router.get('/lookup', requirePermission('parties:view'), validate({ query: lookupQuerySchema }), ctrl.lookup);
 
 router.get('/', requirePermission('parties:view'), validate({ query: listPartiesQuerySchema }), ctrl.list);
 router.post('/', requirePermission('parties:create'), validate({ body: createPartySchema }), ctrl.create);

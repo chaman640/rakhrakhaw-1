@@ -16,6 +16,12 @@ const WATCH = [
   'Input', 'Select', 'Textarea', 'Switch', 'Tabs', 'Modal', 'ConfirmModal', 'PageHeader',
   'SearchInput', 'Chips', 'Pagination', 'Combobox', 'QtyStepper', 'TrendChart',
   'LineItemCard', 'NumField', 'ReadLineItem', 'ReadField', 'useToast', 'useAuth', 'useCart',
+  'Skeleton', 'SkeletonRows', 'SkeletonCards', 'SkeletonTable', 'CopyBox',
+  // React ke hook — ye sabse zyada bhoole jate hain, kyunki import ki line
+  // se ek naam hatane par baaki file chalti dikhti hai aur build bhi pass
+  // ho jata hai. Galti sirf CHALANE pe pata chalti hai (safed page).
+  'useState', 'useEffect', 'useCallback', 'useMemo', 'useRef', 'useContext',
+  'useQuery', 'useListQuery', 'bust', 'useDebounce',
 ];
 
 function walk(dir, out = []) {

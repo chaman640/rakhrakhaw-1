@@ -11,6 +11,9 @@ export const list = asyncHandler(async (req, res) => {
 export const stats = asyncHandler(async (req, res) =>
   ok(res, await service.getStats(req.businessId, req.user)));
 
+export const byParty = asyncHandler(async (req, res) =>
+  ok(res, await service.salesByParty(req.businessId, req.query, req.user)));
+
 export const nextNumber = asyncHandler(async (req, res) =>
   ok(res, await service.nextNumber(req.businessId)));
 

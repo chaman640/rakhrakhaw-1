@@ -35,6 +35,26 @@ const businessSnapshotSchema = new mongoose.Schema(
       line1: String, line2: String, city: String,
       state: String, stateCode: String, pincode: String,
     },
+
+    /* ---- Paisa kahan bhejna hai (Part 15) ----
+     *
+     * Ye bhi SNAPSHOT hai, live nahi.
+     *
+     * Socha ye tha ki QR hamesha aaj wale UPI se bane — "paisa to naye khate
+     * me hi aana chahiye". Par bill ek kagaz hai jo ja chuka hai: retailer ke
+     * paas jo chhapa hua bill pada hai usme purana QR hai. Agar app naya QR
+     * dikhaye aur kagaz purana, to do alag pate ho jate hain aur jhagda usi
+     * din hota hai jis din paisa galat jagah chala jata hai.
+     *
+     * Isliye bill ke saath uska apna pata bhi jam jata hai. UPI badalna ho to
+     * naye bill se badlega — purane waise hi rahenge.
+     */
+    upiId: String,
+    upiName: String,
+    bankName: String,
+    bankAccountName: String,
+    bankAccountNumber: String,
+    bankIfsc: String,
   },
   { _id: false }
 );

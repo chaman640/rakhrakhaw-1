@@ -4,6 +4,7 @@ import api from '@/lib/api';
 import { formatDateTime, formatQty } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Badge, Spinner, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const MODES = [
   { value: 'add', label: 'Stock aaya', icon: Plus, tone: 'emerald' },
@@ -62,13 +63,13 @@ export default function StockModal({ open, onClose, item, onSaved }) {
       open={open}
       onClose={onClose}
       size="md"
-      title="Stock badlein"
+      title={t('Stock badlein')}
       description={item.name}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button>
           <Button onClick={handleSubmit} loading={saving} disabled={wouldGoNegative}>
-            Save karein
+            {t('Save karein')}
           </Button>
         </>
       }
@@ -76,7 +77,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
       <div className="space-y-5">
         {/* Abhi ka stock */}
         <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-          <span className="text-sm text-slate-600">Abhi ka stock</span>
+          <span className="text-sm text-slate-600">{t('Abhi ka stock')}</span>
           <span className="tabular text-lg font-semibold text-slate-900">
             {formatQty(current, item.unit)}
           </span>
@@ -120,7 +121,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
         </div>
 
         <Textarea
-          label="Kyun? (marzi)"
+          label={t('Kyun? (marzi)')}
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -137,7 +138,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
             <div className="flex justify-center py-6 text-slate-400"><Spinner /></div>
           ) : !movements.length ? (
             <p className="rounded-lg bg-slate-50 px-3 py-4 text-center text-sm text-slate-500">
-              Abhi tak koi movement nahi
+              {t('Abhi tak koi movement nahi')}
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">

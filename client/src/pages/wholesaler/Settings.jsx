@@ -1,28 +1,34 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PartyPopper } from 'lucide-react';
 import api from '@/lib/api';
-import { PageHeader, Tabs, Spinner, Card } from '@/components/ui';
+import { PageHeader, Tabs, Spinner, Card, Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import BusinessTab from './settings/BusinessTab';
+import AppTab from './settings/AppTab';
 import RetailersTab from './settings/RetailersTab';
-import AccountTab from './settings/AccountTab';
 import StaffTab from './settings/StaffTab';
 import BackupTab from './settings/BackupTab';
+import { t } from '@/lib/i18n';
 
 export default function Settings() {
   const { isOwner } = useAuth();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  // Staff ko dukaan ki settings badalne ki ijazat nahi — unke liye Account hi default
-  const [tab, setTab] = useState(() => 'business');
+  /*
+    Ab Settings me sirf wahi bacha hai jo "app kaise chale" se juda hai —
+    bhasha, roshni, akshar ka size, invite link, log aur backup.
+
+    Dukaan ki pehchan aur apna login ab PROFILE me chala gaya (upar apne naam
+    pe dabao). Wajah: wo roz ki cheez hai, aur Settings ke andar do tab neeche
+    dabi rehti thi.
+  */
+  const [tab, setTab] = useState('app');
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
   const welcome = params.get('welcome') === '1';
 
-  // Staff ke liye sirf Account tab bacha hai — wahi khol do
-  useEffect(() => { if (!isOwner) setTab('account'); }, [isOwner]);
 
   useEffect(() => {
     api.get('/business/me')
@@ -50,24 +56,26 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Dukaan ki detail, GST, staff aur backup" />
+      <PageHeader title={t('Settings')} subtitle={t('App, invite link, staff aur backup')} />
 
       {welcome && (
         <Card className="mb-5 border-brand-200 bg-brand-50">
           <div className="flex items-start gap-3">
             <PartyPopper size={20} className="mt-0.5 shrink-0 text-brand-700" />
             <div>
-              <p className="text-sm font-medium text-brand-900">Account ban gaya!</p>
+              <p className="text-sm font-medium text-brand-900">{t('Account ban gaya!')}</p>
               <p className="mt-0.5 text-sm text-brand-800">
-                Address aur GST bhar lein — invoice pe yahi chhapega. Phir "Invite link" tab se apna
-                link WhatsApp pe bhej dein.
+                {t('Ab do kaam: Profile me dukaan ka address, GST aur UPI bhar lein (bill pe yahi chhapega), aur "Invite link" tab se apna link WhatsApp pe bhej dein.')}
               </p>
-              <button
-                onClick={() => { params.delete('welcome'); setParams(params, { replace: true }); }}
-                className="mt-2 text-xs font-medium text-brand-700 underline"
-              >
-                Theek hai, samajh gaya
-              </button>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button size="sm" onClick={() => navigate('/profile')}>{t('Profile bharein')}</Button>
+                <button
+                  onClick={() => { params.delete('welcome'); setParams(params, { replace: true }); }}
+                  className="text-xs font-medium text-brand-700 underline"
+                >
+                  {t('Theek hai, samajh gaya')}
+                </button>
+              </div>
             </div>
           </div>
         </Card>
@@ -77,22 +85,20 @@ export default function Settings() {
         value={tab}
         onChange={setTab}
         tabs={[
+          { value: 'app', label: t('App') },
           // Dukaan ki detail, invite link, staff aur backup — sab malik ke haath me
           ...(isOwner ? [
-            { value: 'business', label: 'Dukaan' },
-            { value: 'retailers', label: 'Invite link', count: pendingCount },
-            { value: 'staff', label: 'Log aur login' },
-            { value: 'backup', label: 'Backup' },
+            { value: 'retailers', label: t('Invite link'), count: pendingCount },
+            { value: 'staff', label: t('Log aur login') },
+            { value: 'backup', label: t('Backup') },
           ] : []),
-          { value: 'account', label: 'Account' },
         ]}
       />
 
-      {tab === 'business' && isOwner && <BusinessTab business={business} onSaved={setBusiness} />}
+      {tab === 'app' && <AppTab />}
       {tab === 'retailers' && isOwner && <RetailersTab />}
       {tab === 'staff' && isOwner && <StaffTab />}
       {tab === 'backup' && isOwner && <BackupTab />}
-      {tab === 'account' && <AccountTab />}
     </>
   );
 }

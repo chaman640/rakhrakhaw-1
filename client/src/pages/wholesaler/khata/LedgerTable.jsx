@@ -1,5 +1,6 @@
 import { formatMoney, formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 /**
  * Khata ka asli dil — ek hi component, teen jagah use hota hai:
@@ -26,7 +27,7 @@ const typeTone = {
 export function BalanceLine({ balance, type = 'retailer', className = '' }) {
   const abs = formatMoney(Math.abs(balance));
   if (Math.abs(balance) < 0.01) {
-    return <span className={`font-medium text-slate-500 ${className}`}>Hisaab barabar</span>;
+    return <span className={`font-medium text-slate-500 ${className}`}>{t('Hisaab barabar')}</span>;
   }
   if (balance > 0) {
     return (
@@ -37,14 +38,14 @@ export function BalanceLine({ balance, type = 'retailer', className = '' }) {
   }
   return (
     <span className={`tabular font-semibold text-emerald-600 ${className}`}>
-      {abs} <span className="text-xs font-normal">advance</span>
+      {abs} <span className="text-xs font-normal">{t('advance')}</span>
     </span>
   );
 }
 
 export default function LedgerTable({ data, loading, onRowClick }) {
   if (loading) {
-    return <p className="py-12 text-center text-sm text-slate-400">Khata khul raha hai...</p>;
+    return <p className="py-12 text-center text-sm text-slate-400">{t('Khata khul raha hai...')}</p>;
   }
   if (!data) return null;
 
@@ -56,8 +57,8 @@ export default function LedgerTable({ data, loading, onRowClick }) {
   if (!entries.length) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm font-medium text-slate-700">Is duration me koi lena-dena nahi</p>
-        <p className="mt-1 text-xs text-slate-400">Bill banega ya paisa aayega tab yahan dikhega</p>
+        <p className="text-sm font-medium text-slate-700">{t('Is duration me koi lena-dena nahi')}</p>
+        <p className="mt-1 text-xs text-slate-400">{t('Bill banega ya paisa aayega tab yahan dikhega')}</p>
       </div>
     );
   }
@@ -85,17 +86,17 @@ export default function LedgerTable({ data, loading, onRowClick }) {
       <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Kya hua</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Badha (+)</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Ghata (−)</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Baaki</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{t('Date')}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{t('Kya hua')}</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{t('Badha (+)')}</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{t('Ghata (−)')}</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{t('Baaki')}</th>
           </tr>
         </thead>
         <tbody>
           <tr className="border-b border-slate-100 bg-slate-50/60">
             <td className="px-4 py-2.5 text-xs text-slate-500">—</td>
-            <td className="px-4 py-2.5 text-xs font-medium text-slate-500">Shuruaat ka hisaab</td>
+            <td className="px-4 py-2.5 text-xs font-medium text-slate-500">{t('Shuruaat ka hisaab')}</td>
             <td className="px-4 py-2.5" />
             <td className="px-4 py-2.5" />
             <td className="tabular px-4 py-2.5 text-right text-xs font-medium text-slate-600">
@@ -138,7 +139,7 @@ export default function LedgerTable({ data, loading, onRowClick }) {
         <tfoot>
           <tr className="border-t-2 border-slate-200 bg-slate-50 font-medium">
             <td className="px-4 py-3" />
-            <td className="px-4 py-3 text-xs uppercase tracking-wide text-slate-500">Kul</td>
+            <td className="px-4 py-3 text-xs uppercase tracking-wide text-slate-500">{t('Kul')}</td>
             <td className="tabular px-4 py-3 text-right text-slate-900">{formatMoney(totalDebit)}</td>
             <td className="tabular px-4 py-3 text-right text-emerald-700">{formatMoney(totalCredit)}</td>
             <td className="tabular px-4 py-3 text-right text-slate-900">{formatMoney(data.closing)}</td>
@@ -162,7 +163,7 @@ export default function LedgerTable({ data, loading, onRowClick }) {
       {notice}
 
       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-2.5">
-        <span className="text-xs font-medium text-slate-500">Shuruaat ka hisaab</span>
+        <span className="text-xs font-medium text-slate-500">{t('Shuruaat ka hisaab')}</span>
         <span className="tabular text-xs font-medium text-slate-600">{formatMoney(opening)}</span>
       </div>
 
@@ -207,15 +208,15 @@ export default function LedgerTable({ data, loading, onRowClick }) {
 
       <div className="border-t-2 border-slate-200 bg-slate-50 px-4 py-3">
         <div className="flex items-center justify-between text-xs">
-          <span className="uppercase tracking-wide text-slate-500">Kul badha</span>
+          <span className="uppercase tracking-wide text-slate-500">{t('Kul badha')}</span>
           <span className="tabular font-medium text-slate-900">{formatMoney(totalDebit)}</span>
         </div>
         <div className="mt-1 flex items-center justify-between text-xs">
-          <span className="uppercase tracking-wide text-slate-500">Kul ghata</span>
+          <span className="uppercase tracking-wide text-slate-500">{t('Kul ghata')}</span>
           <span className="tabular font-medium text-emerald-700">{formatMoney(totalCredit)}</span>
         </div>
         <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
-          <span className="text-sm font-semibold text-slate-900">Baaki</span>
+          <span className="text-sm font-semibold text-slate-900">{t('Baaki')}</span>
           <span className="tabular text-base font-semibold text-slate-900">{formatMoney(data.closing)}</span>
         </div>
       </div>

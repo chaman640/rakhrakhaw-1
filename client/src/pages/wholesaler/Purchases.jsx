@@ -8,8 +8,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Table, Badge, SearchInput, Chips,
-  Select, Input, Pagination, EmptyState, useToast,
+  Select, Input, Pagination, EmptyState, SkeletonRows, useToast,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const payTone = { unpaid: 'red', partial: 'amber', paid: 'green' };
 const payLabel = { unpaid: 'Udhaar', partial: 'Kuch diya', paid: 'Diya' };
@@ -65,7 +66,7 @@ export default function Purchases() {
   const columns = [
     {
       key: 'purchaseNo',
-      header: 'Purchase',
+      header: t('Purchase'),
       render: (r) => (
         <button onClick={() => navigate(`/purchases/${r._id}`)} className="text-left">
           <p className="font-medium text-slate-900">{r.purchaseNo}</p>
@@ -75,12 +76,12 @@ export default function Purchases() {
         </button>
       ),
     },
-    { key: 'supplier', header: 'Supplier', render: (r) => r.supplier?.name || '—' },
-    { key: 'itemCount', header: 'Items', align: 'right', render: (r) => r.itemCount },
-    { key: 'grandTotal', header: 'Kul', align: 'right', render: (r) => formatMoney(r.grandTotal) },
+    { key: 'supplier', header: t('Supplier'), render: (r) => r.supplier?.name || '—' },
+    { key: 'itemCount', header: t('Items'), align: 'right', render: (r) => r.itemCount },
+    { key: 'grandTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.grandTotal) },
     {
       key: 'dueAmount',
-      header: 'Baaki',
+      header: t('Baaki'),
       align: 'right',
       render: (r) => (r.dueAmount > 0
         ? <span className="tabular font-medium text-amber-700">{formatMoney(r.dueAmount)}</span>
@@ -88,14 +89,14 @@ export default function Purchases() {
     },
     {
       key: 'paymentStatus',
-      header: 'Status',
+      header: t('Status'),
       render: (r) => <Badge tone={payTone[r.paymentStatus]}>{payLabel[r.paymentStatus]}</Badge>,
     },
     {
       key: 'actions', header: '', align: 'right',
       render: (r) => (
         <button onClick={() => navigate(`/purchases/${r._id}`)}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Kholein">
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={t('Kholein')}>
           <ChevronRight size={18} />
         </button>
       ),
@@ -105,33 +106,33 @@ export default function Purchases() {
   return (
     <>
       <PageHeader
-        title="Purchases"
-        subtitle="Supplier se aaya maal — stock apne aap badhta hai"
-        action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>Nayi purchase</Button>}
+        title={t('Purchases')}
+        subtitle={t('Supplier se aaya maal — stock apne aap badhta hai')}
+        action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>{t('Nayi purchase')}</Button>}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Kul purchases" value={stats.totalPurchases} icon={Truck} tone="brand" />
-        <StatCard label="Kul kharch" value={formatMoney(stats.totalAmount)} icon={IndianRupee} tone="brand" />
-        <StatCard label="Is mahine" value={formatMoney(stats.thisMonthAmount)} icon={Calendar} tone="green"
+        <StatCard label={t('Kul purchases')} value={stats.totalPurchases} icon={Truck} tone="brand" />
+        <StatCard label={t('Kul kharch')} value={formatMoney(stats.totalAmount)} icon={IndianRupee} tone="brand" />
+        <StatCard label={t('Is mahine')} value={formatMoney(stats.thisMonthAmount)} icon={Calendar} tone="green"
           sub={`${stats.thisMonthCount || 0} purchase`} />
-        <StatCard label="Suppliers ko dena" value={formatMoney(stats.totalDue)} icon={TriangleAlert}
+        <StatCard label={t('Suppliers ko dena')} value={formatMoney(stats.totalDue)} icon={TriangleAlert}
           tone={stats.totalDue > 0 ? 'amber' : 'green'} />
       </div>
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <SearchInput value={q} onChange={setQ} placeholder="Number ya bill se dhundhein..."
+          <SearchInput value={q} onChange={setQ} placeholder={t('Number ya bill se dhundhein...')}
             className="w-full sm:w-56" />
           <Chips value={paymentStatus} onChange={setPaymentStatus}
             options={[
-              { value: 'all', label: 'Sab' },
-              { value: 'unpaid', label: 'Udhaar' },
-              { value: 'partial', label: 'Kuch diya' },
-              { value: 'paid', label: 'Diya' },
+              { value: 'all', label: t('Sab') },
+              { value: 'unpaid', label: t('Udhaar') },
+              { value: 'partial', label: t('Kuch diya') },
+              { value: 'paid', label: t('Diya') },
             ]} />
           <div className="w-44">
-            <Select placeholder="Sab suppliers" value={supplierId}
+            <Select placeholder={t('Sab suppliers')} value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
               options={suppliers.map((s) => ({ value: s._id, label: s.shopName || s.name }))} />
           </div>
@@ -148,7 +149,7 @@ export default function Purchases() {
             message={hasFilters
               ? 'Filter hata kar dobara dekhein.'
               : 'Supplier se maal aaye to yahan entry karein — stock apne aap badh jayega aur unka khata bhi bante jayega.'}
-            action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>Pehli purchase</Button>}
+            action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>{t('Pehli purchase')}</Button>}
           />
         ) : (
           <>
@@ -156,7 +157,7 @@ export default function Purchases() {
               <Table columns={columns} rows={rows} loading={loading} />
             </div>
             <div className="md:hidden">
-              {loading ? <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+              {loading ? <SkeletonRows />
                 : rows.map((r) => (
                   <button key={r._id} onClick={() => navigate(`/purchases/${r._id}`)}
                     className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left last:border-0">

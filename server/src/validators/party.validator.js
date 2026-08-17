@@ -74,3 +74,9 @@ export const bulkRateSchema = z.object({
   categoryId: objectId.or(z.literal('')).or(z.literal('none')).nullable().optional(),
   roundTo: z.enum(['none', '1', '0.5', '5', '10']).optional().default('none'),
 });
+
+/** Phone se party dhoondhne ke liye */
+export const lookupQuerySchema = z.object({
+  phone: z.string().trim().min(6, 'Number poora daalein').max(15),
+  type: z.enum(['retailer', 'supplier']).optional().default('retailer'),
+});

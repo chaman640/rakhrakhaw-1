@@ -4,7 +4,10 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
 import { useAuth } from '@/context/AuthContext';
+import { useIsFetching } from '@/hooks/useQuery';
+import { RefreshBar } from '@/components/ui';
 import { wholesalerNav, retailerNav, isRootPage } from './navConfig';
+import { t } from '@/lib/i18n';
 
 /**
  * Poore app ka dhancha — mobile pehle.
@@ -20,6 +23,7 @@ export default function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { isRetailer, can } = useAuth();
   const { pathname } = useLocation();
+  const fetching = useIsFetching();
 
   const fullNav = isRetailer ? retailerNav : wholesalerNav;
   const allowedNav = isRetailer ? retailerNav : fullNav.filter((n) => !n.perm || can(n.perm));
@@ -41,7 +45,7 @@ export default function AppLayout() {
    * tha, yaani /settings pe back dabane se /settings hi khulta tha — kuch
    * hota hi nahi dikhta tha.
    */
-  const homeRoot = isRetailer ? '/home' : '/dashboard';
+  const homeRoot = '/home';
   const backTo = current && pathname !== current.to ? current.to : homeRoot;
 
   // Page badalte hi menu band — warna naye page pe drawer khula reh jata hai
@@ -49,11 +53,14 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Net dheema ho to sabse upar 2px ki patti — page rukta nahi hai */}
+      <RefreshBar show={fetching} />
+
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="lg:pl-64">
         <Header
-          title={current?.label || ''}
+          title={current?.label ? t(current.label) : ''}
           showBack={!atRoot}
           backTo={backTo}
         />

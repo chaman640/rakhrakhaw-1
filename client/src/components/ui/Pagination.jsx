@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 export default function Pagination({ page, totalPages, total, limit, onChange }) {
   if (totalPages <= 1) {
@@ -25,7 +26,7 @@ export default function Pagination({ page, totalPages, total, limit, onChange })
             'flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600',
             'hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-ring'
           )}
-          aria-label="Pichla page"
+          aria-label={t('Pichla page')}
         >
           <ChevronLeft size={16} />
         </button>
@@ -41,7 +42,7 @@ export default function Pagination({ page, totalPages, total, limit, onChange })
             'flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600',
             'hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-ring'
           )}
-          aria-label="Agla page"
+          aria-label={t('Agla page')}
         >
           <ChevronRight size={16} />
         </button>

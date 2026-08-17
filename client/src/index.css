@@ -15,13 +15,139 @@
   --color-brand-900: #134e4a;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /*
+    Ek aur naap — 360-390px wale chhote phone ke liye.
+
+    Tailwind ka sabse chhota `sm` 640px pe shuru hota hai, yaani poora phone
+    "sabse chhoti" shreni me aa jata hai. Par 360px aur 430px ke phone me
+    kaafi farak hai: 360 pe bill ka number line se bahar chala jata hai, 430
+    pe aaram se aa jata hai. `xs` isi beech ke faisle ke liye hai.
+  */
+  --breakpoint-xs: 26rem;
 }
+
+/*
+  `dark:` likhne ke liye. Tailwind khud se system ki setting dekhta hai, par
+  hamein user ka apna chunav chahiye — isliye `.dark` class se chalate hain.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
 
 html, body, #root { height: 100%; }
 
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
   font-family: var(--font-sans);
+}
+
+/* ═══════════════════ TEXT KA SIZE ═══════════════════
+ *
+ * Tailwind me har naap (padding, gap, text) `rem` me hai — yaani sab kuch
+ * html ke font-size se juda hua hai. Isliye yahan ek hi number badalne se
+ * poori app ek saath chhoti-badi ho jati hai: sirf akshar nahi, unke aas-paas
+ * ki jagah aur button ki unchai bhi. Dukaandaar ki umar 55 ki ho to "Bada"
+ * dabate hi poora app padhne layak ho jata hai.
+ */
+html { font-size: 16px; }
+html[data-text="small"]  { font-size: 15px; }
+html[data-text="normal"] { font-size: 16px; }
+html[data-text="large"]  { font-size: 18px; }
+html[data-text="xlarge"] { font-size: 20px; }
+
+/* ═══════════════════ RAAT WALA ROOP (dark) ═══════════════════
+ *
+ * Yahan ek bhi page ki file nahi chhui gayi. Tarika ye hai:
+ *
+ * Tailwind v4 har rang ko `var(--color-slate-500)` ki shakal me likhta hai,
+ * seedha hex nahi. Matlab agar hum `.dark` ke andar wahi variable dobara
+ * likh dein, to poori app ke saare 1100+ jagah ke rang ek saath badal jate
+ * hain — bina kisi component ko haath lagaye.
+ *
+ * Slate ki seedhi ladi ulti kar di gayi hai: jo sabse halka tha (50) wo ab
+ * sabse gehra hai, aur jo sabse gehra tha (900) wo ab likhawat ka safed.
+ *
+ * Do cheezein variable se nahi ho saktin, isliye unke liye alag niyam hain:
+ *
+ *   1. `bg-white` aur `text-white` dono `--color-white` par tike hain. Use
+ *      badalte to card to theek ho jata, par brand wale button ka safed
+ *      likha bhi kaala ho jata — button padha hi nahi jata. Isliye sirf
+ *      `bg-white` ko alag se badla hai.
+ *   2. Rang wale chip (amber/emerald/red) me halka background aur gehra text
+ *      hota hai. Andhere me ye ulta chahiye — gehra background, halka text.
+ */
+.dark {
+  color-scheme: dark;                 /* date picker, scrollbar bhi kaale ho jayen */
+
+  --color-slate-50:  #0c1220;         /* page ka background */
+  --color-slate-100: #1e293f;         /* hover, halki patti */
+  --color-slate-200: #2b3852;         /* border */
+  --color-slate-300: #41506e;
+  --color-slate-400: #8593ad;         /* dhundhla icon */
+  --color-slate-500: #a3b1c7;         /* dhundhla text */
+  --color-slate-600: #c0cbdc;
+  --color-slate-700: #d8e0ec;
+  --color-slate-800: #e9eef6;
+  --color-slate-900: #f4f7fb;         /* mukhya likhawat */
+
+  --color-brand-50:  #082220;         /* teal chip ka background */
+  --color-brand-100: #0c2e2b;
+}
+
+.dark .bg-white { background-color: #151d30; }        /* card, input, modal */
+
+.dark .text-brand-600 { color: #2dd4bf; }
+.dark .text-brand-700 { color: #5eead4; }
+.dark .text-brand-800 { color: #99f6e4; }
+.dark .text-brand-900 { color: #ccfbf1; }
+.dark .border-brand-200 { border-color: #134e4a; }
+.dark .border-brand-300 { border-color: #115e59; }
+
+.dark .bg-amber-50 { background-color: #2e2206; }
+.dark .border-amber-200 { border-color: #78500a; }
+.dark .text-amber-600,
+.dark .text-amber-700 { color: #fbbf24; }
+.dark .text-amber-800,
+.dark .text-amber-900 { color: #fde68a; }
+
+.dark .bg-emerald-50 { background-color: #052e21; }
+.dark .border-emerald-200 { border-color: #065f46; }
+.dark .text-emerald-600,
+.dark .text-emerald-700 { color: #34d399; }
+.dark .text-emerald-800,
+.dark .text-emerald-900 { color: #a7f3d0; }
+
+.dark .bg-red-50 { background-color: #341014; }
+.dark .bg-red-100 { background-color: #4a171c; }
+.dark .border-red-200 { border-color: #7f1d1d; }
+.dark .text-red-500,
+.dark .text-red-600,
+.dark .text-red-700 { color: #fca5a5; }
+.dark .text-red-800,
+.dark .text-red-900 { color: #fecaca; }
+
+.dark .bg-blue-50 { background-color: #0b1e38; }
+.dark .border-blue-200 { border-color: #1e3a5f; }
+.dark .text-blue-700,
+.dark .text-blue-800 { color: #93c5fd; }
+
+/*
+  Modal ke peeche ka dhundhla parda aur chart ka tooltip.
+
+  Ye dono `bg-slate-900` par bane the — jo ulta hone ke baad SAFED ho jata.
+  Parda safed ho jata to poora page dhul jata, aur tooltip pe safed par safed
+  likha kuch dikhta hi nahi. Isliye in dono ko rang ki ladi se hata kar apna
+  naam de diya gaya hai.
+*/
+.scrim { background-color: rgb(15 23 42 / 0.5); }
+.dark .scrim { background-color: rgb(0 0 0 / 0.65); }
+
+.tip { background-color: #0f172a; }
+.dark .tip { background-color: #334155; }
+
+/* Peeche-peeche naya data aa raha hai wali patti */
+@keyframes slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 
 /* Number columns me digits aligned rahen */

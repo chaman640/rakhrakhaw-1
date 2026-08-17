@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatPhone } from '@/lib/format';
 import { Button, Input, Card, CardHeader, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export default function AccountTab() {
   const { user, logout } = useAuth();
@@ -47,28 +48,28 @@ export default function AccountTab() {
   return (
     <div className="space-y-5">
       <Card>
-        <CardHeader title="Aapka account" />
+        <CardHeader title={t('Aapka account')} />
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Naam</dt>
+            <dt className="text-slate-500">{t('Naam')}</dt>
             <dd className="font-medium text-slate-900">{user?.name}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Login number</dt>
+            <dt className="text-slate-500">{t('Login number')}</dt>
             <dd className="font-medium text-slate-900">{formatPhone(user?.phone)}</dd>
           </div>
         </dl>
       </Card>
 
       <Card>
-        <CardHeader title="Password badlein" />
+        <CardHeader title={t('Password badlein')} />
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input label="Purana password" type="password" required
+          <Input label={t('Purana password')} type="password" required
             value={form.currentPassword} onChange={set('currentPassword')} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Naya password" type="password" required autoComplete="new-password"
-              value={form.newPassword} onChange={set('newPassword')} hint="Kam se kam 6 character" />
-            <Input label="Naya password dobara" type="password" required autoComplete="new-password"
+            <Input label={t('Naya password')} type="password" required autoComplete="new-password"
+              value={form.newPassword} onChange={set('newPassword')} hint={t('Kam se kam 6 character')} />
+            <Input label={t('Naya password dobara')} type="password" required autoComplete="new-password"
               value={form.confirmPassword} onChange={set('confirmPassword')} />
           </div>
 
@@ -76,13 +77,13 @@ export default function AccountTab() {
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
           )}
 
-          <Button type="submit" icon={KeyRound} loading={loading}>Password badlein</Button>
+          <Button type="submit" icon={KeyRound} loading={loading}>{t('Password badlein')}</Button>
         </form>
       </Card>
 
       <Card>
-        <CardHeader title="Logout" subtitle="Is device se nikal jayein" />
-        <Button variant="danger" icon={LogOut} onClick={handleLogout}>Logout</Button>
+        <CardHeader title={t('Logout')} subtitle={t('Is device se nikal jayein')} />
+        <Button variant="danger" icon={LogOut} onClick={handleLogout}>{t('Logout')}</Button>
       </Card>
     </div>
   );

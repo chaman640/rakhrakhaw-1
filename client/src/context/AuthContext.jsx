@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
+import { clearCache } from '@/lib/queryCache';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'rr_token';
@@ -70,6 +71,10 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try { await api.post('/auth/logout'); } catch { /* token expire ho chuka hoga */ }
     localStorage.removeItem(TOKEN_KEY);
+    // Cache bhi khali karo — warna usi computer pe agla aadmi login karega
+    // aur ek pal ke liye PICHHLE wale ka data dekh lega (cache turant dikhata
+    // hai, chahe wo kisi aur ka ho). Ye chhoti si line hi wo rok hai.
+    clearCache();
     applySession(null);
   }, [applySession]);
 

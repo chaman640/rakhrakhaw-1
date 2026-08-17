@@ -6,9 +6,12 @@ import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Textarea, Select,
-  Combobox, Badge, LineItemCard, NumField, useToast,
+  Combobox, LineItemCard, NumField, useToast,
 } from '@/components/ui';
+import PartyPicker from './PartyPicker';
+import { bust } from '@/hooks/useQuery';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const emptyRow = () => ({ key: Math.random().toString(36).slice(2), itemId: '', name: '', unit: 'PCS',
@@ -56,15 +59,6 @@ export default function InvoiceForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
-  const fetchParties = useCallback(async (q) => {
-    const res = await api.get('/parties', { params: { type: 'retailer', status: 'active', q, limit: 20 } });
-    return res.data.map((p) => ({
-      value: p._id, label: p.shopName || p.name, sublabel: p.phone,
-      right: p.balance > 0 ? formatMoney(p.balance) : '',
-      raw: p,
-    }));
-  }, []);
-
   const fetchItems = useCallback(async (q) => {
     const res = await api.get('/items', { params: { q, limit: 20 } });
     return res.data.map((i) => ({
@@ -77,6 +71,7 @@ export default function InvoiceForm() {
 
   async function pickParty(opt) {
     setParty(opt);
+    if (!opt) { setPartyState(''); return; }
     setPartyState(opt.raw?.address?.stateCode || '');
     // Party badalne pe rate dobara resolve karo
     if (opt.value) {
@@ -158,7 +153,12 @@ export default function InvoiceForm() {
   const shortRows = filled.filter((r) => Number(r.qty) > r.stockQty);
 
   async function save() {
-    if (!party) { toast.error('Pehle retailer chunein'); return; }
+    // `party?.value` — sirf `party` nahi. Ek baar aisa ho chuka hai ki party ka
+    // naam to card me dikh raha tha par uski id andar aayi hi nahi thi; tab
+    // request bina `partyId` ke chali gayi aur server ne "Retailer nahi mila"
+    // bola — jo dekhne wale ko bilkul samajh nahi aata, kyunki retailer to
+    // saamne likha hai.
+    if (!party?.value) { toast.error('Pehle retailer chunein'); return; }
     if (!filled.length) { toast.error('Kam se kam ek item daalein'); return; }
 
     setSaving(true);
@@ -177,6 +177,8 @@ export default function InvoiceForm() {
         notes,
       });
       toast.success(res.message);
+      // Home, bill ki list, khata aur dashboard — sab isi bill se badle hain
+      bust('invoices', 'khata', 'dashboard', 'parties', 'payments');
       navigate(`/invoices/${res.data._id}`, { replace: true });
     } catch (err) {
       toast.error(err.message);
@@ -185,12 +187,12 @@ export default function InvoiceForm() {
     }
   }
 
-  if (loading) return <p className="py-20 text-center text-sm text-slate-400">Order se detail aa rahi hai...</p>;
+  if (loading) return <p className="py-20 text-center text-sm text-slate-400">{t('Order se detail aa rahi hai...')}</p>;
 
   return (
     <>
       <PageHeader
-        title="Naya bill"
+        title={t('Naya bill')}
         subtitle={[preview && `Number: ${preview}`, orderNo && `Order ${orderNo} ke against`]
           .filter(Boolean).join(' · ')}
       />
@@ -198,15 +200,12 @@ export default function InvoiceForm() {
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <Card>
-            <CardHeader title="Kiska bill" />
+            <CardHeader title={t('Kiska bill')} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Combobox
-                label="Retailer" required placeholder="Retailer chunein"
-                display={party?.label} value={party?.value}
-                onChange={pickParty} fetchOptions={fetchParties}
-                emptyText="Koi active retailer nahi mila"
-              />
-              <Input label="Tareekh" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <div className="sm:col-span-2">
+                <PartyPicker value={party} onChange={pickParty} disabled={Boolean(orderId)} />
+              </div>
+              <Input label={t('Tareekh')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
 
             {gstEnabled && party && (
@@ -214,7 +213,7 @@ export default function InvoiceForm() {
                 <Info size={14} className="shrink-0" />
                 {isIgst
                   ? <>Retailer dusre state me hai — bill pe <strong>IGST</strong> lagega</>
-                  : <>Same state — bill pe <strong>CGST + SGST</strong> lagega</>}
+                  : <>Same state — bill pe <strong>{t('CGST + SGST')}</strong> lagega</>}
               </p>
             )}
           </Card>
@@ -222,12 +221,12 @@ export default function InvoiceForm() {
           <Card padding={false}>
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Maal</h3>
+                <h3 className="text-base font-semibold text-slate-900">{t('Maal')}</h3>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  Rate retailer ke hisaab se apne aap aata hai
+                  {t('Rate retailer ke hisaab se apne aap aata hai')}
                 </p>
               </div>
-              <Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>Row</Button>
+              <Button size="sm" variant="secondary" icon={Plus} onClick={addRow}>{t('Row')}</Button>
             </div>
 
             {/* Badi screen — ek nazar me poori table */}
@@ -235,12 +234,12 @@ export default function InvoiceForm() {
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-3 py-2.5 text-left font-semibold">Item</th>
-                    <th className="w-24 px-3 py-2.5 text-right font-semibold">Qty</th>
-                    <th className="w-28 px-3 py-2.5 text-right font-semibold">Rate</th>
-                    <th className="w-24 px-3 py-2.5 text-right font-semibold">Discount</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">{t('Item')}</th>
+                    <th className="w-24 px-3 py-2.5 text-right font-semibold">{t('Qty')}</th>
+                    <th className="w-28 px-3 py-2.5 text-right font-semibold">{t('Rate')}</th>
+                    <th className="w-24 px-3 py-2.5 text-right font-semibold">{t('Discount')}</th>
                     {gstEnabled && <th className="w-20 px-3 py-2.5 text-right font-semibold">GST</th>}
-                    <th className="w-28 px-3 py-2.5 text-right font-semibold">Total</th>
+                    <th className="w-28 px-3 py-2.5 text-right font-semibold">{t('Total')}</th>
                     <th className="w-10 px-2 py-2.5"></th>
                   </tr>
                 </thead>
@@ -254,9 +253,9 @@ export default function InvoiceForm() {
                       <tr key={r.key} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2">
                           <Combobox
-                            placeholder="Item dhundhein" display={r.name} value={r.itemId}
+                            placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
                             onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
-                            emptyText="Koi item nahi mila"
+                            emptyText={t('Koi item nahi mila')}
                           />
                           {r.itemId && (
                             <p className={cn('mt-1 text-xs', short ? 'font-medium text-red-600' : 'text-slate-400')}>
@@ -324,9 +323,9 @@ export default function InvoiceForm() {
                     total={r.itemId ? formatMoney(taxable + tax) : '—'}
                     picker={(
                       <Combobox
-                        placeholder="Item dhundhein" display={r.name} value={r.itemId}
+                        placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
                         onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
-                        emptyText="Koi item nahi mila"
+                        emptyText={t('Koi item nahi mila')}
                       />
                     )}
                     note={r.itemId && (
@@ -336,17 +335,17 @@ export default function InvoiceForm() {
                       </p>
                     )}
                   >
-                    <NumField label="Qty" srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
+                    <NumField label={t('Qty')} srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
                       invalid={short} value={r.qty}
                       onChange={(e) => setRow(r.key, { qty: e.target.value })} />
-                    <NumField label="Rate" srLabel={`Item ${idx + 1} rate`} step="0.01" min="0"
+                    <NumField label={t('Rate')} srLabel={`Item ${idx + 1} rate`} step="0.01" min="0"
                       value={r.rate}
                       onChange={(e) => setRow(r.key, { rate: e.target.value })} />
-                    <NumField label="Discount" srLabel={`Item ${idx + 1} discount`} step="0.01" min="0"
+                    <NumField label={t('Discount')} srLabel={`Item ${idx + 1} discount`} step="0.01" min="0"
                       value={r.discount}
                       onChange={(e) => setRow(r.key, { discount: e.target.value })} />
                     {gstEnabled && (
-                      <NumField label="GST %" srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
+                      <NumField label={t('GST %')} srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
                         value={r.gstRate}
                         onChange={(e) => setRow(r.key, { gstRate: e.target.value })} />
                     )}
@@ -356,52 +355,52 @@ export default function InvoiceForm() {
             </div>
 
             <div className="border-t border-slate-200 px-5 py-3">
-              <Button size="sm" variant="ghost" icon={Plus} onClick={addRow}>Aur item add karein</Button>
+              <Button size="sm" variant="ghost" icon={Plus} onClick={addRow}>{t('Aur item add karein')}</Button>
             </div>
           </Card>
 
           <Card>
-            <Textarea label="Note (bill pe chhapega)" rows={2} value={notes}
-              onChange={(e) => setNotes(e.target.value)} placeholder="Maal wapas nahi hoga" />
+            <Textarea label={t('Note (bill pe chhapega)')} rows={2} value={notes}
+              onChange={(e) => setNotes(e.target.value)} placeholder={t('Maal wapas nahi hoga')} />
           </Card>
         </div>
 
         <div>
           <Card className="lg:sticky lg:top-20">
-            <CardHeader title="Hisaab" />
+            <CardHeader title={t('Hisaab')} />
 
             <dl className="space-y-2 text-sm">
-              <Row label="Kul maal" value={formatMoney(totals.subTotal)} />
+              <Row label={t('Kul maal')} value={formatMoney(totals.subTotal)} />
               {totals.discountTotal > 0 && (
-                <Row label="Discount" value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
+                <Row label={t('Discount')} value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
               )}
-              {gstEnabled && <Row label="Taxable" value={formatMoney(totals.taxableTotal)} />}
+              {gstEnabled && <Row label={t('Taxable')} value={formatMoney(totals.taxableTotal)} />}
               {gstEnabled && totals.taxTotal > 0 && (isIgst
                 ? <Row label="IGST" value={formatMoney(totals.taxTotal)} />
                 : <>
                     <Row label="CGST" value={formatMoney(totals.cgst)} />
                     <Row label="SGST" value={formatMoney(totals.sgst)} />
                   </>)}
-              {totals.roundOff !== 0 && <Row label="Round off" value={formatMoney(totals.roundOff)} tone="muted" />}
+              {totals.roundOff !== 0 && <Row label={t('Round off')} value={formatMoney(totals.roundOff)} tone="muted" />}
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                <dt className="font-semibold text-slate-900">Kul</dt>
+                <dt className="font-semibold text-slate-900">{t('Kul')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">{formatMoney(totals.grandTotal)}</dd>
               </div>
             </dl>
 
             <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
-              <Input label="Bill pe extra discount" type="number" step="0.01" min="0" prefix="₹"
+              <Input label={t('Bill pe extra discount')} type="number" step="0.01" min="0" prefix="₹"
                 value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)}
-                hint="Saare items pe barabar bat jayega" />
+                hint={t('Saare items pe barabar bat jayega')} />
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <Input label="Abhi kitna mila" type="number" step="0.01" min="0" prefix="₹"
+                <Input label={t('Abhi kitna mila')} type="number" step="0.01" min="0" prefix="₹"
                   value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
-                <Select label="Kaise mila" placeholder="" value={paymentMode}
+                <Select label={t('Kaise mila')} placeholder="" value={paymentMode}
                   onChange={(e) => setPaymentMode(e.target.value)}
                   options={[
-                    { value: 'CASH', label: 'Cash' }, { value: 'UPI', label: 'UPI' },
-                    { value: 'BANK', label: 'Bank' }, { value: 'CHEQUE', label: 'Cheque' },
+                    { value: 'CASH', label: t('Cash') }, { value: 'UPI', label: 'UPI' },
+                    { value: 'BANK', label: t('Bank') }, { value: 'CHEQUE', label: t('Cheque') },
                   ]} />
               </div>
 
@@ -419,8 +418,8 @@ export default function InvoiceForm() {
             )}
 
             <Button className="mt-5 w-full" size="lg" icon={Save} loading={saving} onClick={save}
-              disabled={!party || !filled.length || shortRows.length > 0}>
-              Bill banayein
+              disabled={!party?.value || !filled.length || shortRows.length > 0}>
+              {t('Bill banayein')}
             </Button>
 
             <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">

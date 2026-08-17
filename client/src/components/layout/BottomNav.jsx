@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { wholesalerNav, retailerNav, bottomNavFor } from './navConfig';
+import { t } from '@/lib/i18n';
 
 /**
  * NEECHE WALI PATTI — phone aur tablet pe.
@@ -35,7 +36,7 @@ export default function BottomNav({ onMenuClick, menuOpen }) {
         'fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white lg:hidden',
         'pb-[env(safe-area-inset-bottom)]'
       )}
-      aria-label="Neeche wala menu"
+      aria-label={t('Neeche wala menu')}
     >
       <div className="mx-auto flex max-w-lg items-stretch">
         {items.map(({ to, label, icon: Icon, badgeKey }) => {
@@ -64,7 +65,7 @@ export default function BottomNav({ onMenuClick, menuOpen }) {
                     )}
                   </span>
                   <span className={cn('truncate text-[11px] leading-tight', isActive && 'font-semibold')}>
-                    {label}
+                    {t(label)}
                   </span>
                   {isActive && (
                     <span className="absolute inset-x-3 top-0 h-0.5 rounded-b bg-brand-600" />
@@ -78,7 +79,7 @@ export default function BottomNav({ onMenuClick, menuOpen }) {
         {/* Paanchva khana — purana teen-line wala button, ab angoothe ke paas */}
         <button
           onClick={onMenuClick}
-          aria-label="Poora menu"
+          aria-label={t('Poora menu')}
           aria-expanded={menuOpen}
           className={cn(
             'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors focus-ring',
@@ -86,7 +87,7 @@ export default function BottomNav({ onMenuClick, menuOpen }) {
           )}
         >
           <Menu size={21} strokeWidth={menuOpen ? 2.4 : 1.9} />
-          <span className={cn('text-[11px] leading-tight', menuOpen && 'font-semibold')}>Menu</span>
+          <span className={cn('text-[11px] leading-tight', menuOpen && 'font-semibold')}>{t('Menu')}</span>
           {menuOpen && <span className="absolute inset-x-3 top-0 h-0.5 rounded-b bg-brand-600" />}
         </button>
       </div>

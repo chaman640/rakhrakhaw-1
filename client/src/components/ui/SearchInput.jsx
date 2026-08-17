@@ -1,5 +1,6 @@
 import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 export default function SearchInput({ value, onChange, placeholder = 'Dhundhein...', className }) {
   return (
@@ -17,7 +18,7 @@ export default function SearchInput({ value, onChange, placeholder = 'Dhundhein.
           type="button"
           onClick={() => onChange('')}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          aria-label="Saaf karein"
+          aria-label={t('Saaf karein')}
         >
           <X size={14} />
         </button>

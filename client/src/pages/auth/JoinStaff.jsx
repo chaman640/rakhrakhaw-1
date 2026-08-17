@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
 import { Button, Input, Spinner } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 /**
  * Staff yahan aata hai jab malik ka invite link kholta hai.
@@ -52,7 +53,7 @@ export default function JoinStaff() {
     setLoading(true);
     try {
       await joinAsStaff(token, form);
-      navigate('/dashboard', { replace: true });
+      navigate('/home', { replace: true });
     } catch (err) {
       setError(err.message);
       if (Array.isArray(err.details)) {
@@ -73,17 +74,17 @@ export default function JoinStaff() {
 
   if (linkError) {
     return (
-      <AuthShell title="Link kaam nahi kar rahi">
+      <AuthShell title={t('Link kaam nahi kar rahi')}>
         <div className="flex flex-col items-center py-4 text-center">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
             <AlertCircle size={20} />
           </div>
           <p className="text-sm text-slate-600">{linkError}</p>
           <p className="mt-2 text-xs text-slate-500">
-            Dukaan ke malik se nayi link mangwa lijiye.
+            {t('Dukaan ke malik se nayi link mangwa lijiye.')}
           </p>
           <Link to="/login" className="mt-4 text-sm font-medium text-brand-700 hover:underline">
-            Login page pe jayein
+            {t('Login page pe jayein')}
           </Link>
         </div>
       </AuthShell>
@@ -94,7 +95,7 @@ export default function JoinStaff() {
     <AuthShell
       brandName={invite.businessName}
       logoUrl={invite.logoUrl}
-      subtitle="Apna login bana lijiye"
+      subtitle={t('Apna login bana lijiye')}
     >
       <div className="mb-4 flex items-start gap-2.5 rounded-lg bg-brand-50 p-3">
         <ShieldCheck size={16} className="mt-0.5 shrink-0 text-brand-700" />
@@ -110,15 +111,15 @@ export default function JoinStaff() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Aapka naam"
+          label={t('Aapka naam')}
           required
-          placeholder="Ramesh Kumar"
+          placeholder={t('Ramesh Kumar')}
           value={form.name}
           onChange={set('name')}
           error={fieldErrors.name}
         />
         <Input
-          label="Phone number"
+          label={t('Phone number')}
           required
           type="tel"
           inputMode="numeric"
@@ -132,13 +133,13 @@ export default function JoinStaff() {
             : 'Isi number se login karenge'}
         />
         <Input
-          label="Password banayein"
+          label={t('Password banayein')}
           required
           type="password"
           value={form.password}
           onChange={set('password')}
           error={fieldErrors.password}
-          hint="Kam se kam 6 character. Ye sirf aapko pata rahega — malik ko bhi nahi."
+          hint={t('Kam se kam 6 character. Ye sirf aapko pata rahega — malik ko bhi nahi.')}
         />
 
         {error && (
@@ -146,14 +147,14 @@ export default function JoinStaff() {
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
-          Jud jayein
+          {t('Jud jayein')}
         </Button>
       </form>
 
       <p className="mt-4 text-center text-xs text-slate-500">
         Pehle se account hai?{' '}
         <Link to="/login" className="font-medium text-brand-700 hover:underline">
-          Login karein
+          {t('Login karein')}
         </Link>
       </p>
     </AuthShell>

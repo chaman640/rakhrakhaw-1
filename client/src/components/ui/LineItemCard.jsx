@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 /**
  * Phone pe maal ki ek line.
@@ -41,7 +42,7 @@ export default function LineItemCard({ index, picker, note, total, onRemove, chi
       <div className="mt-3 grid grid-cols-2 gap-2.5">{children}</div>
 
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
-        <span className="text-sm text-slate-500">Is item ka total</span>
+        <span className="text-sm text-slate-500">{t('Is item ka total')}</span>
         <span className="tabular text-base font-semibold text-slate-900">{total}</span>
       </div>
     </div>

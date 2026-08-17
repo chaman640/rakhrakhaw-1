@@ -25,7 +25,7 @@ export default function RequireAuth({ roles, allowUnapproved = false, children }
   }
 
   if (roles?.length && !roles.includes(user.role)) {
-    return <Navigate to={user.role === 'retailer' ? '/shop' : '/dashboard'} replace />;
+    return <Navigate to={user.role === 'retailer' ? '/shop' : '/home'} replace />;
   }
 
   // Retailer approve nahi hua to sirf pending screen dikhegi

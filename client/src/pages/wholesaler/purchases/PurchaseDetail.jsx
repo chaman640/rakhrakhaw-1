@@ -9,6 +9,7 @@ import {
   ReadLineItem, ReadField, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const payTone = { unpaid: 'red', partial: 'amber', paid: 'green' };
 const payLabel = { unpaid: 'Poora udhaar', partial: 'Kuch diya', paid: 'Poora diya' };
@@ -85,10 +86,10 @@ export default function PurchaseDetail() {
           <div className="flex flex-wrap gap-2 no-print sm:shrink-0">
             <Button variant="secondary" size="sm" icon={Undo2}
               onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${p._id}`)}>
-              Maal wapas bheja
+              {t('Maal wapas bheja')}
             </Button>
-            <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>Print</Button>
-            <Button variant="danger" size="sm" icon={Trash2} onClick={() => setConfirm(true)}>Delete</Button>
+            <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
+            <Button variant="danger" size="sm" icon={Trash2} onClick={() => setConfirm(true)}>{t('Delete')}</Button>
           </div>
         </div>
       </Card>
@@ -96,18 +97,18 @@ export default function PurchaseDetail() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2" padding={false}>
           <div className="px-5 py-4">
-            <h3 className="text-base font-semibold text-slate-900">Maal</h3>
+            <h3 className="text-base font-semibold text-slate-900">{t('Maal')}</h3>
           </div>
           {/* Badi screen — table */}
           <div className="hidden overflow-x-auto border-t border-slate-200 md:block">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-2.5 text-left font-semibold">Item</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Qty</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Rate</th>
+                  <th className="px-4 py-2.5 text-left font-semibold">{t('Item')}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Qty')}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Rate')}</th>
                   {gstEnabled && <th className="px-4 py-2.5 text-right font-semibold">GST</th>}
-                  <th className="px-4 py-2.5 text-right font-semibold">Total</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Total')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,8 +145,8 @@ export default function PurchaseDetail() {
                   <p className="text-xs text-emerald-700">Discount {formatMoney(it.discount)}</p>
                 )}
               >
-                <ReadField label="Qty" value={formatQty(it.qty, it.unit)} />
-                <ReadField label="Rate" value={formatMoney(it.rate)} />
+                <ReadField label={t('Qty')} value={formatQty(it.qty, it.unit)} />
+                <ReadField label={t('Rate')} value={formatMoney(it.rate)} />
                 {gstEnabled && (
                   <ReadField label="GST" value={`${it.gstRate}% · ${formatMoney(it.taxAmount)}`} />
                 )}
@@ -160,17 +161,17 @@ export default function PurchaseDetail() {
 
         <div className="space-y-5">
           <Card>
-            <CardHeader title="Hisaab" />
+            <CardHeader title={t('Hisaab')} />
             <dl className="space-y-2 text-sm">
-              <Row label="Kul maal" value={formatMoney(p.subTotal)} />
-              {p.discountTotal > 0 && <Row label="Discount" value={`− ${formatMoney(p.discountTotal)}`} tone="green" />}
+              <Row label={t('Kul maal')} value={formatMoney(p.subTotal)} />
+              {p.discountTotal > 0 && <Row label={t('Discount')} value={`− ${formatMoney(p.discountTotal)}`} tone="green" />}
               {gstEnabled && <Row label="GST" value={formatMoney(p.taxTotal)} />}
-              {p.roundOff !== 0 && <Row label="Round off" value={formatMoney(p.roundOff)} tone="muted" />}
+              {p.roundOff !== 0 && <Row label={t('Round off')} value={formatMoney(p.roundOff)} tone="muted" />}
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                <dt className="font-semibold text-slate-900">Kul</dt>
+                <dt className="font-semibold text-slate-900">{t('Kul')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">{formatMoney(p.grandTotal)}</dd>
               </div>
-              <Row label="Diya" value={formatMoney(p.paidAmount)} tone="green" />
+              <Row label={t('Diya')} value={formatMoney(p.paidAmount)} tone="green" />
               <div className={cn('flex items-center justify-between rounded-lg px-3 py-2 text-sm',
                 p.dueAmount > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
                 <span>{p.dueAmount > 0 ? 'Baaki' : 'Poora ho gaya'}</span>
@@ -180,7 +181,7 @@ export default function PurchaseDetail() {
           </Card>
 
           <Card>
-            <CardHeader title="Stock pe asar" subtitle="Is purchase se kitna maal badha" />
+            <CardHeader title={t('Stock pe asar')} subtitle={t('Is purchase se kitna maal badha')} />
             <ul className="divide-y divide-slate-100">
               {p.movements?.length ? p.movements.map((m) => {
                 const line = p.items.find((it) => String(it.itemId) === String(m.itemId));
@@ -193,7 +194,7 @@ export default function PurchaseDetail() {
                   </li>
                 );
               }) : (
-                <li className="py-3 text-sm text-slate-500">Koi movement record nahi</li>
+                <li className="py-3 text-sm text-slate-500">{t('Koi movement record nahi')}</li>
               )}
             </ul>
           </Card>
@@ -206,7 +207,7 @@ export default function PurchaseDetail() {
         onConfirm={remove}
         loading={busy}
         title={`${p.purchaseNo} delete karein?`}
-        message="Stock utna hi wapas ghat jayega aur supplier ka khata bhi ulta ho jayega. Agar wo maal bik chuka hai to delete nahi hoga."
+        message={t('Stock utna hi wapas ghat jayega aur supplier ka khata bhi ulta ho jayega. Agar wo maal bik chuka hai to delete nahi hoga.')}
         confirmLabel="Haan, delete karein"
       />
     </>

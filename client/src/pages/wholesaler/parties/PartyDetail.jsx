@@ -14,6 +14,7 @@ import RatesTab from './RatesTab';
 import PartyPurchasesTab from './PartyPurchasesTab';
 import PartyOrdersTab from './PartyOrdersTab';
 import PartyKhataTab from './PartyKhataTab';
+import { t } from '@/lib/i18n';
 
 const statusTone = { pending: 'amber', active: 'green', blocked: 'red' };
 const statusLabel = { pending: 'Approval baaki', active: 'Active', blocked: 'Blocked' };
@@ -106,14 +107,14 @@ export default function PartyDetail({ type }) {
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button variant="secondary" size="sm" icon={Pencil} onClick={() => setEditOpen(true)}>Edit</Button>
+            <Button variant="secondary" size="sm" icon={Pencil} onClick={() => setEditOpen(true)}>{t('Edit')}</Button>
             {isRetailer && party.status !== 'active' && (
-              <Button size="sm" variant="success" icon={UserCheck} onClick={() => changeStatus('active')}>Approve</Button>
+              <Button size="sm" variant="success" icon={UserCheck} onClick={() => changeStatus('active')}>{t('Approve')}</Button>
             )}
             {isRetailer && party.status === 'active' && (
-              <Button size="sm" variant="secondary" icon={Ban} onClick={() => changeStatus('blocked')}>Block</Button>
+              <Button size="sm" variant="secondary" icon={Ban} onClick={() => changeStatus('blocked')}>{t('Block')}</Button>
             )}
-            <Button size="sm" variant="danger" icon={Trash2} onClick={() => setConfirmDelete(true)}>Delete</Button>
+            <Button size="sm" variant="danger" icon={Trash2} onClick={() => setConfirmDelete(true)}>{t('Delete')}</Button>
           </div>
         </div>
 
@@ -127,10 +128,10 @@ export default function PartyDetail({ type }) {
         <StatCard label={isRetailer ? 'Udhaar baaki' : 'Dena hai'} value={formatMoney(party.balance)}
           icon={IndianRupee} tone={party.balance > 0 ? 'amber' : 'green'}
           sub={party.creditLimit ? `Limit ${formatMoney(party.creditLimit)}` : 'Koi limit nahi'} />
-        <StatCard label="Orders" value={party.orderCount || 0} icon={ShoppingCart} tone="brand" />
-        <StatCard label="Bills" value={party.invoiceCount || 0} icon={FileText} tone="brand" />
+        <StatCard label={t('Orders')} value={party.orderCount || 0} icon={ShoppingCart} tone="brand" />
+        <StatCard label={t('Bills')} value={party.invoiceCount || 0} icon={FileText} tone="brand" />
         {isRetailer && (
-          <StatCard label="Khaas rate" value={party.customRateCount || 0} icon={Tag}
+          <StatCard label={t('Khaas rate')} value={party.customRateCount || 0} icon={Tag}
             tone={party.customRateCount ? 'green' : 'brand'} sub="items pe" />
         )}
       </div>
@@ -140,9 +141,9 @@ export default function PartyDetail({ type }) {
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: 'detail', label: 'Detail' },
-          ...(isRetailer ? [{ value: 'rates', label: 'Rate', count: party.customRateCount }] : []),
-          { value: 'khata', label: 'Khata' },
+          { value: 'detail', label: t('Detail') },
+          ...(isRetailer ? [{ value: 'rates', label: t('Rate'), count: party.customRateCount }] : []),
+          { value: 'khata', label: t('Khata') },
           { value: 'orders', label: isRetailer ? 'Orders' : 'Purchases' },
         ]}
       />
@@ -175,7 +176,7 @@ export default function PartyDetail({ type }) {
         onConfirm={remove}
         loading={busy}
         title={`${party.name} ko delete karein?`}
-        message="Agar iska koi order, bill ya payment hai to delete nahi hoga — sirf block ho jayega, taaki purane record kharab na hon."
+        message={t('Agar iska koi order, bill ya payment hai to delete nahi hoga — sirf block ho jayega, taaki purane record kharab na hon.')}
         confirmLabel="Haan, delete karein"
       />
     </>
@@ -200,7 +201,7 @@ function DetailTab({ party, isRetailer }) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <Card>
-        <CardHeader title="Poori detail" />
+        <CardHeader title={t('Poori detail')} />
         <dl className="divide-y divide-slate-100">
           {rows.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 py-2.5 text-sm">
@@ -213,25 +214,25 @@ function DetailTab({ party, isRetailer }) {
 
       {isRetailer && (
         <Card>
-          <CardHeader title="App ka account" subtitle="Invite link se bana hua login" />
+          <CardHeader title={t('App ka account')} subtitle={t('Invite link se bana hua login')} />
           {party.linkedUser ? (
             <dl className="divide-y divide-slate-100">
               <div className="flex justify-between gap-4 py-2.5 text-sm">
-                <dt className="text-slate-500">Login naam</dt>
+                <dt className="text-slate-500">{t('Login naam')}</dt>
                 <dd className="font-medium text-slate-900">{party.linkedUser.name}</dd>
               </div>
               <div className="flex justify-between gap-4 py-2.5 text-sm">
-                <dt className="text-slate-500">Login number</dt>
+                <dt className="text-slate-500">{t('Login number')}</dt>
                 <dd className="font-medium text-slate-900">{formatPhone(party.linkedUser.phone)}</dd>
               </div>
               <div className="flex justify-between gap-4 py-2.5 text-sm">
-                <dt className="text-slate-500">Aakhri baar aaya</dt>
+                <dt className="text-slate-500">{t('Aakhri baar aaya')}</dt>
                 <dd className="font-medium text-slate-900">
                   {party.linkedUser.lastLoginAt ? formatDateTime(party.linkedUser.lastLoginAt) : 'Abhi tak nahi'}
                 </dd>
               </div>
               <div className="flex justify-between gap-4 py-2.5 text-sm">
-                <dt className="text-slate-500">Login chalu hai</dt>
+                <dt className="text-slate-500">{t('Login chalu hai')}</dt>
                 <dd>
                   <Badge tone={party.linkedUser.isActive ? 'green' : 'red'}>
                     {party.linkedUser.isActive ? 'Haan' : 'Nahi'}
@@ -244,10 +245,9 @@ function DetailTab({ party, isRetailer }) {
               <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                 <LogIn size={20} />
               </div>
-              <p className="text-sm font-medium text-slate-900">Abhi app pe nahi aaya</p>
+              <p className="text-sm font-medium text-slate-900">{t('Abhi app pe nahi aaya')}</p>
               <p className="mt-1 max-w-xs text-sm text-slate-500">
-                Isne invite link se account nahi banaya hai. Link WhatsApp pe bhej dein — isi
-                phone number se register karne par ye entry apne aap jud jayegi.
+                {t('Isne invite link se account nahi banaya hai. Link WhatsApp pe bhej dein — isi phone number se register karne par ye entry apne aap jud jayegi.')}
               </p>
             </div>
           )}

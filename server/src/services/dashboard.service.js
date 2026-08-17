@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { round2 } from '../utils/money.js';
 import { ORDER_STATUS, PARTY_TYPES } from '../config/constants.js';
 import { userCan } from '../middleware/auth.js';
+import { scopeMatch, scopeByParty, scopeParties } from '../utils/scope.js';
 import {
   Invoice, Order, Party, Item, Payment, Purchase, Notification,
 } from '../models/index.js';
@@ -39,8 +40,25 @@ export async function getWholesalerDashboard(businessId, user = null) {
   const bid = oid(businessId);
   const { todayStart, todayEnd, yStart, yEnd, monthStart, trendStart } = boundaries();
 
-  const saleSum = (from, to) => Invoice.aggregate([
-    { $match: { businessId: bid, isCancelled: false, invoiceDate: { $gte: from, $lte: to } } },
+  /*
+    "SIRF APNA KAAM" WALI HADD — dashboard pe bhi.
+
+    Ye jagah sabse aasani se chhoot jati hai. Bill ki list hadd me aa gayi, par
+    dashboard upar hi bata deta tha: "aaj ki sale ₹1,20,000", "sabse zyada
+    udhaar — Vinod Traders". Yaani jo list me chhupaya tha, wo pehli hi screen
+    pe jod ke roop me dikh raha tha.
+
+    Neeche har ginti do me se ek chhalni se guzarti hai:
+      partyScope  — party ki apni list (retailer, udhaar)
+      docScope    — bill/payment/order jaisi cheezein (party ya khud banayi hui)
+
+    Item aur stock par koi hadd nahi — maal poori dukaan ka ek hi hota hai.
+  */
+  const docScope = (match) => scopeMatch(match, businessId, user, { alsoMine: true });
+  const partyFilter = (filter) => scopeParties(filter, user);
+
+  const saleSum = async (from, to) => Invoice.aggregate([
+    { $match: await docScope({ businessId: bid, isCancelled: false, invoiceDate: { $gte: from, $lte: to } }) },
     { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$grandTotal' } } },
   ]);
 
@@ -57,21 +75,21 @@ export async function getWholesalerDashboard(businessId, user = null) {
     saleSum(monthStart, todayEnd),
 
     Payment.aggregate([
-      { $match: { businessId: bid, status: 'confirmed', direction: 'IN', date: { $gte: todayStart, $lte: todayEnd } } },
+      { $match: await docScope({ businessId: bid, status: 'confirmed', direction: 'IN', date: { $gte: todayStart, $lte: todayEnd } }) },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]),
     Payment.aggregate([
-      { $match: { businessId: bid, status: 'confirmed', direction: 'IN', date: { $gte: monthStart, $lte: todayEnd } } },
+      { $match: await docScope({ businessId: bid, status: 'confirmed', direction: 'IN', date: { $gte: monthStart, $lte: todayEnd } }) },
       { $group: { _id: null, amount: { $sum: '$amount' } } },
     ]),
 
     Order.aggregate([
-      { $match: { businessId: bid } },
+      { $match: await docScope({ businessId: bid }) },
       { $group: { _id: '$status', n: { $sum: 1 } } },
     ]),
 
     Party.aggregate([
-      { $match: { businessId: bid } },
+      { $match: partyFilter({ businessId: bid }) },
       {
         $group: {
           _id: null,
@@ -101,7 +119,7 @@ export async function getWholesalerDashboard(businessId, user = null) {
 
     // Pichhle 14 din ka sale — chart ke liye
     Invoice.aggregate([
-      { $match: { businessId: bid, isCancelled: false, invoiceDate: { $gte: trendStart, $lte: todayEnd } } },
+      { $match: await docScope({ businessId: bid, isCancelled: false, invoiceDate: { $gte: trendStart, $lte: todayEnd } }) },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
@@ -112,7 +130,7 @@ export async function getWholesalerDashboard(businessId, user = null) {
     ]),
 
     Invoice.aggregate([
-      { $match: { businessId: bid, isCancelled: false, invoiceDate: { $gte: monthStart } } },
+      { $match: await docScope({ businessId: bid, isCancelled: false, invoiceDate: { $gte: monthStart } }) },
       { $unwind: '$items' },
       {
         $group: {
@@ -124,7 +142,7 @@ export async function getWholesalerDashboard(businessId, user = null) {
     ]),
 
     Invoice.aggregate([
-      { $match: { businessId: bid, isCancelled: false, invoiceDate: { $gte: monthStart } } },
+      { $match: await docScope({ businessId: bid, isCancelled: false, invoiceDate: { $gte: monthStart } }) },
       {
         $group: {
           _id: '$partyId', name: { $first: '$partySnapshot.shopName' }, fallback: { $first: '$partySnapshot.name' },
@@ -134,15 +152,18 @@ export async function getWholesalerDashboard(businessId, user = null) {
       { $sort: { amount: -1 } }, { $limit: 5 },
     ]),
 
-    Invoice.find({ businessId, isCancelled: false }).sort({ createdAt: -1 }).limit(4)
+    Invoice.find(await scopeByParty({ businessId, isCancelled: false }, businessId, user, { alsoMine: true }))
+      .sort({ createdAt: -1 }).limit(4)
       .select('invoiceNo invoiceDate grandTotal partySnapshot createdAt').lean(),
-    Order.find({ businessId }).sort({ createdAt: -1 }).limit(4)
+    Order.find(await scopeByParty({ businessId }, businessId, user, { alsoMine: true }))
+      .sort({ createdAt: -1 }).limit(4)
       .select('orderNo status itemsTotal partyId createdAt').populate('partyId', 'name shopName').lean(),
-    Payment.find({ businessId, status: 'confirmed' }).sort({ createdAt: -1 }).limit(4)
+    Payment.find(await scopeByParty({ businessId, status: 'confirmed' }, businessId, user, { alsoMine: true }))
+      .sort({ createdAt: -1 }).limit(4)
       .select('paymentNo amount mode direction partyId createdAt').populate('partyId', 'name shopName').lean(),
 
-    Payment.countDocuments({ businessId, status: 'pending' }),
-    Party.countDocuments({ businessId, type: PARTY_TYPES.RETAILER, status: 'pending' }),
+    Payment.countDocuments(await scopeByParty({ businessId, status: 'pending' }, businessId, user, { alsoMine: true })),
+    Party.countDocuments(partyFilter({ businessId, type: PARTY_TYPES.RETAILER, status: 'pending' })),
   ]);
 
   const statusMap = Object.fromEntries(orderCounts.map((o) => [o._id, o.n]));

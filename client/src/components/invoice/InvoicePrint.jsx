@@ -1,5 +1,7 @@
 import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import PayBox from './PayBox';
+import { t } from '@/lib/i18n';
 
 const TAX_LABEL = { CGST_SGST: 'CGST + SGST', IGST: 'IGST', NONE: '' };
 
@@ -31,7 +33,7 @@ export default function InvoicePrint({ invoice }) {
     <div className="invoice-sheet mx-auto max-w-[820px] bg-white p-6 text-slate-900 sm:p-10">
       {invoice.isCancelled && (
         <div className="mb-4 rounded border-2 border-red-500 px-4 py-2 text-center text-lg font-bold text-red-600">
-          CANCELLED
+          {t('CANCELLED')}
         </div>
       )}
 
@@ -63,7 +65,7 @@ export default function InvoicePrint({ invoice }) {
       {/* ---- Party ---- */}
       <div className="grid grid-cols-2 gap-6 border-b border-slate-300 py-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Bill to</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('Bill to')}</p>
           <p className="mt-1 font-semibold">{p.shopName || p.name}</p>
           {p.shopName && p.name && <p className="text-xs text-slate-600">{p.name}</p>}
           {pAddr && <p className="mt-0.5 text-xs leading-snug text-slate-600">{pAddr}</p>}
@@ -78,7 +80,7 @@ export default function InvoicePrint({ invoice }) {
               <p className="mt-0.5">Tax: <strong>{TAX_LABEL[invoice.taxType]}</strong></p>
             </>
           )}
-          {invoice.orderId && <p className="mt-0.5">Order ke against</p>}
+          {invoice.orderId && <p className="mt-0.5">{t('Order ke against')}</p>}
         </div>
       </div>
 
@@ -102,15 +104,15 @@ export default function InvoicePrint({ invoice }) {
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-2 font-semibold">#</th>
-            <th className="py-2 font-semibold">Item</th>
+            <th className="py-2 font-semibold">{t('Item')}</th>
             {gst && <th className="py-2 font-semibold">HSN</th>}
-            <th className="py-2 text-right font-semibold">Qty</th>
-            <th className="py-2 text-right font-semibold">Rate</th>
-            {gst && <th className="py-2 text-right font-semibold">Taxable</th>}
+            <th className="py-2 text-right font-semibold">{t('Qty')}</th>
+            <th className="py-2 text-right font-semibold">{t('Rate')}</th>
+            {gst && <th className="py-2 text-right font-semibold">{t('Taxable')}</th>}
             {gst && !isIgst && <th className="py-2 text-right font-semibold">CGST</th>}
             {gst && !isIgst && <th className="py-2 text-right font-semibold">SGST</th>}
             {gst && isIgst && <th className="py-2 text-right font-semibold">IGST</th>}
-            <th className="py-2 text-right font-semibold">Amount</th>
+            <th className="py-2 text-right font-semibold">{t('Amount')}</th>
           </tr>
         </thead>
         <tbody>
@@ -164,26 +166,26 @@ export default function InvoicePrint({ invoice }) {
           ki bas itna hi hai. Kaagaz pe ye line nahi chhapti. */}
       {gst && (
         <p className="no-print mt-1 text-[10px] text-slate-400 sm:hidden">
-          GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →
+          {t('GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →')}
         </p>
       )}
 
       {/* ---- Totals ---- */}
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:justify-between">
         <div className="flex-1 text-xs">
-          <p className="font-semibold">Amount in words</p>
+          <p className="font-semibold">{t('Amount in words')}</p>
           <p className="mt-0.5 text-slate-700">{invoice.amountInWords}</p>
 
           {gst && invoice.hsnSummary?.length > 1 && (
             <div className="mt-4">
-              <p className="font-semibold">HSN wise summary</p>
+              <p className="font-semibold">{t('HSN wise summary')}</p>
               <table className="mt-1 w-full border-collapse text-[10px]">
                 <thead>
                   <tr className="border-b border-slate-400 text-left">
                     <th className="py-1">HSN</th>
-                    <th className="py-1 text-right">Taxable</th>
-                    <th className="py-1 text-right">Rate</th>
-                    <th className="py-1 text-right">Tax</th>
+                    <th className="py-1 text-right">{t('Taxable')}</th>
+                    <th className="py-1 text-right">{t('Rate')}</th>
+                    <th className="py-1 text-right">{t('Tax')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -206,11 +208,11 @@ export default function InvoicePrint({ invoice }) {
         <div className="w-full sm:w-72">
           <table className="w-full text-xs">
             <tbody>
-              <Row label="Kul maal" value={formatMoney(invoice.subTotal)} />
+              <Row label={t('Kul maal')} value={formatMoney(invoice.subTotal)} />
               {invoice.discountTotal > 0 && (
-                <Row label="Discount" value={`− ${formatMoney(invoice.discountTotal)}`} />
+                <Row label={t('Discount')} value={`− ${formatMoney(invoice.discountTotal)}`} />
               )}
-              {gst && <Row label="Taxable value" value={formatMoney(invoice.taxableTotal)} />}
+              {gst && <Row label={t('Taxable value')} value={formatMoney(invoice.taxableTotal)} />}
               {gst && !isIgst && invoice.cgstTotal > 0 && (
                 <>
                   <Row label="CGST" value={formatMoney(invoice.cgstTotal)} />
@@ -221,19 +223,19 @@ export default function InvoicePrint({ invoice }) {
                 <Row label="IGST" value={formatMoney(invoice.igstTotal)} />
               )}
               {invoice.roundOff !== 0 && (
-                <Row label="Round off" value={formatMoney(invoice.roundOff)} />
+                <Row label={t('Round off')} value={formatMoney(invoice.roundOff)} />
               )}
               <tr className="border-t-2 border-slate-800">
-                <td className="py-2 text-sm font-bold">Kul</td>
+                <td className="py-2 text-sm font-bold">{t('Kul')}</td>
                 <td className="tabular py-2 text-right text-sm font-bold">
                   {formatMoney(invoice.grandTotal)}
                 </td>
               </tr>
               {invoice.paidAmount > 0 && (
-                <Row label="Diya" value={formatMoney(invoice.paidAmount)} />
+                <Row label={t('Diya')} value={formatMoney(invoice.paidAmount)} />
               )}
               <tr className="border-t border-slate-300">
-                <td className="py-1.5 font-semibold">Baaki</td>
+                <td className="py-1.5 font-semibold">{t('Baaki')}</td>
                 <td className="tabular py-1.5 text-right font-semibold">
                   {formatMoney(invoice.dueAmount)}
                 </td>
@@ -243,13 +245,16 @@ export default function InvoicePrint({ invoice }) {
         </div>
       </div>
 
+      {/* ---- Paisa kahan bhejein (QR + bank) ---- */}
+      <PayBox invoice={invoice} />
+
       {/* ---- Footer ---- */}
       <div className="mt-8 flex items-end justify-between gap-6 border-t border-slate-300 pt-4">
         <div className="flex-1 text-[10px] leading-snug text-slate-600">
           {invoice.notes && <p className="mb-2">{invoice.notes}</p>}
           {invoice.termsAndConditions && (
             <>
-              <p className="font-semibold text-slate-700">Terms &amp; Conditions</p>
+              <p className="font-semibold text-slate-700">{t('Terms & Conditions')}</p>
               <p className="whitespace-pre-line">{invoice.termsAndConditions}</p>
             </>
           )}

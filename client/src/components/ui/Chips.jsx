@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 // Ek line me filter buttons — "Sab / Low stock / Khatam"
 export default function Chips({ options, value, onChange, className }) {
@@ -16,7 +17,7 @@ export default function Chips({ options, value, onChange, className }) {
               : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
           )}
         >
-          {opt.label}
+          {t(opt.label)}
           {opt.count !== undefined && opt.count > 0 && (
             <span className={cn('ml-1.5 text-xs', value === opt.value ? 'text-brand-600' : 'text-slate-400')}>
               {opt.count}

@@ -108,3 +108,24 @@ export async function canSeeDoc(doc, businessId, user) {
 
 /** Aggregation ke `$match` me lagane ke liye (id ko ObjectId chahiye) */
 export const toObjectIds = (ids) => ids.map((id) => new mongoose.Types.ObjectId(String(id)));
+
+/**
+ * Wahi hadd, par aggregation ke `$match` ke liye.
+ *
+ * `scopeByParty` `find()` ke liye hai — waha id string bhi chal jati hai.
+ * Aggregation me nahi chalti: `$match` bina type badle milata hai, isliye
+ * string id kabhi ObjectId se match hi nahi hoti aur nateeja CHUP-CHAAP khali
+ * aa jata hai. Isi farak ke liye ye alag function hai.
+ *
+ * Dhyan: report aur dashboard dono isi se hadd me aate hain. Naya aggregation
+ * likhein to yahi lagana hai — warna ginti poori dukaan ki aa jayegi jabki
+ * list sirf apni dikhegi, aur wo aur bhi buri halat hai (aadha sach).
+ */
+export async function scopeMatch(match, businessId, user, { alsoMine = false } = {}) {
+  if (!isScoped(user)) return match;
+
+  const or = [{ partyId: { $in: toObjectIds(await ownPartyIds(businessId, user)) } }];
+  if (alsoMine) or.push({ createdBy: new mongoose.Types.ObjectId(String(user._id)) });
+
+  return { ...match, $and: [...(match.$and || []), { $or: or }] };
+}

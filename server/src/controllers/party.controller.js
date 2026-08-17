@@ -8,6 +8,10 @@ export const list = asyncHandler(async (req, res) => {
   return res.json({ success: true, message: 'OK', data: parties, meta });
 });
 
+/** Add Sale ka pehla kadam — number daalo, purana graahak nikle ya naya bane */
+export const lookup = asyncHandler(async (req, res) =>
+  ok(res, await service.lookupByPhone(req.businessId, req.query, req.user)));
+
 export const stats = asyncHandler(async (req, res) =>
   ok(res, await service.getStats(req.businessId, req.query.type || 'retailer', req.user)));
 

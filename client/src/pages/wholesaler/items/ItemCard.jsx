@@ -2,6 +2,7 @@ import { Package, MoreVertical } from 'lucide-react';
 import { formatMoney, formatQty } from '@/lib/format';
 import { Badge } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 // Mobile ke liye — table ki jagah card
 export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) {
@@ -38,7 +39,7 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) 
           <button
             onClick={() => onEdit(item)}
             className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100"
-            aria-label="Edit"
+            aria-label={t('Edit')}
           >
             <MoreVertical size={16} />
           </button>
@@ -53,7 +54,7 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) 
           <span className="tabular text-sm text-slate-700">
             {formatMoney(item.wholesalePrice || item.salePrice)}
           </span>
-          {!item.visibleToRetailers && <Badge tone="slate">Retailer se chhupa</Badge>}
+          {!item.visibleToRetailers && <Badge tone="slate">{t('Retailer se chhupa')}</Badge>}
         </div>
       </div>
     </div>

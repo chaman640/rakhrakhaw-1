@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft, LogOut, ChevronDown, Store } from 'lucide-react';
+import { ArrowLeft, LogOut, ChevronDown, Store, UserCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import NotificationBell from './NotificationBell';
+import { t } from '@/lib/i18n';
 
 /**
  * Peeche jaane ko kuch hai bhi ya nahi.
@@ -58,7 +59,7 @@ export default function Header({ title, showBack, backTo }) {
       {showBack ? (
         <button
           onClick={goBack}
-          aria-label="Peeche jayein"
+          aria-label={t('Peeche jayein')}
           // -ml-1 + p-2 = tap ka ghera bada, par dikhne me chipka hua nahi
           className="-ml-1 shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 active:bg-slate-200 focus-ring"
         >
@@ -67,7 +68,11 @@ export default function Header({ title, showBack, backTo }) {
       ) : (
         // Root page pe dukaan ki pehchan — mobile pe sidebar dikhti hi nahi,
         // to user ko pata to chale ki wo kis dukaan me hai
-        <div className="flex min-w-0 shrink-0 items-center gap-2 lg:hidden">
+        <button
+          onClick={() => navigate('/profile')}
+          aria-label={t('Profile')}
+          className="flex min-w-0 shrink-0 items-center gap-2 rounded-lg focus-ring lg:hidden"
+        >
           {business?.logoUrl ? (
             <img src={business.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
           ) : (
@@ -75,19 +80,43 @@ export default function Header({ title, showBack, backTo }) {
               <Store size={16} />
             </div>
           )}
-        </div>
+        </button>
       )}
 
-      <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 sm:text-base">
-        {title || business?.name || 'Rakh Rakhav'}
-      </h2>
+      {/*
+        Upar kya likha ho — page ka naam ya dukaan ka naam?
+
+        Jahan se peeche jaana hai (sub-page), wahan PAGE ka naam — aadmi ko
+        pata rehna chahiye ki wo kis cheez ke andar hai.
+
+        Jo page neeche wali patti me hai (Home, Dashboard...), wahan DUKAAN ka
+        naam — kyunki wahan "main kahan hoon" wo patti khud bata rahi hai, aur
+        us jagah dukaan ka naam kaam ka hai: wahi Profile ka darwaza hai.
+        Address ya UPI badalne ke liye pehle Settings kholo phir tab dhoondho —
+        wo teen kadam the. Ab jo naam saamne likha hai, wahi rasta hai.
+      */}
+      {showBack ? (
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 sm:text-base">
+          {title}
+        </h2>
+      ) : (
+        <button
+          onClick={() => navigate('/profile')}
+          // `self-stretch` — button poori patti jitna uncha. Sirf likhaayi
+          // jitna rakhne pe wo 20px ka ho jata tha, aur 20px pe ungli aksar
+          // chook jati hai (44px se kam kuch bhi tap ke liye chhota hai).
+          className="flex min-w-0 flex-1 items-center self-stretch rounded-lg text-left text-sm font-semibold text-slate-800 hover:text-brand-700 focus-ring sm:text-base"
+        >
+          <span className="truncate">{business?.name || 'Rakh Rakhav'}</span>
+        </button>
+      )}
 
       <NotificationBell />
 
       <div className="relative shrink-0">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Apna account"
+          aria-label={t('Apna account')}
           className="flex items-center gap-1 rounded-lg py-1.5 pl-1.5 pr-1 hover:bg-slate-100 focus-ring sm:gap-2 sm:pr-2"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
@@ -105,10 +134,16 @@ export default function Header({ title, showBack, backTo }) {
                 <p className="truncate text-xs text-slate-500">{user?.phone}</p>
               </div>
               <button
+                onClick={() => { setMenuOpen(false); navigate('/profile'); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <UserCircle size={15} /> {t('Profile')}
+              </button>
+              <button
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
               >
-                <LogOut size={15} /> Logout
+                <LogOut size={15} /> {t('Logout')}
               </button>
             </div>
           </>

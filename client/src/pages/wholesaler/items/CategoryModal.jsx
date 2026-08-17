@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Check, X, Tag } from 'lucide-react';
 import api from '@/lib/api';
 import { Modal, Button, Input, Badge, Spinner, ConfirmModal, useToast, EmptyState } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export default function CategoryModal({ open, onClose, onChanged }) {
   const toast = useToast();
@@ -79,20 +80,20 @@ export default function CategoryModal({ open, onClose, onChanged }) {
         open={open}
         onClose={onClose}
         size="md"
-        title="Categories"
-        description="Items ko group karne ke liye"
-        footer={<Button variant="secondary" onClick={onClose}>Band karein</Button>}
+        title={t('Categories')}
+        description={t('Items ko group karne ke liye')}
+        footer={<Button variant="secondary" onClick={onClose}>{t('Band karein')}</Button>}
       >
         <div className="space-y-4">
           <div className="flex items-end gap-2">
             <Input
-              label="Nayi category"
-              placeholder="Bearings"
+              label={t('Nayi category')}
+              placeholder={t('Bearings')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
             />
-            <Button icon={Plus} onClick={add} loading={adding}>Add</Button>
+            <Button icon={Plus} onClick={add} loading={adding}>{t('Add')}</Button>
           </div>
 
           {loading ? (
@@ -100,8 +101,8 @@ export default function CategoryModal({ open, onClose, onChanged }) {
           ) : !data.categories.length ? (
             <EmptyState
               icon={Tag}
-              title="Koi category nahi"
-              message="Bearings, Chains, Plugs — jaise apne maal ke hisaab se bana lein."
+              title={t('Koi category nahi')}
+              message={t('Bearings, Chains, Plugs — jaise apne maal ke hisaab se bana lein.')}
             />
           ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
@@ -130,14 +131,14 @@ export default function CategoryModal({ open, onClose, onChanged }) {
                       <button
                         onClick={() => { setEditingId(c._id); setEditName(c.name); }}
                         className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        aria-label="Naam badlein"
+                        aria-label={t('Naam badlein')}
                       >
                         <Pencil size={15} />
                       </button>
                       <button
                         onClick={() => setConfirmDelete(c)}
                         className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        aria-label="Hatayein"
+                        aria-label={t('Hatayein')}
                       >
                         <Trash2 size={15} />
                       </button>

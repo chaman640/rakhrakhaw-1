@@ -7,6 +7,9 @@ export { default as Table } from './Table';
 export { default as Card, CardHeader, StatCard } from './Card';
 export { default as Badge, ORDER_STATUS_TONE } from './Badge';
 export { default as Spinner } from './Spinner';
+export {
+  default as Skeleton, SkeletonText, SkeletonRows, SkeletonCards, SkeletonTable, RefreshBar,
+} from './Skeleton';
 export { default as EmptyState } from './EmptyState';
 export { default as PageHeader } from './PageHeader';
 export { default as Switch } from './Switch';

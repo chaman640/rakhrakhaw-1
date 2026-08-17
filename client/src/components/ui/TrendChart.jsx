@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { formatMoney } from '@/lib/format';
+import { t } from '@/lib/i18n';
 
 /**
  * 14 din ka sale — ek hi series, isliye ek hi rang aur koi legend nahi
@@ -70,11 +71,13 @@ export default function TrendChart({
       ) : (
         <div className="relative pl-10" style={{ height }}>
           {/* gridlines + y ticks */}
-          {ticks.map((t, i) => (
-            <div key={t} className="absolute inset-x-0 flex items-center"
+          {/* naam `tick` — `t` nahi. `t` ab anuvaad ka function hai, use dhak dena
+              yahan aage chal kar bahut mushkil bug banata */}
+          {ticks.map((tick, i) => (
+            <div key={tick} className="absolute inset-x-0 flex items-center"
               style={{ left: 0, top: `${(i / (ticks.length - 1)) * 100}%` }}>
               <span className="tabular w-9 shrink-0 pr-2 text-right text-[10px] leading-none text-slate-400">
-                {shortMoney(t)}
+                {shortMoney(tick)}
               </span>
               <span className="h-px flex-1 bg-slate-200" />
             </div>
@@ -117,7 +120,7 @@ export default function TrendChart({
                   />
 
                   {isHover && (
-                    <div className="pointer-events-none absolute bottom-full z-20 mb-1 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-center shadow-lg">
+                    <div className="tip pointer-events-none absolute bottom-full z-20 mb-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-center shadow-lg">
                       <p className="text-[11px] font-medium text-white">{formatMoney(d.amount)}</p>
                       <p className="text-[10px] text-slate-300">{d.label} · {d.bills} bill</p>
                     </div>
@@ -145,14 +148,14 @@ export default function TrendChart({
       {hasData && (
         <details className="mt-3">
           <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">
-            Number me dekhein
+            {t('Number me dekhein')}
           </summary>
           <table id={tableId} className="mt-2 w-full text-xs">
             <thead>
               <tr className="text-slate-500">
-                <th className="py-1 text-left font-medium">Date</th>
-                <th className="py-1 text-right font-medium">Bill</th>
-                <th className="py-1 text-right font-medium">Sale</th>
+                <th className="py-1 text-left font-medium">{t('Date')}</th>
+                <th className="py-1 text-right font-medium">{t('Bill')}</th>
+                <th className="py-1 text-right font-medium">{t('Sale')}</th>
               </tr>
             </thead>
             <tbody>

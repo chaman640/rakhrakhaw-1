@@ -5,6 +5,7 @@ import {
 import api from '@/lib/api';
 import { downloadText } from '@/lib/download';
 import { Card, CardHeader, Button, Spinner, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const CSV_KINDS = [
   { kind: 'parties', label: 'Retailers aur suppliers', note: 'Naam, phone, address, balance' },
@@ -80,8 +81,8 @@ export default function BackupTab() {
       {/* ---- Poora backup ---- */}
       <Card className="border-brand-200 bg-brand-50/30">
         <CardHeader
-          title="Poora backup"
-          subtitle="Aapka saara data ek file me — mahine me ek baar le lena achhi aadat hai"
+          title={t('Poora backup')}
+          subtitle={t('Aapka saara data ek file me — mahine me ek baar le lena achhi aadat hai')}
         />
 
         {summary && (
@@ -96,14 +97,13 @@ export default function BackupTab() {
         )}
 
         <Button icon={HardDriveDownload} loading={busy === 'full'} onClick={downloadBackup} size="lg">
-          Poora data download karein
+          {t('Poora data download karein')}
         </Button>
 
         <div className="mt-4 flex items-start gap-2 rounded-lg bg-white px-3 py-2.5 text-xs text-slate-600">
           <ShieldCheck size={14} className="mt-0.5 shrink-0 text-slate-400" />
           <span>
-            Ye file aapke computer me download hogi — kahin upload nahi hoti. Password kabhi is file
-            me nahi jata. File ko Google Drive ya pendrive me rakh dijiye.
+            {t('Ye file aapke computer me download hogi — kahin upload nahi hoti. Password kabhi is file me nahi jata. File ko Google Drive ya pendrive me rakh dijiye.')}
           </span>
         </div>
       </Card>
@@ -112,8 +112,8 @@ export default function BackupTab() {
       <Card padding={false}>
         <CardHeader
           className="p-5 pb-0"
-          title="Excel me kholne ke liye"
-          subtitle="Alag alag CSV — CA ko dena ho ya khud dekhna ho"
+          title={t('Excel me kholne ke liye')}
+          subtitle={t('Alag alag CSV — CA ko dena ho ya khud dekhna ho')}
         />
         <div className="mt-3">
           {CSV_KINDS.map((c) => (
@@ -136,18 +136,15 @@ export default function BackupTab() {
       </Card>
 
       <Card>
-        <CardHeader title="Ye data kahan rehta hai" />
+        <CardHeader title={t('Ye data kahan rehta hai')} />
         <div className="flex items-start gap-3 text-sm text-slate-600">
           <Database size={16} className="mt-0.5 shrink-0 text-slate-400" />
           <div className="space-y-2">
             <p>
-              Aapka saara data aapke apne MongoDB database me hai — hamare paas uski koi copy nahi.
-              Iska matlab: database ka backup on rakhna aapki zimmedari hai.
+              {t('Aapka saara data aapke apne MongoDB database me hai — hamare paas uski koi copy nahi. Iska matlab: database ka backup on rakhna aapki zimmedari hai.')}
             </p>
             <p className="text-xs text-slate-500">
-              MongoDB Atlas use kar rahe hain to wahan settings me automatic backup on kar dijiye.
-              Uske alawa mahine me ek baar upar wali JSON file bhi le liya karein — dono alag alag
-              cheezein hain.
+              {t('MongoDB Atlas use kar rahe hain to wahan settings me automatic backup on kar dijiye. Uske alawa mahine me ek baar upar wali JSON file bhi le liya karein — dono alag alag cheezein hain.')}
             </p>
           </div>
         </div>

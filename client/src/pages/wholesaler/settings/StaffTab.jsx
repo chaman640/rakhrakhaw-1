@@ -11,6 +11,7 @@ import {
   Spinner, EmptyState, Switch, CopyBox, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 /**
  * SUB-ACCOUNT — dukaan ke log aur unke haq.
@@ -97,17 +98,17 @@ export default function StaffTab() {
       <Card padding={false}>
         <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Dukaan ke log</h3>
+            <h3 className="text-base font-semibold text-slate-900">{t('Dukaan ke log')}</h3>
             <p className="mt-0.5 text-sm text-slate-500">
-              Har aadmi ka apna login, apni ijazat aur apni hadd
+              {t('Har aadmi ka apna login, apni ijazat aur apni hadd')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" icon={Link2} onClick={() => setInviteOpen(true)}>
-              Link se bulayein
+              {t('Link se bulayein')}
             </Button>
             <Button size="sm" icon={UserPlus} onClick={() => { setEditing(null); setFormOpen(true); }}>
-              Naya aadmi
+              {t('Naya aadmi')}
             </Button>
           </div>
         </div>
@@ -121,8 +122,8 @@ export default function StaffTab() {
                   <Badge tone={row.isOwner ? 'brand' : row.staffRole === 'admin' ? 'blue' : 'slate'}>
                     {row.staffRoleLabel}
                   </Badge>
-                  {!row.isActive && <Badge tone="red">Band</Badge>}
-                  {row.scope === 'own' && <Badge tone="amber">Sirf apna kaam</Badge>}
+                  {!row.isActive && <Badge tone="red">{t('Band')}</Badge>}
+                  {row.scope === 'own' && <Badge tone="amber">{t('Sirf apna kaam')}</Badge>}
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {formatPhone(row.phone)}
@@ -171,8 +172,8 @@ export default function StaffTab() {
       {activeInvites.length > 0 && (
         <Card padding={false}>
           <CardHeader
-            title="Bheji hui link"
-            subtitle="Jo abhi tak istemal nahi hui"
+            title={t('Bheji hui link')}
+            subtitle={t('Jo abhi tak istemal nahi hui')}
             className="p-5 pb-0"
           />
           <div className="px-5 pb-2">
@@ -190,7 +191,7 @@ export default function StaffTab() {
                   </p>
                 </div>
                 <Button size="sm" variant="ghost" icon={X} onClick={() => cancelInvite(inv._id)}>
-                  Rad karein
+                  {t('Rad karein')}
                 </Button>
               </div>
             ))}
@@ -205,13 +206,13 @@ export default function StaffTab() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Apna password</h3>
+            <h3 className="text-base font-semibold text-slate-900">{t('Apna password')}</h3>
             <p className="mt-0.5 text-sm text-slate-500">
-              Sirf aapka apna — kisi aur ka yahan se nahi badalta
+              {t('Sirf aapka apna — kisi aur ka yahan se nahi badalta')}
             </p>
           </div>
           <Button size="sm" variant="secondary" icon={KeyRound} onClick={() => setPwdOpen(true)}>
-            Password badlein
+            {t('Password badlein')}
           </Button>
         </div>
       </Card>
@@ -234,20 +235,20 @@ export default function StaffTab() {
         onCreated={(inv) => { setInviteOpen(false); setNewLink(inv); load(); }}
       />
 
-      <Modal open={Boolean(newLink)} onClose={() => setNewLink(null)} title="Link tayyar hai">
+      <Modal open={Boolean(newLink)} onClose={() => setNewLink(null)} title={t('Link tayyar hai')}>
         <p className="text-sm text-slate-600">
           Ye link {newLink?.staffRoleLabel} ke liye hai. Jo bhi ise kholega, wahi ijazat
           le kar jud jayega.
         </p>
         <div className="mt-3">
-          <CopyBox label="Link" value={newLink?.link || ''} />
+          <CopyBox label={t('Link')} value={newLink?.link || ''} />
         </div>
         <div className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
-          <strong>Ye link ab dobara nahi dikhegi.</strong> Abhi copy karke WhatsApp pe bhej
+          <strong>{t('Ye link ab dobara nahi dikhegi.')}</strong> Abhi copy karke WhatsApp pe bhej
           dijiye. Kho jaye to nayi bana lena — purani apne aap bekaar ho jayegi.
         </div>
         <div className="mt-4 flex justify-end">
-          <Button onClick={() => setNewLink(null)}>Theek hai</Button>
+          <Button onClick={() => setNewLink(null)}>{t('Theek hai')}</Button>
         </div>
       </Modal>
 
@@ -256,8 +257,8 @@ export default function StaffTab() {
         onClose={() => setRemoving(null)}
         onConfirm={doRemove}
         title={`${removing?.name || ''} ko hatayein?`}
-        message="Inka login turant band ho jayega. Inke naam wale retailer sabke ho jayenge — data kuch nahi mitega."
-        confirmText="Haan, hatayein"
+        message={t('Inka login turant band ho jayega. Inke naam wale retailer sabke ho jayenge — data kuch nahi mitega.')}
+        confirmText={t('Haan, hatayein')}
         danger
       />
     </div>
@@ -305,7 +306,7 @@ function PermissionMatrix({ modules, value, onChange }) {
         return (
           <div key={m.key} className="p-3">
             <p className={cn('mb-2 text-sm font-medium', anyOn ? 'text-slate-900' : 'text-slate-400')}>
-              {m.label}
+              {t(m.label)}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {m.actions.map((a) => {
@@ -324,7 +325,7 @@ function PermissionMatrix({ modules, value, onChange }) {
                         : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                     )}
                   >
-                    {a.label}
+                    {t(a.label)}
                   </button>
                 );
               })}
@@ -366,14 +367,13 @@ function ScopeAndLimits({ form, setForm, scopes }) {
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
               )}
             >
-              {s.label}
+              {t(s.label)}
             </button>
           ))}
         </div>
         {form.scope === 'own' && (
           <p className="mt-1.5 text-xs text-slate-500">
-            Sirf wahi retailer dikhenge jo inke naam hain ya jo inhone khud jode.
-            Unke order, bill aur khata bhi apne aap isi hadd me aa jayenge.
+            {t('Sirf wahi retailer dikhenge jo inke naam hain ya jo inhone khud jode. Unke order, bill aur khata bhi apne aap isi hadd me aa jayenge.')}
           </p>
         )}
       </div>
@@ -384,27 +384,27 @@ function ScopeAndLimits({ form, setForm, scopes }) {
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Input
-            label="Zyada se zyada discount %"
+            label={t('Zyada se zyada discount %')}
             type="number" min="0" max="100" inputMode="decimal"
             value={form.limits.maxDiscountPercent ?? ''}
             onChange={(e) => setLimit('maxDiscountPercent')(num(e))}
-            placeholder="koi hadd nahi"
-            hint="Khali chhodein to jitna marzi"
+            placeholder={t('koi hadd nahi')}
+            hint={t('Khali chhodein to jitna marzi')}
           />
           <Input
-            label="Bill isse bada nahi"
+            label={t('Bill isse bada nahi')}
             type="number" min="0" inputMode="decimal"
             value={form.limits.maxInvoiceAmount ?? ''}
             onChange={(e) => setLimit('maxInvoiceAmount')(num(e))}
-            placeholder="koi hadd nahi"
-            hint="₹ me. Khali chhodein to koi hadd nahi"
+            placeholder={t('koi hadd nahi')}
+            hint={t('₹ me. Khali chhodein to koi hadd nahi')}
           />
         </div>
         <div className="mt-3">
           <Switch
             id="credit"
-            label="Udhaar pe bill bana sakte hain"
-            description="Band karein to poora paisa usi waqt lena hoga"
+            label={t('Udhaar pe bill bana sakte hain')}
+            description={t('Band karein to poora paisa usi waqt lena hoga')}
             checked={form.limits.canSellOnCredit !== false}
             onChange={(v) => setLimit('canSellOnCredit')(v)}
           />
@@ -500,26 +500,26 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
   }
 
   const tabs = [
-    { key: 'role', label: 'Kaun hai' },
+    { key: 'role', label: t('Kaun hai') },
     { key: 'perms', label: `Ijazat (${form.permissions.length})` },
-    { key: 'limits', label: 'Hadd' },
+    { key: 'limits', label: t('Hadd') },
   ];
 
   return (
     <Modal open={open} onClose={onClose} title={staff ? `${staff.name} ki setting` : 'Naya aadmi'} size="lg">
       <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
-        {tabs.map((t) => (
+        {tabs.map((tb) => (
           <button
-            key={t.key}
+            key={tb.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => setTab(tb.key)}
             className={cn(
               'relative shrink-0 px-4 py-2.5 text-sm font-medium transition-colors focus-ring',
-              tab === t.key ? 'text-brand-700' : 'text-slate-500 hover:text-slate-800'
+              tab === tb.key ? 'text-brand-700' : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            {t.label}
-            {tab === t.key && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-600" />}
+            {t(tb.label)}
+            {tab === tb.key && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-600" />}
           </button>
         ))}
       </div>
@@ -527,11 +527,11 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
       {tab === 'role' && (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Naam" value={form.name}
+            <Input label={t('Naam')} value={form.name}
               onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} required />
-            <Input label="Phone number" value={form.phone}
+            <Input label={t('Phone number')} value={form.phone}
               onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-              hint="Isse hi login karenge" required />
+              hint={t('Isse hi login karenge')} required />
           </div>
 
           <Input
@@ -542,7 +542,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
           />
 
           <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700">Role</p>
+            <p className="mb-1.5 text-sm font-medium text-slate-700">{t('Role')}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {roles.map((r) => {
                 const locked = r.value === 'admin' && !canPickAdmin;
@@ -561,10 +561,10 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
                       locked && 'cursor-not-allowed opacity-50'
                     )}
                   >
-                    <p className="text-sm font-medium text-slate-900">{r.label}</p>
+                    <p className="text-sm font-medium text-slate-900">{t(r.label)}</p>
                     <p className="mt-0.5 text-xs text-slate-500">{r.hint}</p>
                     {locked && (
-                      <p className="mt-1 text-xs text-amber-700">Sirf malik bana sakta hai</p>
+                      <p className="mt-1 text-xs text-amber-700">{t('Sirf malik bana sakta hai')}</p>
                     )}
                   </button>
                 );
@@ -572,8 +572,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
             </div>
             {currentRole && (
               <p className="mt-2 text-xs text-slate-500">
-                Role chunte hi uski aam ijazat lag jati hai — &quot;Ijazat&quot; me jaakar
-                ghata-badha sakte hain.
+                {t('Role chunte hi uski aam ijazat lag jati hai — "Ijazat" me jaakar ghata-badha sakte hain.')}
               </p>
             )}
           </div>
@@ -585,8 +584,8 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
           <div className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
             <ShieldCheck size={14} className="mt-0.5 shrink-0 text-brand-600" />
             <p>
-              Har kaam alag hai. Sirf <strong>Dekhna</strong> dena ho to bas wahi tick
-              karein — CA ke liye yahi chahiye hota hai. <strong>Dekhna</strong> hatate hi
+              Har kaam alag hai. Sirf <strong>{t('Dekhna')}</strong> dena ho to bas wahi tick
+              karein — CA ke liye yahi chahiye hota hai. <strong>{t('Dekhna')}</strong> hatate hi
               us hisse ka baaki sab apne aap hat jata hai.
             </p>
           </div>
@@ -603,7 +602,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
       )}
 
       <div className="mt-5 flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <Button variant="secondary" onClick={onClose}>Rehne dein</Button>
+        <Button variant="secondary" onClick={onClose}>{t('Rehne dein')}</Button>
         <Button loading={busy} onClick={save}
           disabled={!form.name || !form.phone || (!staff && !form.password)}>
           {staff ? 'Save karein' : 'Login banayein'}
@@ -663,22 +662,21 @@ function InviteModal({ open, onClose, meta, onCreated }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Link se bulayein">
+    <Modal open={open} onClose={onClose} title={t('Link se bulayein')}>
       <p className="text-sm text-slate-600">
-        Link bhej dijiye — aane wala khud apna naam aur password banayega.
-        Aapko uska password kabhi pata nahi chalega.
+        {t('Link bhej dijiye — aane wala khud apna naam aur password banayega. Aapko uska password kabhi pata nahi chalega.')}
       </p>
 
       <div className="mt-4 space-y-4">
         <Input
-          label="Kis liye (sirf aapki yaad ke liye)"
+          label={t('Kis liye (sirf aapki yaad ke liye)')}
           value={form.label}
           onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
-          placeholder="Ramu — naya salesman"
+          placeholder={t('Ramu — naya salesman')}
         />
 
         <div>
-          <p className="mb-1.5 text-sm font-medium text-slate-700">Role</p>
+          <p className="mb-1.5 text-sm font-medium text-slate-700">{t('Role')}</p>
           <Select
             value={form.staffRole}
             onChange={(e) => pickRole(e.target.value)}
@@ -692,14 +690,14 @@ function InviteModal({ open, onClose, meta, onCreated }) {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Input
-            label="Sirf is number ke liye (marzi se)"
+            label={t('Sirf is number ke liye (marzi se)')}
             value={form.phone}
             onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
             placeholder="9876543210"
-            hint="Bhar dein to sirf yahi number jud payega"
+            hint={t('Bhar dein to sirf yahi number jud payega')}
           />
           <Input
-            label="Kitne din chalegi"
+            label={t('Kitne din chalegi')}
             type="number" min="1" max="30"
             value={form.validDays}
             onChange={(e) => setForm((s) => ({ ...s, validDays: e.target.value }))}
@@ -708,8 +706,8 @@ function InviteModal({ open, onClose, meta, onCreated }) {
       </div>
 
       <div className="mt-5 flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <Button variant="secondary" onClick={onClose}>Rehne dein</Button>
-        <Button loading={busy} icon={Link2} onClick={create}>Link banayein</Button>
+        <Button variant="secondary" onClick={onClose}>{t('Rehne dein')}</Button>
+        <Button loading={busy} icon={Link2} onClick={create}>{t('Link banayein')}</Button>
       </div>
     </Modal>
   );
@@ -742,26 +740,26 @@ function ChangePasswordModal({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Password badlein">
+    <Modal open={open} onClose={onClose} title={t('Password badlein')}>
       <div className="space-y-4">
         <Input
-          label="Purana password" type="password"
+          label={t('Purana password')} type="password"
           value={form.currentPassword}
           onChange={(e) => setForm((s) => ({ ...s, currentPassword: e.target.value }))}
         />
         <Input
-          label="Naya password" type="password"
+          label={t('Naya password')} type="password"
           value={form.newPassword}
           onChange={(e) => setForm((s) => ({ ...s, newPassword: e.target.value }))}
-          hint="Kam se kam 6 character"
+          hint={t('Kam se kam 6 character')}
         />
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       </div>
       <div className="mt-5 flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <Button variant="secondary" onClick={onClose}>Rehne dein</Button>
+        <Button variant="secondary" onClick={onClose}>{t('Rehne dein')}</Button>
         <Button loading={busy} onClick={save}
           disabled={!form.currentPassword || form.newPassword.length < 6}>
-          Badal dein
+          {t('Badal dein')}
         </Button>
       </div>
     </Modal>

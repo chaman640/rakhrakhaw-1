@@ -12,6 +12,7 @@ import {
 } from '@/components/ui';
 import { STATUS_TONE, STATUS_LABEL } from '../Orders';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const FLOW = ['PLACED', 'PACKED', 'READY', 'DELIVERED'];
 
@@ -113,15 +114,15 @@ export default function OrderDetail() {
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2 no-print">
-            <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>Print</Button>
+            <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
             {!closed && (
               <Button variant="secondary" size="sm" icon={Pencil} onClick={() => setEditOpen(true)}>
-                Quantity badlein
+                {t('Quantity badlein')}
               </Button>
             )}
             {!closed && (
               <Button variant="danger" size="sm" icon={XCircle} onClick={() => setConfirmCancel(true)}>
-                Cancel
+                {t('Cancel')}
               </Button>
             )}
           </div>
@@ -181,18 +182,18 @@ export default function OrderDetail() {
             {order.invoiceId ? (
               <>
                 <Link to={`/invoices/${order.invoiceId}`}>
-                  <Button size="lg" variant="secondary" icon={FileText}>Bill dekhein</Button>
+                  <Button size="lg" variant="secondary" icon={FileText}>{t('Bill dekhein')}</Button>
                 </Link>
-                <p className="text-sm text-slate-500">Is order ka bill ban chuka hai</p>
+                <p className="text-sm text-slate-500">{t('Is order ka bill ban chuka hai')}</p>
               </>
             ) : (
               <>
                 <Button size="lg" icon={FileText}
                   onClick={() => navigate(`/invoices/new?order=${order._id}`)}>
-                  Bill banayein
+                  {t('Bill banayein')}
                 </Button>
                 <p className="text-sm text-slate-500">
-                  Bill banate hi stock ghatega aur retailer ke khate me udhaar chadhega
+                  {t('Bill banate hi stock ghatega aur retailer ke khate me udhaar chadhega')}
                 </p>
               </>
             )}
@@ -210,8 +211,7 @@ export default function OrderDetail() {
                 {order.shortLines} item ka stock poora nahi hai
               </p>
               <p className="mt-0.5 text-sm text-amber-800">
-                Neeche list me laal me dikha hai. "Quantity badlein" se utna kar dein jitna bhej sakte hain —
-                retailer ko apne aap pata chal jayega.
+                {t('Neeche list me laal me dikha hai. "Quantity badlein" se utna kar dein jitna bhej sakte hain — retailer ko apne aap pata chal jayega.')}
               </p>
             </div>
           </div>
@@ -221,8 +221,8 @@ export default function OrderDetail() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2" padding={false}>
           <div className="px-5 py-4">
-            <h3 className="text-base font-semibold text-slate-900">Order ka saman</h3>
-            <p className="mt-0.5 text-sm text-slate-500">Har item ke saamne abhi ka stock bhi dikha hai</p>
+            <h3 className="text-base font-semibold text-slate-900">{t('Order ka saman')}</h3>
+            <p className="mt-0.5 text-sm text-slate-500">{t('Har item ke saamne abhi ka stock bhi dikha hai')}</p>
           </div>
 
           {/* Badi screen — table */}
@@ -230,11 +230,11 @@ export default function OrderDetail() {
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-2.5 text-left font-semibold">Item</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Mangi</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Abhi stock</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Rate</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Total</th>
+                  <th className="px-4 py-2.5 text-left font-semibold">{t('Item')}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Mangi')}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Abhi stock')}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Rate')}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t('Total')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,7 +251,7 @@ export default function OrderDetail() {
                     <td className="tabular px-4 py-3 text-right">{formatQty(it.qty, it.unit)}</td>
                     <td className="px-4 py-3 text-right">
                       {it.itemGone ? (
-                        <Badge tone="red">Item hat gaya</Badge>
+                        <Badge tone="red">{t('Item hat gaya')}</Badge>
                       ) : (
                         <span className={cn('tabular', it.enough ? 'text-slate-600' : 'font-medium text-red-600')}>
                           {formatQty(it.currentStock, it.unit)}
@@ -270,15 +270,15 @@ export default function OrderDetail() {
           <div className="divide-y divide-slate-100 border-t border-slate-200 md:hidden">
             {order.items.map((it, i) => (
               <ReadLineItem key={i} title={it.name} total={formatMoney(it.amount)}>
-                <ReadField label="Mangi" value={formatQty(it.qty, it.unit)} />
-                <ReadField label="Rate" value={formatMoney(it.rate)} />
+                <ReadField label={t('Mangi')} value={formatQty(it.qty, it.unit)} />
+                <ReadField label={t('Rate')} value={formatMoney(it.rate)} />
                 {it.itemGone ? (
                   <div className="flex gap-1.5">
-                    <dt className="text-slate-400">Stock</dt>
-                    <dd><Badge tone="red">Item hat gaya</Badge></dd>
+                    <dt className="text-slate-400">{t('Stock')}</dt>
+                    <dd><Badge tone="red">{t('Item hat gaya')}</Badge></dd>
                   </div>
                 ) : (
-                  <ReadField label="Abhi stock" value={formatQty(it.currentStock, it.unit)}
+                  <ReadField label={t('Abhi stock')} value={formatQty(it.currentStock, it.unit)}
                     tone={it.enough ? undefined : 'red'} />
                 )}
               </ReadLineItem>
@@ -286,19 +286,19 @@ export default function OrderDetail() {
           </div>
 
           <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
-            <span className="font-semibold text-slate-900">Kul</span>
+            <span className="font-semibold text-slate-900">{t('Kul')}</span>
             <span className="tabular text-xl font-semibold text-slate-900">{formatMoney(order.itemsTotal)}</span>
           </div>
 
           {order.retailerNote && (
             <p className="border-t border-slate-200 px-5 py-3 text-sm text-slate-700">
-              <span className="text-slate-500">Retailer ka note:</span> {order.retailerNote}
+              <span className="text-slate-500">{t('Retailer ka note:')}</span> {order.retailerNote}
             </p>
           )}
         </Card>
 
         <Card>
-          <CardHeader title="Kya kya hua" />
+          <CardHeader title={t('Kya kya hua')} />
           <ol className="space-y-4">
             {[...(order.statusHistory || [])].reverse().map((h, i) => (
               <li key={i} className="flex gap-3">
@@ -330,7 +330,7 @@ export default function OrderDetail() {
         onConfirm={cancel}
         loading={busy}
         title={`${order.orderNo} cancel karein?`}
-        message="Retailer ko turant khabar chali jayegi. Cancel kiya hua order wapas nahi aata."
+        message={t('Retailer ko turant khabar chali jayegi. Cancel kiya hua order wapas nahi aata.')}
         confirmLabel="Haan, cancel karein"
       />
     </>
@@ -377,12 +377,12 @@ function EditItemsModal({ open, onClose, order, onSaved }) {
       open={open}
       onClose={onClose}
       size="lg"
-      title="Quantity badlein"
-      description="Jitna bhej sakte hain utna kar dein — 0 karne pe item order se hat jayega"
+      title={t('Quantity badlein')}
+      description={t('Jitna bhej sakte hain utna kar dein — 0 karne pe item order se hat jayega')}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} loading={saving} icon={Save}>Save karein</Button>
+          <Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button>
+          <Button onClick={save} loading={saving} icon={Save}>{t('Save karein')}</Button>
         </>
       }
     >
@@ -419,7 +419,7 @@ function EditItemsModal({ open, onClose, order, onSaved }) {
                       {formatMoney(Number(q) * it.rate)}
                     </span>
                   ) : (
-                    <span className="text-xs text-red-600">Hat jayega</span>
+                    <span className="text-xs text-red-600">{t('Hat jayega')}</span>
                   )}
                 </div>
               </li>
@@ -428,13 +428,13 @@ function EditItemsModal({ open, onClose, order, onSaved }) {
         </ul>
 
         <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-          <span className="font-medium text-slate-900">Naya total</span>
+          <span className="font-medium text-slate-900">{t('Naya total')}</span>
           <span className="tabular text-lg font-semibold text-slate-900">{formatMoney(total)}</span>
         </div>
 
-        <Textarea label="Retailer ko kya batayein" rows={2} value={note}
+        <Textarea label={t('Retailer ko kya batayein')} rows={2} value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Bearing sirf 6 hai, baaki agle hafte" />
+          placeholder={t('Bearing sirf 6 hai, baaki agle hafte')} />
       </div>
     </Modal>
   );

@@ -3,6 +3,7 @@ import { Banknote, Smartphone, Landmark, FileCheck } from 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { Modal, Button, Input, Combobox, Textarea, useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const MODES = [
   { value: 'CASH', label: 'Cash', icon: Banknote },
@@ -93,26 +94,26 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
         : 'Kisse paisa mila ya kisko diya, wo entry karein'}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Rehne dein</Button>
-          <Button onClick={save} loading={saving}>Entry karein</Button>
+          <Button variant="secondary" onClick={onClose}>{t('Rehne dein')}</Button>
+          <Button onClick={save} loading={saving}>{t('Entry karein')}</Button>
         </>
       }
     >
       <div className="space-y-4">
         {!fixedParty && (
           <Combobox
-            label="Kiska paisa"
+            label={t('Kiska paisa')}
             required
             value={party?.value}
             display={party?.label}
             onChange={setParty}
             fetchOptions={fetchParties}
-            placeholder="Naam ya phone se dhoondhein"
+            placeholder={t('Naam ya phone se dhoondhein')}
           />
         )}
 
         <div>
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">Kaise mila</span>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">{t('Kaise mila')}</span>
           <div className="grid grid-cols-4 gap-2">
             {MODES.map((m) => (
               <button
@@ -135,12 +136,12 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label="Kitna" required type="number" min="0" step="0.01" prefix="₹"
+            label={t('Kitna')} required type="number" min="0" step="0.01" prefix="₹"
             value={amount} onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             hint={due > 0 ? `Poora ${formatMoney(due)} baaki hai` : undefined}
           />
-          <Input label="Kab" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input label={t('Kab')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
 
         {due > 0 && (
@@ -151,7 +152,7 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
             </button>
             <button type="button" onClick={() => setAmount(String(Math.round(due / 2)))}
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-ring">
-              Aadha
+              {t('Aadha')}
             </button>
           </div>
         )}
@@ -164,13 +165,13 @@ export default function PaymentFormModal({ open, onClose, fixedParty = null, onS
           />
         )}
 
-        <Textarea label="Note (marzi se)" rows={2} value={note}
+        <Textarea label={t('Note (marzi se)')} rows={2} value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Jaise: Ramesh ke haath bheja" />
+          placeholder={t('Jaise: Ramesh ke haath bheja')} />
 
         {!isSupplier && (
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            Paisa apne aap sabse purane bill pe lagega. Zyada hua to advance jama rahega.
+            {t('Paisa apne aap sabse purane bill pe lagega. Zyada hua to advance jama rahega.')}
           </p>
         )}
 

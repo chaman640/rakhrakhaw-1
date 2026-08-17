@@ -5,21 +5,20 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDate, formatPhone } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, StatCard, Button, SearchInput, Chips,
-  Pagination, EmptyState, Badge, useToast,
+  Pagination, EmptyState, Badge, SkeletonRows, useToast,
 } from '@/components/ui';
 import { BalanceLine } from './khata/LedgerTable';
+import { t } from '@/lib/i18n';
 
 export default function Khata() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [summary, setSummary] = useState({});
-  const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q);
@@ -27,26 +26,23 @@ export default function Khata() {
   const [filter, setFilter] = useState('due');
   const [page, setPage] = useState(1);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/khata', { params: { q: debouncedQ, type, filter, page, limit: 25 } });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, type, filter, page]);
+  const params = { q: debouncedQ, type, filter, page, limit: 25 };
+
+  // Purana turant, naya peeche-peeche
+  const { rows, meta, loading } = useListQuery(
+    ['khata', params],
+    () => api.get('/khata', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  /** Kuch badla — jo bhi iss pe tika hai wo apne aap taaza ho jayega */
+  const refresh = () => bust('khata', 'parties', 'dashboard');
 
   const loadSummary = useCallback(() => {
     api.get('/khata/summary').then((r) => setSummary(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
-  useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debouncedQ, type, filter]);
 
   const openParty = (r) =>
@@ -55,26 +51,26 @@ export default function Khata() {
   return (
     <>
       <PageHeader
-        title="Khata"
-        subtitle="Kisse kitna lena hai, kisko kitna dena hai — sab ek jagah"
-        action={<Button icon={Wallet} onClick={() => navigate('/payments')}>Payments</Button>}
+        title={t('Khata')}
+        subtitle={t('Kisse kitna lena hai, kisko kitna dena hai — sab ek jagah')}
+        action={<Button icon={Wallet} onClick={() => navigate('/payments')}>{t('Payments')}</Button>}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Lena hai (retailers se)" value={formatMoney(summary.receivable || 0)}
+        <StatCard label={t('Lena hai (retailers se)')} value={formatMoney(summary.receivable || 0)}
           icon={TrendingUp} tone={summary.receivable > 0 ? 'amber' : 'green'}
           sub={`${summary.retailersWithDue || 0} dukaan pe udhaar`} />
-        <StatCard label="Dena hai (suppliers ko)" value={formatMoney(summary.payable || 0)}
+        <StatCard label={t('Dena hai (suppliers ko)')} value={formatMoney(summary.payable || 0)}
           icon={TrendingDown} tone={summary.payable > 0 ? 'red' : 'green'} />
-        <StatCard label="Net" value={formatMoney(summary.net || 0)} icon={BookOpen}
+        <StatCard label={t('Net')} value={formatMoney(summary.net || 0)} icon={BookOpen}
           tone={summary.net >= 0 ? 'brand' : 'red'} sub="Lena − dena" />
-        <StatCard label="Limit se upar" value={summary.overLimit || 0} icon={TriangleAlert}
+        <StatCard label={t('Limit se upar')} value={summary.overLimit || 0} icon={TriangleAlert}
           tone={summary.overLimit > 0 ? 'red' : 'green'} sub="Credit limit paar" />
       </div>
 
       {summary.topDebtors?.length > 0 && (
         <Card className="mb-5">
-          <CardHeader title="Sabse zyada udhaar" subtitle="Inko phone karna banta hai" />
+          <CardHeader title={t('Sabse zyada udhaar')} subtitle={t('Inko phone karna banta hai')} />
           <div className="flex flex-wrap gap-2">
             {summary.topDebtors.map((d) => (
               <button key={d._id} onClick={() => navigate(`/retailers/${d._id}?tab=khata`)}
@@ -91,18 +87,18 @@ export default function Khata() {
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <SearchInput value={q} onChange={setQ} placeholder="Naam ya phone..." className="w-full sm:w-56" />
+          <SearchInput value={q} onChange={setQ} placeholder={t('Naam ya phone...')} className="w-full sm:w-56" />
           <Chips value={type} onChange={setType}
             options={[
-              { value: 'retailer', label: 'Retailers' },
-              { value: 'supplier', label: 'Suppliers' },
-              { value: 'all', label: 'Dono' },
+              { value: 'retailer', label: t('Retailers') },
+              { value: 'supplier', label: t('Suppliers') },
+              { value: 'all', label: t('Dono') },
             ]} />
           <Chips value={filter} onChange={setFilter}
             options={[
-              { value: 'due', label: 'Baaki hai' },
-              { value: 'clear', label: 'Clear' },
-              { value: 'all', label: 'Sab' },
+              { value: 'due', label: t('Baaki hai') },
+              { value: 'clear', label: t('Clear') },
+              { value: 'all', label: t('Sab') },
             ]} />
         </div>
       </Card>
@@ -119,7 +115,7 @@ export default function Khata() {
         ) : (
           <>
             {loading ? (
-              <p className="py-12 text-center text-sm text-slate-400">Load ho raha hai...</p>
+              <SkeletonRows />
             ) : rows.map((r) => (
               <button key={r._id} onClick={() => openParty(r)}
                 className="flex w-full items-center gap-3 border-b border-slate-100 p-4 text-left transition-colors last:border-0 hover:bg-slate-50">
@@ -133,8 +129,8 @@ export default function Khata() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-medium text-slate-900">{r.shopName || r.name}</p>
-                    {r.overLimit && <Badge tone="red">Limit paar</Badge>}
-                    {r.status === 'blocked' && <Badge tone="slate">Band</Badge>}
+                    {r.overLimit && <Badge tone="red">{t('Limit paar')}</Badge>}
+                    {r.status === 'blocked' && <Badge tone="slate">{t('Band')}</Badge>}
                   </div>
                   <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-slate-500">
                     <Phone size={11} className="shrink-0" /> {formatPhone(r.phone)}
