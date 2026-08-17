@@ -96,8 +96,58 @@ export async function listPurchases(businessId, q) {
       supplierId: p.supplierId?._id || p.supplierId,
       itemCount: p.items?.length || 0,
     })),
-    meta: { page: q.page, limit: q.limit, total, totalPages: Math.max(1, Math.ceil(total / q.limit)) },
+    meta: {
+      page: q.page,
+      limit: q.limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / q.limit)),
+      dayTotals: await dayTotalsFor(purchases, filter, q),
+    },
   };
+}
+
+/**
+ * "Aaj · 3 purchase · ₹42,500" wali header line ka jod.
+ *
+ * Bill wali list pe jo niyam hai, wahi yahan bhi — aur wo niyam ek hi hai:
+ * **jod page ki rows se nahi gina jata**. Page 25 pe toot ta hai aur toot
+ * aksar din ke beech me padta hai; page pe gino to aakhri din ka jod aadha
+ * dikhega, poore vishwas ke saath.
+ *
+ * Purchase me `partyId` nahi, `supplierId` hota hai — aur `$match` id ko khud
+ * nahi badalta, isliye use haath se ObjectId banana padta hai.
+ */
+async function dayTotalsFor(purchases, filter, q) {
+  if (!purchases.length) return [];
+  if (q.sort !== '-purchaseDate' && q.sort !== 'purchaseDate') return null;
+
+  const times = purchases.map((p) => new Date(p.purchaseDate).getTime());
+  const first = new Date(Math.min(...times)); first.setHours(0, 0, 0, 0);
+  const last = new Date(Math.max(...times)); last.setHours(23, 59, 59, 999);
+
+  const match = {
+    ...filter,
+    businessId: new mongoose.Types.ObjectId(String(filter.businessId)),
+    purchaseDate: { $gte: first, $lte: last },
+  };
+  if (match.supplierId) match.supplierId = new mongoose.Types.ObjectId(String(match.supplierId));
+
+  const rows = await Purchase.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+        amount: { $sum: '$grandTotal' },
+        due: { $sum: '$dueAmount' },
+        bills: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: -1 } },
+  ]);
+
+  return rows.map((r) => ({
+    date: r._id, amount: round2(r.amount), due: round2(r.due), bills: r.bills,
+  }));
 }
 
 export async function getStats(businessId) {

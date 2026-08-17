@@ -2,10 +2,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
-export default function Pagination({ page, totalPages, total, limit, onChange }) {
+/**
+ * `showTotal={false}` un list ke liye jo apni ginti khud upar likhti hain
+ * (jaise Payment ka "2 retailer se lena hai") — warna neeche "Kul 2 item"
+ * dobara aata hai, aur "item" wahan galat shabd bhi hai.
+ */
+export default function Pagination({ page, totalPages, total, limit, onChange, showTotal = true }) {
   if (totalPages <= 1) {
-    return total ? (
-      <p className="px-5 py-3 text-sm text-slate-500">Kul {total} item</p>
+    // `t()` yahan pehle tha hi nahi — ye line kisi bhi bhasha me Hinglish hi
+    // rehti thi, jabki list ke baaki sab shabd badal jate the
+    return total && showTotal ? (
+      <p className="px-5 py-3 text-sm text-slate-500">{t('Kul {n} item', { n: total })}</p>
     ) : null;
   }
 

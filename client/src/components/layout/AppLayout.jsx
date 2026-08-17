@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -20,7 +19,6 @@ import { t } from '@/lib/i18n';
  * patti ke peeche chhup jata hai aur user use daba hi nahi pata.
  */
 export default function AppLayout() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const { isRetailer, can } = useAuth();
   const { pathname } = useLocation();
   const fetching = useIsFetching();
@@ -48,15 +46,12 @@ export default function AppLayout() {
   const homeRoot = '/home';
   const backTo = current && pathname !== current.to ? current.to : homeRoot;
 
-  // Page badalte hi menu band — warna naye page pe drawer khula reh jata hai
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
-
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Net dheema ho to sabse upar 2px ki patti — page rukta nahi hai */}
       <RefreshBar show={fetching} />
 
-      <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <Sidebar />
 
       <div className="lg:pl-64">
         <Header
@@ -70,7 +65,7 @@ export default function AppLayout() {
         </main>
       </div>
 
-      <BottomNav onMenuClick={() => setMenuOpen((v) => !v)} menuOpen={menuOpen} />
+      <BottomNav />
     </div>
   );
 }

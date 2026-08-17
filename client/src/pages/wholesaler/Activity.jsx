@@ -47,7 +47,16 @@ const FILTERS = [
   { value: 'staff', label: 'Staff' },
 ];
 
-export default function Activity() {
+/**
+ * `embedded` — Staff page ke tab ke andar chalne ke liye.
+ *
+ * Part 15 step 5 me ye page Staff ke saath ek jagah aa gaya. Do jagah ka
+ * content ek page pe jodne me sabse aam galti do heading chhap jana hai
+ * ("Staff" ke theek neeche "Kaam ka record"), jo padhne wale ko lagta hai ki
+ * do alag page ek dusre me ghus gaye hain. Isliye heading sirf tab dikhti hai
+ * jab ye page apne aap khula ho.
+ */
+export default function Activity({ embedded = false }) {
   const toast = useToast();
   const { isScoped } = useAuth();
 
@@ -90,12 +99,14 @@ export default function Activity() {
 
   return (
     <>
-      <PageHeader
-        title={t('Kaam ka record')}
-        subtitle={isScoped
-          ? 'Aapka kiya hua kaam'
-          : 'Kisne kya kiya, kab kiya — sab yahan likha jata hai'}
-      />
+      {!embedded && (
+        <PageHeader
+          title={t('Kaam ka record')}
+          subtitle={isScoped
+            ? 'Aapka kiya hua kaam'
+            : 'Kisne kya kiya, kab kiya — sab yahan likha jata hai'}
+        />
+      )}
 
       <Card className="mb-5" padding={false}>
         <div className="space-y-3 p-4">

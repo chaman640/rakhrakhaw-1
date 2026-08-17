@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Wallet, Plus, IndianRupee, Calendar, Clock, Trash2, Check, X,
-  Banknote, Smartphone, Landmark, FileCheck,
+  Wallet, Plus, IndianRupee, Calendar, Clock, Trash2, Check, X, Phone,
+  Banknote, Smartphone, Landmark, FileCheck, HandCoins, TriangleAlert, MessageCircle,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
-import { formatMoney, formatDate } from '@/lib/format';
+import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
+import { formatMoney, formatDate, formatPhone } from '@/lib/format';
+import { waLink } from '@/lib/share';
 import {
   PageHeader, Card, CardHeader, StatCard, Button, Table, Badge, SearchInput,
-  Chips, Input, Pagination, EmptyState, Modal, Textarea, ConfirmModal, SkeletonRows, useToast,
+  Chips, Input, Pagination, EmptyState, Modal, Textarea, ConfirmModal,
+  SkeletonRows, Tabs, useToast,
 } from '@/components/ui';
+import { cn } from '@/lib/cn';
 import PaymentFormModal from './payments/PaymentFormModal';
 import { t } from '@/lib/i18n';
 
@@ -18,67 +22,71 @@ const MODE_ICON = { CASH: Banknote, UPI: Smartphone, BANK: Landmark, CHEQUE: Fil
 const statusTone = { pending: 'amber', confirmed: 'green', failed: 'red' };
 const statusLabel = { pending: 'Confirm karna hai', confirmed: 'Ho gaya', failed: 'Reject' };
 
+/** Kitna purana — "5 din", "2 mahine". Number se zyada ye baat samajh aati hai. */
+function ageOf(date) {
+  if (!date) return null;
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+  if (days <= 0) return t('aaj ka');
+  if (days === 1) return t('kal ka');
+  if (days < 30) return `${days} ${t('din purana')}`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? t('1 mahina purana') : `${months} ${t('mahine purana')}`;
+}
+
+/** 45 din se upar wale ko laal — yahi wo hai jispe phone karna hai */
+const ageTone = (date) => {
+  if (!date) return 'text-slate-400';
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+  if (days >= 45) return 'text-red-600 font-medium';
+  if (days >= 15) return 'text-amber-700';
+  return 'text-slate-400';
+};
+
+/**
+ * PAYMENT — pehle "kisse lena hai", phir "kya kya hua".
+ *
+ * Purana page sirf ek HISTORY tha: kaunsi entry kab hui. Wo zaroori hai, par
+ * wo sawal nahi hai jo dukaandaar leke aata hai. Uska sawal ek hi hota hai —
+ * "aaj kisko phone karun?" — aur uska jawab is page pe hai hi nahi tha; uske
+ * liye Khata page alag se kholna padta tha, aur wahan se paisa entry karne ke
+ * liye teesri jagah jana padta tha.
+ *
+ * Ab pehla tab "Lena hai" hai:
+ *   - kis retailer ka kitna baaki hai, sabse zyada ya sabse PURANA upar
+ *   - ₹5,000 kal ka aur ₹5,000 teen mahine purana ek jaise nahi hote, isliye
+ *     har line pe umar likhi hai aur 45 din se upar wali laal hai
+ *   - wahin se: paisa aaya (parda khulta hai, party pehle se bhari hui),
+ *     phone, aur WhatsApp pe yaad dilana
+ *
+ * History doosre tab me hai — poori, jaisi thi.
+ *
+ * Confirm karne wali payment (retailer ne UPI bheja) dono tab ke UPAR rehti
+ * hai, kyunki wo kisi tab ki cheez nahi — wo aaj ka kaam hai.
+ */
 export default function Payments() {
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [rows, setRows] = useState([]);
-  const [pending, setPending] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
-  const [stats, setStats] = useState({});
-  const [loading, setLoading] = useState(true);
+  // ?status=pending (notification se) aaye to seedha history khul jaye
+  const [tab, setTab] = useState(searchParams.get('status') ? 'history' : 'due');
 
-  const [q, setQ] = useState('');
-  const debouncedQ = useDebounce(q);
-  const [status, setStatus] = useState(searchParams.get('status') || 'all');
-  const [direction, setDirection] = useState('all');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [page, setPage] = useState(1);
-
-  const [formOpen, setFormOpen] = useState(false);
+  const [formFor, setFormFor] = useState(null);     // null | { party } | { }
   const [rejecting, setRejecting] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [deleting, setDeleting] = useState(null);
+  const [reminding, setReminding] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/payments', {
-        params: {
-          q: debouncedQ, status, direction,
-          from: from || undefined, to: to || undefined, page, limit: 25,
-        },
-      });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, status, direction, from, to, page]);
+  const { data: stats = {} } = useQuery(
+    ['payments', 'stats'], () => api.get('/payments/stats').then((r) => r.data),
+  );
+  const { data: pending = [] } = useQuery(
+    ['payments', 'pending'],
+    () => api.get('/payments', { params: { status: 'pending', limit: 20 } }).then((r) => r.data),
+  );
 
-  const loadSide = useCallback(() => {
-    api.get('/payments/stats').then((r) => setStats(r.data)).catch(() => {});
-    api.get('/payments', { params: { status: 'pending', limit: 20 } })
-      .then((r) => setPending(r.data)).catch(() => {});
-  }, []);
-
-  useEffect(() => { loadSide(); }, [loadSide]);
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [debouncedQ, status, direction, from, to]);
-  useEffect(() => {
-    // URL me ?status=pending aaye (notification se) to filter set ho jaye
-    const s = searchParams.get('status');
-    if (s && s !== status) setStatus(s);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  const refreshAll = () => { load(); loadSide(); };
+  const refreshAll = () => bust('payments', 'khata', 'dashboard', 'invoices', 'parties');
 
   async function confirm(p) {
     setBusy(true);
@@ -86,11 +94,7 @@ export default function Payments() {
       const res = await api.post(`/payments/${p._id}/confirm`);
       toast.success(res.message);
       refreshAll();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
   }
 
   async function doReject() {
@@ -100,11 +104,7 @@ export default function Payments() {
       toast.success(res.message);
       setRejecting(null); setRejectReason('');
       refreshAll();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
   }
 
   async function doDelete() {
@@ -114,14 +114,304 @@ export default function Payments() {
       toast.success(res.message);
       setDeleting(null);
       refreshAll();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
   }
 
-  const columns = [
+  async function doRemind() {
+    setBusy(true);
+    try {
+      const res = await api.post(`/khata/${reminding._id}/remind`, {});
+      toast.success(res.message);
+      setReminding(null);
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={t('Payment')}
+        subtitle={t('Kisse lena hai, aur ab tak kya kya aaya')}
+        action={<Button icon={Plus} onClick={() => setFormFor({})}>{t('Paisa entry')}</Button>}
+      />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatCard label={t('Aaj aaya')} value={formatMoney(stats.todayAmount || 0)} icon={IndianRupee}
+          tone="green" sub={`${stats.todayCount || 0} payment`} />
+        <StatCard label={t('Is mahine')} value={formatMoney(stats.monthAmount || 0)} icon={Calendar}
+          tone="brand" sub={`${stats.monthCount || 0} payment`} />
+        <StatCard label={t('Confirm karna hai')} value={stats.pendingCount || 0} icon={Clock}
+          tone={stats.pendingCount > 0 ? 'amber' : 'green'} sub={formatMoney(stats.pendingAmount || 0)} />
+        <StatCard label={t('Kul lena hai')} value={formatMoney(stats.totalReceivable || 0)}
+          icon={HandCoins} tone={stats.totalReceivable > 0 ? 'amber' : 'green'} />
+      </div>
+
+      {/* ---- Confirm karne wali payment — dono tab ke upar ---- */}
+      {pending.length > 0 && (
+        <Card className="mb-4 border-amber-200 bg-amber-50/40">
+          <CardHeader
+            title={`${pending.length} ${t('payment confirm karna hai')}`}
+            subtitle={t('Retailer ne bheja hai — apna account check karke haan/na karein')}
+          />
+          <div className="space-y-2">
+            {pending.map((p) => (
+              <div key={p._id}
+                className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-slate-900">
+                    {p.party?.name} — {formatMoney(p.amount)}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {p.mode} · {formatDate(p.date)}
+                    {p.reference && ` · UTR ${p.reference}`}
+                    {p.note && ` · ${p.note}`}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button size="sm" variant="success" icon={Check} loading={busy}
+                    onClick={() => confirm(p)}>{t('Mil gaya')}</Button>
+                  <Button size="sm" variant="secondary" icon={X}
+                    onClick={() => setRejecting(p)}>{t('Nahi mila')}</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Tabs
+        tabs={[
+          { value: 'due', label: 'Lena hai' },
+          { value: 'history', label: 'History' },
+        ]}
+        value={tab}
+        onChange={(k) => { setTab(k); if (k === 'due') setSearchParams({}); }}
+      />
+
+      {tab === 'due' ? (
+        <DueList
+          onCollect={(party) => setFormFor({ party })}
+          onRemind={(party) => setReminding(party)}
+          onOpen={(party) => navigate(`/retailers/${party._id}?tab=khata`)}
+        />
+      ) : (
+        <History
+          searchParams={searchParams} setSearchParams={setSearchParams}
+          onReject={setRejecting} onDelete={setDeleting} onConfirm={confirm}
+          busy={busy} navigate={navigate}
+        />
+      )}
+
+      <PaymentFormModal
+        open={!!formFor}
+        fixedParty={formFor?.party || null}
+        onClose={() => setFormFor(null)}
+        onSaved={refreshAll}
+      />
+
+      <Modal
+        open={!!rejecting}
+        onClose={() => { setRejecting(null); setRejectReason(''); }}
+        title={t('Payment reject karein?')}
+        description={rejecting ? `${rejecting.party?.name} ne ${formatMoney(rejecting.amount)} bheja bataya tha` : ''}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setRejecting(null); setRejectReason(''); }}>
+              {t('Rehne dein')}
+            </Button>
+            <Button variant="danger" onClick={doReject} loading={busy}>{t('Reject karein')}</Button>
+          </>
+        }
+      >
+        <Textarea
+          label={t('Kya wajah batayein')}
+          rows={3}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder={t('Jaise: account me paisa nahi aaya')}
+          hint={t('Retailer ko yahi message jayega')}
+        />
+      </Modal>
+
+      <ConfirmModal
+        open={!!reminding}
+        onClose={() => setReminding(null)}
+        onConfirm={doRemind}
+        loading={busy}
+        title={reminding ? `${reminding.shopName || reminding.name} ko yaad dilayein?` : ''}
+        message={t('Inke app me alert chala jayega ki itna paisa baaki hai. WhatsApp bhejna ho to uske bagal wala button dabaein.')}
+        confirmLabel="Haan, yaad dilayein"
+      />
+
+      <ConfirmModal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={doDelete}
+        loading={busy}
+        title={deleting ? `${deleting.paymentNo} delete karein?` : ''}
+        message={t('Khata wapas pehle jaisa ho jayega aur bill dobara udhaar dikhne lagega. Ye wapas nahi hota.')}
+        confirmLabel="Haan, delete karein"
+      />
+    </>
+  );
+}
+
+/* ══════════════════════════ 1. Lena hai ══════════════════════════ */
+
+function DueList({ onCollect, onRemind, onOpen }) {
+  const toast = useToast();
+  const [q, setQ] = useState('');
+  const debouncedQ = useDebounce(q);
+  const [sort, setSort] = useState('-balance');
+  const [page, setPage] = useState(1);
+
+  const params = { q: debouncedQ, sort, page, limit: 20 };
+  const { rows, meta, loading } = useListQuery(
+    ['khata', 'due', params],
+    () => api.get('/khata/due', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  useEffect(() => { setPage(1); }, [debouncedQ, sort]);
+
+  return (
+    <>
+      <Card className="mb-4 mt-4" padding={false}>
+        <div className="flex flex-wrap items-center gap-2 p-3 sm:gap-3 sm:p-4">
+          <SearchInput value={q} onChange={setQ} placeholder={t('Naam ya number...')}
+            className="w-full sm:w-56" />
+          <Chips value={sort} onChange={setSort}
+            options={[
+              { value: '-balance', label: t('Sabse zyada') },
+              { value: 'oldest', label: t('Purana pehle') },
+              { value: 'name', label: t('Naam se') },
+            ]} />
+        </div>
+      </Card>
+
+      <Card padding={false}>
+        {/*
+          Jod header me hai, list ke andar nahi — kyunki ye POORI list ka jod
+          hai, is page ka nahi. Server hi ye bhejta hai; yahan rows jod kar
+          nikalte to page 2 pe number chhota ho jata.
+        */}
+        {!loading && rows.length > 0 && (
+          <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 px-4 py-3">
+            <p className="text-sm text-slate-500">
+              {meta.total} {t('retailer se lena hai')}
+            </p>
+            <p className="tabular text-base font-semibold text-amber-700">
+              {formatMoney(meta.totalDue || 0)}
+            </p>
+          </div>
+        )}
+
+        {loading ? <SkeletonRows /> : !rows.length ? (
+          <EmptyState
+            icon={HandCoins}
+            title={q ? t('Is naam se koi nahi mila') : t('Kisi ka udhaar baaki nahi')}
+            message={q ? t('Naam ya number dobara dekh lein.') : t('Sabka hisaab saaf hai — badhiya baat hai.')}
+          />
+        ) : (
+          <>
+            <ul>
+              {rows.map((p) => (
+                <DueRow key={p._id} p={p}
+                  onCollect={() => onCollect(p)}
+                  onRemind={() => onRemind(p)}
+                  onOpen={() => onOpen(p)} />
+              ))}
+            </ul>
+            {/* ginti upar header me pehle se hai */}
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total}
+              limit={meta.limit} onChange={setPage} showTotal={false} />
+          </>
+        )}
+      </Card>
+    </>
+  );
+}
+
+function DueRow({ p, onCollect, onRemind, onOpen }) {
+  const name = p.shopName || p.name;
+  const age = ageOf(p.oldestDue);
+  const msg = `Namaste ${p.name}, ${name} pe ₹${Math.round(p.balance)} baaki hai. Jab suvidha ho bhej dijiyega. Dhanyawaad.`;
+
+  return (
+    <li className="border-b border-slate-100 last:border-0">
+      <div className="flex items-start gap-3 px-4 py-3">
+        <button onClick={onOpen} className="min-w-0 flex-1 text-left focus-ring rounded">
+          <p className="truncate text-sm font-medium text-slate-900">{name}</p>
+          <p className="truncate text-xs text-slate-500">
+            {p.phone ? formatPhone(p.phone) : t('number nahi hai')}
+            {p.openBills > 0 && ` · ${p.openBills} ${t('bill khula')}`}
+          </p>
+          {(age || p.overLimit) && (
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
+              {age && <span className={ageTone(p.oldestDue)}>{age}</span>}
+              {p.overLimit && (
+                <span className="flex items-center gap-1 font-medium text-red-600">
+                  <TriangleAlert size={11} /> {t('hadd paar')}
+                </span>
+              )}
+            </p>
+          )}
+        </button>
+
+        <div className="shrink-0 text-right">
+          <p className="tabular text-base font-semibold text-amber-700">{formatMoney(p.balance)}</p>
+          <div className="mt-1.5 flex items-center justify-end gap-1">
+            {p.phone && (
+              <>
+                <a href={`tel:${p.phone}`} aria-label={t('Phone karein')} title={t('Phone karein')}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-ring">
+                  <Phone size={15} />
+                </a>
+                <a href={waLink(msg, p.phone)} target="_blank" rel="noreferrer"
+                  aria-label={t('WhatsApp pe yaad dilayein')} title={t('WhatsApp pe yaad dilayein')}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50 focus-ring">
+                  <MessageCircle size={15} />
+                </a>
+              </>
+            )}
+            <button type="button" onClick={onRemind}
+              aria-label={t('App me yaad dilayein')} title={t('App me yaad dilayein')}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-ring">
+              <Clock size={15} />
+            </button>
+            <Button size="sm" variant="success" onClick={onCollect}>{t('Paisa aaya')}</Button>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/* ══════════════════════════ 2. History ══════════════════════════ */
+
+function History({ searchParams, setSearchParams, onReject, onDelete, onConfirm, busy, navigate }) {
+  const toast = useToast();
+  const [q, setQ] = useState('');
+  const debouncedQ = useDebounce(q);
+  const [status, setStatus] = useState(searchParams.get('status') || 'all');
+  const [direction, setDirection] = useState('all');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [page, setPage] = useState(1);
+
+  const params = {
+    q: debouncedQ, status, direction,
+    from: from || undefined, to: to || undefined, page, limit: 25,
+  };
+  const { rows, meta, loading } = useListQuery(
+    ['payments', params],
+    () => api.get('/payments', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  useEffect(() => { setPage(1); }, [debouncedQ, status, direction, from, to]);
+
+  const columns = useMemo(() => [
     {
       key: 'paymentNo', header: t('Payment'),
       render: (r) => (
@@ -157,14 +447,14 @@ export default function Payments() {
     {
       key: 'amount', header: t('Amount'), align: 'right',
       render: (r) => (
-        <span className={r.direction === 'IN' ? 'font-medium text-emerald-700' : 'font-medium text-red-600'}>
+        <span className={cn('font-medium', r.direction === 'IN' ? 'text-emerald-700' : 'text-red-600')}>
           {r.direction === 'IN' ? '+' : '−'}{formatMoney(r.amount)}
         </span>
       ),
     },
     {
       key: 'status', header: t('Status'),
-      render: (r) => <Badge tone={statusTone[r.status]}>{statusLabel[r.status]}</Badge>,
+      render: (r) => <Badge tone={statusTone[r.status]}>{t(statusLabel[r.status])}</Badge>,
     },
     {
       key: 'actions', header: '', align: 'right',
@@ -172,81 +462,32 @@ export default function Payments() {
         <div className="flex justify-end gap-1">
           {r.status === 'pending' && (
             <>
-              <button onClick={() => confirm(r)} disabled={busy}
-                className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+              <button onClick={() => onConfirm(r)} disabled={busy}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
                 aria-label={`${r.paymentNo} confirm karein`}>
                 <Check size={16} />
               </button>
-              <button onClick={() => setRejecting(r)}
-                className="rounded-lg p-1.5 text-red-500 hover:bg-red-50"
+              <button onClick={() => onReject(r)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
                 aria-label={`${r.paymentNo} reject karein`}>
                 <X size={16} />
               </button>
             </>
           )}
-          <button onClick={() => setDeleting(r)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+          <button onClick={() => onDelete(r)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600"
             aria-label={`${r.paymentNo} delete karein`}>
             <Trash2 size={16} />
           </button>
         </div>
       ),
     },
-  ];
+  ], [busy, navigate, onConfirm, onDelete, onReject]);
 
   return (
     <>
-      <PageHeader
-        title={t('Payments')}
-        subtitle={t('Cash, UPI, bank — paisa aane-jaane ka poora record')}
-        action={<Button icon={Plus} onClick={() => setFormOpen(true)}>{t('Paisa entry')}</Button>}
-      />
-
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label={t('Aaj aaya')} value={formatMoney(stats.todayAmount || 0)} icon={IndianRupee}
-          tone="green" sub={`${stats.todayCount || 0} payment`} />
-        <StatCard label={t('Is mahine')} value={formatMoney(stats.monthAmount || 0)} icon={Calendar}
-          tone="brand" sub={`${stats.monthCount || 0} payment`} />
-        <StatCard label={t('Confirm karna hai')} value={stats.pendingCount || 0} icon={Clock}
-          tone={stats.pendingCount > 0 ? 'amber' : 'green'} sub={formatMoney(stats.pendingAmount || 0)} />
-        <StatCard label={t('Kul entry')} value={meta.total || 0} icon={Wallet} tone="brand" />
-      </div>
-
-      {/* ---- Pending queue: retailer ne UPI bheja, confirm karna hai ---- */}
-      {pending.length > 0 && (
-        <Card className="mb-5 border-amber-200 bg-amber-50/40">
-          <CardHeader
-            title={`${pending.length} payment confirm karna hai`}
-            subtitle={t('Retailer ne bheja hai — apna account check karke haan/na karein')}
-          />
-          <div className="space-y-2">
-            {pending.map((p) => (
-              <div key={p._id}
-                className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">
-                    {p.party?.name} — {formatMoney(p.amount)}
-                  </p>
-                  <p className="truncate text-xs text-slate-500">
-                    {p.mode} · {formatDate(p.date)}
-                    {p.reference && ` · UTR ${p.reference}`}
-                    {p.note && ` · ${p.note}`}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button size="sm" variant="success" icon={Check} loading={busy}
-                    onClick={() => confirm(p)}>{t('Mil gaya')}</Button>
-                  <Button size="sm" variant="secondary" icon={X}
-                    onClick={() => setRejecting(p)}>{t('Nahi mila')}</Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      <Card className="mb-5" padding={false}>
-        <div className="flex flex-wrap items-center gap-3 p-4">
+      <Card className="mb-4 mt-4" padding={false}>
+        <div className="flex flex-wrap items-center gap-2 p-3 sm:gap-3 sm:p-4">
           <SearchInput value={q} onChange={setQ} placeholder={t('Payment no, party, UTR...')}
             className="w-full sm:w-56" />
           <Chips value={status}
@@ -263,8 +504,12 @@ export default function Payments() {
               { value: 'IN', label: t('Aaya') },
               { value: 'OUT', label: t('Diya') },
             ]} />
-          <div className="w-36"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-          <div className="w-36"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="w-36">
+            <Input type="date" aria-label={t('Kis din se')} value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="w-36">
+            <Input type="date" aria-label={t('Kis din tak')} value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
         </div>
       </Card>
 
@@ -274,7 +519,6 @@ export default function Payments() {
             icon={Wallet}
             title={t('Abhi koi payment nahi')}
             message={t('Retailer se paisa mile ya supplier ko dein — yahin entry karein, khata apne aap update ho jayega.')}
-            action={<Button icon={Plus} onClick={() => setFormOpen(true)}>{t('Pehli entry')}</Button>}
           />
         ) : (
           <>
@@ -294,18 +538,18 @@ export default function Payments() {
                             <Icon size={11} /> {r.paymentNo} · {formatDate(r.date)}
                           </p>
                           <div className="mt-1.5">
-                            <Badge tone={statusTone[r.status]}>{statusLabel[r.status]}</Badge>
+                            <Badge tone={statusTone[r.status]}>{t(statusLabel[r.status])}</Badge>
                           </div>
                         </div>
-                        <span className={`tabular shrink-0 font-semibold ${
-                          r.direction === 'IN' ? 'text-emerald-700' : 'text-red-600'}`}>
+                        <span className={cn('tabular shrink-0 font-semibold',
+                          r.direction === 'IN' ? 'text-emerald-700' : 'text-red-600')}>
                           {r.direction === 'IN' ? '+' : '−'}{formatMoney(r.amount)}
                         </span>
                       </div>
                       {r.status === 'pending' && (
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" variant="success" onClick={() => confirm(r)} loading={busy}>{t('Mil gaya')}</Button>
-                          <Button size="sm" variant="secondary" onClick={() => setRejecting(r)}>{t('Nahi mila')}</Button>
+                          <Button size="sm" variant="success" onClick={() => onConfirm(r)} loading={busy}>{t('Mil gaya')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => onReject(r)}>{t('Nahi mila')}</Button>
                         </div>
                       )}
                     </div>
@@ -317,43 +561,6 @@ export default function Payments() {
           </>
         )}
       </Card>
-
-      <PaymentFormModal open={formOpen} onClose={() => setFormOpen(false)} onSaved={refreshAll} />
-
-      <Modal
-        open={!!rejecting}
-        onClose={() => { setRejecting(null); setRejectReason(''); }}
-        title={t('Payment reject karein?')}
-        description={rejecting ? `${rejecting.party?.name} ne ${formatMoney(rejecting.amount)} bheja bataya tha` : ''}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => { setRejecting(null); setRejectReason(''); }}>
-              {t('Rehne dein')}
-            </Button>
-            <Button variant="danger" onClick={doReject} loading={busy}>{t('Reject karein')}</Button>
-          </>
-        }
-      >
-        <Textarea
-          label={t('Kya wajah batayein')}
-          rows={3}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder={t('Jaise: account me paisa nahi aaya')}
-          hint={t('Retailer ko yahi message jayega')}
-        />
-      </Modal>
-
-      <ConfirmModal
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={doDelete}
-        loading={busy}
-        title={deleting ? `${deleting.paymentNo} delete karein?` : ''}
-        message={t('Khata wapas pehle jaisa ho jayega aur bill dobara udhaar dikhne lagega. Ye wapas nahi hota.')}
-        confirmLabel="Haan, delete karein"
-      />
     </>
   );
 }

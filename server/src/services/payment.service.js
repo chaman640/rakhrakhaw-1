@@ -5,7 +5,9 @@ import {
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { Payment, Party, Invoice, Counter, Business, LedgerEntry } from '../models/index.js';
-import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
+import {
+  scopeByParty, scopePartiesMatch, isScoped, canSeeDoc, ownPartyIds, toObjectIds,
+} from '../utils/scope.js';
 import { postEntry, reverseEntriesFor, recalcBalances } from './ledger.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
 
@@ -78,7 +80,15 @@ export async function getStats(businessId, viewer = null) {
     ] }
     : {};
 
-  const [[today], [month], [pending]] = await Promise.all([
+  /*
+    "Kul lena hai" — Payment page ka sabse bada number.
+
+    Ye Party.balance se aata hai, bill ke jod se nahi: khate me purana hisaab
+    (opening) aur advance bhi ginte hain, aur dukaandaar ke liye "lena hai"
+    matlab wahi khata hai. Hadd yahan bhi lagti hai, warna page ke upar poori
+    dukaan ka udhaar dikhta aur neeche ki list sirf apni — aadha sach.
+  */
+  const [[today], [month], [pending], [receivable]] = await Promise.all([
     Payment.aggregate([
       { $match: { businessId: bid, ...mine, status: 'confirmed', direction: 'IN', date: { $gte: todayStart } } },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
@@ -91,6 +101,14 @@ export async function getStats(businessId, viewer = null) {
       { $match: { businessId: bid, ...mine, status: 'pending' } },
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]),
+    Party.aggregate([
+      {
+        $match: scopePartiesMatch({
+          businessId: bid, type: PARTY_TYPES.RETAILER, balance: { $gt: 0 },
+        }, viewer),
+      },
+      { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$balance' } } },
+    ]),
   ]);
 
   return {
@@ -100,6 +118,8 @@ export async function getStats(businessId, viewer = null) {
     monthAmount: round2(month?.amount || 0),
     pendingCount: pending?.n || 0,
     pendingAmount: round2(pending?.amount || 0),
+    totalReceivable: round2(receivable?.amount || 0),
+    dueParties: receivable?.n || 0,
   };
 }
 

@@ -1,45 +1,104 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  History, House, UserCircle, Wallet2,
+  House, UserCircle, Wallet2, UsersRound,
 } from 'lucide-react';
 
-// Wholesaler ka poora menu (sidebar / hamburger).
-// `part` sirf reference ke liye. `perm` (Part 11) se staff ko wahi menu dikhta hai
-// jiski use ijazat hai — malik ko sab kuch.
+/**
+ * Wholesaler ka poora menu.
+ *
+ * `perm` (Part 11) se staff ko wahi menu dikhta hai jiski use ijazat hai —
+ * malik ko sab kuch.
+ *
+ * `desc` Part 15 step 5 me juda. Wajah: Menu page pe ab sirf naam kaafi nahi
+ * hai. "Khata" aur "Payment" — dono me paisa hai; "Return" aur "Purchase" —
+ * dono me maal. Naya banda naam padh kar bhi galat page kholta tha. Ek line ka
+ * matlab saath likh dene se wo bhatakna khatam ho jata hai, aur khoj bhi isi
+ * line me dhoondhti hai (jaise "udhaar" likhne pe Khata mil jata hai).
+ */
 export const wholesalerNav = [
   // Home sabse pehle — roz ka kaam yahi hai. Dashboard "hisaab" ke liye hai.
-  { to: '/home', label: 'Home', icon: House, part: 15, perm: 'invoices' },
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, part: 10 },
-  { to: '/orders', label: 'Orders', icon: ShoppingCart, part: 7, badgeKey: 'newOrders', perm: 'orders' },
-  { to: '/items', label: 'Items', icon: Package, part: 3, perm: 'items' },
-  { to: '/retailers', label: 'Retailers', icon: Users, part: 4, perm: 'parties' },
-  { to: '/suppliers', label: 'Suppliers', icon: Truck, part: 4, perm: 'parties' },
-  { to: '/purchases', label: 'Purchases', icon: Truck, part: 5, perm: 'purchases' },
-  { to: '/invoices', label: 'Invoices', icon: FileText, part: 8, perm: 'invoices' },
-  { to: '/returns', label: 'Return', icon: Undo2, part: 11, perm: 'returns' },
-  { to: '/khata', label: 'Khata', icon: BookOpen, part: 9, perm: 'khata:view' },
+  {
+    to: '/home', label: 'Home', icon: House, part: 15, perm: 'invoices',
+    desc: 'Aaj ka kaam — bill banaein, chhapein, bhejein',
+  },
+  {
+    to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, part: 10,
+    desc: 'Ek nazar me poori dukaan — sale, kharch aur graph',
+  },
+  {
+    to: '/orders', label: 'Orders', icon: ShoppingCart, part: 7, badgeKey: 'newOrders', perm: 'orders',
+    desc: 'Retailer ne app se jo maal manga hai',
+  },
+  {
+    to: '/items', label: 'Items', icon: Package, part: 3, perm: 'items',
+    desc: 'Maal ki list, rate aur stock',
+  },
+  {
+    to: '/retailers', label: 'Retailers', icon: Users, part: 4, perm: 'parties',
+    desc: 'Jinko aap maal bechte hain',
+  },
+  {
+    to: '/suppliers', label: 'Suppliers', icon: Truck, part: 4, perm: 'parties',
+    desc: 'Jinse aap maal khareedte hain',
+  },
+  {
+    to: '/purchases', label: 'Purchase', icon: Truck, part: 15, perm: 'purchases',
+    desc: 'Maal andar aaya — kis din kitna, aur kisko dena hai',
+  },
+  // Menu me "Sale" — dukaandaar bill ki list ko "invoices" nahi, sale hi
+  // kehta hai. Page wahi hai; /invoices bhi chalta rehta hai (purane link).
+  {
+    to: '/sales', label: 'Sale', icon: FileText, part: 15, perm: 'invoices',
+    desc: 'Kis din kitna bika aur kiska paisa baaki hai',
+  },
+  {
+    to: '/returns', label: 'Return', icon: Undo2, part: 11, perm: 'returns',
+    desc: 'Maal wapas aaya ya wapas bheja',
+  },
+  {
+    to: '/khata', label: 'Khata', icon: BookOpen, part: 9, perm: 'khata:view',
+    desc: 'Har party ka poora lena-dena, ek ek entry',
+  },
   // Payments PAISA ENTRY ka page hai, sirf dekhne ka nahi. Isliye ismein
   // `khata:create` chahiye — warna salesman ko (jise khata sirf dekhna hai)
   // ye menu dikh jata tha aur page khul bhi jata tha.
-  { to: '/payments', label: 'Payments', icon: Wallet, part: 9, perm: 'khata:create' },
-  { to: '/expenses', label: 'Kharch', icon: Wallet2, part: 15, perm: 'expenses' },
-  { to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports' },
-  // "Kisne kya kiya" — sirf unhe jo staff dekh sakte hain
-  { to: '/activity', label: 'Kaam ka record', icon: History, part: 12, perm: 'staff' },
-  { to: '/profile', label: 'Profile', icon: UserCircle, part: 15 },
-  { to: '/settings', label: 'Settings', icon: Settings, part: 2 },
+  {
+    to: '/payments', label: 'Payment', icon: Wallet, part: 15, perm: 'khata:create',
+    desc: 'Kisse udhaar lena hai, aur paisa aane-jaane ka record',
+  },
+  {
+    to: '/expenses', label: 'Kharch', icon: Wallet2, part: 15, perm: 'expenses',
+    desc: 'Chai, petrol, kiraya, tankhwah — dukaan ka kharcha',
+  },
+  {
+    to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports',
+    desc: 'Fayda-nuksan, GST, stock aur baaki hisaab',
+  },
+  // Part 15 step 5: staff aur "kisne kya kiya" ab ek hi page pe
+  {
+    to: '/staff', label: 'Staff', icon: UsersRound, part: 15, perm: 'staff',
+    desc: 'Log, unki ijazat, hadd — aur kisne kya kiya',
+  },
+  {
+    to: '/profile', label: 'Profile', icon: UserCircle, part: 15,
+    desc: 'Dukaan ka naam, UPI, bank aur apna account',
+  },
+  {
+    to: '/settings', label: 'Settings', icon: Settings, part: 2,
+    desc: 'Bhasha, roshni, akshar ka size aur backup',
+  },
 ];
 
 export const retailerNav = [
-  { to: '/home', label: 'Home', icon: LayoutDashboard, part: 10 },
-  { to: '/shop', label: 'Catalog', icon: Store, part: 6 },
-  { to: '/cart', label: 'Cart', icon: ShoppingCart, part: 6, badgeKey: 'cartCount' },
-  { to: '/my-orders', label: 'My Orders', icon: FileText, part: 7 },
-  { to: '/my-bills', label: 'Mere Bills', icon: Receipt, part: 8 },
-  { to: '/my-khata', label: 'My Khata', icon: BookOpen, part: 9 },
-  { to: '/notifications', label: 'Notifications', icon: Bell, part: 10 },
-  { to: '/profile', label: 'Profile', icon: Settings, part: 2 },
+  { to: '/home', label: 'Home', icon: LayoutDashboard, part: 10, desc: 'Aapka hisaab ek nazar me' },
+  { to: '/shop', label: 'Catalog', icon: Store, part: 6, desc: 'Poora maal aur uske rate' },
+  { to: '/cart', label: 'Cart', icon: ShoppingCart, part: 6, badgeKey: 'cartCount', desc: 'Jo maal aapne chuna hai' },
+  { to: '/my-orders', label: 'My Orders', icon: FileText, part: 7, desc: 'Aapke bheje hue order' },
+  { to: '/my-bills', label: 'Mere Bills', icon: Receipt, part: 8, desc: 'Aapke saare bill' },
+  { to: '/my-khata', label: 'My Khata', icon: BookOpen, part: 9, desc: 'Kitna baaki hai' },
+  { to: '/notifications', label: 'Notifications', icon: Bell, part: 10, desc: 'Naye alert' },
+  { to: '/profile', label: 'Profile', icon: Settings, part: 2, desc: 'Aapka account' },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -49,14 +108,21 @@ export const retailerNav = [
    teen line wale button tak angootha pahunchta hi nahi — isliye jo char kaam
    sabse zyada hote hain wo neeche, angoothe ke paas rakhe hain.
 
-   Paanchva khana hamesha "Menu" hai — wahi purana teen-line wala, ab neeche.
-   Uske andar baaki sab (Retailers, Purchases, Bills, Khata, Reports...) hai.
+   Paanchva khana hamesha "Menu" hai — ab wo daraz nahi, apna page hai.
 
    CHAR hi kyun: paanch se zyada khane 360px ke phone pe itne patle ho jate
    hain ki naam kat jata hai aur galat button dab jata hai.
+
+   AAKHRI CHUNAAV (Part 15 step 5): Home · Dashboard · Sale · Payment
+   — Items aur Orders yahan se hate. Dono din me ek-do baar khulte hain aur
+     ab Menu ek hi tap door hai.
+   — Kharch bhi yahan nahi hai, par wo door nahi hua: uska button Dashboard pe
+     hi hai, aur Dashboard is patti me hai.
+   — Payment isliye hai ki "kisse paisa lena hai" roz ka kaam hai aur uska
+     koi doosra shortcut app me kahin nahi hai.
    ───────────────────────────────────────────────────────────────────────── */
 
-const BOTTOM_WHOLESALER = ['/home', '/dashboard', '/payments', '/items'];
+const BOTTOM_WHOLESALER = ['/home', '/dashboard', '/sales', '/payments'];
 const BOTTOM_RETAILER = ['/home', '/shop', '/cart', '/my-orders'];
 
 /**
@@ -83,7 +149,13 @@ export function bottomNavFor(nav, isRetailer) {
   return picked.slice(0, 4);
 }
 
-/** Ye wo pages hain jinpe "back" ka koi matlab nahi — yahi to shuruaat hai */
+/**
+ * Ye wo pages hain jinpe "back" ka koi matlab nahi — yahi to shuruaat hai.
+ *
+ * `/menu` bhi ismein hai: wo patti ka apna khana hai, isliye uspe back dikhana
+ * ulta lagta hai (kahan se peeche? patti to saamne hi hai).
+ */
 export function isRootPage(pathname, nav, isRetailer) {
+  if (pathname === '/menu') return true;
   return bottomNavFor(nav, isRetailer).some((n) => n.to === pathname);
 }

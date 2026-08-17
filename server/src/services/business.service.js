@@ -8,6 +8,8 @@ import ApiError from '../utils/ApiError.js';
 import { saveImage, deleteImage } from '../utils/storage.js';
 import { buildInviteLink, businessForUser } from '../utils/businessView.js';
 import { Business, Party, User } from '../models/index.js';
+import mongoose from 'mongoose';
+import { scopeParties, scopePartiesMatch, canSeeParty } from '../utils/scope.js';
 
 /**
  * `user` dena zaroori hai — usi se tay hota hai ki dukaan ki kaunsi baat
@@ -116,14 +118,34 @@ export async function regenerateInvite(businessId) {
 }
 
 /** Retailer list — Part 4 me poora UI banega, abhi approve/reject ke liye */
-export async function listRetailers(businessId, status = 'all') {
-  const query = { businessId, type: PARTY_TYPES.RETAILER };
+/**
+ * Retailer ki list — approve/block wale page ke liye.
+ *
+ * "SIRF APNA KAAM" WALI HADD YAHAN CHHOOT GAYI THI.
+ *
+ * Part 15 step 2 me ye hadd bill, payment, wapasi, report aur dashboard pe
+ * lagayi gayi thi. Ye ek darwaza tab dekha hi nahi gaya, aur ye sabse bura
+ * tha: `Party.find()` poora document lauta raha tha — yaani hadd wale
+ * salesman ko poori dukaan ke retailer, unka BALANCE aur CREDIT LIMIT sab
+ * dikh jate the. Ek hi request, aur poori dukaan ka udhaar saamne.
+ *
+ * Ginti (`summary`) pe bhi wahi hadd lagti hai — warna list to apni dikhti
+ * aur upar "48 retailer" likha aata; aadha sach poore jhooth se zyada
+ * uljhata hai.
+ */
+export async function listRetailers(businessId, status = 'all', viewer = null) {
+  const query = scopeParties({ businessId, type: PARTY_TYPES.RETAILER }, viewer);
   if (status !== 'all') query.status = status;
+
+  const countMatch = scopePartiesMatch({
+    businessId: new mongoose.Types.ObjectId(String(businessId)),
+    type: PARTY_TYPES.RETAILER,
+  }, viewer);
 
   const [retailers, counts] = await Promise.all([
     Party.find(query).sort({ createdAt: -1 }).lean(),
     Party.aggregate([
-      { $match: { businessId, type: PARTY_TYPES.RETAILER } },
+      { $match: countMatch },
       { $group: { _id: '$status', n: { $sum: 1 } } },
     ]),
   ]);
@@ -134,7 +156,11 @@ export async function listRetailers(businessId, status = 'all') {
   return { retailers, summary };
 }
 
-export async function setRetailerStatus(businessId, partyId, status) {
+export async function setRetailerStatus(businessId, partyId, status, viewer = null) {
+  // List chhupa dena kaafi nahi — id URL me daali ja sakti hai
+  if (!(await canSeeParty(partyId, businessId, viewer))) {
+    throw ApiError.notFound('Retailer nahi mila');
+  }
   const party = await Party.findOne({ _id: partyId, businessId, type: PARTY_TYPES.RETAILER });
   if (!party) throw ApiError.notFound('Retailer nahi mila');
 

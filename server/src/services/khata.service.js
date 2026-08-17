@@ -2,8 +2,10 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { PARTY_TYPES, LEDGER_TYPES, NOTIFICATION_TYPES } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
-import { Party, LedgerEntry, Business, Invoice } from '../models/index.js';
-import { scopeParties, isScoped, canSeeParty } from '../utils/scope.js';
+import { Party, LedgerEntry, Business, Invoice, Purchase } from '../models/index.js';
+import {
+  scopeParties, scopePartiesMatch, isScoped, canSeeParty,
+} from '../utils/scope.js';
 import { notifyRetailer } from './notification.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -62,6 +64,133 @@ export async function listKhata(businessId, q, viewer = null) {
       overLimit: p.creditLimit > 0 && p.balance > p.creditLimit,
     })),
     meta: { page: q.page, limit: q.limit, total, totalPages: Math.max(1, Math.ceil(total / q.limit)) },
+  };
+}
+
+/**
+ * "KISSE KITNA LENA HAI" — Payment page ka sabse upar wala hissa.
+ *
+ * `listKhata` se do farak hain, aur dono zaroori hain:
+ *
+ *   1. Yahan sirf wahi party aati hai jispe paisa BAAKI hai (`balance > 0`).
+ *      Baaki ki list dekhni ho to Khata page hai hi.
+ *   2. Har line pe "KITNA PURANA" bhi aata hai — sabse purane khule bill ki
+ *      tareekh. Ye asli baat hai: ₹5,000 kal ka aur ₹5,000 teen mahine purana
+ *      ek jaise nahi hote, par ginti dono ki ek jaisi dikhti hai.
+ *
+ * Rakam hamesha `Party.balance` se aati hai, bill ke jod se nahi — kyunki
+ * khate me purana hisaab (opening) aur advance bhi ginte hain. Bill se sirf
+ * "kab se" aur "kitne bill khule hain" nikalte hain.
+ *
+ * Sort database me hi hota hai (`$sort` ke baad `$skip/$limit`), isliye page 2
+ * pe bhi kram sach me sahi rehta hai — client pe chhant kar dikhane wala
+ * jugaad chup-chaap jhooth bolta hai.
+ */
+export async function listDue(businessId, q, viewer = null) {
+  const bid = new mongoose.Types.ObjectId(businessId);
+  const FIELDS = 'name shopName phone type balance creditLimit status';
+
+  const base = {
+    type: q.type === 'supplier' ? PARTY_TYPES.SUPPLIER : PARTY_TYPES.RETAILER,
+    balance: { $gt: 0 },
+  };
+  if (q.q) {
+    const rx = new RegExp(escapeRegex(q.q), 'i');
+    base.$or = [{ name: rx }, { shopName: rx }, { phone: rx }];
+  }
+
+  // Ek hi chhalni ke do roop: `find()` wala (string id chalti hai) aur
+  // `$match` wala (id ObjectId honi chahiye) — jod nikalne ke liye.
+  const filter = scopeParties({ businessId, ...base }, viewer);
+  const match = scopePartiesMatch({ businessId: bid, ...base }, viewer);
+
+  /*
+    Khule bill ek hi baar, ek hi pass me — party ke hisaab se juda hua.
+
+    Pehle yahan `$lookup` likha tha (har party ke liye uske bill dhoondho). Wo
+    dikhne me saaf tha par kaam bura: `$skip/$limit` se PEHLE chalta hai, yaani
+    200 udhaar wali party pe ek page kholne ke liye 200 chhoti query. Yahan
+    ULTA karte hain — sirf KHULE bill padhte hain (jo apne aap chhoti list hai,
+    kyunki bike hue aur chukta bill isme aate hi nahi) aur ek hi group me
+    party-wise jod nikal lete hain.
+  */
+  /*
+    Retailer ka udhaar BILL me hota hai, supplier ka PURCHASE me.
+
+    Ye farak yaad rakhna zaroori hai. Pehle yahan sirf Invoice padhi jati thi;
+    supplier wali list bhi chal jati (rakam Party.balance se aati hai) par har
+    supplier pe "kitna purana" khali dikhta — kyunki uske naam ka koi bill hota
+    hi nahi. Aisa khaali khaana bug se bhi bura hai: dikhta hai ki jaankari hai
+    hi nahi, jabki wo Purchase me padi hui thi.
+
+    Purchase me `isCancelled` hota hi nahi — use mitao to wo hat jati hai.
+  */
+  const supplier = q.type === 'supplier';
+  // Ispe hadd lagane ki zarurat nahi: ye sirf ek naksha (map) hai, aur isme se
+  // wahi line padhi jati hai jiski party neeche wali chhalni se nikli ho — aur
+  // wo chhalni already hadd me hai.
+  const openAgg = supplier
+    ? await Purchase.aggregate([
+      { $match: { businessId: bid, dueAmount: { $gt: 0 } } },
+      { $group: { _id: '$supplierId', oldest: { $min: '$purchaseDate' }, bills: { $sum: 1 } } },
+    ])
+    : await Invoice.aggregate([
+      { $match: { businessId: bid, isCancelled: false, dueAmount: { $gt: 0 } } },
+      { $group: { _id: '$partyId', oldest: { $min: '$invoiceDate' }, bills: { $sum: 1 } } },
+    ]);
+  const openMap = Object.fromEntries(openAgg.map((r) => [String(r._id), r]));
+
+  const shape = (p) => {
+    const open = openMap[String(p._id)];
+    return {
+      ...p,
+      balance: round2(p.balance),
+      oldestDue: open?.oldest || null,
+      openBills: open?.bills || 0,
+      overLimit: p.creditLimit > 0 && p.balance > p.creditLimit,
+    };
+  };
+
+  const skip = (q.page - 1) * q.limit;
+  const total = await Party.countDocuments(filter);
+  const sumAgg = await Party.aggregate([
+    { $match: match },
+    { $group: { _id: null, amount: { $sum: '$balance' } } },
+  ]);
+
+  let parties;
+  if (q.sort === 'oldest') {
+    /*
+      "Purana pehle" me kram bill ki tareekh se aata hai, party ke kisi apne
+      field se nahi — isliye database ise sort nahi kar sakta. Isliye is ek
+      halat me udhaar wali saari party padh kar yahan chhantte hain. Ye list
+      hai kya — "jinka paisa baaki hai" — aur wo aam dukaan me sau-do sau se
+      aage nahi jati. Jiska koi khula bill hi nahi (sirf purana hisaab) wo
+      sabse NEECHE, warna wo null ki wajah se sabse upar chipak jate.
+    */
+    const all = (await Party.find(filter).select(FIELDS).lean()).map(shape);
+    all.sort((a, b) => {
+      if (!!a.openBills !== !!b.openBills) return b.openBills ? 1 : -1;
+      if (a.oldestDue && b.oldestDue) return new Date(a.oldestDue) - new Date(b.oldestDue);
+      return b.balance - a.balance;
+    });
+    parties = all.slice(skip, skip + q.limit);
+  } else {
+    const sort = q.sort === 'name' ? { name: 1 } : { balance: -1 };
+    const rows = await Party.find(filter).select(FIELDS).sort(sort).skip(skip).limit(q.limit).lean();
+    parties = rows.map(shape);
+  }
+
+  return {
+    parties,
+    meta: {
+      page: q.page,
+      limit: q.limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / q.limit)),
+      // Poore filter ka jod — sirf is page ka nahi
+      totalDue: round2(sumAgg[0]?.amount || 0),
+    },
   };
 }
 

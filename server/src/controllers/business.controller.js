@@ -32,17 +32,17 @@ export const regenerateInvite = asyncHandler(async (req, res) => {
 });
 
 export const listRetailers = asyncHandler(async (req, res) => {
-  const result = await businessService.listRetailers(req.businessId, req.query.status);
+  const result = await businessService.listRetailers(req.businessId, req.query.status, req.user);
   return ok(res, result);
 });
 
 export const approveRetailer = asyncHandler(async (req, res) => {
-  const party = await businessService.setRetailerStatus(req.businessId, req.params.id, PARTY_STATUS.ACTIVE);
+  const party = await businessService.setRetailerStatus(req.businessId, req.params.id, PARTY_STATUS.ACTIVE, req.user);
   return ok(res, party, `${party.name} ab order kar sakta hai`);
 });
 
 export const blockRetailer = asyncHandler(async (req, res) => {
-  const party = await businessService.setRetailerStatus(req.businessId, req.params.id, PARTY_STATUS.BLOCKED);
+  const party = await businessService.setRetailerStatus(req.businessId, req.params.id, PARTY_STATUS.BLOCKED, req.user);
   return ok(res, party, `${party.name} ko block kar diya`);
 });
 

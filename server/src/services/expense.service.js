@@ -233,6 +233,60 @@ export async function deleteExpense(businessId, id, viewer = null) {
 /* ------------------------------------------- P&L ke liye jod (report me) */
 
 /** Diye hue samay me kitna kharch — shreni ke hisaab se */
+/**
+ * Dashboard ke liye kharch — aaj ka, is mahine ka, aur roz ka (chart ke liye).
+ *
+ * Teen alag call ki jagah ek `$facet`, kyunki dashboard already ek hi request
+ * me sab kuch bhejta hai. Aur hadd (`scopeFilter`) yahin lagti hai — dashboard
+ * apna alag niyam na banaye, warna ek jagah badalne pe doosri chhoot jayegi.
+ */
+export async function expenseDashboard(businessId, { todayStart, todayEnd, monthStart, trendStart }, viewer = null) {
+  const match = scopeFilter({ businessId: oid(businessId) }, viewer);
+
+  /*
+    Ek hi baar din-din ka jod nikalte hain, phir teeno jawab usi se bante hain.
+
+    Teen alag aggregate ya `$facet` bhi likha ja sakta tha, par ye behtar hai:
+    database pe ek hi pass, aur din ka bucket hi wo cheez hai jo chart ko waise
+    ka waisa chahiye. Range dono me se jo pehle shuru ho — mahine ki pehli
+    tareekh (mahine ka jod) ya 14 din peeche (chart) — kyunki mahine ke shuru
+    me chart pichhle mahine tak chala jata hai, aur mahine ke aakhir me mahina
+    chart se lamba ho jata hai.
+  */
+  const from = trendStart < monthStart ? trendStart : monthStart;
+
+  const rows = await Expense.aggregate([
+    { $match: { ...match, date: { $gte: from, $lte: todayEnd } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+        amount: { $sum: '$amount' },
+        n: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  const key = (d) => {
+    const x = new Date(d);
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  };
+  const todayKey = key(todayStart);
+  const monthKey = key(monthStart);
+  const trendKey = key(trendStart);
+
+  const today = rows.find((r) => r._id === todayKey);
+  const month = rows.filter((r) => r._id >= monthKey);
+
+  return {
+    today: round2(today?.amount || 0),
+    todayCount: today?.n || 0,
+    month: round2(month.reduce((s, r) => s + r.amount, 0)),
+    monthCount: month.reduce((s, r) => s + r.n, 0),
+    byDay: rows.filter((r) => r._id >= trendKey).map((r) => ({ _id: r._id, amount: round2(r.amount) })),
+  };
+}
+
 export async function expenseTotals(businessId, { start, end } = {}, viewer = null) {
   const match = scopeFilter({ businessId: oid(businessId) }, viewer);
   if (start || end) {

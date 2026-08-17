@@ -127,7 +127,18 @@ for (const m of dictSrc.matchAll(/export const NO_TRANSLATE = new Set\(\[([\s\S]
 }
 
 const missing = [...used].filter((k) => !known.has(k) && !skip.has(k));
-const pct = used.size ? Math.round(((used.size - missing.length) / used.size) * 100) : 100;
+
+/*
+  100% SIRF TAB jab sach me ek bhi shabd na bacha ho.
+
+  Pehle yahan seedha `Math.round` tha. 718/720 = 99.7% → round hoke "100%"
+  chhapta tha, jabki do shabd bache the. Ek aisi ginti jo galat halat me bhi
+  100% bolti hai, wo ginti nahi — dilasa hai. Do din me log usse dekhna hi
+  chhod dete hain.
+*/
+const done = used.size - missing.length;
+const raw = used.size ? (done / used.size) * 100 : 100;
+const pct = missing.length && raw > 99 ? 99 : Math.round(raw);
 
 console.log(`\ni18n: ${used.size} shabd istemal me, ${used.size - missing.length} anuvaad ho chuke (${pct}%)`);
 if (missing.length && process.argv.includes('--missing')) {

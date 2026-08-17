@@ -45,6 +45,11 @@ export default function Table({
   onRowClick,
   rowKey = (row, i) => row._id || row.id || i,
   className,
+  // Jab ek hi list ko kai hisson me tod kar dikhaya jata ho (Sale page pe
+  // din-din karke), to column ke naam sirf PEHLE hisse pe chahiye — har din ke
+  // upar dobara BILL/RETAILER/KUL likhne se list padhne me bhaari ho jati hai
+  // aur din ki patti hi kho jati hai.
+  hideHeader = false,
 }) {
   // Pehli baar: ghoomte chakkar ki jagah us cheez ka DHANCHA jo aane wali hai.
   // Isse data aane par kuch kudta nahi — bas rang bhar jata hai.
@@ -76,7 +81,7 @@ export default function Table({
     {/* Badi screen — poori table */}
     <div className={cn('hidden overflow-x-auto md:block', className)}>
       <table className="w-full min-w-[600px] border-collapse text-sm">
-        <thead>
+        <thead className={cn(hideHeader && 'sr-only')}>
           <tr className="border-b border-slate-200 bg-slate-50">
             {columns.map((col) => (
               <th

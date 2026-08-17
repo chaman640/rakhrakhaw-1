@@ -41,6 +41,15 @@ export const khataQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(200).optional().default(25),
 });
 
+/** Payment page ka "kisse kitna lena hai" — sirf baaki wale, kram badla ja sakta hai */
+export const dueQuerySchema = z.object({
+  q: z.string().trim().max(100).optional().default(''),
+  type: z.enum(['retailer', 'supplier']).optional().default('retailer'),
+  sort: z.enum(['-balance', 'oldest', 'name']).optional().default('-balance'),
+  page: z.coerce.number().min(1).optional().default(1),
+  limit: z.coerce.number().min(1).max(100).optional().default(20),
+});
+
 export const ledgerQuerySchema = z.object({
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),

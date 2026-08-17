@@ -6,6 +6,7 @@ import { scopeMatch, scopeByParty, scopeParties } from '../utils/scope.js';
 import {
   Invoice, Order, Party, Item, Payment, Purchase, Notification,
 } from '../models/index.js';
+import { expenseDashboard } from './expense.service.js';
 
 /**
  * Dukaan kholte hi jo dikhna chahiye.
@@ -69,6 +70,7 @@ export async function getWholesalerDashboard(businessId, user = null) {
     trendAgg, topItems, topRetailers,
     recentInvoices, recentOrders, recentPayments,
     pendingPayments, pendingRetailers,
+    expense,
   ] = await Promise.all([
     saleSum(todayStart, todayEnd),
     saleSum(yStart, yEnd),
@@ -164,6 +166,9 @@ export async function getWholesalerDashboard(businessId, user = null) {
 
     Payment.countDocuments(await scopeByParty({ businessId, status: 'pending' }, businessId, user, { alsoMine: true })),
     Party.countDocuments(partyFilter({ businessId, type: PARTY_TYPES.RETAILER, status: 'pending' })),
+
+    // Kharch — aaj ka, mahine ka, aur roz ka (chart me sale ke saath dikhega)
+    expenseDashboard(businessId, { todayStart, todayEnd, monthStart, trendStart }, user),
   ]);
 
   const statusMap = Object.fromEntries(orderCounts.map((o) => [o._id, o.n]));
@@ -172,6 +177,7 @@ export async function getWholesalerDashboard(businessId, user = null) {
 
   // Trend me khali din bhi chahiye, warna chart me gaddha dikhta hai
   const trendMap = Object.fromEntries(trendAgg.map((t) => [t._id, t]));
+  const expenseMap = Object.fromEntries((expense.byDay || []).map((e) => [e._id, e.amount]));
   const trend = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(todayStart);
@@ -182,6 +188,8 @@ export async function getWholesalerDashboard(businessId, user = null) {
       label: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
       amount: round2(trendMap[key]?.amount || 0),
       bills: trendMap[key]?.bills || 0,
+      // Us din ka kharch — chart me sale ke neeche doosri line
+      expense: round2(expenseMap[key] || 0),
     });
   }
 
@@ -212,6 +220,12 @@ export async function getWholesalerDashboard(businessId, user = null) {
       today: round2(todayCollection[0]?.amount || 0),
       todayCount: todayCollection[0]?.n || 0,
       month: round2(monthCollection[0]?.amount || 0),
+    },
+    expense: {
+      today: expense.today,
+      todayCount: expense.todayCount,
+      month: expense.month,
+      monthCount: expense.monthCount,
     },
     orders: {
       new: statusMap[ORDER_STATUS.PLACED] || 0,
@@ -271,6 +285,18 @@ export async function getWholesalerDashboard(businessId, user = null) {
   }
   if (!can('invoices:view')) {
     delete full.sale;
+  }
+  /*
+    Kharch bhi wahi haal hai jo Part 15 ke step 2 me udhaar ka tha.
+
+    Sirf tile hata dena kaafi NAHI hai — chart ki har din wali line me bhi
+    kharch ki rakam padi hai. Counter wale ladke ko dukaan ka kiraya aur
+    tankhwah ek graph ki line ke roop me dikh jana bhi utna hi leak hai.
+    Isliye dono jagah se nikalte hain, chhupate nahi.
+  */
+  if (!can('expenses:view')) {
+    delete full.expense;
+    full.trend = (full.trend || []).map(({ expense: _drop, ...rest }) => rest);
   }
   // Mahine ka jod, 14 din ka trend aur top items — ye report wali baat hai.
   //

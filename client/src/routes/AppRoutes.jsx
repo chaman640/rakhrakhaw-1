@@ -10,7 +10,6 @@ import Join from '@/pages/auth/Join';
 import JoinStaff from '@/pages/auth/JoinStaff';
 import PendingApproval from '@/pages/retailer/PendingApproval';
 import Settings from '@/pages/wholesaler/Settings';
-import Activity from '@/pages/wholesaler/Activity';
 import Items from '@/pages/wholesaler/Items';
 import Retailers from '@/pages/wholesaler/Retailers';
 import Suppliers from '@/pages/wholesaler/Suppliers';
@@ -35,6 +34,8 @@ import Dashboard from '@/pages/wholesaler/Dashboard';
 import Reports from '@/pages/wholesaler/Reports';
 import RetailerHome from '@/pages/retailer/Home';
 import Notifications from '@/pages/Notifications';
+import MenuPage from '@/pages/wholesaler/MenuPage';
+import Staff from '@/pages/wholesaler/Staff';
 import Returns from '@/pages/wholesaler/Returns';
 import Expenses from '@/pages/wholesaler/Expenses';
 import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
@@ -112,6 +113,13 @@ export default function AppRoutes() {
         <Route path="/purchases/new" element={<RequirePermission permission="purchases:create"><PurchaseForm /></RequirePermission>} />
         <Route path="/purchases/:id" element={<RequirePermission permission="purchases"><PurchaseDetail /></RequirePermission>} />
         <Route path="/invoices" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
+        {/*
+          Wahi page, do naam. Menu me "Sale" likha hai kyunki dukaandaar bill
+          ko sale hi kehta hai; par /invoices purane link, bookmark aur bill
+          detail (/invoices/:id) ke saath juda hai — use todna bina wajah ka
+          nuksan hai.
+        */}
+        <Route path="/sales" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
         <Route path="/invoices/new" element={<RequirePermission permission="invoices:create"><InvoiceForm /></RequirePermission>} />
         {/*
           "Add Sale" aur "Naya bill" EK HI cheez hain — do alag form banane ka
@@ -127,7 +135,13 @@ export default function AppRoutes() {
         <Route path="/returns/:id" element={<RequirePermission permission="returns"><ReturnDetail /></RequirePermission>} />
         <Route path="/expenses" element={<RequirePermission permission="expenses"><Expenses /></RequirePermission>} />
         <Route path="/reports" element={<RequirePermission permission="reports"><Reports /></RequirePermission>} />
-        <Route path="/activity" element={<RequirePermission permission="staff:view"><Activity /></RequirePermission>} />
+        {/*
+          Staff aur "kisne kya kiya" ab ek hi page ke do tab hain.
+          `/activity` purane link aur notification ke liye chalta rehta hai —
+          wo seedha "Kaam ka record" wale tab pe khulta hai.
+        */}
+        <Route path="/staff" element={<RequirePermission permission="staff:view"><Staff /></RequirePermission>} />
+        <Route path="/activity" element={<Navigate to="/staff?tab=record" replace />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 
@@ -164,6 +178,13 @@ export default function AppRoutes() {
       >
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/home" element={<HomeByRole />} />
+        {/*
+          Menu bhi dono ke liye ek hi page hai — andar `isRetailer` dekh kar
+          apni list chun leta hai. Isliye role wale group ke BAHAR, warna
+          retailer wholesaler wale group me phans kar bahar phenk diya jayega
+          (wahi purani `/notifications` wali galti).
+        */}
+        <Route path="/menu" element={<MenuPage />} />
       </Route>
 
       {/*

@@ -21,7 +21,7 @@ import { t } from '@/lib/i18n';
  * `pb-[env(safe-area-inset-bottom)]` iPhone ke liye hai — warna sabse neeche
  * wali line home wale danda (home indicator) ke peeche chali jati hai.
  */
-export default function BottomNav({ onMenuClick, menuOpen }) {
+export default function BottomNav() {
   const { isRetailer, can } = useAuth();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
@@ -76,20 +76,32 @@ export default function BottomNav({ onMenuClick, menuOpen }) {
           );
         })}
 
-        {/* Paanchva khana — purana teen-line wala button, ab angoothe ke paas */}
-        <button
-          onClick={onMenuClick}
+        {/*
+          Paanchva khana — Menu.
+
+          Pehle ye ek button tha jo side wali daraz kholta tha. Ab ye seedha
+          `/menu` page pe le jata hai. Faayda sirf dikhne ka nahi: daraz ka koi
+          pata (URL) nahi hota tha, peeche wala button use band kar deta tha,
+          aur usme dhoondhne ka koi tarika hi nahi tha.
+        */}
+        <NavLink
+          to="/menu"
           aria-label={t('Poora menu')}
-          aria-expanded={menuOpen}
-          className={cn(
-            'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors focus-ring',
-            menuOpen ? 'text-brand-700' : 'text-slate-500 active:bg-slate-50'
-          )}
+          className={({ isActive }) =>
+            cn(
+              'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors focus-ring',
+              isActive ? 'text-brand-700' : 'text-slate-500 active:bg-slate-50'
+            )
+          }
         >
-          <Menu size={21} strokeWidth={menuOpen ? 2.4 : 1.9} />
-          <span className={cn('text-[11px] leading-tight', menuOpen && 'font-semibold')}>{t('Menu')}</span>
-          {menuOpen && <span className="absolute inset-x-3 top-0 h-0.5 rounded-b bg-brand-600" />}
-        </button>
+          {({ isActive }) => (
+            <>
+              <Menu size={21} strokeWidth={isActive ? 2.4 : 1.9} />
+              <span className={cn('text-[11px] leading-tight', isActive && 'font-semibold')}>{t('Menu')}</span>
+              {isActive && <span className="absolute inset-x-3 top-0 h-0.5 rounded-b bg-brand-600" />}
+            </>
+          )}
+        </NavLink>
       </div>
     </nav>
   );

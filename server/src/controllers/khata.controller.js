@@ -9,6 +9,11 @@ export const list = asyncHandler(async (req, res) => {
   return res.json({ success: true, message: 'OK', data: parties, meta });
 });
 
+export const due = asyncHandler(async (req, res) => {
+  const { parties, meta } = await service.listDue(req.businessId, req.query, req.user);
+  return res.json({ success: true, message: 'OK', data: parties, meta });
+});
+
 export const summary = asyncHandler(async (req, res) =>
   ok(res, await service.getKhataSummary(req.businessId, req.user)));
 

@@ -788,6 +788,191 @@ const DICT = {
   'Aur kuch': { hi: 'और कुछ', en: 'Something else' },
   'Pichhla mahina': { hi: 'पिछला महीना', en: 'Last month' },
   'Is saal': { hi: 'इस साल', en: 'This year' },
+
+  /* ---- Part 15, step 4: Dashboard, Sale aur Payment page ---- */
+
+  // dashboard ke chhote tile
+  'Aaj ka kharch': { hi: 'आज का खर्च', en: "Today's expenses" },
+  'Mahine me': { hi: 'महीने में', en: 'This month' },
+  'Is mahine sale': { hi: 'इस महीने सेल', en: 'Sales this month' },
+  'Chai, petrol, kiraya — jo bhi aaj gaya': {
+    hi: 'चाय, पेट्रोल, किराया — जो भी आज गया',
+    en: 'Tea, fuel, rent — whatever went out today',
+  },
+  retailer: { hi: 'रिटेलर', en: 'retailer' },
+  item: { hi: 'आइटम', en: 'item' },
+  bacha: { hi: 'बचा', en: 'left' },
+  'Abhi koi sale nahi': { hi: 'अभी कोई सेल नहीं', en: 'No sales yet' },
+  'Kuch nahi hua abhi tak': { hi: 'कुछ नहीं हुआ अभी तक', en: 'Nothing has happened yet' },
+
+  // Sale page
+  Kal: { hi: 'कल', en: 'Yesterday' },
+  'Kis din kitna bika aur kiska paisa baaki hai': {
+    hi: 'किस दिन कितना बिका और किसका पैसा बाकी है',
+    en: 'What sold on which day, and whose payment is pending',
+  },
+  '7 din': { hi: '7 दिन', en: '7 days' },
+  'Date chunein': { hi: 'तारीख चुनें', en: 'Pick dates' },
+  'Kis din se': { hi: 'किस दिन से', en: 'From' },
+  'Kis din tak': { hi: 'किस दिन तक', en: 'To' },
+  'Is duration me koi bill nahi': { hi: 'इस अवधि में कोई बिल नहीं', en: 'No bills in this period' },
+  'Upar wale chip se duration badal kar dekhein — ya yahin se naya bill banayein.': {
+    hi: 'ऊपर वाले चिप से अवधि बदल कर देखें — या यहीं से नया बिल बनाएँ।',
+    en: 'Change the period using the chips above — or make a new bill right here.',
+  },
+
+  // Payment page — "kitna purana"
+  'aaj ka': { hi: 'आज का', en: 'from today' },
+  'kal ka': { hi: 'कल का', en: 'from yesterday' },
+  'din purana': { hi: 'दिन पुराना', en: 'days old' },
+  '1 mahina purana': { hi: '1 महीना पुराना', en: '1 month old' },
+  'mahine purana': { hi: 'महीने पुराना', en: 'months old' },
+
+  // Payment page — baaki sab
+  'Kisse lena hai, aur ab tak kya kya aaya': {
+    hi: 'किससे लेना है, और अब तक क्या क्या आया',
+    en: 'Who owes you, and everything received so far',
+  },
+  'Kul lena hai': { hi: 'कुल लेना है', en: 'Total receivable' },
+  'payment confirm karna hai': { hi: 'पेमेंट कन्फर्म करनी है', en: 'payments to confirm' },
+  'Inke app me alert chala jayega ki itna paisa baaki hai. WhatsApp bhejna ho to uske bagal wala button dabaein.': {
+    hi: 'इनके ऐप में अलर्ट चला जाएगा कि इतना पैसा बाकी है। WhatsApp भेजना हो तो उसके बगल वाला बटन दबाएँ।',
+    en: 'They will get an alert in their app about the pending amount. To send a WhatsApp message, use the button next to it.',
+  },
+  'Naam ya number...': { hi: 'नाम या नंबर...', en: 'Name or number...' },
+  'Sabse zyada': { hi: 'सबसे ज़्यादा', en: 'Largest first' },
+  'Purana pehle': { hi: 'पुराना पहले', en: 'Oldest first' },
+  'Naam se': { hi: 'नाम से', en: 'By name' },
+  'retailer se lena hai': { hi: 'रिटेलर से लेना है', en: 'retailers owe you' },
+  'Is naam se koi nahi mila': { hi: 'इस नाम से कोई नहीं मिला', en: 'No one found by that name' },
+  'Kisi ka udhaar baaki nahi': { hi: 'किसी का उधार बाकी नहीं', en: 'No pending dues' },
+  'Naam ya number dobara dekh lein.': { hi: 'नाम या नंबर दोबारा देख लें।', en: 'Check the name or number again.' },
+  'Sabka hisaab saaf hai — badhiya baat hai.': {
+    hi: 'सबका हिसाब साफ है — बढ़िया बात है।',
+    en: 'Everyone is settled up — that is a good thing.',
+  },
+  'number nahi hai': { hi: 'नंबर नहीं है', en: 'no number saved' },
+  'bill khula': { hi: 'बिल खुला', en: 'bill open' },
+  'hadd paar': { hi: 'हद पार', en: 'over limit' },
+  'Phone karein': { hi: 'फोन करें', en: 'Call' },
+  'WhatsApp pe yaad dilayein': { hi: 'WhatsApp पर याद दिलाएँ', en: 'Remind on WhatsApp' },
+  'App me yaad dilayein': { hi: 'ऐप में याद दिलाएँ', en: 'Remind in the app' },
+  'Paisa aaya': { hi: 'पैसा आया', en: 'Money received' },
+
+  'Dena hai': { hi: 'देना है', en: 'You owe' },
+  'Supplier ko': { hi: 'सप्लायर को', en: 'To suppliers' },
+
+  // Pagination ki neeche wali line — pehle `t()` me lipti hi nahi thi
+  'Kul {n} item': { hi: 'कुल {n} आइटम', en: '{n} in total' },
+
+  /* ---- Part 15, step 5: Menu page, Staff page aur Purchase ---- */
+
+  // Menu page
+  jagah: { hi: 'जगह', en: 'places' },
+  'Menu me dhundhein': { hi: 'मेन्यू में ढूँढें', en: 'Search the menu' },
+  'Kya kholna hai? Jaise "kharch" ya "udhaar"': {
+    hi: 'क्या खोलना है? जैसे "खर्च" या "उधार"',
+    en: 'What do you want to open? Try "expense" or "credit"',
+  },
+  'Khoj hatayein': { hi: 'खोज हटाएँ', en: 'Clear search' },
+  'Kuch nahi mila': { hi: 'कुछ नहीं मिला', en: 'Nothing found' },
+  'Doosre shabd se dekhein — jaise "bill", "paisa" ya "maal".': {
+    hi: 'दूसरे शब्द से देखें — जैसे "बिल", "पैसा" या "माल"।',
+    en: 'Try another word — like "bill", "money" or "stock".',
+  },
+  'Logout karein?': { hi: 'लॉगआउट करें?', en: 'Log out?' },
+  'Dobara login karne ke liye phone number aur password lagega.': {
+    hi: 'दोबारा लॉगिन करने के लिए फोन नंबर और पासवर्ड लगेगा।',
+    en: 'You will need your phone number and password to log in again.',
+  },
+
+  // Menu me har naam ka ek line ka matlab
+  'Aaj ka kaam — bill banaein, chhapein, bhejein': {
+    hi: 'आज का काम — बिल बनाएँ, छापें, भेजें',
+    en: "Today's work — make bills, print them, send them",
+  },
+  'Ek nazar me poori dukaan — sale, kharch aur graph': {
+    hi: 'एक नज़र में पूरी दुकान — सेल, खर्च और ग्राफ',
+    en: 'The whole shop at a glance — sales, expenses and charts',
+  },
+  'Retailer ne app se jo maal manga hai': {
+    hi: 'रिटेलर ने ऐप से जो माल मँगाया है',
+    en: 'What retailers have ordered through the app',
+  },
+  'Maal ki list, rate aur stock': { hi: 'माल की लिस्ट, रेट और स्टॉक', en: 'Item list, rates and stock' },
+  'Jinko aap maal bechte hain': { hi: 'जिनको आप माल बेचते हैं', en: 'The people you sell to' },
+  'Jinse aap maal khareedte hain': { hi: 'जिनसे आप माल खरीदते हैं', en: 'The people you buy from' },
+  'Maal andar aaya — kis din kitna, aur kisko dena hai': {
+    hi: 'माल अंदर आया — किस दिन कितना, और किसको देना है',
+    en: 'Stock coming in — how much on which day, and who you owe',
+  },
+  'Maal wapas aaya ya wapas bheja': {
+    hi: 'माल वापस आया या वापस भेजा',
+    en: 'Goods returned to you or sent back',
+  },
+  'Har party ka poora lena-dena, ek ek entry': {
+    hi: 'हर पार्टी का पूरा लेन-देन, एक एक एंट्री',
+    en: 'Every single transaction for each party',
+  },
+  'Kisse udhaar lena hai, aur paisa aane-jaane ka record': {
+    hi: 'किससे उधार लेना है, और पैसा आने-जाने का रिकॉर्ड',
+    en: 'Who owes you, and the record of money in and out',
+  },
+  'Chai, petrol, kiraya, tankhwah — dukaan ka kharcha': {
+    hi: 'चाय, पेट्रोल, किराया, तनख्वाह — दुकान का खर्चा',
+    en: 'Tea, fuel, rent, salaries — the shop expenses',
+  },
+  'Fayda-nuksan, GST, stock aur baaki hisaab': {
+    hi: 'फायदा-नुकसान, GST, स्टॉक और बाकी हिसाब',
+    en: 'Profit and loss, GST, stock and other reports',
+  },
+  'Log, unki ijazat, hadd — aur kisne kya kiya': {
+    hi: 'लोग, उनकी इजाज़त, हद — और किसने क्या किया',
+    en: 'People, their permissions, limits — and who did what',
+  },
+  'Dukaan ka naam, UPI, bank aur apna account': {
+    hi: 'दुकान का नाम, UPI, बैंक और अपना अकाउंट',
+    en: 'Shop name, UPI, bank and your account',
+  },
+  'Bhasha, roshni, akshar ka size aur backup': {
+    hi: 'भाषा, रोशनी, अक्षर का साइज़ और बैकअप',
+    en: 'Language, theme, text size and backup',
+  },
+  'Aapka hisaab ek nazar me': { hi: 'आपका हिसाब एक नज़र में', en: 'Your account at a glance' },
+  'Poora maal aur uske rate': { hi: 'पूरा माल और उसके रेट', en: 'All items and their rates' },
+  'Jo maal aapne chuna hai': { hi: 'जो माल आपने चुना है', en: 'The items you have picked' },
+  'Aapke bheje hue order': { hi: 'आपके भेजे हुए ऑर्डर', en: 'Orders you have placed' },
+  'Aapke saare bill': { hi: 'आपके सारे बिल', en: 'All your bills' },
+  'Kitna baaki hai': { hi: 'कितना बाकी है', en: 'How much is pending' },
+  'Naye alert': { hi: 'नए अलर्ट', en: 'New alerts' },
+  'Aapka account': { hi: 'आपका अकाउंट', en: 'Your account' },
+
+  // Staff page
+  'Kaam ka record': { hi: 'काम का रिकॉर्ड', en: 'Activity log' },
+  'Aapka kiya hua kaam': { hi: 'आपका किया हुआ काम', en: 'Work you have done' },
+  'Kaun kaun kaam karta hai, kiske paas kya chaabi hai, aur kisne kya kiya': {
+    hi: 'कौन कौन काम करता है, किसके पास क्या चाबी है, और किसने क्या किया',
+    en: 'Who works here, who has which keys, and who did what',
+  },
+  'App, invite link aur backup': { hi: 'ऐप, इनवाइट लिंक और बैकअप', en: 'App, invite link and backup' },
+
+  // Purchase page
+  'Maal aaya': { hi: 'माल आया', en: 'Stock in' },
+  purchase: { hi: 'खरीद', en: 'purchase' },
+  'Is duration me koi purchase nahi': { hi: 'इस अवधि में कोई खरीद नहीं', en: 'No purchases in this period' },
+  'Upar wale chip se duration badal kar dekhein.': {
+    hi: 'ऊपर वाले चिप से अवधि बदल कर देखें।',
+    en: 'Change the period using the chips above.',
+  },
+  'Supplier se maal aaye to yahan entry karein — stock apne aap badh jayega aur unka khata bhi bante jayega.': {
+    hi: 'सप्लायर से माल आए तो यहाँ एंट्री करें — स्टॉक अपने आप बढ़ जाएगा और उनका खाता भी बनता जाएगा।',
+    en: 'Enter stock as it arrives — inventory goes up automatically and their ledger builds itself.',
+  },
+  'supplier ko dena hai': { hi: 'सप्लायर को देना है', en: 'suppliers to pay' },
+  'Kisi supplier ka paisa baaki nahi': { hi: 'किसी सप्लायर का पैसा बाकी नहीं', en: 'You owe no supplier' },
+  'purchase khuli': { hi: 'खरीद खुली', en: 'purchase open' },
+  'WhatsApp pe likhein': { hi: 'WhatsApp पर लिखें', en: 'Message on WhatsApp' },
+  'Paisa diya': { hi: 'पैसा दिया', en: 'Money paid' },
 };
 
 export default DICT;

@@ -75,8 +75,73 @@ export async function listInvoices(businessId, q, viewer = null) {
       partyId: i.partyId?._id || i.partyId,
       itemCount: i.items?.length || 0,
     })),
-    meta: { page: q.page, limit: q.limit, total, totalPages: Math.max(1, Math.ceil(total / q.limit)) },
+    meta: {
+      page: q.page,
+      limit: q.limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / q.limit)),
+      dayTotals: await dayTotalsFor(invoices, filter, q),
+    },
   };
+}
+
+/**
+ * "Aaj · ₹42,500 · 8 bill" wali header line ka jod.
+ *
+ * Ye jod PAGE KI ROWS SE NAHI GINA JATA — aur wahi is function ke hone ki
+ * wajah hai. 25 bill ke baad page toot ta hai, aur wo toot aksar din ke beech
+ * me padta hai. Page pe gino to aakhri din ka jod aadha dikhega, poore vishwas
+ * ke saath. Aisa number na dikhana behtar hai, galat dikhane se.
+ *
+ * Isliye page pe jo din aaye hain SIRF UNKA poora jod database se dobara
+ * poochte hain — usi chhalni (filter) ke saath, taaki "sirf apna kaam" wali
+ * hadd aur filter dono waise ke waise lagein.
+ *
+ * Tareekh ke alawa kisi aur kram (jaise rakam) pe din ka jod ka koi matlab
+ * nahi — rows aage-peeche ho jati hain — isliye tab `null` bhejte hain aur
+ * client seedhi list dikhata hai.
+ */
+async function dayTotalsFor(invoices, filter, q) {
+  if (!invoices.length) return [];
+  if (q.sort !== '-invoiceDate' && q.sort !== 'invoiceDate') return null;
+
+  const times = invoices.map((i) => new Date(i.invoiceDate).getTime());
+  const first = new Date(Math.min(...times)); first.setHours(0, 0, 0, 0);
+  const last = new Date(Math.max(...times)); last.setHours(23, 59, 59, 999);
+
+  /*
+    Yahan id ko HAATH SE ObjectId banana padta hai.
+
+    `find()` me Mongoose khud badal deta hai, isliye upar wali chhalni string
+    id ke saath bhi theek chalti hai. `$match` nahi badalta — string kabhi
+    ObjectId se match hoti hi nahi, aur jawab bina kisi error ke KHALI aa jata
+    hai. Wahi galti Part 15 step 2 me dashboard aur report me pakdi thi
+    (`scopeMatch` usi ke liye bana tha); yahan `partyId` bhi seedha query se
+    aati hai, isliye dono badalte hain.
+  */
+  const match = {
+    ...filter,
+    businessId: new mongoose.Types.ObjectId(String(filter.businessId)),
+    invoiceDate: { $gte: first, $lte: last },
+  };
+  if (match.partyId) match.partyId = new mongoose.Types.ObjectId(String(match.partyId));
+
+  const rows = await Invoice.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
+        amount: { $sum: '$grandTotal' },
+        due: { $sum: '$dueAmount' },
+        bills: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: -1 } },
+  ]);
+
+  return rows.map((r) => ({
+    date: r._id, amount: round2(r.amount), due: round2(r.due), bills: r.bills,
+  }));
 }
 
 export async function getStats(businessId, viewer = null) {

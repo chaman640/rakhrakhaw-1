@@ -13,8 +13,17 @@ import { connectDB } from '../src/config/db.js';
 import { round2 } from '../src/utils/money.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
-  Cart, Order, Notification, Invoice, Payment, ReturnNote,
+  Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense,
 } from '../src/models/index.js';
+/*
+  Ijazat ki ginti YAHAN SE aati hai, haath se likhi hui nahi.
+
+  Pehle yahan `permissions.length === 9` likha tha. Part 12 me permission
+  `module:action` ban gayi (38 ho gayi) aur Part 15 me kharch judne se 42 —
+  test tabse fail ho raha tha, jabki app bilkul theek thi. Asli config se
+  ginti lene par ye galti dobara ho hi nahi sakti.
+*/
+import { permissionsForRole, STAFF_ROLES } from '../src/config/permissions.js';
 
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', D = '\x1b[2m', N = '\x1b[0m';
 
@@ -67,6 +76,8 @@ async function cleanup() {
     Invoice.deleteMany({ businessId: { $in: businessIds } }),
     Payment.deleteMany({ businessId: { $in: businessIds } }),
     ReturnNote.deleteMany({ businessId: { $in: businessIds } }),
+    // Part 15 me juda — bina iske har run pe purane kharch jama hote rehte hain
+    Expense.deleteMany({ businessId: { $in: businessIds } }),
   ]);
   await Business.deleteMany({ _id: { $in: businessIds } });
   await User.deleteMany({ $or: [{ phone: { $in: phones } }, { businessId: { $in: businessIds } }] });
@@ -1113,11 +1124,23 @@ async function run() {
     check('HSN summary bana (2 rows)', r.data?.hsnSummary?.length === 2, `${r.data?.hsnSummary?.length}`);
     const invoice2 = r.data?._id;
 
+    /*
+      Bill ke saath jo paisa mila, uski khata entry ka `refType` 'Payment' hai
+      — 'Invoice' NAHI. Ye jaan-boojh kar badla gaya tha aur ek asli paise
+      wala bug thik karta hai: pehle wo entry 'Invoice' pe likhi jati thi par
+      `deletePayment` 'Payment' dhoondhta tha, isliye payment mitane pe bill
+      to theek ho jata tha aur khate me credit pada reh jata tha (bill 10000
+      maangta, khata 7000 dikhata). Test purani jagah dekh raha tha.
+    */
     ledger8 = await LedgerEntry.find({ refType: 'Invoice', refId: invoice2 }).sort({ createdAt: 1 }).lean();
-    check('do khata entry bani (bill + payment)', ledger8.length === 2, `${ledger8.length}`);
+    check('bill ki apni ek khata entry bani', ledger8.length === 1, `${ledger8.length}`);
     check('INVOICE debit 2527', ledger8[0]?.debit === 2527, `${ledger8[0]?.debit}`);
-    check('PAYMENT_IN credit 1000', ledger8[1]?.type === 'PAYMENT_IN' && ledger8[1]?.credit === 1000,
-      JSON.stringify(ledger8[1] && { t: ledger8[1].type, c: ledger8[1].credit }));
+
+    const withBillPay = await Payment.findOne({ partyId, amount: 1000 }).sort({ createdAt: -1 }).lean();
+    const payLedger = await LedgerEntry.findOne({ refType: 'Payment', refId: withBillPay?._id }).lean();
+    check('saath mile paise ki alag entry bani (refType Payment)',
+      payLedger?.type === 'PAYMENT_IN' && payLedger?.credit === 1000,
+      JSON.stringify(payLedger && { t: payLedger.type, c: payLedger.credit }));
 
     r = await call('GET', `/parties/${partyId}`, { token: wToken });
     // 200 + 2527 - 1000 = 1727
@@ -2220,10 +2243,22 @@ async function run() {
     });
     const twoB = r.data?._id;
 
-    // Purana udhaar pehle clear kar do taaki hisaab saaf rahe
-    const dueNow = await balanceOf();
-    if (dueNow > 10000) {
-      await call('POST', '/payments', { token: wToken, body: { partyId, amount: round2(dueNow - 10000), mode: 'CASH' } });
+    /*
+      Purana udhaar saaf karo — par BILL ke jod se, khate ke balance se NAHI.
+
+      Ye farak asli hai. Paisa hamesha sabse purane KHULE BILL pe lagta hai
+      (FIFO). Khate ka balance us jod se kam ho sakta hai, kyunki wapasi
+      (credit note) khate me credit daalti hai par kisi bill ka baaki kam
+      nahi karti. Upar wale section me abhi abhi ek credit note bana hai.
+
+      Balance se hisaab lagane par utna paisa kam bhejta tha, purana bill
+      utna hi khula reh jata tha, aur agli payment usi pe chali jati thi —
+      neeche wali teen jaanch fail hoti thin aur ilzaam server pe aata tha.
+    */
+    const openBefore = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
+    const openDue = round2((openBefore.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
+    if (openDue > 10000) {
+      await call('POST', '/payments', { token: wToken, body: { partyId, amount: round2(openDue - 10000), mode: 'CASH' } });
     }
 
     r = await call('POST', '/payments', { token: wToken, body: { partyId, amount: 8000, mode: 'CASH' } });
@@ -2252,12 +2287,43 @@ async function run() {
       round2(await closingOf()) === round2(await balanceOf()),
       `closing ${await closingOf()} vs balance ${await balanceOf()}`);
 
-    // ---- 5. Aakhri jaanch: khata ka jod = saare bill ka baaki ----
-    r = await call('GET', '/invoices?status=active&limit=200', { token: wToken });
-    const billsDue = round2((r.data || []).reduce((s, i) => s + (i.dueAmount || 0), 0));
+    /* ---- 5. Aakhri jaanch: khata aur bill ek hi baat kah rahe hain ----
+
+       Pehle yahan seedha `balance === sum(bill ka baaki)` likha tha. Wo galat
+       hai — aur is file me hi uska sabooot hai: wapasi (credit note) khate me
+       credit daalti hai par KISI BILL ka baaki kam nahi karti. Isi tarah jo
+       paisa kisi bill pe nahi laga (advance), wo bhi khate me credit rehta
+       hai. Dono halat me balance bill ke jod se kam hoga — aur wo bilkul
+       theek hai.
+
+       Isliye asli baat ye hai:
+
+         bill ka jod − khata = wo credit jo kisi bill pe nahi laga
+
+       Agar ye barabar nahi hai, tabhi sach me paisa kahin gum hua hai.
+    */
+    r = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
+    const billsDue = round2((r.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
     const bal = round2(await balanceOf());
-    check('khata = saare active bill ka baaki (koi paisa gayab nahi)',
-      bal === billsDue, `khata ${bal} vs bill ka jod ${billsDue}`);
+
+    r = await call('GET', `/payments?partyId=${partyId}&limit=200`, { token: wToken });
+    const unapplied = round2((r.data || [])
+      .filter((pmt) => pmt.status === 'confirmed' && pmt.direction === 'IN')
+      .reduce((s2, pmt) => {
+        const laga = (pmt.allocations || []).reduce((x, a) => x + (a.amount || 0), 0);
+        return s2 + Math.max(0, round2(pmt.amount - laga));
+      }, 0));
+
+    r = await call('GET', `/khata/${partyId}?limit=500`, { token: wToken });
+    const returnCredit = round2((r.data?.entries || [])
+      .filter((e) => e.type === 'SALE_RETURN')
+      .reduce((s2, e) => s2 + (e.credit || 0), 0));
+
+    check('bill ka jod − khata = wo credit jo kisi bill pe nahi laga',
+      round2(billsDue - bal) === round2(unapplied + returnCredit),
+      `bill ${billsDue} − khata ${bal} = ${round2(billsDue - bal)}, `
+      + `par bina lage credit ${round2(unapplied + returnCredit)} `
+      + `(advance ${unapplied} + wapasi ${returnCredit})`);
 
     /* ─────────────────────────────────────────────────────────────────────
        Khata, GST report aur delete ka nishaan
@@ -2291,7 +2357,16 @@ async function run() {
     check('poori list pe truncated ka nishaan nahi', r.data?.truncated === false);
 
     // ---- 2. GST report me kharid ka taxable 0 na ho ----
-    await call('PUT', '/business/me', { token: wToken, body: { gstEnabled: true } });
+    /*
+      GST on karne ke liye GSTIN bhi chahiye — Business model ka apna niyam
+      hai. Pehle yahan sirf `gstEnabled: true` bheja jata tha, request 400 se
+      wapas aati thi, GST on hota hi nahi tha, aur neeche wali "input credit"
+      wali jaanch bina wajah fail hoti thi. Galti test ki thi, server ki nahi.
+    */
+    r = await call('PUT', '/business/me', {
+      token: wToken, body: { gstEnabled: true, gstin: '09AAACH7409R1ZZ' },
+    });
+    check('GST on karne ke liye GSTIN bhi lag gaya', r.status === 200, `${r.message}`);
 
     r = await call('POST', '/purchases', {
       token: wToken,
@@ -2368,6 +2443,21 @@ async function run() {
     await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 500 } });
 
     // ---- 1. Ek hi bill pe do payment, ek saath ----
+    /*
+      Pehle party ka saara khula udhaar chuka dete hain.
+
+      Is section ka sawal hai: "do payment ek saath aayein to dono ek hi bill
+      pe lagti hain ya ek gum ho jati hai?" Uske liye wo bill us party ka AKELA
+      khula bill hona chahiye. Warna paisa purane bill pe chala jata hai
+      (FIFO — jo bilkul sahi kaam hai) aur test ko lagta hai paisa gum ho gaya.
+      Yahi galti upar wale "do payment ek bill pe" section me bhi thi.
+    */
+    r = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
+    const preRaceDue = round2((r.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
+    if (preRaceDue > 0) {
+      await call('POST', '/payments', { token: wToken, body: { partyId, amount: preRaceDue, mode: 'CASH' } });
+    }
+
     r = await call('POST', '/invoices', {
       token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 10, rate: 1000 }] },
     });
@@ -2394,9 +2484,22 @@ async function run() {
 
     // ---- 2. Ek payment, do baar delete ----
     const balBeforeDel = round2(await balanceOf());
+    /*
+      Id `data._id` pe hai, `data.payment._id` pe NAHI.
+
+      `POST /payments` `created(res, { ...payment, advance })` lautata hai —
+      payment ke field seedhe `data` pe khulte hain. Purana test ek aisi
+      shakal padh raha tha jo kabhi thi hi nahi, isliye `undefined` jata tha
+      aur log me `DELETE /api/payments/undefined 400` do baar dikhta tha.
+      Delete chalta hi nahi tha, isliye iske neeche wali do jaanch bhi girti
+      thin — teen fail, wajah ek.
+    */
+    const payAId = pA.data?._id;
+    check('payment ki id jawab me seedhe mili', Boolean(payAId), JSON.stringify(Object.keys(pA.data || {})).slice(0, 120));
+
     const [dA, dB] = await Promise.all([
-      call('DELETE', `/payments/${pA.data?.payment?._id}`, { token: wToken }),
-      call('DELETE', `/payments/${pA.data?.payment?._id}`, { token: wToken }),
+      call('DELETE', `/payments/${payAId}`, { token: wToken }),
+      call('DELETE', `/payments/${payAId}`, { token: wToken }),
     ]);
     check('do me se sirf EK delete chala',
       [dA.status, dB.status].filter((s) => s === 200).length === 1, `${dA.status} / ${dB.status}`);
@@ -2479,9 +2582,13 @@ async function run() {
     r = await call('GET', '/staff', { token: wToken });
     check('staff list me abhi sirf malik hai', r.data?.staff?.length === 1, `${r.data?.staff?.length}`);
     check('malik owner mark hua', r.data?.staff?.[0]?.isOwner === true);
-    check('malik ke paas saari permission hai', r.data?.staff?.[0]?.permissions?.length === 9,
-      `${r.data?.staff?.[0]?.permissions?.length}`);
-    check('role ki list bhi aayi', r.data?.roles?.length === 4, `${r.data?.roles?.length}`);
+    const ownerPerms = permissionsForRole(STAFF_ROLES.OWNER);
+    check('malik ke paas saari permission hai',
+      r.data?.staff?.[0]?.permissions?.length === ownerPerms.length,
+      `${r.data?.staff?.[0]?.permissions?.length} vs ${ownerPerms.length}`);
+    const roleCount = Object.keys(STAFF_ROLES).length;
+    check('role ki list bhi aayi', r.data?.roles?.length === roleCount,
+      `${r.data?.roles?.length} vs ${roleCount}`);
 
     r = await call('POST', '/staff', {
       token: wToken,
@@ -2489,7 +2596,8 @@ async function run() {
     });
     check('salesman ka login bana', r.status === 201, `${r.message}`);
     check('salesman ko default permission mili',
-      r.data?.permissions?.includes('invoices') && !r.data?.permissions?.includes('khata'),
+      r.data?.permissions?.includes('invoices:create')
+      && !r.data?.permissions?.includes('expenses:view'),
       JSON.stringify(r.data?.permissions));
     const salesmanId = r.data?._id;
 
@@ -2519,8 +2627,19 @@ async function run() {
     });
     check('salesman bill bana saka', r.status === 201, `${r.message}`);
 
+    /*
+      Salesman ko khata DIKHTA hai — ye Part 12/14 me jaan-boojh kar badla tha.
+      Vasooli uska aadha kaam hai; udhaar dikhe bina wo maang hi nahi sakta.
+      Rok ab "dikhega ya nahi" pe nahi, "kiska dikhega" pe hai (scope: own),
+      aur badalne ki ijazat uske paas phir bhi nahi hai.
+    */
     r = await call('GET', '/khata', { token: staffToken });
-    check('salesman khata NAHI khol saka', r.status === 403, `status ${r.status}`);
+    check('salesman khata dekh saka (par sirf apne retailer ka)', r.status === 200, `status ${r.status}`);
+
+    r = await call('POST', '/payments', {
+      token: staffToken, body: { partyId, amount: 100, mode: 'CASH' },
+    });
+    check('par salesman paisa entry NAHI kar saka', r.status === 403, `status ${r.status}`);
 
     r = await call('GET', '/reports/sale', { token: staffToken });
     check('salesman report NAHI dekh saka', r.status === 403, `status ${r.status}`);
@@ -2551,10 +2670,24 @@ async function run() {
     // ---- 1. Retailer ko block/approve karna ----
     const statusBefore = (await call('GET', `/parties/${partyId}`, { token: wToken })).data?.status;
 
+    /*
+      `/business/retailers` par salesman ko `parties:view` ki wajah se ijazat
+      hai (Part 12 se) — par SIRF APNE retailer ki. Is smoke test me uske naam
+      koi retailer hai hi nahi, isliye list khali aani chahiye.
+
+      Ye jaanch pehle "403 aana chahiye" maangti thi aur fail hoti thi. Uski
+      wajah se ek ASLI CHHED chhupa hua tha: list par hadd lagti hi nahi thi,
+      aur salesman ko poori dukaan ke retailer unke balance aur credit limit
+      samet dikh jate the. Ab list bhi hadd me hai aur ginti bhi.
+    */
     r = await call('GET', '/business/retailers', { token: staffToken });
-    check('salesman retailer list NAHI dekh saka', r.status === 403, `status ${r.status}`);
+    check('salesman ki list khul to gayi', r.status === 200, `status ${r.status}`);
+    check('par usme doosron ka koi retailer nahi aaya',
+      (r.data?.retailers || []).length === 0, `${(r.data?.retailers || []).length} retailer`);
     check('us jawab me kisi ka balance nahi gaya',
       !JSON.stringify(r).includes('creditLimit'));
+    check('ginti bhi sirf uski apni hai (0)',
+      (r.data?.summary?.active || 0) === 0, JSON.stringify(r.data?.summary));
 
     r = await call('POST', `/business/retailers/${partyId}/block`, { token: staffToken });
     check('salesman kisi retailer ko block NAHI kar saka', r.status === 403, `status ${r.status}`);
@@ -2627,9 +2760,10 @@ async function run() {
 
     // permission badlo
     r = await call('PUT', `/staff/${salesmanId}`, {
-      token: wToken, body: { permissions: ['items', 'orders', 'invoices', 'khata'] },
+      token: wToken,
+      body: { permissions: ['items:view', 'orders:view', 'invoices:view', 'khata:view', 'khata:create'] },
     });
-    check('malik ne permission badal di', r.data?.permissions?.includes('khata'),
+    check('malik ne permission badal di', r.data?.permissions?.includes('khata:create'),
       JSON.stringify(r.data?.permissions));
 
     r = await call('GET', '/khata', { token: staffToken });
@@ -2638,7 +2772,8 @@ async function run() {
     // role badlo to naye role ki default permission lag jaye
     r = await call('PUT', `/staff/${salesmanId}`, { token: wToken, body: { staffRole: 'accountant' } });
     check('role badalne pe naye role ki permission lagi',
-      r.data?.permissions?.includes('reports') && !r.data?.permissions?.includes('purchases'),
+      r.data?.permissions?.includes('reports:view')
+      && JSON.stringify(r.data?.permissions) === JSON.stringify(permissionsForRole('accountant')),
       JSON.stringify(r.data?.permissions));
 
     // block

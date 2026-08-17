@@ -129,3 +129,24 @@ export async function scopeMatch(match, businessId, user, { alsoMine = false } =
 
   return { ...match, $and: [...(match.$and || []), { $or: or }] };
 }
+
+/**
+ * `scopeParties` ka aggregation wala roop — PARTY khud ki list pe hadd.
+ *
+ * Farak sirf itna hai ki yahan `user._id` ko haath se ObjectId banana padta
+ * hai. `find()` me Mongoose khud badal deta hai; `$match` me nahi badalta aur
+ * jawab chup-chaap khali aa jata hai — wahi purani galti jiske liye
+ * `scopeMatch` bana tha.
+ */
+export function scopePartiesMatch(match, user) {
+  if (!isScoped(user)) return match;
+
+  const uid = new mongoose.Types.ObjectId(String(user._id));
+  return {
+    ...match,
+    $and: [
+      ...(match.$and || []),
+      { $or: [{ assignedToUserId: uid }, { createdBy: uid }] },
+    ],
+  };
+}

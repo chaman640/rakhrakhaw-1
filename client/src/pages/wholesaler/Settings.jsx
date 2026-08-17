@@ -6,7 +6,6 @@ import { PageHeader, Tabs, Spinner, Card, Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import AppTab from './settings/AppTab';
 import RetailersTab from './settings/RetailersTab';
-import StaffTab from './settings/StaffTab';
 import BackupTab from './settings/BackupTab';
 import { t } from '@/lib/i18n';
 
@@ -16,11 +15,11 @@ export default function Settings() {
   const [params, setParams] = useSearchParams();
   /*
     Ab Settings me sirf wahi bacha hai jo "app kaise chale" se juda hai —
-    bhasha, roshni, akshar ka size, invite link, log aur backup.
+    bhasha, roshni, akshar ka size, invite link aur backup.
 
-    Dukaan ki pehchan aur apna login ab PROFILE me chala gaya (upar apne naam
-    pe dabao). Wajah: wo roz ki cheez hai, aur Settings ke andar do tab neeche
-    dabi rehti thi.
+    Dukaan ki pehchan aur apna login PROFILE me chale gaye (upar apne naam pe
+    dabao), aur log/login STAFF page pe. Wajah dono me ek hi hai: wo roz ya
+    hafte ka kaam hai, aur Settings ke andar tab ban kar dabe rehte the.
   */
   const [tab, setTab] = useState('app');
   const [business, setBusiness] = useState(null);
@@ -56,7 +55,7 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title={t('Settings')} subtitle={t('App, invite link, staff aur backup')} />
+      <PageHeader title={t('Settings')} subtitle={t('App, invite link aur backup')} />
 
       {welcome && (
         <Card className="mb-5 border-brand-200 bg-brand-50">
@@ -89,7 +88,8 @@ export default function Settings() {
           // Dukaan ki detail, invite link, staff aur backup — sab malik ke haath me
           ...(isOwner ? [
             { value: 'retailers', label: t('Invite link'), count: pendingCount },
-            { value: 'staff', label: t('Log aur login') },
+            // "Log aur login" ab apne Staff page pe chala gaya — wo mahine me
+            // kai baar chalne wala kaam hai, Settings saal me do baar khulti hai
             { value: 'backup', label: t('Backup') },
           ] : []),
         ]}
@@ -97,7 +97,6 @@ export default function Settings() {
 
       {tab === 'app' && <AppTab />}
       {tab === 'retailers' && isOwner && <RetailersTab />}
-      {tab === 'staff' && isOwner && <StaffTab />}
       {tab === 'backup' && isOwner && <BackupTab />}
     </>
   );
