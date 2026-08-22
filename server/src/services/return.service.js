@@ -12,6 +12,7 @@ import {
 import { scopeByParty, isScoped, canSeeDoc } from '../utils/scope.js';
 import { applyStockChange } from './stock.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
+import { applyCredit, releaseCredit, tradedQty } from './settlement.service.js';
 import { decideTaxType, computeInvoice, hsnSummary } from './gst.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -169,6 +170,35 @@ async function returnedSoFar(businessId, { invoiceId, purchaseId }) {
   return Object.fromEntries(rows.map((r) => [String(r._id), r.qty]));
 }
 
+/**
+ * Is party se ab tak KUL kitna maal wapas ho chuka — bill se juda hua bhi,
+ * aur bina bill wala bhi.
+ *
+ * `returnedSoFar` sirf ek bill ke andar dekhta hai. Bina bill wali wapasi
+ * kisi bill se judi hoti hi nahi, isliye wahan se wo dikhti hi nahi — aur
+ * bina is ginti ke koi 10 piece ka maal 10-10 karke kai baar "wapas" kar
+ * sakta tha, har baar naya credit leke.
+ */
+async function returnedByParty(businessId, partyId, type, itemIds = []) {
+  const rows = await ReturnNote.aggregate([
+    {
+      $match: {
+        businessId: new mongoose.Types.ObjectId(String(businessId)),
+        partyId: new mongoose.Types.ObjectId(String(partyId)),
+        type,
+      },
+    },
+    { $unwind: '$items' },
+    {
+      $match: {
+        'items.itemId': { $in: itemIds.map((i) => new mongoose.Types.ObjectId(String(i))) },
+      },
+    },
+    { $group: { _id: '$items.itemId', qty: { $sum: '$items.qty' } } },
+  ]);
+  return Object.fromEntries(rows.map((r) => [String(r._id), round2(r.qty)]));
+}
+
 /** Bill ya purchase se return ka form pehle se bhar do */
 export async function prefillFromDoc(businessId, type, docId) {
   const isSale = IS_SALE(type);
@@ -275,6 +305,42 @@ export async function createReturn(businessId, payload, userId) {
       if (wantQty > left) {
         throw ApiError.badRequest(
           `${src.name}: sirf ${left} ${src.unit} wapas ho sakta hai (${src.qty} me se ${round2(src.qty - left)} pehle hi wapas ho chuka)`
+        );
+      }
+    }
+  } else {
+    /*
+      BINA BILL WALI WAPASI PE BHI HADD.
+
+      Ye jaanch pehle thi hi nahi — `if (original)` ke bahar kuch tha hi nahi.
+      Yaani bill na chuno, aur 10 piece kharidne wala 500 piece "wapas" kar
+      de: stock bhi badh jata tha aur uska poora credit bhi khate me chala
+      jata tha. Dono taraf: retailer bhi, supplier bhi.
+
+      Ab hadd wo hai jo us party ne SACH ME li hai — uske saare bill ka jod,
+      jitna pehle wapas ho chuka wo ghata kar. Bill chuna hua na ho tab bhi
+      hisaab utna hi sakht rehta hai.
+    */
+    const itemIdList = [...wantedByItem.keys()];
+    const [taken, returned] = await Promise.all([
+      tradedQty(isSale ? 'Invoice' : 'Purchase', businessId, party._id, itemIdList),
+      returnedByParty(businessId, party._id, payload.type, itemIdList),
+    ]);
+
+    const names = await Item.find({ _id: { $in: itemIdList }, businessId })
+      .select('name unit').lean();
+    const nameMap = new Map(names.map((i) => [String(i._id), i]));
+
+    for (const [itemId, wantQty] of wantedByItem) {
+      const left = round2((taken[itemId] || 0) - (returned[itemId] || 0));
+      if (wantQty > left) {
+        const it = nameMap.get(itemId);
+        const label = it?.name || 'Ye item';
+        const unit = it?.unit || '';
+        throw ApiError.badRequest(
+          left <= 0
+            ? `${label}: ${isSale ? 'inhone' : 'inse'} ye maal liya hi nahi — wapasi nahi ho sakti`
+            : `${label}: sirf ${left} ${unit} wapas ho sakta hai (${isSale ? 'inhone' : 'inse'} kul ${taken[itemId] || 0} ${unit} liya tha)`
         );
       }
     }
@@ -414,6 +480,33 @@ export async function createReturn(businessId, payload, userId) {
     userId,
   });
 
+  /*
+    ---- Aur ab BILL pe bhi ----
+
+    Yahi wo kadam hai jo pehle tha hi nahi. Khate me credit daal dena aadha
+    kaam hai; jab tak bill ka `dueAmount` nahi ghatta, wo bill kagaz pe udhaar
+    dikhata rehta hai — chahe poora maal dukaan me wapas aa chuka ho.
+
+    Kram maayne rakhta hai: credit SABSE PEHLE usi bill pe lagta hai jiska
+    maal wapas aaya (`preferId`), phir sabse purane khule bill pe. Bina iske
+    "is bill ka maal wapas kiya" karne pe kisi teen mahine purane bill ka
+    udhaar ghatta aur ye bill khula pada rehta — dukaandaar ko lagta ki kuch
+    hua hi nahi.
+  */
+  const { allocations, left } = await applyCredit(
+    isSale ? 'Invoice' : 'Purchase',
+    businessId,
+    party._id,
+    totals.grandTotal,
+    { preferId: original?._id || null },
+  );
+
+  if (allocations.length || left > 0) {
+    note.allocations = allocations;
+    note.advance = round2(left);
+    await note.save();
+  }
+
   return getReturn(businessId, note._id);
 }
 
@@ -448,6 +541,14 @@ export async function deleteReturn(businessId, id, userId, viewer = null) {
   }
 
   await reverseEntriesFor({ businessId, refType: 'ReturnNote', refId: note._id, userId });
+
+  // Bill pe jo credit laga tha wo bhi wapas — warna wapasi mitane pe bill
+  // hamesha ke liye "chukta" dikhta rehta aur paisa gayab ho jata
+  await releaseCredit(
+    note.type === RETURN_TYPES.SALE_RETURN ? 'Invoice' : 'Purchase',
+    businessId,
+    note.allocations,
+  );
 
   const no = note.returnNo;
   await note.deleteOne();

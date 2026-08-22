@@ -12,6 +12,14 @@ export const createPaymentSchema = z.object({
   date: z.coerce.date().optional(),
   reference: z.string().trim().max(60).optional().default(''),
   note: z.string().trim().max(300).optional().default(''),
+  /*
+    "Haan, jama kar dein" wala haan.
+
+    Bina iske udhaar se zyada paisa rok diya jata hai. App pehle poochhti hai
+    aur user ke haan kehne par WAHI request ye khaana laga kar dobara bhejti
+    hai — isliye jama paisa ab ek faisla hai, haadsa nahi.
+  */
+  allowAdvance: z.boolean().optional().default(false),
 });
 
 export const claimPaymentSchema = z.object({
@@ -45,6 +53,8 @@ export const khataQuerySchema = z.object({
 export const dueQuerySchema = z.object({
   q: z.string().trim().max(100).optional().default(''),
   type: z.enum(['retailer', 'supplier']).optional().default('retailer'),
+  // 'due' = jinse lena hai · 'advance' = jinka paisa aapke paas jama hai
+  filter: z.enum(['due', 'advance']).optional().default('due'),
   sort: z.enum(['-balance', 'oldest', 'name']).optional().default('-balance'),
   page: z.coerce.number().min(1).optional().default(1),
   limit: z.coerce.number().min(1).max(100).optional().default(20),

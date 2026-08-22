@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Textarea, Select,
-  Combobox, LineItemCard, NumField, useToast,
+  Combobox, LineItemCard, NumField, Modal, Switch, useToast,
 } from '@/components/ui';
 import PartyPicker from './PartyPicker';
 import { bust } from '@/hooks/useQuery';
@@ -30,6 +30,8 @@ export default function InvoiceForm() {
   const [rows, setRows] = useState([emptyRow()]);
   const [extraDiscount, setExtraDiscount] = useState('');
   const [paidAmount, setPaidAmount] = useState('');
+  const [useJama, setUseJama] = useState(true);   // jama paisa pada ho to default haan
+  const [ask, setAsk] = useState(null);           // "bill se zyada — jama kar dein?"
   const [paymentMode, setPaymentMode] = useState('CASH');
   const [notes, setNotes] = useState('');
   const [preview, setPreview] = useState('');
@@ -149,18 +151,23 @@ export default function InvoiceForm() {
 
   const paid = Math.min(Number(paidAmount || 0), totals.grandTotal);
   const due = round2(totals.grandTotal - paid);
+  // Ulta balance = jama paisa. Party card ke saath hi aa jata hai.
+  const jama = Math.max(0, -Number(party?.raw?.balance || 0));
+  /*
+    Jama kat jayega, to udhaar UTNA nahi jayega.
+
+    Ye line pehle jhooth bol rahi thi: neeche switch keh raha tha "₹1,000 is
+    bill me se kat jayega" aur usi ke upar "Udhaar jayega ₹1,000" likha tha.
+    Dono ek saath sach nahi ho sakte. Screen pe wahi number dikhna chahiye jo
+    save ke baad khate me chadhega — warna dukaandaar ko lagta hai app ka
+    hisaab galat hai.
+  */
+  const jamaCut = useJama ? Math.min(jama, due) : 0;
+  const dueAfterJama = round2(due - jamaCut);
   const filled = rows.filter((r) => r.itemId && Number(r.qty) > 0);
   const shortRows = filled.filter((r) => Number(r.qty) > r.stockQty);
 
-  async function save() {
-    // `party?.value` — sirf `party` nahi. Ek baar aisa ho chuka hai ki party ka
-    // naam to card me dikh raha tha par uski id andar aayi hi nahi thi; tab
-    // request bina `partyId` ke chali gayi aur server ne "Retailer nahi mila"
-    // bola — jo dekhne wale ko bilkul samajh nahi aata, kyunki retailer to
-    // saamne likha hai.
-    if (!party?.value) { toast.error('Pehle retailer chunein'); return; }
-    if (!filled.length) { toast.error('Kam se kam ek item daalein'); return; }
-
+  async function send(extra = {}) {
     setSaving(true);
     try {
       const res = await api.post('/invoices', {
@@ -175,16 +182,36 @@ export default function InvoiceForm() {
         paidAmount: Number(paidAmount || 0),
         paymentMode,
         notes,
+        ...(useJama && jama > 0 ? { useAdvance: true } : {}),
+        ...extra,
       });
       toast.success(res.message);
+      if (res.data?.usedAdvance > 0) {
+        toast.success(`Jama me se ${formatMoney(res.data.usedAdvance)} kat gaya`);
+      }
       // Home, bill ki list, khata aur dashboard — sab isi bill se badle hain
       bust('invoices', 'khata', 'dashboard', 'parties', 'payments');
+      setAsk(null);
       navigate(`/invoices/${res.data._id}`, { replace: true });
     } catch (err) {
-      toast.error(err.message);
+      // "Bill se zyada paisa" galti nahi, sawal hai — parda kholo
+      if (err.details?.needsAdvance) setAsk(err.details);
+      else toast.error(err.message);
     } finally {
       setSaving(false);
     }
+  }
+
+  async function save() {
+    // `party?.value` — sirf `party` nahi. Ek baar aisa ho chuka hai ki party ka
+    // naam to card me dikh raha tha par uski id andar aayi hi nahi thi; tab
+    // request bina `partyId` ke chali gayi aur server ne "Retailer nahi mila"
+    // bola — jo dekhne wale ko bilkul samajh nahi aata, kyunki retailer to
+    // saamne likha hai.
+    if (!party?.value) { toast.error('Pehle retailer chunein'); return; }
+    if (!filled.length) { toast.error('Kam se kam ek item daalein'); return; }
+
+    return send();
   }
 
   if (loading) return <p className="py-20 text-center text-sm text-slate-400">{t('Order se detail aa rahi hai...')}</p>;
@@ -407,11 +434,37 @@ export default function InvoiceForm() {
               </div>
 
               <div className={cn('flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
-                due > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
-                <span>{due > 0 ? 'Udhaar jayega' : 'Poora mil gaya'}</span>
-                <strong className="tabular">{formatMoney(due)}</strong>
+                dueAfterJama > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
+                <span>{dueAfterJama > 0 ? 'Udhaar jayega' : 'Poora mil gaya'}</span>
+                <strong className="tabular">{formatMoney(dueAfterJama)}</strong>
               </div>
+              {jamaCut > 0 && (
+                <p className="px-1 text-xs text-emerald-700">
+                  {formatMoney(jamaCut)} {t('jama me se kat gaya')}
+                </p>
+              )}
             </div>
+
+            {/*
+              Pehle se jama paisa — is bill me se kaat lein?
+
+              Ye poochhna zaroori hai. Chup-chaap kaat dena bhi galat lagta hai
+              (dukaandaar ko lagta hai bill kam ban gaya) aur na poochhna bhi
+              (paisa pada rehta hai aur bill udhaar chala jata hai). Isliye
+              saaf dikhta hai kitna hai aur ek switch se band ho jata hai.
+            */}
+            {jama > 0 && (
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <Switch
+                  checked={useJama}
+                  onChange={setUseJama}
+                  label={`${formatMoney(jama)} ${t('jama pada hai')}`}
+                  description={useJama
+                    ? `${formatMoney(Math.min(jama, due))} ${t('is bill me se kat jayega')}`
+                    : t('is bill me nahi katega')}
+                />
+              </div>
+            )}
 
             {shortRows.length > 0 && (
               <p className="mt-4 rounded-lg bg-red-50 px-3 py-2.5 text-xs text-red-800">
@@ -426,12 +479,54 @@ export default function InvoiceForm() {
 
             <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">
               <Info size={13} className="mt-0.5 shrink-0" />
-              Save karte hi {filled.length || 0} item ka stock ghatega aur {formatMoney(due)} retailer
+              Save karte hi {filled.length || 0} item ka stock ghatega aur {formatMoney(dueAfterJama)} retailer
               ke khate me udhaar chadhega.
             </p>
           </Card>
         </div>
       </div>
+      {/*
+        "Bill ₹500 ka hai — ₹4,500 zyada hai. Jama kar dein?"
+
+        Pehle ye paisa chup-chaap gir jata tha: server `Math.min` kar deta tha
+        aur baaki kahin darj hi nahi hota. Ab rok kar poochha jata hai.
+      */}
+      <Modal
+        open={!!ask}
+        onClose={() => setAsk(null)}
+        title={t('Bill se zyada paisa mila hai')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAsk(null)}>{t('Nahi, badal dein')}</Button>
+            <Button onClick={() => send({ allowAdvance: true })} loading={saving}>
+              {t('Haan, jama kar dein')}
+            </Button>
+          </>
+        }
+      >
+        {ask && (
+          <div className="space-y-3 text-sm">
+            <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+              <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+                <dt className="text-slate-500">{t('Bill')}</dt>
+                <dd className="tabular text-slate-900">{formatMoney(ask.outstanding)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+                <dt className="text-slate-500">{t('Paisa mila')}</dt>
+                <dd className="tabular text-slate-900">{formatMoney(ask.amount)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+                <dt className="text-slate-500">{t('Zyada hai')}</dt>
+                <dd className="tabular font-semibold text-amber-700">{formatMoney(ask.extra)}</dd>
+              </div>
+            </dl>
+            <p className="text-slate-600">
+              {t('Zyada paisa pehle inke purane khule bill pe lagega. Jo phir bhi bache wo JAMA rahega — agle bill me kat jayega ya kabhi bhi wapas ho sakta hai.')}
+            </p>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

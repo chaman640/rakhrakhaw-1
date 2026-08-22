@@ -3,7 +3,9 @@ import { round2 } from '../utils/money.js';
 import { PARTY_TYPES } from '../config/constants.js';
 import { Invoice, Purchase, Item, Party, StockMovement, Payment, ReturnNote } from '../models/index.js';
 import { expenseTotals } from './expense.service.js';
-import { scopeMatch, scopeByParty, scopeParties } from '../utils/scope.js';
+import {
+  scopeMatch, scopeByParty, scopeParties, scopePartiesMatch,
+} from '../utils/scope.js';
 
 /**
  * Saari reports ek jagah.
@@ -711,7 +713,7 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
     },
   ];
 
-  const [saleAgg, saleLines, returnAgg, returnLines, expenses] = await Promise.all([
+  const [saleAgg, saleLines, returnAgg, returnLines, expenses, jamaAgg] = await Promise.all([
     Invoice.aggregate([
       { $match: saleMatch },
       { $group: { _id: null, bills: { $sum: 1 }, taxable: { $sum: '$taxableTotal' }, grand: { $sum: '$grandTotal' }, tax: { $sum: { $add: ['$cgstTotal', '$sgstTotal', '$igstTotal'] } } } },
@@ -723,6 +725,18 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
     ]),
     ReturnNote.aggregate([{ $match: returnMatch }, ...costPipeline()]),
     expenseTotals(businessId, { start, end }, viewer),
+    // Jama paisa AAJ ka haal hai, kisi duration ka nahi — isliye date ki
+    // chhalni yahan nahi lagti. "Aaj mere paas kiska kitna paisa pada hai"
+    Party.aggregate([
+      { $match: scopePartiesMatch({ businessId: oid(businessId), type: PARTY_TYPES.RETAILER }, viewer) },
+      {
+        $group: {
+          _id: null,
+          amount: { $sum: { $cond: [{ $lt: ['$balance', 0] }, { $multiply: ['$balance', -1] }, 0] } },
+          n: { $sum: { $cond: [{ $lt: ['$balance', 0] }, 1, 0] } },
+        },
+      },
+    ]),
   ]);
 
   // Purane bill ke liye aaj ka rate — dono taraf (sale aur wapasi) ke liye
@@ -765,6 +779,19 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
     totals: {},
     meta: {
       title: 'Fayda-Nuksan',
+      /*
+        JAMA PAISA — hisaab me hai, par MUNAFE ME NAHI.
+
+        Ye graahak ka paisa hai jo aapke paas rakha hai. Wo wapas bhi maang
+        sakta hai aur agle bill me bhi kat sakta hai — isliye ise kamaai
+        maan lena poore mahine ka munafa jhootha bada dikha deta hai, aur jis
+        din wo paisa maal me badla ya wapas gaya us din number ulta gir jata.
+
+        Isliye ye `netProfit` se BAHAR hai aur page pe alag line me dikhta
+        hai, saaf likha hua ki ye aapka nahi hai.
+      */
+      advanceHeld: round2(jamaAgg[0]?.amount || 0),
+      advanceParties: jamaAgg[0]?.n || 0,
       from: start, to: end,
       bills: saleAgg[0]?.bills || 0,
       returns: returnAgg[0]?.notes || 0,

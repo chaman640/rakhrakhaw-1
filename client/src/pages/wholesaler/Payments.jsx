@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Wallet, Plus, IndianRupee, Calendar, Clock, Trash2, Check, X, Phone,
   Banknote, Smartphone, Landmark, FileCheck, HandCoins, TriangleAlert, MessageCircle,
+  PiggyBank,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -68,8 +69,12 @@ export default function Payments() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ?status=pending (notification se) aaye to seedha history khul jaye
-  const [tab, setTab] = useState(searchParams.get('status') ? 'history' : 'due');
+  /*
+    History PEHLE — dukaandaar ne kaha, aur wajah bhi saaf hai: din me sabse
+    zyada wo "abhi kya kya hua" dekhne aata hai. "Lena hai" hafte me do baar
+    ka kaam hai; wo doosre tab me ek tap door rehta hai.
+  */
+  const [tab, setTab] = useState(searchParams.get('tab') || 'history');
 
   const [formFor, setFormFor] = useState(null);     // null | { party } | { }
   const [rejecting, setRejecting] = useState(null);
@@ -141,8 +146,21 @@ export default function Payments() {
           tone="brand" sub={`${stats.monthCount || 0} payment`} />
         <StatCard label={t('Confirm karna hai')} value={stats.pendingCount || 0} icon={Clock}
           tone={stats.pendingCount > 0 ? 'amber' : 'green'} sub={formatMoney(stats.pendingAmount || 0)} />
+        {/*
+          "Kul lena hai" kabhi gayab nahi hota.
+
+          Pehle jama paisa hone par ye tile JAMA wale tile se badal jati thi.
+          Wo galat tha: page ka sabse bada sawal hi hat jata tha, aur wo bhi
+          tab jab kisi ek graahak ne thoda zyada paisa de diya ho. Ab dono ek
+          hi tile pe hain — bada number wahi jo dukaandaar dhoondhta hai, aur
+          jama uske neeche ek line me, jahan se Jama tab ek tap door hai.
+        */}
         <StatCard label={t('Kul lena hai')} value={formatMoney(stats.totalReceivable || 0)}
-          icon={HandCoins} tone={stats.totalReceivable > 0 ? 'amber' : 'green'} />
+          icon={stats.totalAdvance > 0 ? PiggyBank : HandCoins}
+          tone={stats.totalReceivable > 0 ? 'amber' : 'green'}
+          sub={stats.totalAdvance > 0
+            ? `${formatMoney(stats.totalAdvance)} ${t('jama bhi pada hai')}`
+            : undefined} />
       </div>
 
       {/* ---- Confirm karne wali payment — dono tab ke upar ---- */}
@@ -180,20 +198,30 @@ export default function Payments() {
 
       <Tabs
         tabs={[
-          { value: 'due', label: 'Lena hai' },
           { value: 'history', label: 'History' },
+          { value: 'due', label: 'Lena hai' },
+          // Jama paisa tabhi dikhega jab kisi ka hai — warna khali tab
+          // sirf uljhata hai
+          ...(stats.totalAdvance > 0 ? [{ value: 'jama', label: 'Jama' }] : []),
         ]}
         value={tab}
-        onChange={(k) => { setTab(k); if (k === 'due') setSearchParams({}); }}
+        onChange={(k) => { setTab(k); setSearchParams(k === 'history' ? {} : { tab: k }); }}
       />
 
-      {tab === 'due' ? (
+      {tab === 'due' && (
         <DueList
           onCollect={(party) => setFormFor({ party })}
           onRemind={(party) => setReminding(party)}
           onOpen={(party) => navigate(`/retailers/${party._id}?tab=khata`)}
         />
-      ) : (
+      )}
+      {tab === 'jama' && (
+        <JamaList
+          onRefund={(party) => setFormFor({ party, refund: true })}
+          onOpen={(party) => navigate(`/retailers/${party._id}?tab=khata`)}
+        />
+      )}
+      {tab === 'history' && (
         <History
           searchParams={searchParams} setSearchParams={setSearchParams}
           onReject={setRejecting} onDelete={setDeleting} onConfirm={confirm}
@@ -204,6 +232,7 @@ export default function Payments() {
       <PaymentFormModal
         open={!!formFor}
         fixedParty={formFor?.party || null}
+        defaultRefund={!!formFor?.refund}
         onClose={() => setFormFor(null)}
         onSaved={refreshAll}
       />
@@ -335,7 +364,7 @@ function DueList({ onCollect, onRemind, onOpen }) {
 function DueRow({ p, onCollect, onRemind, onOpen }) {
   const name = p.shopName || p.name;
   const age = ageOf(p.oldestDue);
-  const msg = `Namaste ${p.name}, ${name} pe ₹${Math.round(p.balance)} baaki hai. Jab suvidha ho bhej dijiyega. Dhanyawaad.`;
+  const msg = `Namaste ${p.name}, ${name} pe ₹${Math.round(p.amount)} baaki hai. Jab suvidha ho bhej dijiyega. Dhanyawaad.`;
 
   return (
     <li className="border-b border-slate-100 last:border-0">
@@ -359,7 +388,7 @@ function DueRow({ p, onCollect, onRemind, onOpen }) {
         </button>
 
         <div className="shrink-0 text-right">
-          <p className="tabular text-base font-semibold text-amber-700">{formatMoney(p.balance)}</p>
+          <p className="tabular text-base font-semibold text-amber-700">{formatMoney(p.amount)}</p>
           <div className="mt-1.5 flex items-center justify-end gap-1">
             {p.phone && (
               <>
@@ -387,7 +416,96 @@ function DueRow({ p, onCollect, onRemind, onOpen }) {
   );
 }
 
-/* ══════════════════════════ 2. History ══════════════════════════ */
+/* ══════════════════════════ 2. Jama paisa ══════════════════════════ */
+
+/**
+ * JINKA PAISA AAPKE PAAS PADA HAI.
+ *
+ * Ye list poore app me kahin thi hi nahi. Har jagah "baaki kitna hai" wali
+ * chhalni lagti thi (`balance > 0`), isliye jama wali party har list se
+ * chup-chaap gir jati thi — Khata se bhi, Payment se bhi. Dukaandaar ko pata
+ * hi nahi chalta tha ki uske golak me kiska kitna paisa pada hai, jab tak wo
+ * khud maangne na aa jaye.
+ *
+ * Yahin se wapas bhi kiya ja sakta hai — ek tap me.
+ */
+function JamaList({ onRefund, onOpen }) {
+  const toast = useToast();
+  const [q, setQ] = useState('');
+  const debouncedQ = useDebounce(q);
+  const [page, setPage] = useState(1);
+
+  const params = { q: debouncedQ, filter: 'advance', sort: '-balance', page, limit: 20 };
+  const { rows, meta, loading } = useListQuery(
+    ['khata', 'due', params],
+    () => api.get('/khata/due', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  useEffect(() => { setPage(1); }, [debouncedQ]);
+
+  return (
+    <>
+      <Card className="mb-4 mt-4" padding={false}>
+        <div className="flex flex-wrap items-center gap-2 p-3 sm:gap-3 sm:p-4">
+          <SearchInput value={q} onChange={setQ} placeholder={t('Naam ya number...')}
+            className="w-full sm:w-56" />
+        </div>
+      </Card>
+
+      <Card padding={false}>
+        {!loading && rows.length > 0 && (
+          <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 px-4 py-3">
+            <p className="text-sm text-slate-500">
+              {meta.total} {t('graahak ka paisa jama hai')}
+            </p>
+            <p className="tabular text-base font-semibold text-brand-700">
+              {formatMoney(meta.totalDue || 0)}
+            </p>
+          </div>
+        )}
+
+        {loading ? <SkeletonRows /> : !rows.length ? (
+          <EmptyState
+            icon={PiggyBank}
+            title={t('Kisi ka paisa jama nahi hai')}
+            message={t('Jab koi udhaar se zyada paisa dega, wo yahan jama dikhega.')}
+          />
+        ) : (
+          <>
+            <ul>
+              {rows.map((p) => (
+                <li key={p._id} className="border-b border-slate-100 last:border-0">
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <button onClick={() => onOpen(p)} className="min-w-0 flex-1 rounded text-left focus-ring">
+                      <p className="truncate text-sm font-medium text-slate-900">{p.shopName || p.name}</p>
+                      <p className="truncate text-xs text-slate-500">
+                        {p.phone ? formatPhone(p.phone) : t('number nahi hai')}
+                      </p>
+                    </button>
+                    <div className="shrink-0 text-right">
+                      {/* `amount` — hamesha plus me. `balance` khate ka sach hai
+                          (jama wale ka minus me), aur wo "Wapas karein" wale
+                          parde ko chahiye, dikhane ko nahi. */}
+                      <p className="tabular text-base font-semibold text-brand-700">{formatMoney(p.amount)}</p>
+                      <Button className="mt-1.5" size="sm" variant="secondary" onClick={() => onRefund(p)}>
+                        {t('Wapas karein')}
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total}
+              limit={meta.limit} onChange={setPage} showTotal={false} />
+          </>
+        )}
+      </Card>
+    </>
+  );
+}
+
+/* ══════════════════════════ 3. History ══════════════════════════ */
 
 function History({ searchParams, setSearchParams, onReject, onDelete, onConfirm, busy, navigate }) {
   const toast = useToast();

@@ -90,9 +90,18 @@ export async function listDue(businessId, q, viewer = null) {
   const bid = new mongoose.Types.ObjectId(businessId);
   const FIELDS = 'name shopName phone type balance creditLimit status';
 
+  /*
+    `filter=advance` — jinka paisa AAPKE paas jama hai.
+
+    Ye list poore app me kahin thi hi nahi: har jagah `balance > 0` wali
+    chhalni lagti thi, isliye jama wali party (ulta balance) har list se chup
+    chaap gir jati thi. Dukaandaar ko pata hi nahi chalta tha ki kiska kitna
+    paisa uske paas pada hai — jab tak wo khud maangne na aa jaye.
+  */
+  const jama = q.filter === 'advance';
   const base = {
     type: q.type === 'supplier' ? PARTY_TYPES.SUPPLIER : PARTY_TYPES.RETAILER,
-    balance: { $gt: 0 },
+    balance: jama ? { $lt: 0 } : { $gt: 0 },
   };
   if (q.q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
@@ -144,7 +153,20 @@ export async function listDue(businessId, q, viewer = null) {
     const open = openMap[String(p._id)];
     return {
       ...p,
-      balance: round2(p.balance),
+      /*
+        `balance` SACH rehta hai — ulta karke mat bhejo.
+
+        Pehle jama wali list me `balance` ko `-balance` karke bheja jata tha,
+        sirf isliye ki screen pe minus na dikhe. Uska nateeja ye hua ki jis
+        party ka paisa JAMA tha, uska balance +5000 ban kar jata tha, aur
+        "Wapas karein" wala parda usi row se khulta tha — jahan ye poori tarah
+        ulta samajh me aaya: "inse lena tha ₹5,000". Yani ek line ki saj-dhaj
+        ne poore parde ka matlab ulta kar diya.
+
+        Ab dikhane wali rakam alag naam se jati hai (`amount`, hamesha plus me)
+        aur `balance` wahi rehta hai jo khate me hai.
+      */
+      amount: round2(Math.abs(p.balance)),
       oldestDue: open?.oldest || null,
       openBills: open?.bills || 0,
       overLimit: p.creditLimit > 0 && p.balance > p.creditLimit,
@@ -176,7 +198,8 @@ export async function listDue(businessId, q, viewer = null) {
     });
     parties = all.slice(skip, skip + q.limit);
   } else {
-    const sort = q.sort === 'name' ? { name: 1 } : { balance: -1 };
+    // Jama me sabse zyada wala upar = sabse chhota (sabse minus) balance
+    const sort = q.sort === 'name' ? { name: 1 } : { balance: jama ? 1 : -1 };
     const rows = await Party.find(filter).select(FIELDS).sort(sort).skip(skip).limit(q.limit).lean();
     parties = rows.map(shape);
   }
@@ -188,8 +211,9 @@ export async function listDue(businessId, q, viewer = null) {
       limit: q.limit,
       total,
       totalPages: Math.max(1, Math.ceil(total / q.limit)),
-      // Poore filter ka jod — sirf is page ka nahi
-      totalDue: round2(sumAgg[0]?.amount || 0),
+      // Poore filter ka jod — sirf is page ka nahi. Jod hamesha plus me:
+      // "kitna jama hai" ka jawab -5000 nahi hota.
+      totalDue: round2(Math.abs(sumAgg[0]?.amount || 0)),
     },
   };
 }

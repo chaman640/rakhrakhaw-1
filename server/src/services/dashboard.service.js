@@ -96,6 +96,19 @@ export async function getWholesalerDashboard(businessId, user = null) {
         $group: {
           _id: null,
           receivable: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $gt: ['$balance', 0] }] }, '$balance', 0] } },
+          /*
+            JAMA PAISA — graahak ka paisa jo aapke paas rakha hai.
+
+            Khate me ULTA balance (minus) hi jama paisa hai. Ye number ab tak
+            kahin dikhta hi nahi tha: aisi party list se hi gir jati thi
+            (`balance > 0` wali chhalni), isliye dukaandaar ko pata hi nahi
+            chalta tha ki uske paas kiska kitna paisa pada hai.
+
+            Dhyan: ye KAMAAI NAHI hai. Ye wapas bhi ho sakta hai aur agle bill
+            me bhi kat sakta hai — isliye profit me kabhi nahi juda.
+          */
+          advance: { $sum: { $cond: [{ $lt: ['$balance', 0] }, { $multiply: ['$balance', -1] }, 0] } },
+          advanceParties: { $sum: { $cond: [{ $lt: ['$balance', 0] }, 1, 0] } },
           payable: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'supplier'] }, { $gt: ['$balance', 0] }] }, '$balance', 0] } },
           retailers: { $sum: { $cond: [{ $eq: ['$type', 'retailer'] }, 1, 0] } },
           activeRetailers: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $eq: ['$status', 'active'] }] }, 1, 0] } },
@@ -238,6 +251,8 @@ export async function getWholesalerDashboard(businessId, user = null) {
     khata: {
       receivable: round2(b.receivable || 0),
       payable: round2(b.payable || 0),
+      advance: round2(b.advance || 0),
+      advanceParties: b.advanceParties || 0,
       net: round2((b.receivable || 0) - (b.payable || 0)),
       retailers: b.retailers || 0,
       activeRetailers: b.activeRetailers || 0,

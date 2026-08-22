@@ -1337,8 +1337,25 @@ async function run() {
 
     console.log(`\n${Y}Zyada paisa aaya to advance${N}`);
 
+    /*
+      Ab zyada paisa CHUP-CHAAP advance nahi banta.
+
+      Pehle ye chup-chaap ho jata tha, aur wahi bug tha: ₹136 lena tha, galti
+      se 1360 type ho gaya, aur app ne bina kuch kahe ₹1,224 advance bana diya.
+      Dukaandaar ko mahino baad pata chalta tha. Ab pehle mana hota hai, aur
+      `allowAdvance` ke saath dobara bhejne par hi jama hota hai — yani jama
+      hamesha ek CHUNA hua kaam hai, haadsa nahi.
+    */
     r = await call('POST', '/payments', {
       token: wToken, body: { partyId, amount: 200, mode: 'UPI', reference: 'UTR12345' },
+    });
+    check('zyada paisa bina poochhe nahi gaya', r.status === 400, `${r.status}`);
+    check('aur bataya ki kitna zyada hai', r.details?.extra === 64, `${JSON.stringify(r.details)}`);
+    check('aur ye ki jama karne ka rasta hai', r.details?.needsAdvance === true, `${JSON.stringify(r.details)}`);
+
+    r = await call('POST', '/payments', {
+      token: wToken,
+      body: { partyId, amount: 200, mode: 'UPI', reference: 'UTR12345', allowAdvance: true },
     });
     check('doosra payment hua', r.status === 201, `${r.message}`);
     check('64 advance bacha', r.data?.advance === 64, `${r.data?.advance}`);
@@ -1955,11 +1972,34 @@ async function run() {
     check('supplier ko dena utna kam hua', r.data?.balance === round2(supBefore - debitTotal),
       `${supBefore} -> ${r.data?.balance}`);
 
+    /*
+      Ab do alag haddein hain, aur dono ko alag alag pakadna hai.
+
+      Pehle yahan 99999 maanga jata tha aur ummeed thi ki STOCK wala jawab
+      aayega. Step 1 ke baad usse pehle hi doosri hadd lag jati hai — "inse kul
+      itna hi liya tha" — isliye wo test asal me stock ki jaanch kar hi nahi
+      raha tha.
+
+      Asli dukaan wali halat ye hai: 20 kharide, 17 bech diye, ab 5 supplier ko
+      wapas bhejne hain — kharid ki hadd (19) to nahi tooti, par bhejne ko maal
+      hai hi nahi. Wahi yahan banaya hai.
+    */
     r = await call('POST', '/returns', {
       token: wToken,
       body: {
         type: 'PURCHASE_RETURN', partyId: supplierId,
         items: [{ itemId: bearingId, qty: 99999, rate: 80 }],
+      },
+    });
+    check('kharid se zyada wapas nahi bhej sake', r.status === 400 && /kul \d+/.test(r.message || ''),
+      `${r.message}`);
+
+    await call('POST', `/items/${bearingId}/stock`, { token: wToken, body: { mode: 'set', qty: 3 } });
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'PURCHASE_RETURN', partyId: supplierId,
+        items: [{ itemId: bearingId, qty: 5, rate: 80 }],
       },
     });
     check('stock se zyada wapas nahi bhej sake', r.status === 400 && /stock sirf/.test(r.message || ''),
@@ -2234,6 +2274,41 @@ async function run() {
     check('credit note hatane ke baad cancel chal gaya', r.data?.cancelled === true, `${r.message}`);
 
     // ---- 4. Do payment ek hi bill pe, pehli wali delete ----
+
+    /*
+      PEHLE party ko bilkul saaf karo, TAB naye bill banao.
+
+      Ye kram maayne rakhta hai. Ab do haddein hain jo alag alag jagah se aati
+      hain: paisa sabse purane KHULE BILL pe lagta hai (bill ka jod), par
+      "itna udhaar hai hi nahi" wali rok KHATE se lagti hai. Jab tak party pe
+      purani wapasi ka credit ya jama paisa pada hai, ye do number alag rehte
+      hain, aur neeche ka poora hisaab (8000 -> 5000+3000, phir 2000, phir
+      delete) usi farak me uljh jata hai.
+
+      Isliye teen kadam: khata bharo, bacha hua bill jama se pura karo, aur jo
+      jama phir bhi bacha wo wapas kar do. Uske baad party ke naam pe kuch
+      nahi hai — na udhaar, na jama — aur do naye bill saaf 10,000 bante hain.
+    */
+    const dueNow = round2(await balanceOf());
+    if (dueNow > 0) {
+      await call('POST', '/payments', { token: wToken, body: { partyId, amount: dueNow, mode: 'CASH' } });
+    }
+    let leftOpen = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
+    const leftDue = round2((leftOpen.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
+    if (leftDue > 0) {
+      await call('POST', '/payments', {
+        token: wToken, body: { partyId, amount: leftDue, mode: 'CASH', allowAdvance: true },
+      });
+    }
+    const extraJama = round2(-(await balanceOf()));
+    if (extraJama > 0) {
+      await call('POST', '/payments', {
+        token: wToken, body: { partyId, direction: 'OUT', amount: extraJama, mode: 'CASH' },
+      });
+    }
+    check('do bill se pehle party bilkul saaf hai', round2(await balanceOf()) === 0,
+      `balance ${await balanceOf()}`);
+
     r = await call('POST', '/invoices', {
       token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 5000 }] },
     });
@@ -2242,24 +2317,6 @@ async function run() {
       token: wToken, body: { partyId, items: [{ itemId: bearingId, qty: 1, rate: 5000 }] },
     });
     const twoB = r.data?._id;
-
-    /*
-      Purana udhaar saaf karo — par BILL ke jod se, khate ke balance se NAHI.
-
-      Ye farak asli hai. Paisa hamesha sabse purane KHULE BILL pe lagta hai
-      (FIFO). Khate ka balance us jod se kam ho sakta hai, kyunki wapasi
-      (credit note) khate me credit daalti hai par kisi bill ka baaki kam
-      nahi karti. Upar wale section me abhi abhi ek credit note bana hai.
-
-      Balance se hisaab lagane par utna paisa kam bhejta tha, purana bill
-      utna hi khula reh jata tha, aur agli payment usi pe chali jati thi —
-      neeche wali teen jaanch fail hoti thin aur ilzaam server pe aata tha.
-    */
-    const openBefore = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
-    const openDue = round2((openBefore.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
-    if (openDue > 10000) {
-      await call('POST', '/payments', { token: wToken, body: { partyId, amount: round2(openDue - 10000), mode: 'CASH' } });
-    }
 
     r = await call('POST', '/payments', { token: wToken, body: { partyId, amount: 8000, mode: 'CASH' } });
     const payA = r.data?._id;
@@ -2299,6 +2356,13 @@ async function run() {
        Isliye asli baat ye hai:
 
          bill ka jod − khata = wo credit jo kisi bill pe nahi laga
+                               − jo jama paisa wapas kar diya
+
+       Aakhri hissa Step 1 me juda. Jama paisa ab WAPAS bhi ho sakta hai. Wapas
+       hone ke baad wo khate me nahi bacha, par jis payment se wo bana tha uspe
+       aaj bhi "itna kisi bill pe nahi laga" likha hai — wo purani entry ka
+       sach hai, aaj ka nahi. Isliye wapas kiya hua paisa ghatana zaroori hai,
+       warna ye jaanch har refund pe jhoothi ghanti bajati hai.
 
        Agar ye barabar nahi hai, tabhi sach me paisa kahin gum hua hai.
     */
@@ -2314,16 +2378,30 @@ async function run() {
         return s2 + Math.max(0, round2(pmt.amount - laga));
       }, 0));
 
-    r = await call('GET', `/khata/${partyId}?limit=500`, { token: wToken });
-    const returnCredit = round2((r.data?.entries || [])
-      .filter((e) => e.type === 'SALE_RETURN')
-      .reduce((s2, e) => s2 + (e.credit || 0), 0));
+    /*
+      Wapasi ka BINA LAGA hissa — poora credit nahi.
 
+      Ye line pehle poora `SALE_RETURN` credit jodti thi, aur wo ab do baar
+      gina jata hai: Step 1 ke baad wapasi ka credit KHULE BILL pe lagta hai,
+      yani `billsDue` usse pehle hi ghat chuka hota hai. Jo hissa kisi bill pe
+      nahi laga wo note pe `advance` me likha rehta hai — bas wahi ginna hai.
+    */
+    r = await call('GET', `/returns?type=SALE_RETURN&limit=200&partyId=${partyId}`, { token: wToken });
+    const returnCredit = round2((r.data || [])
+      .reduce((s2, n) => s2 + (n.advance || 0), 0));
+
+    // Retailer ko wapas kiya hua paisa — direction OUT
+    r = await call('GET', `/payments?partyId=${partyId}&limit=200`, { token: wToken });
+    const refunded = round2((r.data || [])
+      .filter((pmt) => pmt.status === 'confirmed' && pmt.direction === 'OUT')
+      .reduce((s2, pmt) => s2 + (pmt.amount || 0), 0));
+
+    const bachaCredit = round2(unapplied + returnCredit - refunded);
     check('bill ka jod − khata = wo credit jo kisi bill pe nahi laga',
-      round2(billsDue - bal) === round2(unapplied + returnCredit),
+      round2(billsDue - bal) === bachaCredit,
       `bill ${billsDue} − khata ${bal} = ${round2(billsDue - bal)}, `
-      + `par bina lage credit ${round2(unapplied + returnCredit)} `
-      + `(advance ${unapplied} + wapasi ${returnCredit})`);
+      + `par bina lage credit ${bachaCredit} `
+      + `(advance ${unapplied} + wapasi ${returnCredit} − wapas kiya ${refunded})`);
 
     /* ─────────────────────────────────────────────────────────────────────
        Khata, GST report aur delete ka nishaan
@@ -2402,12 +2480,36 @@ async function run() {
 
     await call('PUT', '/business/me', { token: wToken, body: { gstEnabled: false } });
 
-    // ---- 4. Sirf return wali party delete na ho ----
+    // ---- 4. Jis party ka return hai wo delete na ho ----
     r = await call('POST', '/parties', {
       token: wToken,
-      body: { name: 'Sirf Return Wala', phone: '9500000077', type: 'retailer' },
+      body: { name: 'Return Wala', phone: '9500000077', type: 'retailer' },
     });
     const onlyReturnParty = r.data?._id;
+
+    /*
+      Pehle BECHO, tab wapas lo.
+
+      Ye test pehle seedha ek naye banda ka return bana deta tha jisne kabhi
+      kuch khareeda hi nahi. Step 1 ke baad wo jaan-boojh kar mana hai — wahi
+      chor rasta tha jisse "jitna becha nahi utna wapas" ho jata tha aur utna
+      udhaar mit jata tha. Isliye ab pehle 1 piece bechte hain.
+    */
+    r = await call('POST', '/invoices', {
+      token: wToken,
+      body: { partyId: onlyReturnParty, items: [{ itemId: bearingId, qty: 1, rate: 100 }] },
+    });
+    check('pehle usse ek piece becha', r.status === 201, `status ${r.status}`);
+
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId: onlyReturnParty,
+        items: [{ itemId: bearingId, qty: 2, rate: 100 }],
+      },
+    });
+    check('jitna liya usse ZYADA wapas nahi hua', r.status === 400, `status ${r.status}`);
+    check('aur bataya ki sirf 1 wapas ho sakta hai', /sirf 1 /.test(r.message || ''), r.message);
 
     r = await call('POST', '/returns', {
       token: wToken,
@@ -2452,10 +2554,41 @@ async function run() {
       (FIFO — jo bilkul sahi kaam hai) aur test ko lagta hai paisa gum ho gaya.
       Yahi galti upar wale "do payment ek bill pe" section me bhi thi.
     */
-    r = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
-    const preRaceDue = round2((r.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
+    /*
+      Chukana KHATE ke hisaab se hota hai, bill ke jod se nahi.
+
+      Pehle yahan khule bill ka jod bhara jata tha. Step 1 ke baad wo galat ho
+      gaya: agar party ke paas pehle se jama paisa pada ho to khata bill ke jod
+      se KAM hota hai, aur poora jod bharne par ab saaf mana ho jata hai
+      ("itna udhaar hai hi nahi"). Us halat me purane bill khule reh jate the
+      aur aage ka paisa unhi pe chala jata tha.
+
+      Jitna khate me baaki hai, utna hi bharo — jo bacha hua jama hai wo bhi
+      apne aap purane bill pe lag jayega.
+    */
+    const preRaceDue = round2(await balanceOf());
     if (preRaceDue > 0) {
       await call('POST', '/payments', { token: wToken, body: { partyId, amount: preRaceDue, mode: 'CASH' } });
+    }
+    // Jo jama paisa pada tha wo bhi khule bill pe chipka do
+    r = await call('GET', `/invoices?status=active&limit=200&partyId=${partyId}`, { token: wToken });
+    const stillOpen = round2((r.data || []).reduce((s2, i) => s2 + (i.dueAmount || 0), 0));
+    if (stillOpen > 0) {
+      await call('POST', '/payments', {
+        token: wToken, body: { partyId, amount: stillOpen, mode: 'CASH', allowAdvance: true },
+      });
+    }
+    /*
+      Upar wali entry se jitna jama bacha, wo wapas kar do — party ko bilkul
+      SAAF karke race shuru karni hai. Warna aage ke do ₹5,000 me se doosra
+      "itna udhaar hai hi nahi" kehke ruk jata hai, aur race ki jagah wo baat
+      test hone lagti hai jo pehle hi upar test ho chuki hai.
+    */
+    const leftJama = round2(-(await balanceOf()));
+    if (leftJama > 0) {
+      await call('POST', '/payments', {
+        token: wToken, body: { partyId, direction: 'OUT', amount: leftJama, mode: 'CASH' },
+      });
     }
 
     r = await call('POST', '/invoices', {

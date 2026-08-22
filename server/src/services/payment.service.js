@@ -9,6 +9,7 @@ import {
   scopeByParty, scopePartiesMatch, isScoped, canSeeDoc, ownPartyIds, toObjectIds,
 } from '../utils/scope.js';
 import { postEntry, reverseEntriesFor, recalcBalances } from './ledger.service.js';
+import { applyCredit, applyPaidAtomic as settleApply } from './settlement.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -102,12 +103,18 @@ export async function getStats(businessId, viewer = null) {
       { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]),
     Party.aggregate([
+      { $match: scopePartiesMatch({ businessId: bid, type: PARTY_TYPES.RETAILER }, viewer) },
       {
-        $match: scopePartiesMatch({
-          businessId: bid, type: PARTY_TYPES.RETAILER, balance: { $gt: 0 },
-        }, viewer),
+        $group: {
+          _id: null,
+          n: { $sum: { $cond: [{ $gt: ['$balance', 0] }, 1, 0] } },
+          amount: { $sum: { $cond: [{ $gt: ['$balance', 0] }, '$balance', 0] } },
+          // Jama paisa — ulta balance. Isi ek ginti ke na hone se ye paisa
+          // poori app me kahin dikhta hi nahi tha.
+          advance: { $sum: { $cond: [{ $lt: ['$balance', 0] }, { $multiply: ['$balance', -1] }, 0] } },
+          advanceParties: { $sum: { $cond: [{ $lt: ['$balance', 0] }, 1, 0] } },
+        },
       },
-      { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$balance' } } },
     ]),
   ]);
 
@@ -120,6 +127,8 @@ export async function getStats(businessId, viewer = null) {
     pendingAmount: round2(pending?.amount || 0),
     totalReceivable: round2(receivable?.amount || 0),
     dueParties: receivable?.n || 0,
+    totalAdvance: round2(receivable?.advance || 0),
+    advanceParties: receivable?.advanceParties || 0,
   };
 }
 
@@ -134,78 +143,19 @@ export async function getPayment(businessId, id, { partyId = null, viewer = null
 /* ------------------------------------------------------ invoice allocation */
 
 /**
- * BILL PE PAISA GHATANE/BADHANE KA EK HI RASTA — aur wo ATOMIC hai.
+ * Bill pe paisa ghatane/badhane ka ek hi rasta — ab wo `settlement.service.js`
+ * me hai, kyunki wahi kaam wapasi (return) ko bhi karna padta hai.
  *
- * Pehle ye JS me hota tha: bill padho, `paidAmount + delta` gino, `inv.save()`.
- * Do payment ek saath aane par dono ne wahi purana `paidAmount` padha aur dono ne
- * wahi naya number likh diya — ek payment ka paisa bill se gayab. Khata dono ka
- * credit ginta rehta tha, isliye khata aur bill alag ho jate the.
- *
- * Ab teeno field MongoDB khud ginta hai, ek hi update me, us waqt ki asli value se.
- * Do request ek saath aayen to dono seedhe DB pe lagti hain — koi bhi purana
- * number leke nahi chalta.
- *
- * `needDue` de do to bill pe utna baaki hona ZAROORI hai. Na ho (kisi aur ne pehle
- * le liya) to update chalta hi nahi aur `null` milta hai — caller dobara dekh leta hai.
+ * Pehle ye sirf yahan tha, aur isi wajah se return kabhi bill ko chhuti hi
+ * nahi thi: uske paas is darwaze ki chaabi thi hi nahi.
  */
-function paidPipeline(delta) {
-  return [
-    { $set: { paidAmount: { $round: [{ $min: ['$grandTotal', { $max: [0, { $add: ['$paidAmount', delta] }] }] }, 2] } } },
-    { $set: { dueAmount: { $round: [{ $subtract: ['$grandTotal', '$paidAmount'] }, 2] } } },
-    {
-      $set: {
-        paymentStatus: {
-          $cond: [{ $lte: ['$paidAmount', 0] }, 'unpaid',
-            { $cond: [{ $lte: ['$dueAmount', 0] }, 'paid', 'partial'] }],
-        },
-      },
-    },
-  ];
-}
+const applyPaidAtomic = (businessId, invoiceId, delta, opts) =>
+  settleApply('Invoice', businessId, invoiceId, delta, opts);
 
-async function applyPaidAtomic(businessId, invoiceId, delta, { needDue = 0 } = {}) {
-  const filter = { _id: invoiceId, businessId };
-  if (needDue > 0) filter.dueAmount = { $gte: needDue };
-  return Invoice.findOneAndUpdate(filter, paidPipeline(delta), { new: true });
-}
-
-/**
- * Paisa purane bill se pehle lagta hai (FIFO) — jaise dukaan me hota hai.
- * Bache hue paise ko "advance" maan liya jata hai; khate me wo credit rehta hai.
- *
- * Har baar sabse purana khula bill DOBARA padhte hain, kyunki beech me koi doosri
- * payment us bill pe lag chuki ho sakti hai.
- */
 export async function allocateToInvoices(businessId, partyId, amount) {
-  let left = round2(amount);
-  const allocations = [];
-
-  // Bina aage badhe ghumte rehne se bachne ke liye — bill se zyada chakkar nahi
-  const openCount = await Invoice.countDocuments({
-    businessId, partyId, isCancelled: false, dueAmount: { $gt: 0 },
-  });
-  let tries = openCount * 2 + 5;
-
-  while (left > 0 && tries-- > 0) {
-    const next = await Invoice.find({
-      businessId, partyId, isCancelled: false, dueAmount: { $gt: 0 },
-    }).sort({ invoiceDate: 1, createdAt: 1 }).limit(1).lean();
-
-    const inv = next[0];
-    if (!inv) break;
-
-    const apply = round2(Math.min(left, inv.dueAmount));
-    if (apply <= 0) break;
-
-    // Utna baaki abhi bhi hai tabhi lagega — warna null milega aur dobara dekhenge
-    const updated = await applyPaidAtomic(businessId, inv._id, apply, { needDue: apply });
-    if (!updated) continue;
-
-    allocations.push({ invoiceId: inv._id, amount: apply });
-    left = round2(left - apply);
-  }
-
-  return { allocations, allocatedTo: allocations.map((a) => a.invoiceId), advance: left };
+  const { allocations, left } = await applyCredit('Invoice', businessId, partyId, amount);
+  const rows = allocations.map((a) => ({ invoiceId: a.docId, amount: a.amount }));
+  return { allocations: rows, allocatedTo: rows.map((a) => a.invoiceId), advance: left };
 }
 
 /**
@@ -363,6 +313,34 @@ export async function removeInlinePayments(businessId, invoice, userId) {
  * direction IN  = retailer se paisa aaya
  * direction OUT = supplier ko paisa diya
  */
+/**
+ * "Itna to baaki hi nahi" — zyada paisa pe rok.
+ *
+ * Pehle koi rok thi hi nahi: ₹5,000 ka udhaar tha aur ₹50,000 ki entry ho
+ * jati thi. Bacha hua paisa chup-chaap "advance" ban jata tha — kahin dikhta
+ * nahi tha, aur aksar wo asli advance hota bhi nahi tha, sirf ungli se ek
+ * zero zyada dab gaya hota tha. Mahine baad khata milane baithe to samajh hi
+ * nahi aata tha ki ye paisa aaya kahan se.
+ *
+ * Ab rok lagti hai — par darwaza band nahi hota. Jawab me poora hisaab jata
+ * hai (`extra`, `outstanding`), taaki app poochh sake: "₹3,000 zyada hai.
+ * Jama kar dein?" Haan dabate hi wahi request `allowAdvance: true` ke saath
+ * dobara jati hai aur paisa saaf-saaf jama ban jata hai.
+ *
+ * Yaani advance ab ek FAISLA hai, ek haadsa nahi.
+ */
+function assertNotOverpaying({ amount, outstanding, allowAdvance, kaunsa = 'udhaar' }) {
+  const extra = round2(amount - outstanding);
+  if (extra <= 0 || allowAdvance) return round2(Math.max(0, extra));
+
+  throw ApiError.badRequest(
+    outstanding <= 0
+      ? `Inka koi ${kaunsa} baaki nahi hai. Ye ₹${round2(amount)} jama karna ho to "Jama kar dein" dabaein.`
+      : `${kaunsa} sirf ₹${outstanding} hai — ₹${extra} zyada hai. Jama karna ho to "Jama kar dein" dabaein.`,
+    { extra, outstanding: round2(outstanding), amount: round2(amount), needsAdvance: true },
+  );
+}
+
 export async function createPayment(businessId, payload, userId) {
   const party = await Party.findOne({ _id: payload.partyId, businessId }).lean();
   if (!party) throw ApiError.badRequest('Party nahi mili');
@@ -377,7 +355,66 @@ export async function createPayment(businessId, payload, userId) {
   let allocation = { allocations: [], allocatedTo: [], advance: amount };
 
   if (direction === 'IN' && party.type === PARTY_TYPES.RETAILER) {
+    /*
+      Hadd BILL ke jod se nahi, KHATE se lagti hai.
+
+      Khate me purana hisaab (opening) bhi hota hai aur pichhli wapasi ka
+      credit bhi. Sirf khule bill jodne se ek aadmi jiska purana udhaar khate
+      me pada hai, uska paisa "zyada" bata kar rok diya jata — jo galat hai.
+    */
+    assertNotOverpaying({
+      amount,
+      outstanding: round2(party.balance || 0),
+      allowAdvance: payload.allowAdvance === true,
+    });
     allocation = await allocateToInvoices(businessId, party._id, amount);
+  }
+
+  /*
+    PAISA WAPAS KARNA (refund) — ULTI TARAF KA HISAAB.
+
+    Ab tak har payment khate me CREDIT daalti thi, chahe kaisi bhi ho. Retailer
+    ke liye wo theek hai (paisa aaya -> udhaar ghata) aur supplier ke liye bhi
+    (paisa diya -> dena ghata). Par jab jama paisa WAPAS karna ho — yaani
+    retailer ko paisa DENA ho — tab bhi credit hi jata tha, aur uska jama paisa
+    ghatne ki jagah BADH jata tha. Yaani paisa haath se bhi gaya aur khate me
+    bhi hum aur karzdaar ho gaye.
+
+    Isliye ab do sawal alag alag hain:
+      "kis taraf paisa gaya"        -> direction
+      "us party ka hisaab badha ya ghata" -> neeche wala niyam
+
+    Ulti taraf ka paisa = wapasi. Wo DEBIT hai, credit nahi.
+  */
+  const chalanTaraf = party.type === PARTY_TYPES.SUPPLIER ? 'OUT' : 'IN';
+  const isRefund = direction !== chalanTaraf;
+
+  if (isRefund) {
+    // Jitna jama hai usse zyada wapas nahi ho sakta
+    const jama = round2(Math.max(0, -(party.balance || 0)));
+    if (amount > jama) {
+      throw ApiError.badRequest(
+        jama <= 0
+          ? 'Inka koi jama paisa hai hi nahi — wapas karne ko kuch nahi hai.'
+          : `Jama sirf ₹${jama} hai — ₹${round2(amount - jama)} zyada hai.`,
+        { jama, amount },
+      );
+    }
+  }
+
+  if (!isRefund && direction === 'OUT' && party.type === PARTY_TYPES.SUPPLIER) {
+    assertNotOverpaying({
+      amount,
+      outstanding: round2(party.balance || 0),
+      allowAdvance: payload.allowAdvance === true,
+      kaunsa: 'dena',
+    });
+    const applied = await applyCredit('Purchase', businessId, party._id, amount);
+    allocation = {
+      allocations: applied.allocations.map((a) => ({ invoiceId: a.docId, amount: a.amount })),
+      allocatedTo: applied.allocations.map((a) => a.docId),
+      advance: applied.left,
+    };
   }
 
   const payment = await Payment.create({
@@ -395,14 +432,15 @@ export async function createPayment(businessId, payload, userId) {
     recordedBy: userId,
   });
 
-  // Khata: dono taraf paisa dene se hisaab GHATTA hai
+  // Khata: seedhi taraf ka paisa hisaab GHATATA hai, ulti taraf ka BADHATA hai
   await postEntry({
     businessId, partyId: party._id,
     type: direction === 'IN' ? LEDGER_TYPES.PAYMENT_IN : LEDGER_TYPES.PAYMENT_OUT,
-    credit: amount,
+    ...(isRefund ? { debit: amount } : { credit: amount }),
     date: payment.date,
     refType: 'Payment', refId: payment._id, refNo: paymentNo,
-    note: payload.note || (payload.mode === 'CASH' ? 'Cash' : payload.mode),
+    note: payload.note
+      || (isRefund ? 'Jama paisa wapas' : (payload.mode === 'CASH' ? 'Cash' : payload.mode)),
     userId,
   });
 

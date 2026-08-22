@@ -66,6 +66,33 @@ const returnNoteSchema = new mongoose.Schema(
     businessSnapshot: { type: Object, default: () => ({}) },
     partySnapshot: { type: Object, default: () => ({}) },
 
+    /**
+     * Is wapasi ka credit KIS BILL pe laga — aur kitna.
+     *
+     * Ye pehle tha hi nahi, aur wahi sabse badi galti thi. Wapasi khate me
+     * credit daal deti thi (party ka balance ghat jata tha) par bill ka
+     * `dueAmount` waise ka waisa pada rehta tha. Nateeja: Payment page kehta
+     * "kuch baaki nahi" aur Home kehta "₹4,000 baaki" — dono sach maan kar
+     * dukaandaar do baar wasooli karne nikalta tha.
+     *
+     * Likhna isliye bhi zaroori hai ki wapasi MITAYI bhi ja sakti hai. "Kitna
+     * laga tha" yaad na ho to "kitna wapas karna hai" ka jawab bhi nahi hota,
+     * aur mitane pe bill hamesha ke liye galat reh jata.
+     *
+     * `docId` bill ka ya purchase ka — type se pata chal jata hai.
+     */
+    allocations: {
+      type: [{
+        _id: false,
+        docId: { type: mongoose.Schema.Types.ObjectId, default: null },
+        amount: { type: Number, default: 0 },
+      }],
+      default: [],
+    },
+
+    /** Jo credit kisi bill pe nahi laga — wo party ka jama paisa ban gaya */
+    advance: { type: Number, default: 0 },
+
     reason: { type: String, default: '' },
     notes: { type: String, default: '' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

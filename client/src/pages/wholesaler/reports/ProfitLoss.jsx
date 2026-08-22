@@ -86,6 +86,37 @@ export default function ProfitLoss({ meta }) {
         </dl>
       </Card>
 
+      {/*
+        JAMA PAISA — hisaab ke NEECHE, lakeer ke baad.
+
+        Ye jaan-boojh kar upar wale bayaan se BAHAR hai. Ye graahak ka paisa
+        hai jo aapke paas rakha hai — wo wapas bhi maang sakta hai aur agle
+        bill me bhi kat sakta hai. Ise munafe me jod dete to mahine ka number
+        jhootha bada dikhta, aur jis din wo paisa maal me badla ya wapas gaya
+        us din number bina wajah gir jata.
+
+        Dikhana phir bhi zaroori hai: ye paisa golak me pada hai, aur
+        dukaandaar ko pata hona chahiye ki wo uska nahi hai.
+      */}
+      {meta.advanceHeld > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-blue-900">{t('Jama paisa — aapka nahi hai')}</p>
+              <p className="mt-1 text-xs leading-relaxed text-blue-800">
+                {t('Ye graahak ka paisa hai jo aapke paas rakha hai. Isiliye ye upar wale munafe me NAHI juda — wo wapas bhi maang sakte hain, ya agle bill me kat jayega.')}
+              </p>
+              <p className="mt-1.5 text-xs text-blue-700">
+                {meta.advanceParties} {t('graahak ka')}
+              </p>
+            </div>
+            <p className="tabular shrink-0 text-xl font-bold text-blue-900">
+              {formatMoney(meta.advanceHeld)}
+            </p>
+          </div>
+        </Card>
+      )}
+
       {/* ───────── jo log sabse zyada poochte hain ───────── */}
       <Card className="no-print">
         <div className="flex items-start gap-3">

@@ -368,6 +368,10 @@ const DICT = {
   'Pack ho rahe': { hi: 'पैक हो रहे', en: 'Being packed' },
   'Packet pe chhapa hua rate — retailer ko dikhega': { hi: 'पैकेट पर छपा हुआ रेट — रिटेलर को दिखेगा', en: 'Printed rate on the packet — visible to the retailer' },
   'Paisa apne aap sabse purane bill pe lagega. Zyada hua to advance jama rahega.': { hi: 'पैसा अपने आप सबसे पुराने बिल पर लगेगा। ज़्यादा हुआ तो एडवांस जमा रहेगा।', en: 'Money is applied to the oldest bill first. Anything extra stays as advance.' },
+  'Itna jama paisa khate se ghat jayega. Isse kisi bill ka baaki nahi badlega.': {
+    hi: 'इतना जमा पैसा खाते से घट जाएगा। इससे किसी बिल का बाकी नहीं बदलेगा।',
+    en: 'This much comes off their credit balance. No bill’s due changes because of it.',
+  },
   'Paisa entry': { hi: 'पैसा एंट्री', en: 'Payment entry' },
   'Part number ya serial — dono chalega': { hi: 'पार्ट नंबर या सीरियल — दोनों चलेगा', en: 'Part number or serial — either works' },
   Password: { hi: 'पासवर्ड', en: 'Password' },
@@ -973,6 +977,54 @@ const DICT = {
   'purchase khuli': { hi: 'खरीद खुली', en: 'purchase open' },
   'WhatsApp pe likhein': { hi: 'WhatsApp पर लिखें', en: 'Message on WhatsApp' },
   'Paisa diya': { hi: 'पैसा दिया', en: 'Money paid' },
+
+  /* ---- Jama paisa aur wapasi (Step 1) ---- */
+
+  'Jama paisa': { hi: 'जमा पैसा', en: 'Money on account' },
+  'graahak ka': { hi: 'ग्राहक का', en: 'customers' },
+  'jama bhi pada hai': { hi: 'जमा भी पड़ा है', en: 'also on account' },
+  'graahak ka paisa jama hai': { hi: 'ग्राहक का पैसा जमा है', en: 'customers have money on account' },
+  'Kisi ka paisa jama nahi hai': { hi: 'किसी का पैसा जमा नहीं है', en: 'No one has money on account' },
+  'Jab koi udhaar se zyada paisa dega, wo yahan jama dikhega.': {
+    hi: 'जब कोई उधार से ज़्यादा पैसा देगा, वो यहाँ जमा दिखेगा।',
+    en: 'When someone pays more than they owe, it will show here.',
+  },
+  'Wapas karein': { hi: 'वापस करें', en: 'Refund' },
+  'jama pada hai': { hi: 'जमा पड़ा है', en: 'on account' },
+  'jama me se kat gaya': { hi: 'जमा में से कट गया', en: 'used from credit' },
+  'is bill me se kat jayega': { hi: 'इस बिल में से कट जाएगा', en: 'will be applied to this bill' },
+  'is bill me nahi katega': { hi: 'इस बिल में नहीं कटेगा', en: 'will not be applied to this bill' },
+  'Bill se zyada paisa mila hai': { hi: 'बिल से ज़्यादा पैसा मिला है', en: 'Received more than the bill' },
+  'Nahi, badal dein': { hi: 'नहीं, बदल दें', en: 'No, change it' },
+  'Haan, jama kar dein': { hi: 'हाँ, जमा कर दें', en: 'Yes, keep on account' },
+  'Paisa mila': { hi: 'पैसा मिला', en: 'Received' },
+  'Zyada hai': { hi: 'ज़्यादा है', en: 'Extra' },
+  'Zyada paisa pehle inke purane khule bill pe lagega. Jo phir bhi bache wo JAMA rahega — agle bill me kat jayega ya kabhi bhi wapas ho sakta hai.': {
+    hi: 'ज़्यादा पैसा पहले इनके पुराने खुले बिल पर लगेगा। जो फिर भी बचे वो जमा रहेगा — अगले बिल में कट जाएगा या कभी भी वापस हो सकता है।',
+    en: 'The extra goes to their older open bills first. Anything still left stays on account — it will be applied to the next bill, or can be refunded any time.',
+  },
+  'Jama paisa wapas': { hi: 'जमा पैसा वापस', en: 'Refund from account' },
+  'inko dena tha': { hi: 'इनको देना था', en: 'you owed them' },
+  'inse lena tha': { hi: 'इनसे लेना था', en: 'they owed you' },
+  'Kisse paisa mila ya kisko diya, wo entry karein': {
+    hi: 'किससे पैसा मिला या किसको दिया, वो एंट्री करें',
+    en: 'Record who paid you or who you paid',
+  },
+  'inka jama paisa hai': { hi: 'इनका जमा पैसा है', en: 'is on their account' },
+  'Nahi, paisa aaya hai': { hi: 'नहीं, पैसा आया है', en: 'No, money came in' },
+  'Ye paisa jama kar dein?': { hi: 'ये पैसा जमा कर दें?', en: 'Keep this on account?' },
+  'Aap daal rahe hain': { hi: 'आप डाल रहे हैं', en: 'You are entering' },
+  'Dena tha': { hi: 'देना था', en: 'You owed' },
+  'Lena tha': { hi: 'लेना था', en: 'They owed' },
+  'Ye {n} inke khate me JAMA ho jayega. Agle bill me se apne aap kat jayega, ya aap kabhi bhi wapas kar sakte hain.': {
+    hi: 'ये {n} इनके खाते में जमा हो जाएगा। अगले बिल में से अपने आप कट जाएगा, या आप कभी भी वापस कर सकते हैं।',
+    en: 'This {n} will sit on their account. It gets applied to the next bill automatically, or you can refund it any time.',
+  },
+  'Jama paisa — aapka nahi hai': { hi: 'जमा पैसा — आपका नहीं है', en: 'Money on account — not yours' },
+  'Ye graahak ka paisa hai jo aapke paas rakha hai. Isiliye ye upar wale munafe me NAHI juda — wo wapas bhi maang sakte hain, ya agle bill me kat jayega.': {
+    hi: 'ये ग्राहक का पैसा है जो आपके पास रखा है। इसीलिए ये ऊपर वाले मुनाफे में नहीं जुड़ा — वो वापस भी माँग सकते हैं, या अगले बिल में कट जाएगा।',
+    en: 'This is your customers\' money held with you. That is why it is NOT part of the profit above — they can ask for it back, or it goes against their next bill.',
+  },
 };
 
 export default DICT;

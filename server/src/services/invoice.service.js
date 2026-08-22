@@ -16,6 +16,7 @@ import { computeInvoice, decideTaxType, hsnSummary } from './gst.service.js';
 import { applyStockChange } from './stock.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { releaseInvoiceFromPayments, removeInlinePayments } from './payment.service.js';
+import { applyCredit } from './settlement.service.js';
 import { resolveRates } from './rate.service.js';
 import { notifyRetailer } from './notification.service.js';
 
@@ -376,6 +377,15 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
   }).lean();
   if (!party) throw ApiError.badRequest('Retailer nahi mila');
 
+  /*
+    Bill BANNE SE PEHLE ka jama paisa.
+
+    Khate me ulta balance (minus) hi jama paisa hai. Ye number bill ka debit
+    lagne se PEHLE lena zaroori hai — baad me padho to naya bill usme jud
+    chuka hoga aur jama paisa kam ya gayab dikhega.
+  */
+  const advanceBefore = round2(Math.max(0, -(party.balance || 0)));
+
   let order = null;
   if (payload.orderId) {
     order = await Order.findOne({ _id: payload.orderId, businessId });
@@ -449,7 +459,31 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     throw ApiError.badRequest(err.message);
   }
 
-  const paidAmount = round2(Math.min(payload.paidAmount || 0, totals.grandTotal));
+  /*
+    BILL SE ZYADA PAISA — ab chup-chaap nigla nahi jata.
+
+    Pehle yahan sirf `Math.min(...)` tha. Yaani ₹3,000 ka bill banate waqt
+    galti se ₹30,000 likh do to bill ₹3,000 "chukta" ban jata aur baaki
+    ₹27,000 kahin darj hi nahi hota — na khate me, na kisi payment me. Ye
+    error se bhi bura hai: dukaandaar ko lagta hai paisa likh diya, aur wo
+    kabhi likha hi nahi gaya.
+
+    Ab do saaf raste hain, aur dono me paisa poora darj hota hai:
+      - bina kahe   -> rok, poore hisaab ke saath ("₹27,000 zyada hai")
+      - jama kar do -> bill utna hi chukta, aur bacha hua JAMA paisa ban jata
+                       hai (khate me credit, agle bill me kaam aayega)
+  */
+  const received = round2(payload.paidAmount || 0);
+  const extraPaid = round2(received - totals.grandTotal);
+
+  if (extraPaid > 0 && payload.allowAdvance !== true) {
+    throw ApiError.badRequest(
+      `Bill ₹${totals.grandTotal} ka hai — ₹${extraPaid} zyada hai. Jama karna ho to "Jama kar dein" dabaein.`,
+      { extra: extraPaid, outstanding: totals.grandTotal, amount: received, needsAdvance: true },
+    );
+  }
+
+  const paidAmount = round2(Math.min(received, totals.grandTotal));
   const dueAmount = round2(totals.grandTotal - paidAmount);
 
   // ---- Paise ki hadd ----
@@ -559,7 +593,7 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     ledgerPosted = true;
 
     // ---- Turant paisa mila to payment bhi ----
-    if (paidAmount > 0) {
+    if (received > 0) {
       const { number: paymentNo } = await Counter.nextNumber({
         businessId, key: COUNTER_KEYS.PAYMENT, prefix: 'PAY',
       });
@@ -568,7 +602,9 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
         businessId, partyId: party._id, paymentNo,
         date: invoice.invoiceDate,
         direction: 'IN',
-        amount: paidAmount,
+        // Payment POORE mile hue paise ki banti hai — bill pe jitna laga wo
+        // `allocations` me hai. Bacha hua hissa jama paisa ban jata hai.
+        amount: received,
         mode: payload.paymentMode || 'CASH',
         status: PAYMENT_STATUS.CONFIRMED,
         confirmedAt: new Date(),
@@ -581,6 +617,27 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
       });
       inlinePayment = payment;
 
+      /*
+        Bill se BACHA hua paisa pehle PURANE khule bill pe.
+
+        Ye pehli baar me chhoot gaya tha: ₹500 ke bill pe ₹5,000 diye aur
+        baaki ₹4,500 seedha "jama" ban gaye — jabki usi aadmi ke ₹1,800 ke
+        purane bill khule pade the. Dukaandaar ke liye ye ulta hai: paisa
+        haath me aa chuka hai par purana bill kagaz pe udhaar hi dikhta rehta
+        hai. Jama wahi hona chahiye jo SAB kuch chukane ke baad bache.
+      */
+      if (extraPaid > 0) {
+        const spread = await applyCredit('Invoice', businessId, party._id, extraPaid);
+        if (spread.allocations.length) {
+          payment.allocations = [
+            ...payment.allocations,
+            ...spread.allocations.map((a) => ({ invoiceId: a.docId, amount: a.amount })),
+          ];
+          payment.againstInvoiceIds = payment.allocations.map((a) => a.invoiceId);
+          await payment.save();
+        }
+      }
+
       /**
        * DHYAN: is entry ka refType 'Payment' hai, 'Invoice' nahi.
        *
@@ -591,10 +648,12 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
        */
       await postEntry({
         businessId, partyId: party._id, type: LEDGER_TYPES.PAYMENT_IN,
-        credit: paidAmount,
+        credit: received,
         date: invoice.invoiceDate,
         refType: 'Payment', refId: payment._id, refNo: paymentNo,
-        note: `${invoiceNo} ke saath mila`,
+        note: extraPaid > 0
+          ? `${invoiceNo} ke saath mila (₹${extraPaid} jama)`
+          : `${invoiceNo} ke saath mila`,
         userId,
       });
     }
@@ -619,6 +678,22 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     throw err;
   }
 
+  /*
+    ---- Pehle se jama paisa isi bill me se kaat lein ----
+
+    Ye ledger ko NAHI chhuta — wo credit khate me pehle se pada hai. Yahan bas
+    itna hota hai ki wo credit ab is bill se JUD jata hai, taaki bill "baaki"
+    dikhana band kar de. Dobara credit daal dete to paisa do baar gina jata.
+  */
+  let usedAdvance = 0;
+  if (payload.useAdvance === true && advanceBefore > 0 && dueAmount > 0) {
+    const useAmt = round2(Math.min(advanceBefore, dueAmount));
+    const { allocations } = await applyCredit(
+      'Invoice', businessId, party._id, useAmt, { preferId: invoice._id },
+    );
+    usedAdvance = round2(allocations.reduce((sum, a) => sum + a.amount, 0));
+  }
+
   await notifyRetailer(businessId, party._id, {
     type: NOTIFICATION_TYPES.ORDER_STATUS,
     title: `Bill ban gaya — ${invoiceNo}`,
@@ -627,7 +702,9 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     data: { invoiceId: invoice._id },
   });
 
-  return getInvoice(businessId, invoice._id);
+  const saved = await getInvoice(businessId, invoice._id);
+  // Client ko batana hai ki jama paisa istemal hua — taaki wo toast me likh sake
+  return { ...saved, usedAdvance, advanceLeft: round2(advanceBefore - usedAdvance) };
 }
 
 /* ---------------------------------------------------------------- cancel */

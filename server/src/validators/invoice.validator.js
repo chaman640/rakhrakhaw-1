@@ -19,6 +19,10 @@ export const createInvoiceSchema = z.object({
   items: z.array(invoiceItemSchema).min(1, 'Kam se kam ek item daalein').max(200),
   extraDiscount: money.optional().default(0),
   paidAmount: money.optional().default(0),
+  // Bill se zyada paisa — rok ke baad "haan, jama kar dein"
+  allowAdvance: z.boolean().optional().default(false),
+  // Party ka pehle se jama paisa isi bill me se kaat lein
+  useAdvance: z.boolean().optional().default(false),
   paymentMode: z.enum(Object.values(PAYMENT_MODES)).optional().default('CASH'),
   notes: z.string().trim().max(500).optional().default(''),
   termsAndConditions: z.string().trim().max(2000).optional(),
