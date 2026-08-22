@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
+import { t } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import { Save, KeyRound, LogOut, Store } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatPhone, formatMoney } from '@/lib/format';
 import {
-  PageHeader, Card, CardHeader, Button, Input, Select, Badge, useToast,
-} from '@/components/ui';
+  PageHeader, Card, CardHeader, Button, Input, Select, Badge, useToast } from
+'@/components/ui';
 
 export default function Profile() {
   const { user, party, business, refresh, logout } = useAuth();
@@ -22,8 +23,8 @@ export default function Profile() {
       line1: party?.address?.line1 || '',
       city: party?.address?.city || '',
       state: party?.address?.state || '',
-      pincode: party?.address?.pincode || '',
-    },
+      pincode: party?.address?.pincode || ''
+    }
   });
   const [saving, setSaving] = useState(false);
 
@@ -72,21 +73,21 @@ export default function Profile() {
 
   return (
     <>
-      <PageHeader title="Profile" subtitle="Aapki dukaan ki detail" />
+      <PageHeader title={t("Profile")} subtitle={t("Aapki dukaan ki detail")} />
 
       <div className="space-y-5">
         {/* Kis wholesaler se jude hain */}
         <Card>
           <div className="flex items-center gap-4">
-            {business?.logoUrl ? (
-              <img src={business.logoUrl} alt="" className="h-12 w-12 rounded-lg object-cover ring-1 ring-slate-200" />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+            {business?.logoUrl ?
+            <img src={business.logoUrl} alt="" className="h-12 w-12 rounded-lg object-cover ring-1 ring-slate-200" /> :
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
                 <Store size={20} />
               </div>
-            )}
+            }
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-slate-500">Aap jude hain</p>
+              <p className="text-xs text-slate-500">{t("Aap jude hain")}</p>
               <p className="truncate font-medium text-slate-900">{business?.name}</p>
             </div>
             <Badge tone={party?.status === 'active' ? 'green' : 'amber'}>
@@ -94,56 +95,56 @@ export default function Profile() {
             </Badge>
           </div>
 
-          {typeof party?.balance === 'number' && party.balance > 0 && (
-            <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              Aapka udhaar: <strong>{formatMoney(party.balance)}</strong>
+          {typeof party?.balance === 'number' && party.balance > 0 &&
+          <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {t('Aapka udhaar')}: <strong>{formatMoney(party.balance)}</strong>
             </p>
-          )}
+          }
         </Card>
 
         <Card>
-          <CardHeader title="Dukaan ki detail" />
+          <CardHeader title={t("Dukaan ki detail")} />
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="Dukaan ka naam" value={form.shopName} onChange={set('shopName')} />
-              <Input label="Aapka naam" required value={form.name} onChange={set('name')} />
-              <Input label="Phone" value={formatPhone(user?.phone)} disabled
-                hint="Login number badal nahi sakta" />
-              <Input label="GSTIN (agar hai)" value={form.gstin}
-                onChange={(e) => setForm((f) => ({ ...f, gstin: e.target.value.toUpperCase() }))}
-                className="uppercase" placeholder="09AAACH7409R1ZZ" />
-              <Input label="Address" value={form.address.line1} onChange={setAddr('line1')}
-                containerClassName="sm:col-span-2" />
-              <Input label="Sheher" value={form.address.city} onChange={setAddr('city')} />
-              <Select label="State" options={states} value={form.address.state}
-                onChange={setAddr('state')} placeholder="State chunein" />
-              <Input label="Pincode" inputMode="numeric" maxLength={6}
-                value={form.address.pincode} onChange={setAddr('pincode')} />
+              <Input label={t("Dukaan ka naam")} value={form.shopName} onChange={set('shopName')} />
+              <Input label={t("Aapka naam")} required value={form.name} onChange={set('name')} />
+              <Input label={t("Phone")} value={formatPhone(user?.phone)} disabled
+              hint={t("Login number badal nahi sakta")} />
+              <Input label={t("GSTIN (agar hai)")} value={form.gstin}
+              onChange={(e) => setForm((f) => ({ ...f, gstin: e.target.value.toUpperCase() }))}
+              className="uppercase" placeholder={t("09AAACH7409R1ZZ")} />
+              <Input label={t("Address")} value={form.address.line1} onChange={setAddr('line1')}
+              containerClassName="sm:col-span-2" />
+              <Input label={t("Sheher")} value={form.address.city} onChange={setAddr('city')} />
+              <Select label={t("State")} options={states} value={form.address.state}
+              onChange={setAddr('state')} placeholder={t("State chunein")} />
+              <Input label={t("Pincode")} inputMode="numeric" maxLength={6}
+              value={form.address.pincode} onChange={setAddr('pincode')} />
             </div>
-            <Button type="submit" icon={Save} loading={saving}>Save karein</Button>
+            <Button type="submit" icon={Save} loading={saving}>{t("Save karein")}</Button>
           </form>
         </Card>
 
         <Card>
-          <CardHeader title="Password badlein" />
+          <CardHeader title={t("Password badlein")} />
           <form onSubmit={handlePassword} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="Purana password" type="password" required
-                value={pw.currentPassword}
-                onChange={(e) => setPw((p) => ({ ...p, currentPassword: e.target.value }))} />
-              <Input label="Naya password" type="password" required autoComplete="new-password"
-                value={pw.newPassword}
-                onChange={(e) => setPw((p) => ({ ...p, newPassword: e.target.value }))} />
+              <Input label={t("Purana password")} type="password" required
+              value={pw.currentPassword}
+              onChange={(e) => setPw((p) => ({ ...p, currentPassword: e.target.value }))} />
+              <Input label={t("Naya password")} type="password" required autoComplete="new-password"
+              value={pw.newPassword}
+              onChange={(e) => setPw((p) => ({ ...p, newPassword: e.target.value }))} />
             </div>
-            <Button type="submit" icon={KeyRound} loading={pwLoading}>Password badlein</Button>
+            <Button type="submit" icon={KeyRound} loading={pwLoading}>{t("Password badlein")}</Button>
           </form>
         </Card>
 
         <Card>
-          <CardHeader title="Logout" />
-          <Button variant="danger" icon={LogOut} onClick={handleLogout}>Logout</Button>
+          <CardHeader title={t("Logout")} />
+          <Button variant="danger" icon={LogOut} onClick={handleLogout}>{t("Logout")}</Button>
         </Card>
       </div>
-    </>
-  );
+    </>);
+
 }

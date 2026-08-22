@@ -92,7 +92,7 @@ export default function InvoiceDetail() {
               <p className="mt-1 text-sm text-slate-500">
                 {invoice.partySnapshot?.shopName || invoice.partySnapshot?.name}
                 {' · '}{formatMoney(invoice.grandTotal)}
-                {invoice.dueAmount > 0 && <> · baaki {formatMoney(invoice.dueAmount)}</>}
+                {invoice.dueAmount > 0 && <> · {t('baaki {amt}', { amt: formatMoney(invoice.dueAmount) })}</>}
               </p>
             </div>
 

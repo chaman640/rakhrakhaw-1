@@ -3,6 +3,7 @@ import {
   History, FileText, Wallet, Package, Users, Truck, Undo2, UserCog, Link2,
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/lib/format';
 import {
@@ -71,8 +72,9 @@ export default function Activity({ embedded = false }) {
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (chupChaap = false) => {
+    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
+    if (!chupChaap) setLoading(true);
     try {
       const res = await api.get('/activity', {
         params: { action, page, limit: 25, ...(userId ? { userId } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) },
@@ -88,6 +90,8 @@ export default function Activity({ embedded = false }) {
   }, [action, userId, from, to, page]);
 
   useEffect(() => { load(); }, [load]);
+  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
+  useAutoRefresh(load);
   useEffect(() => { setPage(1); }, [action, userId, from, to]);
 
   // Kis-kis ne kaam kiya — filter ke liye

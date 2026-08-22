@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Upload, Trash2, Store, Save, CheckCircle2, QrCode, Landmark, FileText, Info,
 } from 'lucide-react';
@@ -139,7 +139,9 @@ function ShopSection({ business, onSaved }) {
   const toast = useToast();
   const { refresh } = useAuth();
   const fileRef = useRef(null);
+  const navigate = useNavigate();
   const [states, setStates] = useState([]);
+  const [gstReady, setGstReady] = useState(null);
   const [uploading, setUploading] = useState(false);
   const { save, saving, fieldErrors } = useBusinessSave(onSaved);
 
@@ -154,6 +156,8 @@ function ShopSection({ business, onSaved }) {
 
   useEffect(() => {
     api.get('/business/states').then((res) => setStates(res.data.map((s) => s.name))).catch(() => {});
+    // "Kitne item pe rate/HSN nahi hai" — chetavni isi se banti hai
+    api.get('/items/gst-ready').then((res) => setGstReady(res.data)).catch(() => {});
   }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -262,6 +266,39 @@ function ShopSection({ business, onSaved }) {
           label={t('Meri dukaan GST registered hai')}
           description={t("Off rakha to bill 'Bill of Supply' banega — koi tax column nahi. On karne par 'Tax Invoice' banega.")}
         />
+
+        {/*
+          GST ON karne se PEHLE bata do ki kitna kaam baaki hai.
+
+          Ye chetavni na hone se ek chup-chaap nuksaan hota tha: GST ON karte
+          hi bill "TAX INVOICE" ban jata hai, par jin item pe rate 0 hai unpe
+          tax lagta hi nahi. Bill dekhne me poora sahi lagta hai — bas usme tax
+          hai hi nahi. Ye mahino chalta rehta hai aur pakda tab jata hai jab CA
+          return bharne baithta hai, aur tab tak wo bill graahak ke paas ja
+          chuke hote hain.
+        */}
+        {form.gstEnabled && gstReady && !gstReady.ready && (
+          <div className="mt-4 rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">
+            <p className="font-medium">
+              {gstReady.zeroRate > 0 && `${gstReady.zeroRate} item pe GST rate nahi hai`}
+              {gstReady.zeroRate > 0 && gstReady.noHsn > 0 && ' · '}
+              {gstReady.noHsn > 0 && `${gstReady.noHsn} pe HSN nahi hai`}
+            </p>
+            <p className="mt-1">
+              {t('Un item ka bill 0% tax ka banega. Items page se rate bhar lein.')}
+            </p>
+            {gstReady.samples?.length > 0 && (
+              <p className="mt-1 text-amber-700">
+                {gstReady.samples.map((x) => x.name).join(', ')}
+                {gstReady.zeroRate + gstReady.noHsn > gstReady.samples.length && ' …'}
+              </p>
+            )}
+            <button type="button" onClick={() => navigate('/items')}
+              className="mt-2 font-medium underline focus-ring">
+              {t('Items page kholein')}
+            </button>
+          </div>
+        )}
 
         {form.gstEnabled && (
           <div className="mt-4 border-t border-slate-100 pt-4">

@@ -40,7 +40,7 @@ export default function Signup() {
       subtitle={t('Do minute me apni dukaan set kar lein')}
       footer={
         <>
-          Account pehle se hai?{' '}
+          {t('Account pehle se hai?')}{' '}
           <Link to="/login" className="font-medium text-brand-700 hover:underline">
             {t('Login karein')}
           </Link>

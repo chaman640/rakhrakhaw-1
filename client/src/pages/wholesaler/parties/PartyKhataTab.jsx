@@ -51,7 +51,7 @@ export default function PartyKhataTab({ party, onChanged }) {
             </p>
             {party.creditLimit > 0 && (
               <p className="mt-1 text-xs text-slate-400">
-                Credit limit {formatMoney(party.creditLimit)}
+                {t('Credit limit {amt}', { amt: formatMoney(party.creditLimit) })}
                 {party.balance > party.creditLimit && (
                   <span className="ml-1 font-medium text-red-600">{t('— limit paar ho gayi')}</span>
                 )}

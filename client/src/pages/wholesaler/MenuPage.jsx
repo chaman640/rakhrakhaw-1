@@ -168,7 +168,7 @@ export default function MenuPage() {
         loading={loggingOut}
         title={t('Logout karein?')}
         message={t('Dobara login karne ke liye phone number aur password lagega.')}
-        confirmLabel="Haan, logout"
+        confirmLabel={t("Haan, logout")}
       />
     </>
   );

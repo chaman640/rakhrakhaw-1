@@ -16,7 +16,7 @@ export default function RetailersTab() {
         />
         <Link to="/retailers">
           <Button variant="secondary" icon={Users}>
-            Retailers page kholein <ArrowRight size={15} />
+            {t('Retailers page kholein')} <ArrowRight size={15} />
           </Button>
         </Link>
       </Card>

@@ -18,32 +18,32 @@ const blank = {
   hsn: '', gstRate: '0',
   warrantyMonths: '0', warrantyNote: '',
   expiryDate: '', mfgDate: '', size: '', shape: '', weight: '', weightUnit: 'KG',
-  visibleToRetailers: true,
+  visibleToRetailers: true
 };
 
 // Wazan ki ikaai — thos aur tarl, dono
 const WEIGHT_UNITS = [
-  { value: 'G', label: 'gram' },
-  { value: 'KG', label: 'kilo' },
-  { value: 'ML', label: 'ml' },
-  { value: 'LTR', label: 'litre' },
-];
+{ value: 'G', label: 'gram' },
+{ value: 'KG', label: 'kilo' },
+{ value: 'ML', label: 'ml' },
+{ value: 'LTR', label: 'litre' }];
+
 
 // Date ke khaane ko "2026-08-22" chahiye; server poori ISO tareekh bhejta hai
-const dateInput = (v) => (v ? String(v).slice(0, 10) : '');
+const dateInput = (v) => v ? String(v).slice(0, 10) : '';
 
 // Jo warranty aam taur pe di jaati hai — type karne ki zarurat na pade
 const WARRANTY_PRESETS = [
-  { value: '0', label: 'Nahi hai' },
-  { value: '1', label: '1 mahina' },
-  { value: '3', label: '3 mahine' },
-  { value: '6', label: '6 mahine' },
-  { value: '12', label: '1 saal' },
-  { value: '18', label: '1.5 saal' },
-  { value: '24', label: '2 saal' },
-  { value: '36', label: '3 saal' },
-  { value: '60', label: '5 saal' },
-];
+{ value: '0', label: 'Nahi hai' },
+{ value: '1', label: '1 mahina' },
+{ value: '3', label: '3 mahine' },
+{ value: '6', label: '6 mahine' },
+{ value: '12', label: '1 saal' },
+{ value: '18', label: '1.5 saal' },
+{ value: '24', label: '2 saal' },
+{ value: '36', label: '3 saal' },
+{ value: '60', label: '5 saal' }];
+
 
 export default function ItemFormModal({ open, onClose, item, categories, onSaved, onCategoryAdded }) {
   const { gstEnabled, business } = useAuth();
@@ -93,7 +93,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         shape: item.shape || '',
         weight: String(item.weight || ''),
         weightUnit: item.weightUnit || 'KG',
-        visibleToRetailers: item.visibleToRetailers !== false,
+        visibleToRetailers: item.visibleToRetailers !== false
       });
       setPhoto({ url: item.imageUrl || '', pendingFile: null });
     } else {
@@ -106,24 +106,24 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
 
   // Byora wala hissa apne aap khula rahe jab usme kuch bhara ho — warna edit
   // karte waqt bhari hui expiry chhupi rehti aur dikhti hi nahi
-  const hasByora = Boolean(form.expiryDate || form.mfgDate || form.size
-    || form.shape || Number(form.weight || 0));
+  const hasByora = Boolean(form.expiryDate || form.mfgDate || form.size ||
+  form.shape || Number(form.weight || 0));
 
   // Expiry me kitne din bache — minus matlab beet chuki
-  const expiryDin = form.expiryDate
-    ? Math.ceil((new Date(form.expiryDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
-    : null;
+  const expiryDin = form.expiryDate ?
+  Math.ceil((new Date(form.expiryDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000) :
+  null;
 
   const cost = Number(form.purchasePrice || 0);
   const sell = Number(form.wholesalePrice || form.salePrice || 0);
-  const margin = cost > 0 && sell > 0
-    ? { amount: sell - cost, percent: ((sell - cost) / cost) * 100 }
-    : null;
+  const margin = cost > 0 && sell > 0 ?
+  { amount: sell - cost, percent: (sell - cost) / cost * 100 } :
+  null;
 
   function pickPhoto(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) { toast.error('Image 3 MB se choti honi chahiye'); return; }
+    if (file.size > 3 * 1024 * 1024) {toast.error('Image 3 MB se choti honi chahiye');return;}
     setPhoto({ url: URL.createObjectURL(file), pendingFile: file });
   }
 
@@ -143,7 +143,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
 
   async function removePhoto() {
     if (isEdit && photo.url && !photo.pendingFile) {
-      try { await api.delete(`/items/${item._id}/photo`); } catch { /* ignore */ }
+      try {await api.delete(`/items/${item._id}/photo`);} catch {/* ignore */}
     }
     setPhoto({ url: '', pendingFile: null });
     if (fileRef.current) fileRef.current.value = '';
@@ -191,26 +191,26 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       warrantyNote: form.warrantyNote.trim(),
       /*
         Khali tareekh `''` nahi, `null` jati hai.
-
-        `''` ko Date me daalte hi "Invalid Date" ban jata hai aur wo poora save
+         `''` ko Date me daalte hi "Invalid Date" ban jata hai aur wo poora save
         gira deta hai — aur error bhi aisa aata hai jisse kuch samajh nahi
         aata. Server pe bhi yahi badla hai, par yahan bhi karna theek hai:
         khali ka matlab "likha hi nahi", aur wo `null` hai.
       */
+
       expiryDate: form.expiryDate || null,
       mfgDate: form.mfgDate || null,
       size: form.size.trim(),
       shape: form.shape.trim(),
       weight: Number(form.weight || 0),
       weightUnit: form.weightUnit,
-      visibleToRetailers: form.visibleToRetailers,
+      visibleToRetailers: form.visibleToRetailers
     };
     if (!isEdit) payload.openingStock = Number(form.openingStock || 0);
 
     try {
-      const res = isEdit
-        ? await api.put(`/items/${item._id}`, payload)
-        : await api.post('/items', payload);
+      const res = isEdit ?
+      await api.put(`/items/${item._id}`, payload) :
+      await api.post('/items', payload);
 
       await uploadPhotoFor(res.data._id);
 
@@ -233,73 +233,73 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       title={isEdit ? 'Item edit karein' : 'Naya item'}
       description={isEdit ? item?.name : 'Stock, price aur category bharein'}
       footer={
-        <>
+      <>
           <Button variant="secondary" onClick={onClose} type="button">{t('Cancel')}</Button>
           <Button onClick={handleSubmit} loading={saving || uploading} type="button">
             {isEdit ? 'Save karein' : 'Add karein'}
           </Button>
         </>
-      }
-    >
+      }>
+      
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* ---- Photo ---- */}
         <div className="flex items-center gap-4">
-          {photo.url ? (
-            <img src={photo.url} alt="" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200" />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+          {photo.url ?
+          <img src={photo.url} alt="" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200" /> :
+
+          <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
               <Package size={24} />
             </div>
-          )}
+          }
           <div className="flex flex-wrap gap-2">
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp"
-              className="hidden" onChange={pickPhoto} data-testid="item-photo-input" />
+            className="hidden" onChange={pickPhoto} data-testid="item-photo-input" />
             <Button type="button" variant="secondary" size="sm" icon={Upload}
-              onClick={() => fileRef.current?.click()}>
+            onClick={() => fileRef.current?.click()}>
               {photo.url ? 'Photo badlein' : 'Photo lagayein'}
             </Button>
-            {photo.url && (
-              <Button type="button" variant="ghost" size="sm" icon={Trash2} onClick={removePhoto}>
+            {photo.url &&
+            <Button type="button" variant="ghost" size="sm" icon={Trash2} onClick={removePhoto}>
                 {t('Hatayein')}
               </Button>
-            )}
+            }
           </div>
         </div>
 
         {/* ---- Basic ---- */}
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label={t('Item ka naam')} required autoFocus placeholder={t('Bearing 6203')}
-            value={form.name} onChange={set('name')} error={fieldErrors.name}
-            containerClassName="sm:col-span-2" />
+          value={form.name} onChange={set('name')} error={fieldErrors.name}
+          containerClassName="sm:col-span-2" />
 
           <Input label={t('Code / SKU')} placeholder={t('BRG-6203')} value={form.sku} onChange={set('sku')}
-            hint={t('Apni pehchaan ke liye, marzi ho to chhod dein')} />
+          hint={t('Apni pehchaan ke liye, marzi ho to chhod dein')} />
 
           <Select label={t('Unit')} options={UNITS} value={form.unit} onChange={set('unit')} placeholder="" />
 
           <div className="sm:col-span-2">
-            {!addingCategory ? (
-              <div className="flex items-end gap-2">
+            {!addingCategory ?
+            <div className="flex items-end gap-2">
                 <Select
-                  label={t('Category')}
-                  placeholder={t('Bina category')}
-                  options={categories.map((c) => ({ value: c._id, label: c.name }))}
-                  value={form.categoryId}
-                  onChange={set('categoryId')}
-                />
+                label={t('Category')}
+                placeholder={t('Bina category')}
+                options={categories.map((c) => ({ value: c._id, label: c.name }))}
+                value={form.categoryId}
+                onChange={set('categoryId')} />
+              
                 <Button type="button" variant="secondary" icon={Plus} onClick={() => setAddingCategory(true)}>
                   {t('Nayi')}
                 </Button>
-              </div>
-            ) : (
-              <div className="flex items-end gap-2">
+              </div> :
+
+            <div className="flex items-end gap-2">
                 <Input label={t('Nayi category ka naam')} value={newCategory} autoFocus
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }} />
+              onChange={(e) => setNewCategory(e.target.value)}
+              onKeyDown={(e) => {if (e.key === 'Enter') {e.preventDefault();addCategory();}}} />
                 <Button type="button" onClick={addCategory}>{t('Add')}</Button>
                 <Button type="button" variant="ghost" onClick={() => setAddingCategory(false)}>{t('Cancel')}</Button>
               </div>
-            )}
+            }
           </div>
         </div>
 
@@ -308,27 +308,27 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('Price')}</h4>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input label={t('Purchase price')} type="number" step="0.01" min="0" prefix="₹"
-              value={form.purchasePrice} onChange={set('purchasePrice')}
-              hint={t('Aapko kitne ka pada')} error={fieldErrors.purchasePrice} />
+            value={form.purchasePrice} onChange={set('purchasePrice')}
+            hint={t('Aapko kitne ka pada')} error={fieldErrors.purchasePrice} />
             <Input label={t('Sale price')} type="number" step="0.01" min="0" prefix="₹"
-              value={form.salePrice} onChange={set('salePrice')}
-              hint={t('Counter / default rate')} error={fieldErrors.salePrice} />
+            value={form.salePrice} onChange={set('salePrice')}
+            hint={t('Counter / default rate')} error={fieldErrors.salePrice} />
             <Input label={t('Wholesale price')} type="number" step="0.01" min="0" prefix="₹"
-              value={form.wholesalePrice} onChange={set('wholesalePrice')}
-              hint={t('Retailers ko yahi dikhega')} error={fieldErrors.wholesalePrice} />
+            value={form.wholesalePrice} onChange={set('wholesalePrice')}
+            hint={t('Retailers ko yahi dikhega')} error={fieldErrors.wholesalePrice} />
             <Input label="MRP" type="number" step="0.01" min="0" prefix="₹"
-              value={form.mrp} onChange={set('mrp')}
-              hint={t('Packet pe chhapa hua rate — retailer ko dikhega')} error={fieldErrors.mrp} />
+            value={form.mrp} onChange={set('mrp')}
+            hint={t('Packet pe chhapa hua rate — retailer ko dikhega')} error={fieldErrors.mrp} />
           </div>
 
-          {margin && (
-            <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-              margin.amount >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
-            }`}>
-              {margin.amount >= 0 ? 'Fayda' : 'Nuksan'}: <strong>{formatMoney(Math.abs(margin.amount))}</strong>
-              {' '}per {form.unit} ({margin.percent.toFixed(1)}%)
+          {margin &&
+          <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+          margin.amount >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`
+          }>
+              {margin.amount >= 0 ? t('Fayda') : t('Nuksan')}: <strong>{formatMoney(Math.abs(margin.amount))}</strong>
+              {' '}{t('per {u}', { u: form.unit })} ({margin.percent.toFixed(1)}%)
             </p>
-          )}
+          }
         </div>
 
         {/* ---- Pehchan ---- */}
@@ -339,16 +339,16 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label={t('Company / Brand')} placeholder={t('SKF, Bosch, Rolon...')}
-              value={form.brand} onChange={set('brand')} />
+            value={form.brand} onChange={set('brand')} />
             <Input label={t('Model / Serial number')} placeholder={t('6203-2RS')}
-              value={form.modelNo} onChange={set('modelNo')}
-              hint={t('Part number ya serial — dono chalega')} />
+            value={form.modelNo} onChange={set('modelNo')}
+            hint={t('Part number ya serial — dono chalega')} />
             <Input label={t('Barcode')} placeholder="8901234567890"
-              value={form.barcode} onChange={set('barcode')}
-              hint={t('Scanner se search karne ke liye')} />
+            value={form.barcode} onChange={set('barcode')}
+            hint={t('Scanner se search karne ke liye')} />
             <Input label={t('Rack / jagah')} placeholder={t('A-3')}
-              value={form.rack} onChange={set('rack')}
-              hint={t('Godown me kahan rakha hai')} />
+            value={form.rack} onChange={set('rack')}
+            hint={t('Godown me kahan rakha hai')} />
           </div>
         </div>
 
@@ -356,46 +356,46 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         <div className="rounded-lg border border-slate-200 p-4">
           <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('Stock')}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
-            {isEdit ? (
-              <Input label={t('Abhi ka stock')} value={`${item.stockQty} ${item.unit}`} disabled
-                hint={t('Badalne ke liye list me "Stock" button dabayein')} />
-            ) : (
-              <Input label={t('Opening stock')} type="number" step="0.01" suffix={form.unit}
-                value={form.openingStock} onChange={set('openingStock')}
-                hint={t('Abhi kitna maal pada hai')} />
-            )}
+            {isEdit ?
+            <Input label={t('Abhi ka stock')} value={`${item.stockQty} ${item.unit}`} disabled
+            hint={t('Badalne ke liye list me "Stock" button dabayein')} /> :
+
+            <Input label={t('Opening stock')} type="number" step="0.01" suffix={form.unit}
+            value={form.openingStock} onChange={set('openingStock')}
+            hint={t('Abhi kitna maal pada hai')} />
+            }
             <Input label={t('Low stock warning')} type="number" min="0" suffix={form.unit}
-              value={form.lowStockAt} onChange={set('lowStockAt')}
-              hint={t('Itne se kam hone par alert')} />
+            value={form.lowStockAt} onChange={set('lowStockAt')}
+            hint={t('Itne se kam hone par alert')} />
             <Input label={t('Kam se kam order')} type="number" min="0" suffix={form.unit}
-              value={form.minOrderQty} onChange={set('minOrderQty')}
-              hint={t('Retailer isse kam order nahi kar payega (0 = koi rok nahi)')} />
+            value={form.minOrderQty} onChange={set('minOrderQty')}
+            hint={t('Retailer isse kam order nahi kar payega (0 = koi rok nahi)')} />
           </div>
         </div>
 
         {/* ---- GST (sirf gstEnabled par) ---- */}
-        {gstEnabled && (
-          <div className="rounded-lg border border-slate-200 p-4">
+        {gstEnabled &&
+        <div className="rounded-lg border border-slate-200 p-4">
             <h4 className="mb-3 text-sm font-semibold text-slate-900">GST</h4>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label={t('HSN code')} placeholder="8482" value={form.hsn} onChange={set('hsn')}
-                hint={t('Tax invoice pe chhapega')} />
+            hint={t('Tax invoice pe chhapega')} />
               <Select label={t('GST rate')} value={form.gstRate} onChange={set('gstRate')} placeholder=""
-                options={GST_RATES.map((r) => ({ value: r, label: `${r}%` }))} />
+            options={GST_RATES.map((r) => ({ value: r, label: `${r}%` }))} />
             </div>
           </div>
-        )}
+        }
 
         {/* ---- Maal ka apna byora — sab marzi se ---- */}
         {/*
-          Ye hissa BAND rehta hai jab tak koi khole nahi.
-
-          Wajah wahi jo model me likhi hai: paanchon khaane har dukaan ke kaam
-          ke nahi. Bolt bechne wale ko expiry se koi matlab nahi. Har item pe
-          paanch khali khaane dikhana form ko lamba aur dara dene wala bana
-          deta hai, aur jise sach me zarurat hai wo ek tap me khol lega. Jinme
-          kuch bhara hua hai, wo apne aap khula milta hai.
-        */}
+           Ye hissa BAND rehta hai jab tak koi khole nahi.
+            Wajah wahi jo model me likhi hai: paanchon khaane har dukaan ke kaam
+           ke nahi. Bolt bechne wale ko expiry se koi matlab nahi. Har item pe
+           paanch khali khaane dikhana form ko lamba aur dara dene wala bana
+           deta hai, aur jise sach me zarurat hai wo ek tap me khol lega. Jinme
+           kuch bhara hua hai, wo apne aap khula milta hai.
+          */
+        }
         <details className="rounded-lg border border-slate-200 p-4" open={hasByora}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 focus-ring">
             <span className="inline-flex items-center gap-2">
@@ -409,27 +409,27 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <Input label={t('Expiry')} type="date" value={form.expiryDate} onChange={set('expiryDate')}
-              hint={t('Dawa, oil, khane-peene ka saamaan')} />
+            hint={t('Dawa, oil, khane-peene ka saamaan')} />
             <Input label={t('Banane ki tareekh')} type="date" value={form.mfgDate} onChange={set('mfgDate')} />
             <Input label={t('Size')} placeholder={t('42, XL, 10mm')} value={form.size} onChange={set('size')}
-              hint={t('Jo shabd aap bolte hain wahi likhein')} />
+            hint={t('Jo shabd aap bolte hain wahi likhein')} />
             <Input label={t('Shape')} placeholder={t('Gol, chaukor')} value={form.shape} onChange={set('shape')} />
             <Input label={t('Wazan')} type="number" step="0.001" min="0"
-              value={form.weight} onChange={set('weight')} />
+            value={form.weight} onChange={set('weight')} />
             <Select label={t('Wazan ki ikaai')} value={form.weightUnit} placeholder=""
-              onChange={set('weightUnit')} options={WEIGHT_UNITS} />
+            onChange={set('weightUnit')} options={WEIGHT_UNITS} />
           </div>
-          {expiryDin !== null && (
-            <p className={cn('mt-3 rounded-lg px-3 py-2 text-xs',
-              expiryDin < 0 ? 'bg-red-50 text-red-800'
-                : expiryDin <= 30 ? 'bg-amber-50 text-amber-900'
-                  : 'bg-slate-50 text-slate-600')}>
-              {expiryDin < 0
-                ? `Ye maal ${Math.abs(expiryDin)} din pehle expire ho chuka hai`
-                : expiryDin === 0 ? 'Ye maal aaj expire ho raha hai'
-                  : `Expiry me ${expiryDin} din bache hain`}
+          {expiryDin !== null &&
+          <p className={cn('mt-3 rounded-lg px-3 py-2 text-xs',
+          expiryDin < 0 ? 'bg-red-50 text-red-800' :
+          expiryDin <= 30 ? 'bg-amber-50 text-amber-900' :
+          'bg-slate-50 text-slate-600')}>
+              {expiryDin < 0 ?
+            `Ye maal ${Math.abs(expiryDin)} din pehle expire ho chuka hai` :
+            expiryDin === 0 ? 'Ye maal aaj expire ho raha hai' :
+            `Expiry me ${expiryDin} din bache hain`}
             </p>
-          )}
+          }
         </details>
 
         {/* ---- Warranty ---- */}
@@ -440,34 +440,34 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select label={t('Kitne din ki')} value={form.warrantyMonths} placeholder=""
-              onChange={set('warrantyMonths')} options={WARRANTY_PRESETS} />
+            onChange={set('warrantyMonths')} options={WARRANTY_PRESETS} />
             <Input label={t('Warranty ki shart')} placeholder={t('Company warranty, bill ke saath')}
-              value={form.warrantyNote} onChange={set('warrantyNote')}
-              disabled={form.warrantyMonths === '0'}
-              hint={form.warrantyMonths === '0' ? 'Pehle warranty chunein' : 'Bill pe chhapegi'} />
+            value={form.warrantyNote} onChange={set('warrantyNote')}
+            disabled={form.warrantyMonths === '0'}
+            hint={form.warrantyMonths === '0' ? 'Pehle warranty chunein' : 'Bill pe chhapegi'} />
           </div>
-          {form.warrantyMonths !== '0' && (
-            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
-              Retailer ko dikhega: <span className="font-medium">
-                {WARRANTY_PRESETS.find((w) => w.value === form.warrantyMonths)?.label} warranty
-              </span>
+          {form.warrantyMonths !== '0' &&
+          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+              {t('Retailer ko dikhega')}: <span className="font-medium">{t("{a0} warranty", { a0:
+                WARRANTY_PRESETS.find((w) => w.value === form.warrantyMonths)?.label })}
+            </span>
               {form.warrantyNote && ` — ${form.warrantyNote}`}
             </p>
-          )}
+          }
         </div>
 
         {/* ---- Extra ---- */}
         <Textarea label={t('Description')} rows={2} value={form.description} onChange={set('description')}
-          placeholder={t('Koi khaas baat jo yaad rakhni ho')} />
+        placeholder={t('Koi khaas baat jo yaad rakhni ho')} />
 
         <Switch
           id="visible-to-retailers"
           checked={form.visibleToRetailers}
           onChange={(v) => setForm((f) => ({ ...f, visibleToRetailers: v }))}
           label={t('Retailers ko dikhayein')}
-          description={t('Off karne par ye item retailer ke catalog me nahi aayega')}
-        />
+          description={t('Off karne par ye item retailer ke catalog me nahi aayega')} />
+        
       </form>
-    </Modal>
-  );
+    </Modal>);
+
 }

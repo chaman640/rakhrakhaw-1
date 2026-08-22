@@ -20,20 +20,20 @@ export default function LineItemCard({ index, picker, note, total, onRemove, chi
   return (
     <div className="p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Item {index + 1}
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("Item {a0}", { a0:
+            index + 1 })}
         </span>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={`Item ${index + 1} hatayein`}
-            // -my/-mr se dikhne me chipka nahi lagta, par dabne ka ghera 44px
-            className="-my-1.5 -mr-1.5 rounded-lg p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600 focus-ring"
-          >
+        {onRemove &&
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Item ${index + 1} hatayein`}
+          // -my/-mr se dikhne me chipka nahi lagta, par dabne ka ghera 44px
+          className="-my-1.5 -mr-1.5 rounded-lg p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600 focus-ring">
+          
             <Trash2 size={17} />
           </button>
-        )}
+        }
       </div>
 
       {picker}
@@ -45,8 +45,8 @@ export default function LineItemCard({ index, picker, note, total, onRemove, chi
         <span className="text-sm text-slate-500">{t('Is item ka total')}</span>
         <span className="tabular text-base font-semibold text-slate-900">{total}</span>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 /**
@@ -77,8 +77,8 @@ export function ReadLineItem({ title, sub, total, children }) {
         <span className="tabular shrink-0 font-semibold text-slate-900">{total}</span>
       </div>
       <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">{children}</dl>
-    </div>
-  );
+    </div>);
+
 }
 
 /** ReadLineItem ke andar ek chhoti "naam: ginti" jodi */
@@ -89,8 +89,8 @@ export function ReadField({ label, value, tone }) {
       <dd className={cn('tabular font-medium', tone === 'red' ? 'text-red-600' : 'text-slate-700')}>
         {value}
       </dd>
-    </div>
-  );
+    </div>);
+
 }
 
 export function NumField({ label, srLabel, invalid, className, ...props }) {
@@ -106,8 +106,8 @@ export function NumField({ label, srLabel, invalid, className, ...props }) {
           invalid ? 'border-red-400' : 'border-slate-300',
           className
         )}
-        {...props}
-      />
-    </label>
-  );
+        {...props} />
+      
+    </label>);
+
 }

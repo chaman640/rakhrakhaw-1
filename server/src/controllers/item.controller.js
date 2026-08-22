@@ -34,6 +34,10 @@ export const movements = asyncHandler(async (req, res) =>
  * Ginti to item pe pehle se hai; ye uski LAGAT batata hai, aur wo ek number
  * nahi hota: 40 piece ₹80 ke aur 100 piece ₹100 ke — dono ek hi item ke.
  */
+/** GST ON karne se pehle kitna kaam baaki hai */
+export const gstReady = asyncHandler(async (req, res) =>
+  ok(res, await service.gstReadiness(req.businessId)));
+
 export const lots = asyncHandler(async (req, res) =>
   ok(res, await khepList(req.businessId, req.params.id)));
 

@@ -3,20 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import {
   IndianRupee, TrendingUp, TrendingDown, ShoppingCart, Package, Wallet,
   TriangleAlert, ArrowRight, Plus, FileText, UserCheck, Clock, BookOpen,
-  Receipt, Truck, CircleAlert, Boxes, Coins,
+  Receipt, Truck, CircleAlert, Boxes, Coins, PiggyBank,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatQty, formatDateTime } from '@/lib/format';
 import {
-  Card, CardHeader, Button, Badge, TrendChart, SkeletonCards, useToast,
+  Card, CardHeader, Button, Badge, Chips, TrendChart, SkeletonCards, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import ExpenseFormModal from './expenses/ExpenseFormModal';
 import { t } from '@/lib/i18n';
 
 const ACTIVITY_ICON = { invoice: Receipt, order: ShoppingCart, payment: Wallet };
+
+/*
+  Graph ka arsa naam se. Chart ke sar pe pehle "Pichhle 14 din" pakka likha
+  tha, to 1 saal chunne par bhi wahi dikhta rehta tha.
+
+  Ise ek list bana kar ghuma dena zyada saaf lagta hai, par tab har shabd
+  `t(x.label)` ban jata — aur anuvaad ki jaanch aise ghume hue shabd ko dekh
+  nahi pati. Yahi wo khai hai jisme "Pichhle 14 din" gir gaya tha. Isliye
+  yahan har shabd SEEDHA `t()` ke andar likha hai.
+*/
+function arsaKaNaam(days) {
+  if (days === 7) return t('7 din');
+  if (days === 30) return t('30 din');
+  if (days === 90) return t('3 mahine');
+  if (days === 365) return t('1 saal');
+  return t('14 din');
+}
 
 /**
  * DASHBOARD — "dukaan aaj kaisi chal rahi hai".
@@ -45,9 +62,26 @@ export default function Dashboard() {
   const { user, business, can } = useAuth();
   const [expenseOpen, setExpenseOpen] = useState(false);
 
+  /*
+    Chart kitne din ka — dukaandaar chunta hai, aur uska chunav YAAD rehta hai.
+
+    14 din ek achha default hai par jawab sirf ek sawal ka deta hai: "is hafte
+    kaisa chal raha hai". "Teen mahine me dhandha badha ya ghata" — wo sawal
+    mahine ke aakhir me sabse zyada poochha jata hai, aur uske liye chart
+    bekaar tha.
+
+    Chunav `localStorage` me isliye ki har baar dashboard kholte hi wahi range
+    mile jo pichhli baar chuni thi. Har baar 14 din pe wapas girna ek chhoti
+    si chidh hai jo roz hoti hai.
+  */
+  const [days, setDays] = useState(() => {
+    const saved = Number(localStorage.getItem('rr_trend_days'));
+    return [7, 14, 30, 90, 365].includes(saved) ? saved : 14;
+  });
+
   const { data: d, loading } = useQuery(
-    ['dashboard'],
-    () => api.get('/dashboard').then((r) => r.data),
+    ['dashboard', days],
+    () => api.get('/dashboard', { params: { days } }).then((r) => r.data),
     { onError: (err) => toast.error(err.message) },
   );
 
@@ -72,21 +106,30 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'Subah bakhair' : hour < 17 ? 'Namaste' : 'Shubh sandhya';
 
+  /*
+    Ye chaar label pehle backtick wali line the — `${n} naya order`. Wo
+    dikhne me theek lagti hain par anuvaad se poori tarah bahar ho jati hain:
+    `t()` unhe kabhi chhoota hi nahi, aur jaanch bhi unhe nahi dekh sakti
+    (ander kya banega ye chalne par hi pata chalta hai). Nateeja — English
+    chun kar bhi "3 naya order" hi dikhta tha.
+
+    Ab number bhitar `{n}` ban kar jata hai, aur poora vakya kitab me hai.
+  */
   const todo = [
     d.todo?.newOrders > 0 && {
-      label: `${d.todo?.newOrders} naya order`, sub: t('Pack karna hai'),
+      label: t('{n} naya order', { n: d.todo.newOrders }), sub: t('Pack karna hai'),
       icon: ShoppingCart, tone: 'brand', to: '/orders', perm: 'orders',
     },
     d.todo?.pendingPayments > 0 && {
-      label: `${d.todo?.pendingPayments} payment`, sub: t('Confirm karna hai'),
+      label: t('{n} payment', { n: d.todo.pendingPayments }), sub: t('Confirm karna hai'),
       icon: Clock, tone: 'amber', to: '/payments?status=pending', perm: 'khata',
     },
     d.todo?.pendingRetailers > 0 && {
-      label: `${d.todo?.pendingRetailers} retailer`, sub: t('Approve karna hai'),
+      label: t('{n} retailer', { n: d.todo.pendingRetailers }), sub: t('Approve karna hai'),
       icon: UserCheck, tone: 'blue', to: '/retailers', perm: 'parties',
     },
     d.todo?.lowStock > 0 && {
-      label: `${d.todo?.lowStock} item kam`, sub: t('Mangwa lein'),
+      label: t('{n} item kam', { n: d.todo.lowStock }), sub: t('Mangwa lein'),
       icon: TriangleAlert, tone: 'red', to: '/reports?tab=stock&filter=low', perm: 'reports',
     },
   ].filter(Boolean).filter((row) => !row.perm || can(row.perm));
@@ -107,10 +150,31 @@ export default function Dashboard() {
       key: 'coll', label: t('Aaj paisa aaya'), value: formatMoney(d.collection.today),
       sub: `${d.collection.todayCount} ${t('entry')}`, icon: Wallet, tone: 'green', to: '/payments',
     },
+    /*
+      Udhaar wala tile ab "Lena hai" wali LIST kholta hai, khali Payment page
+      nahi.
+
+      Ye chhota sa farak bada tha. Payment page ka pehla tab History hai, to
+      "₹24,500 udhaar" pe click karne ke baad saamne aata tha "kaunsi entry kab
+      hui" — yani ek aisa jawab jo poochha hi nahi gaya tha. Sawal ye tha:
+      "ye ₹24,500 KISKA hai?" Uska jawab "Lena hai" tab me hai, aur ab click
+      seedha wahin le jata hai.
+    */
     d.khata && {
       key: 'khata', label: t('Udhaar baaki'), value: formatMoney(d.khata.receivable),
       sub: `${d.khata.activeRetailers} ${t('retailer')}`, icon: BookOpen,
-      tone: d.khata.receivable > 0 ? 'amber' : 'green', to: '/payments',
+      tone: d.khata.receivable > 0 ? 'amber' : 'green', to: '/payments?tab=due',
+    },
+    // Jama paisa tabhi jab kisi ka ho — warna ek aur khali tile
+    d.khata?.advance > 0 && {
+      key: 'jama', label: t('Jama paisa'), value: formatMoney(d.khata.advance),
+      sub: `${d.khata.advanceParties} ${t('graahak ka')}`, icon: PiggyBank,
+      tone: 'brand', to: '/payments?tab=jama',
+    },
+    d.profit && {
+      key: 'profit', label: t('Is mahine bacha'), value: formatMoney(d.profit.month),
+      sub: d.profit.marginPct !== null ? `${d.profit.marginPct}% margin` : t('sale ke baad'),
+      icon: TrendingUp, tone: d.profit.month >= 0 ? 'green' : 'red', to: '/reports',
     },
     d.expense && {
       key: 'exp', label: t('Aaj ka kharch'), value: formatMoney(d.expense.today),
@@ -140,7 +204,7 @@ export default function Dashboard() {
       {/* ---- Greeting ---- */}
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-          {t(greet)}, {user?.name?.split(' ')[0] || 'Bhai'}
+          {t(greet)}, {user?.name?.split(' ')[0] || t('Bhai')}
         </h1>
         <p className="mt-0.5 truncate text-sm text-slate-500">
           {business?.name} · {new Date().toLocaleDateString('en-IN', {
@@ -182,7 +246,25 @@ export default function Dashboard() {
       <div className="mb-4 grid gap-4 lg:grid-cols-3">
         {d.trend && (
           <Card className="lg:col-span-2">
-            <TrendChart data={d.trend} height={200} />
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-900">{t('Sale aur kharch')}</h3>
+              <Chips
+                value={String(days)}
+                onChange={(v) => {
+                  setDays(Number(v));
+                  try { localStorage.setItem('rr_trend_days', v); } catch { /* private mode */ }
+                }}
+                options={[
+                  { value: '7', label: t('7 din') },
+                  { value: '14', label: t('14 din') },
+                  { value: '30', label: t('30 din') },
+                  { value: '90', label: t('3 mahine') },
+                  { value: '365', label: t('1 saal') },
+                ]}
+              />
+            </div>
+            {/* Chart ke sar pe wahi arsa likha jaye jo abhi chuna hua hai */}
+            <TrendChart data={d.trend} height={200} title={t('Pichhle {arsa}', { arsa: arsaKaNaam(days) })} />
             {can('expenses:create') && (
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <Button size="sm" variant="secondary" icon={Coins} onClick={() => setExpenseOpen(true)}>

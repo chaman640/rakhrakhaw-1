@@ -422,6 +422,28 @@ const DICT = {
     hi: 'चाय, पेट्रोल, किराया, तनख़्वाह — माल के अलावा का खर्चा',
     en: 'Tea, petrol, rent, salaries — everything other than goods',
   },
+  /* ---- Step 3: bina phone ka bill, GST ki tayari ---- */
+  'Number nahi hai?': { hi: 'नंबर नहीं है?', en: 'No phone number?' },
+  'Sirf naam se bhi bill ban jayega. Number baad me kabhi bhi jod sakte hain.': {
+    hi: 'सिर्फ़ नाम से भी बिल बन जाएगा। नंबर बाद में कभी भी जोड़ सकते हैं।',
+    en: 'A name is enough to make a bill. You can add the number any time later.',
+  },
+  'Bina number ke jodein': { hi: 'बिना नंबर के जोड़ें', en: 'Add without a number' },
+  'Phone (marzi se)': { hi: 'फ़ोन (मर्ज़ी से)', en: 'Phone (optional)' },
+  'Nahi hai to khali chhod dein — naam se bhi bill ban jayega': {
+    hi: 'नहीं है तो खाली छोड़ दें — नाम से भी बिल बन जाएगा',
+    en: 'Leave it blank if there is none — a name is enough for a bill',
+  },
+  'Un item ka bill 0% tax ka banega. Items page se rate bhar lein.': {
+    hi: 'उन आइटम का बिल 0% टैक्स का बनेगा। Items पेज से रेट भर लें।',
+    en: 'Those items will bill at 0% tax. Set their rates on the Items page.',
+  },
+  'Items page kholein': { hi: 'Items पेज खोलें', en: 'Open the Items page' },
+  /* ---- Step 4: dashboard pe munafa aur graph ka arsa ---- */
+  'Is mahine bacha': { hi: 'इस महीने बचा', en: 'Profit this month' },
+  'sale ke baad': { hi: 'सेल के बाद', en: 'after sales' },
+  'Sale aur kharch': { hi: 'सेल और खर्च', en: 'Sales and expenses' },
+  '14 din': { hi: '14 दिन', en: '14 days' },
   'Paisa entry': { hi: 'पैसा एंट्री', en: 'Payment entry' },
   'Part number ya serial — dono chalega': { hi: 'पार्ट नंबर या सीरियल — दोनों चलेगा', en: 'Part number or serial — either works' },
   Password: { hi: 'पासवर्ड', en: 'Password' },
@@ -1075,6 +1097,314 @@ const DICT = {
     hi: 'ये ग्राहक का पैसा है जो आपके पास रखा है। इसीलिए ये ऊपर वाले मुनाफे में नहीं जुड़ा — वो वापस भी माँग सकते हैं, या अगले बिल में कट जाएगा।',
     en: 'This is your customers\' money held with you. That is why it is NOT part of the profit above — they can ask for it back, or it goes against their next bill.',
   },
+
+  /* ══ Part 20, step 5: bina refresh taaza screen, upar wala toast, poora anuvaad ══ */
+
+  /*
+    Is step me "100% anuvaad" ka matlab hi badal gaya.
+
+    Pehle ginti sirf itna dekhti thi ki jo shabd `t()` ke andar likhe hain
+    unka anuvaad hai ya nahi — 100% ka matlab tha "jo lapeta gaya wo ho gaya".
+    Screen pe kya chhap raha hai, ye ginti usse poochti hi nahi thi. Isliye
+    103 shabd English chunne par bhi Hinglish me hi dikhte rahe, aur ginti
+    phir bhi 100% bolti thi.
+
+    Ab jaanch teen taraf dekhti hai: `t()` me lipta shabd, JSX ka nanga text,
+    aur dikhne wale attribute (`subtitle`, `message`, `sub`, `confirmLabel`
+    waghairah). Neeche ke shabd usi teesri nazar se nikle hain.
+  */
+
+  /* ── bill aur print ── */
+  'Phone: {a0}': { hi: 'फ़ोन: {a0}', en: 'Phone: {a0}' },
+  'GSTIN: {a0}': { hi: 'GSTIN: {a0}', en: 'GSTIN: {a0}' },
+  'Place of supply': { hi: 'सप्लाई की जगह', en: 'Place of supply' },
+  'Warranty: {a0}{a1}': { hi: 'वारंटी: {a0}{a1}', en: 'Warranty: {a0}{a1}' },
+  'Discount {a0}': { hi: 'छूट {a0}', en: 'Discount {a0}' },
+  '{a0} ke liye': { hi: '{a0} के लिए', en: 'For {a0}' },
+  'Item {a0}': { hi: 'आइटम {a0}', en: 'Item {a0}' },
+
+  /* ── login, signup, invite ── */
+  'Yahan se order karne ke liye apni dukaan register karein': {
+    hi: 'यहाँ से ऑर्डर करने के लिए अपनी दुकान रजिस्टर करें',
+    en: 'Register your shop to order from here',
+  },
+  'Pehle se account hai?': { hi: 'पहले से अकाउंट है?', en: 'Already have an account?' },
+  'Account pehle se hai?': { hi: 'अकाउंट पहले से है?', en: 'Already have an account?' },
+  'Nayi dukaan hai?': { hi: 'नई दुकान है?', en: 'New shop?' },
+  'Register karne ke baad {a0} approve karenge, phir catalog khul jayega.': {
+    hi: 'रजिस्टर करने के बाद {a0} अप्रूव करेंगे, फिर कैटलॉग खुल जाएगा।',
+    en: 'After you register, {a0} will approve you and the catalogue opens.',
+  },
+  'Aap {a0} ke roop me jud rahe hain': { hi: 'आप {a0} के रूप में जुड़ रहे हैं', en: 'You are joining as {a0}' },
+
+  /* ── retailer: cart ── */
+  'Catalog se item chun kar cart me daalein, phir yahan se ek saath order kar dein.': {
+    hi: 'कैटलॉग से आइटम चुन कर कार्ट में डालें, फिर यहाँ से एक साथ ऑर्डर कर दें।',
+    en: 'Pick items from the catalogue into the cart, then order them all together from here.',
+  },
+  'aapka rate': { hi: 'आपका रेट', en: 'your rate' },
+  'Aapka rate': { hi: 'आपका रेट', en: 'Your rate' },
+  'Pehle {rate} tha': { hi: 'पहले {rate} था', en: 'Was {rate} earlier' },
+  'Kuch item ka stock kam hai. Order phir bhi ja sakta hai — wholesaler jitna hoga utna bhej dega.': {
+    hi: 'कुछ आइटम का स्टॉक कम है। ऑर्डर फिर भी जा सकता है — होलसेलर जितना होगा उतना भेज देगा।',
+    en: 'Some items are low on stock. You can still order — the wholesaler will send whatever is available.',
+  },
+  'Bill abhi nahi banega — {a0} order dekh kar maal tayyar karenge.': {
+    hi: 'बिल अभी नहीं बनेगा — {a0} ऑर्डर देख कर माल तैयार करेंगे।',
+    en: 'No bill yet — {a0} will check the order and get the goods ready.',
+  },
+  'Saare item cart se hat jayenge.': { hi: 'सारे आइटम कार्ट से हट जाएँगे।', en: 'Every item will be removed from the cart.' },
+  'Haan, khali karein': { hi: 'हाँ, खाली करें', en: 'Yes, clear it' },
+  'Cart ({a0})': { hi: 'कार्ट ({a0})', en: 'Cart ({a0})' },
+
+  /* ── retailer: catalog ── */
+  '{w} warranty': { hi: '{w} वारंटी', en: '{w} warranty' },
+  '{a0} warranty': { hi: '{a0} वारंटी', en: '{a0} warranty' },
+  'Kam se kam {a0}': { hi: 'कम से कम {a0}', en: 'Minimum {a0}' },
+
+  /* ── retailer: home ── */
+  'Namaste, {a0}': { hi: 'नमस्ते, {a0}', en: 'Hello, {a0}' },
+  '{a0} se juda hua': { hi: '{a0} से जुड़ा हुआ', en: 'Connected to {a0}' },
+  'Credit limit {a0} paar ho gayi': { hi: 'क्रेडिट लिमिट {a0} पार हो गई', en: 'Credit limit {a0} exceeded' },
+  'Mil chuke': { hi: 'मिल चुके', en: 'Received' },
+
+  /* ── retailer: bills, khata, orders ── */
+  'Wholesaler ke bheje hue saare bill': { hi: 'होलसेलर के भेजे हुए सारे बिल', en: 'Every bill the wholesaler sent you' },
+  'Jab wholesaler maal dega tab bill yahan aa jayega.': {
+    hi: 'जब होलसेलर माल देगा तब बिल यहाँ आ जाएगा।',
+    en: 'The bill shows up here once the wholesaler sends the goods.',
+  },
+  '{a0} bill ke paise baaki hain': { hi: '{a0} बिल के पैसे बाकी हैं', en: 'Payment pending on {a0} bills' },
+  'Paisa bhejenge to sabse purana bill pehle clear hoga': {
+    hi: 'पैसा भेजेंगे तो सबसे पुराना बिल पहले क्लियर होगा',
+    en: 'Money you send clears the oldest bill first',
+  },
+  '{a0} de chuke': { hi: '{a0} दे चुके', en: '{a0} paid' },
+  'Pehla bill banega tab yahan dikhega.': { hi: 'पहला बिल बनेगा तब यहाँ दिखेगा।', en: 'It shows up here once the first bill is made.' },
+  'Copy hua': { hi: 'कॉपी हुआ', en: 'Copied' },
+  Copy: { hi: 'कॉपी', en: 'Copy' },
+  'UPI app kholein': { hi: 'UPI ऐप खोलें', en: 'Open UPI app' },
+  'Phone pe ho to upar wala button seedha GPay/PhonePe khol dega. Computer pe ho to QR scan karein.': {
+    hi: 'फ़ोन पे हों तो ऊपर वाला बटन सीधा GPay/PhonePe खोल देगा। कंप्यूटर पे हों तो QR स्कैन करें।',
+    en: 'On a phone the button above opens GPay/PhonePe directly. On a computer, scan the QR.',
+  },
+  '{a0} bhejne ki baat likh rahe hain': { hi: '{a0} भेजने की बात लिख रहे हैं', en: 'Recording a payment of {a0}' },
+  'UPI transaction / UTR number': { hi: 'UPI ट्रांज़ैक्शन / UTR नंबर', en: 'UPI transaction / UTR number' },
+  "App me 'transaction ID' likha milega — daal denge to confirm jaldi hoga": {
+    hi: "ऐप में 'transaction ID' लिखा मिलेगा — डाल देंगे तो कन्फर्म जल्दी होगा",
+    en: "Your app shows a 'transaction ID' — adding it gets you confirmed faster",
+  },
+  'Kuch kehna ho to': { hi: 'कुछ कहना हो तो', en: 'Anything to add' },
+  'Jaise: bill RB/26-27/0004 ka paisa': { hi: 'जैसे: बिल RB/26-27/0004 का पैसा', en: 'Example: payment for bill RB/26-27/0004' },
+  'Ye abhi khate me nahi lagega. Wholesaler apna account dekh kar confirm karega, tabhi aapka udhaar kam hoga.': {
+    hi: 'ये अभी खाते में नहीं लगेगा। होलसेलर अपना अकाउंट देख कर कन्फर्म करेगा, तभी आपका उधार कम होगा।',
+    en: 'This is not applied to your account yet. Your dues drop only after the wholesaler checks their account and confirms.',
+  },
+  'Aapke bheje hue saare order': { hi: 'आपके भेजे हुए सारे ऑर्डर', en: 'Every order you sent' },
+  'Catalog se saman chun kar apna pehla order bhej dein.': {
+    hi: 'कैटलॉग से सामान चुन कर अपना पहला ऑर्डर भेज दें।',
+    en: 'Pick goods from the catalogue and send your first order.',
+  },
+  '{a0} · {a1} item': { hi: '{a0} · {a1} आइटम', en: '{a0} · {a1} items' },
+  '{a0} · {a1} item · {a2}': { hi: '{a0} · {a1} आइटम · {a2}', en: '{a0} · {a1} items · {a2}' },
+  '{a0} ko aapka order mil gaya hai. Tayyar hote hi aapko yahin status dikh jayega.': {
+    hi: '{a0} को आपका ऑर्डर मिल गया है। तैयार होते ही आपको यहीं स्टेटस दिख जाएगा।',
+    en: '{a0} has your order. You will see the status here as soon as it is ready.',
+  },
+  'Ye order cancel ho gaya tha{a0}.': { hi: 'ये ऑर्डर कैंसिल हो गया था{a0}।', en: 'This order was cancelled{a0}.' },
+  'Ye order cancel ho gaya{a0}.': { hi: 'ये ऑर्डर कैंसिल हो गया{a0}।', en: 'This order was cancelled{a0}.' },
+  'Aapka note: {a0}': { hi: 'आपका नोट: {a0}', en: 'Your note: {a0}' },
+  'Ye order wapas nahi aayega. Zarurat ho to naya order kar sakte hain.': {
+    hi: 'ये ऑर्डर वापस नहीं आएगा। ज़रूरत हो तो नया ऑर्डर कर सकते हैं।',
+    en: 'This order cannot be brought back. You can place a new one if you need to.',
+  },
+  'Aapki dukaan ki detail': { hi: 'आपकी दुकान की डिटेल', en: 'Your shop details' },
+  'Aapka udhaar': { hi: 'आपका उधार', en: 'Your dues' },
+
+  /* ── wholesaler: home, items, khata, orders ── */
+  '{n} bill': { hi: '{n} बिल', en: '{n} bills' },
+  'Purchase price se': { hi: 'खरीद के भाव से', en: 'At purchase price' },
+  '{a0} chune gaye': { hi: '{a0} चुने गए', en: '{a0} selected' },
+  'Haan, delete karein': { hi: 'हाँ, डिलीट करें', en: 'Yes, delete' },
+  'Haan, hatayein': { hi: 'हाँ, हटाएँ', en: 'Yes, remove' },
+  'Haan, cancel karein': { hi: 'हाँ, कैंसिल करें', en: 'Yes, cancel' },
+  'Haan, logout': { hi: 'हाँ, लॉगआउट', en: 'Yes, log out' },
+  'Haan, yaad dilayein': { hi: 'हाँ, याद दिलाएँ', en: 'Yes, send a reminder' },
+  'Haan, naya banayein': { hi: 'हाँ, नया बनाएँ', en: 'Yes, create a new one' },
+  'Lena − dena': { hi: 'लेना − देना', en: 'Receivable − payable' },
+  'Credit limit paar': { hi: 'क्रेडिट लिमिट पार', en: 'Over credit limit' },
+  'Limit {a0}': { hi: 'लिमिट {a0}', en: 'Limit {a0}' },
+  'jinpe kaam shuru nahi hua': { hi: 'जिनपे काम शुरू नहीं हुआ', en: 'not started yet' },
+  '"Pada hua" = {a0} din se ek bhi nahi bika, par stock pada hai.': {
+    hi: '"पड़ा हुआ" = {a0} दिन से एक भी नहीं बिका, पर स्टॉक पड़ा है।',
+    en: '"Dead stock" = nothing sold in {a0} days, but stock is still lying there.',
+  },
+  'Sarkar ko dena banta hai (mota-moti)': { hi: 'सरकार को देना बनता है (मोटा-मोटी)', en: 'Payable to the government (roughly)' },
+
+  /* ── wholesaler: bill banana ── */
+  'baaki {amt}': { hi: 'बाकी {amt}', en: '{amt} due' },
+  'baaki {a0}': { hi: 'बाकी {a0}', en: '{a0} due' },
+  'Retailer dusre state me hai — bill pe IGST lagega': {
+    hi: 'रिटेलर दूसरे राज्य में है — बिल पे IGST लगेगा',
+    en: 'The retailer is in another state — IGST applies on this bill',
+  },
+  'Same state — bill pe CGST + SGST lagega': {
+    hi: 'एक ही राज्य — बिल पे CGST + SGST लगेगा',
+    en: 'Same state — CGST + SGST applies on this bill',
+  },
+  'Stock: {a0}{a1}': { hi: 'स्टॉक: {a0}{a1}', en: 'Stock: {a0}{a1}' },
+  '{a0} item ka stock kam hai — bill nahi banega. Quantity theek karein.': {
+    hi: '{a0} आइटम का स्टॉक कम है — बिल नहीं बनेगा। मात्रा ठीक करें।',
+    en: '{a0} items are short on stock — the bill will not save. Fix the quantity.',
+  },
+  'Save karte hi {n} item ka stock ghatega aur {amt} retailer ke khate me udhaar chadhega.': {
+    hi: 'सेव करते ही {n} आइटम का स्टॉक घटेगा और {amt} रिटेलर के खाते में उधार चढ़ेगा।',
+    en: 'On save, stock drops for {n} items and {amt} goes onto the retailer\'s account as dues.',
+  },
+  '{a0} item': { hi: '{a0} आइटम', en: '{a0} items' },
+  '{a0} item ka stock poora nahi hai': { hi: '{a0} आइटम का स्टॉक पूरा नहीं है', en: '{a0} items do not have enough stock' },
+  'Mangi {q} · abhi stock': { hi: 'माँगी {q} · अभी स्टॉक', en: 'Ordered {q} · stock now' },
+
+  /* ── wholesaler: item, import, stock ── */
+  '{a0} item bina category ke hain.': { hi: '{a0} आइटम बिना कैटेगरी के हैं।', en: '{a0} items have no category.' },
+  '{a0} nayi category bhi ban jayegi: {a1}': { hi: '{a0} नई कैटेगरी भी बन जाएँगी: {a1}', en: '{a0} new categories will also be created: {a1}' },
+  'Ye rows skip ho jayengi': { hi: 'ये rows स्किप हो जाएँगी', en: 'These rows will be skipped' },
+  'Line {a0}': { hi: 'लाइन {a0}', en: 'Line {a0}' },
+  '...aur {a0} rows': { hi: '...और {a0} rows', en: '...and {a0} more rows' },
+  'Saari rows sahi hain': { hi: 'सारी rows सही हैं', en: 'Every row is valid' },
+  Nuksan: { hi: 'नुकसान', en: 'Loss' },
+  'per {u}': { hi: 'प्रति {u}', en: 'per {u}' },
+  'Retailer ko dikhega': { hi: 'रिटेलर को दिखेगा', en: 'The retailer will see' },
+  'Pichhla record': { hi: 'पिछला रिकॉर्ड', en: 'Past record' },
+  'Kul {a0} lena-dena hain — yahan sirf aakhri {a1} dikha rahe hain. Purana dekhna ho to upar se date lagayein. Neeche wala “Baaki” poora hisaab hi hai.': {
+    hi: 'कुल {a0} लेन-देन हैं — यहाँ सिर्फ़ आख़िरी {a1} दिखा रहे हैं। पुराना देखना हो तो ऊपर से तारीख़ लगाएँ। नीचे वाला “बाकी” पूरा हिसाब ही है।',
+    en: 'There are {a0} entries in all — only the last {a1} are shown here. Use the date filter above to see older ones. The “Balance” below is still the full picture.',
+  },
+
+  /* ── wholesaler: party, rate ── */
+  'Credit limit {amt}': { hi: 'क्रेडिट लिमिट {amt}', en: 'Credit limit {amt}' },
+  'items pe': { hi: 'आइटम पे', en: 'on items' },
+  '1. Yahan set kiya hua khaas rate · 2. Item ka wholesale price · 3. Sale price': {
+    hi: '1. यहाँ सेट किया हुआ खास रेट · 2. आइटम का wholesale price · 3. Sale price',
+    en: '1. The special rate set here · 2. The item\'s wholesale price · 3. The sale price',
+  },
+  'Box khali chhod dein to wholesale price hi lagega.': {
+    hi: 'बॉक्स खाली छोड़ दें तो wholesale price ही लगेगा।',
+    en: 'Leave the box blank and the wholesale price applies.',
+  },
+  'Abhi {a0} item pe khaas rate laga hai.': { hi: 'अभी {a0} आइटम पे खास रेट लगा है।', en: 'A special rate is set on {a0} items right now.' },
+  'Misal: purchase ₹100 aur {p}% jyada → rate ₹{r}': {
+    hi: 'मिसाल: purchase ₹100 और {p}% ज्यादा → रेट ₹{r}',
+    en: 'Example: purchase ₹100 plus {p}% → rate ₹{r}',
+  },
+  'Misal: {base} ₹100 aur {p}% kam → rate ₹{r}': {
+    hi: 'मिसाल: {base} ₹100 और {p}% कम → रेट ₹{r}',
+    en: 'Example: {base} ₹100 less {p}% → rate ₹{r}',
+  },
+  sale: { hi: 'सेल', en: 'sale' },
+  wholesale: { hi: 'होलसेल', en: 'wholesale' },
+  'Baad me kisi bhi item ka rate haath se badal sakte hain, ya "Khaas rate hata do" se sab reset kar sakte hain.': {
+    hi: 'बाद में किसी भी आइटम का रेट हाथ से बदल सकते हैं, या "खास रेट हटा दो" से सब रीसेट कर सकते हैं।',
+    en: 'You can change any item\'s rate by hand later, or use "Clear special rates" to reset them all.',
+  },
+
+  /* ── wholesaler: purchase, return ── */
+  'Poora {a0}': { hi: 'पूरा {a0}', en: 'Full {a0}' },
+  'Suppliers page pe jaayein': { hi: 'सप्लायर्स पेज पे जाएँ', en: 'Go to the Suppliers page' },
+  'Items page pe jaayein': { hi: 'आइटम्स पेज पे जाएँ', en: 'Go to the Items page' },
+  'Abhi stock: {a0}': { hi: 'अभी स्टॉक: {a0}', en: 'Stock now: {a0}' },
+  'Date: {a0}': { hi: 'तारीख़: {a0}', en: 'Date: {a0}' },
+  'Against: {a0}': { hi: 'किसके सामने: {a0}', en: 'Against: {a0}' },
+  '{a0} banega': { hi: '{a0} बनेगा', en: '{a0} will be created' },
+  '{a0} banayein': { hi: '{a0} बनाएँ', en: 'Create {a0}' },
+  '{no} ka maal wapas ho raha hai': { hi: '{no} का माल वापस हो रहा है', en: 'Goods from {no} are being returned' },
+  'Bill me {a0}{a1}': { hi: 'बिल में {a0}{a1}', en: 'On the bill {a0}{a1}' },
+  'Retailer maal wapas kare ya aap supplier ko wapas bhejein — yahin entry karein. Bill kholkar \'Maal wapas aaya\' dabana sabse aasan hai.': {
+    hi: 'रिटेलर माल वापस करे या आप सप्लायर को वापस भेजें — यहीं एंट्री करें। बिल खोलकर \'माल वापस आया\' दबाना सबसे आसान है।',
+    en: 'Whether a retailer returns goods or you send goods back to a supplier, enter it here. Opening the bill and pressing \'Goods returned\' is the easiest way.',
+  },
+
+  /* ── wholesaler: settings, staff ── */
+  'Retailers page kholein': { hi: 'रिटेलर्स पेज खोलें', en: 'Open the Retailers page' },
+  '{a0}{a1}{a2}{a3} tak': { hi: '{a0}{a1}{a2}{a3} तक', en: 'up to {a0}{a1}{a2}{a3}' },
+  'Ye link {a0} ke liye hai. Jo bhi ise kholega, wahi ijazat le kar jud jayega.': {
+    hi: 'ये लिंक {a0} के लिए है। जो भी इसे खोलेगा, वही इजाज़त ले कर जुड़ जाएगा।',
+    en: 'This link is for {a0}. Whoever opens it joins with exactly these permissions.',
+  },
+  'Abhi copy karke WhatsApp pe bhej dijiye. Kho jaye to nayi bana lena — purani apne aap bekaar ho jayegi.': {
+    hi: 'अभी कॉपी करके WhatsApp पे भेज दीजिए। खो जाए तो नई बना लेना — पुरानी अपने आप बेकार हो जाएगी।',
+    en: 'Copy it now and send it on WhatsApp. If it gets lost, make a new one — the old one stops working on its own.',
+  },
+  'Kiska data dikhega': { hi: 'किसका डेटा दिखेगा', en: 'Whose data they can see' },
+  'Paise ki hadd': { hi: 'पैसे की हद', en: 'Money limits' },
+  'Har kaam alag hai. Sirf {d} dena ho to bas wahi tick karein — CA ke liye yahi chahiye hota hai. {d} hatate hi us hisse ka baaki sab apne aap hat jata hai.': {
+    hi: 'हर काम अलग है। सिर्फ़ {d} देना हो तो बस वही टिक करें — CA के लिए यही चाहिए होता है। {d} हटाते ही उस हिस्से का बाकी सब अपने आप हट जाता है।',
+    en: 'Every action is separate. To give only {d}, tick just that — this is all a CA needs. Removing {d} automatically removes everything else in that section.',
+  },
+
+  /* ── retailer ke wo shabd jo pehle `t()` tak pahunchte hi nahi the ── */
+  'Cart khali hai': { hi: 'कार्ट खाली है', en: 'Your cart is empty' },
+  'Catalog kholein': { hi: 'कैटलॉग खोलें', en: 'Open the catalogue' },
+  'Catalog dekhein': { hi: 'कैटलॉग देखें', en: 'Browse the catalogue' },
+  'Khali karein': { hi: 'खाली करें', en: 'Clear' },
+  'Cart khali karein?': { hi: 'कार्ट खाली करें?', en: 'Clear the cart?' },
+  'Wholesaler ke liye note': { hi: 'होलसेलर के लिए नोट', en: 'Note for the wholesaler' },
+  'Aaj shaam tak chahiye / gaadi bhej raha hoon': {
+    hi: 'आज शाम तक चाहिए / गाड़ी भेज रहा हूँ',
+    en: 'Need it by this evening / sending my vehicle',
+  },
+  'Order summary': { hi: 'ऑर्डर का ब्योरा', en: 'Order summary' },
+  'Kul quantity': { hi: 'कुल मात्रा', en: 'Total quantity' },
+  'Kul keemat': { hi: 'कुल कीमत', en: 'Total value' },
+  'Kul order': { hi: 'कुल ऑर्डर', en: 'Total orders' },
+  'Kul orders': { hi: 'कुल ऑर्डर', en: 'Total orders' },
+  'Order bhejein': { hi: 'ऑर्डर भेजें', en: 'Send order' },
+  'Order chala gaya!': { hi: 'ऑर्डर चला गया!', en: 'Order sent!' },
+  'Order cancel karein': { hi: 'ऑर्डर कैंसिल करें', en: 'Cancel order' },
+  'Order cancel karein?': { hi: 'ऑर्डर कैंसिल करें?', en: 'Cancel this order?' },
+  'Naya order karein': { hi: 'नया ऑर्डर करें', en: 'Place a new order' },
+  'Pichhle orders': { hi: 'पिछले ऑर्डर', en: 'Past orders' },
+  'Chalu orders': { hi: 'चालू ऑर्डर', en: 'Live orders' },
+  'Abhi tak koi order nahi': { hi: 'अभी तक कोई ऑर्डर नहीं', en: 'No orders yet' },
+  'Item ka naam ya code...': { hi: 'आइटम का नाम या कोड...', en: 'Item name or code...' },
+  'Abhi khatam': { hi: 'अभी खत्म', en: 'Out of stock' },
+  'Is mahine kharida': { hi: 'इस महीने खरीदा', en: 'Bought this month' },
+  'Khata dekhein': { hi: 'खाता देखें', en: 'View account' },
+  'Mera Khata': { hi: 'मेरा खाता', en: 'My account' },
+  'Mere bills': { hi: 'मेरे बिल', en: 'My bills' },
+  'Ye bill baaki hain': { hi: 'ये बिल बाकी हैं', en: 'These bills are still due' },
+  'Koi bill baaki nahi — sab clear hai': { hi: 'कोई बिल बाकी नहीं — सब क्लियर है', en: 'No bills due — you are all clear' },
+  'Is page ke bills': { hi: 'इस पेज के बिल', en: 'Bills on this page' },
+  'Is page ka baaki': { hi: 'इस पेज का बाकी', en: 'Due on this page' },
+  'Payment karein': { hi: 'पेमेंट करें', en: 'Make a payment' },
+  'Paisa bhejein': { hi: 'पैसा भेजें', en: 'Send money' },
+  'Kitna bhejna hai': { hi: 'कितना भेजना है', en: 'How much to send' },
+  'Bhej diya, aage badhein': { hi: 'भेज दिया, आगे बढ़ें', en: 'Sent — carry on' },
+  'Haan, bhej diya': { hi: 'हाँ, भेज दिया', en: 'Yes, I sent it' },
+  'Maine jo bheja': { hi: 'मैंने जो भेजा', en: 'What I sent' },
+  'Abhi koi hisaab nahi': { hi: 'अभी कोई हिसाब नहीं', en: 'Nothing on the account yet' },
+  'Online paise bhejne ke liye wholesaler ko apni UPI ID app me daalni hogi.': {
+    hi: 'ऑनलाइन पैसे भेजने के लिए होलसेलर को अपनी UPI ID ऐप में डालनी होगी।',
+    en: 'To pay online, the wholesaler has to add their UPI ID in the app.',
+  },
+  'UPI QR code — scan karke paisa bhejein': { hi: 'UPI QR code — स्कैन करके पैसा भेजें', en: 'UPI QR code — scan and pay' },
+  Peeche: { hi: 'पीछे', en: 'Back' },
+  'Check karein': { hi: 'जाँचें', en: 'Check' },
+  'Aap jude hain': { hi: 'आप जुड़े हैं', en: 'You are connected' },
+  'Login number badal nahi sakta': { hi: 'लॉगिन नंबर बदल नहीं सकता', en: 'The login number cannot be changed' },
+  'Bikri ka chart': { hi: 'बिक्री का चार्ट', en: 'Sales chart' },
+  'Pichhle {arsa}': { hi: 'पिछले {arsa}', en: 'Last {arsa}' },
+  'Abhi tak koi bill nahi bana': { hi: 'अभी तक कोई बिल नहीं बना', en: 'No bills made yet' },
+  /* ── Dashboard ka salaam aur 'aaj ye karna hai' wali list ── */
+  'Subah bakhair': { hi: 'सुप्रभात', en: 'Good morning' },
+  Namaste: { hi: 'नमस्ते', en: 'Hello' },
+  'Shubh sandhya': { hi: 'शुभ संध्या', en: 'Good evening' },
+  Bhai: { hi: 'भाई', en: 'there' },
+  '{n} naya order': { hi: '{n} नया ऑर्डर', en: '{n} new orders' },
+  '{n} payment': { hi: '{n} पेमेंट', en: '{n} payments' },
+  '{n} retailer': { hi: '{n} रिटेलर', en: '{n} retailers' },
+  '{n} item kam': { hi: '{n} आइटम कम', en: '{n} items running low' },
+  'Choose...': { hi: 'चुनें...', en: 'Choose...' },
 };
 
 export default DICT;
@@ -1096,5 +1426,7 @@ export const NO_TRANSLATE = new Set([
   'Ramesh Auto Parts', 'Ramesh Kumar', 'Suresh Auto Store', 'Suresh Kumar',
   'Ramu — naya salesman', 'ramesh@okhdfcbank', '09AAACH7409R1ZZ', 'ST/2026/119',
   'HDFC Bank', 'HDFC0001234',
+  // UPI ID aur uska misaal wala number — bhasha badalne se badalta nahi
+  'UPI ID', '4xxxxxxxxxxx',
   'Bearings', 'Bearing 6203', 'BRG-6203', '6203-2RS', 'A-3', 'SKF, Bosch, Rolon...',
 ]);

@@ -168,13 +168,23 @@ export async function lookupByPhone(businessId, { phone, type = PARTY_TYPES.RETA
 }
 
 export async function createParty(businessId, payload, userId) {
-  const phone = normalizePhone(payload.phone);
+  const phone = payload.phone ? normalizePhone(payload.phone) : '';
 
-  const exists = await Party.findOne({ businessId, type: payload.type, phone });
-  if (exists) {
-    throw ApiError.conflict(
-      `Is number se ek ${payload.type === PARTY_TYPES.RETAILER ? 'retailer' : 'supplier'} pehle se hai: ${exists.name}`
-    );
+  /*
+    Duplicate ki rok SIRF tab jab number ho hi.
+
+    Bina is `if` ke doosri hi bina-number wali party "is number se ek retailer
+    pehle se hai" kehke ruk jati — dono ka phone `''` jo hota. Wahi rok
+    database ke index pe bhi lagti thi; wo `partialFilterExpression` se hati
+    hai, aur yahan is shart se.
+  */
+  if (phone) {
+    const exists = await Party.findOne({ businessId, type: payload.type, phone });
+    if (exists) {
+      throw ApiError.conflict(
+        `Is number se ek ${payload.type === PARTY_TYPES.RETAILER ? 'retailer' : 'supplier'} pehle se hai: ${exists.name}`
+      );
+    }
   }
 
   if (payload.gstin) {
@@ -227,10 +237,14 @@ export async function updateParty(businessId, id, payload, viewer = null) {
   const party = await Party.findOne({ _id: id, businessId });
   if (!party) throw ApiError.notFound('Party nahi mili');
 
-  if (payload.phone) {
-    const phone = normalizePhone(payload.phone);
-    const clash = await Party.findOne({ businessId, type: party.type, phone, _id: { $ne: id } });
-    if (clash) throw ApiError.conflict(`Ye number ${clash.name} ke paas pehle se hai`);
+  if (payload.phone !== undefined) {
+    // Khali bhejna bhi ek faisla hai — "number hai hi nahi". Use nazarandaaz
+    // karne se number kabhi hataya hi nahi ja sakta tha.
+    const phone = payload.phone ? normalizePhone(payload.phone) : '';
+    if (phone) {
+      const clash = await Party.findOne({ businessId, type: party.type, phone, _id: { $ne: id } });
+      if (clash) throw ApiError.conflict(`Ye number ${clash.name} ke paas pehle se hai`);
+    }
     party.phone = phone;
   }
 

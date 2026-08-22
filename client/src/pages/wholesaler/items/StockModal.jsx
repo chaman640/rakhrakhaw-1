@@ -173,7 +173,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
         {/* History */}
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
-            <History size={15} /> Pichhla record
+            <History size={15} /> {t('Pichhla record')}
           </div>
 
           {loadingHistory ? (

@@ -127,7 +127,7 @@ export default function InviteCard({ compact = false }) {
         loading={busy}
         title={t('Naya link banayein?')}
         message={t('Purana link turant band ho jayega. Jinko purana link bheja tha wo register nahi kar payenge — unhe naya link dobara bhejna padega. Jo retailers pehle se jud chuke hain unpe koi asar nahi hoga.')}
-        confirmLabel="Haan, naya banayein"
+        confirmLabel={t("Haan, naya banayein")}
       />
     </>
   );

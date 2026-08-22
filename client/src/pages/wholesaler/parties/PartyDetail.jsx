@@ -132,7 +132,7 @@ export default function PartyDetail({ type }) {
         <StatCard label={t('Bills')} value={party.invoiceCount || 0} icon={FileText} tone="brand" />
         {isRetailer && (
           <StatCard label={t('Khaas rate')} value={party.customRateCount || 0} icon={Tag}
-            tone={party.customRateCount ? 'green' : 'brand'} sub="items pe" />
+            tone={party.customRateCount ? 'green' : 'brand'} sub={t("items pe")} />
         )}
       </div>
 
@@ -177,7 +177,7 @@ export default function PartyDetail({ type }) {
         loading={busy}
         title={`${party.name} ko delete karein?`}
         message={t('Agar iska koi order, bill ya payment hai to delete nahi hoga — sirf block ho jayega, taaki purane record kharab na hon.')}
-        confirmLabel="Haan, delete karein"
+        confirmLabel={t("Haan, delete karein")}
       />
     </>
   );

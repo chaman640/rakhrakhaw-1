@@ -269,7 +269,7 @@ export default function Payments() {
         loading={busy}
         title={reminding ? `${reminding.shopName || reminding.name} ko yaad dilayein?` : ''}
         message={t('Inke app me alert chala jayega ki itna paisa baaki hai. WhatsApp bhejna ho to uske bagal wala button dabaein.')}
-        confirmLabel="Haan, yaad dilayein"
+        confirmLabel={t("Haan, yaad dilayein")}
       />
 
       <ConfirmModal
@@ -279,7 +279,7 @@ export default function Payments() {
         loading={busy}
         title={deleting ? `${deleting.paymentNo} delete karein?` : ''}
         message={t('Khata wapas pehle jaisa ho jayega aur bill dobara udhaar dikhne lagega. Ye wapas nahi hota.')}
-        confirmLabel="Haan, delete karein"
+        confirmLabel={t("Haan, delete karein")}
       />
     </>
   );

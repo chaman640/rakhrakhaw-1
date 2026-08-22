@@ -11,7 +11,18 @@
  *    Ye jaanch us block ke andar likhe `t()` ko pakadti hai, aur un naamon ko
  *    bhi bata deti hai jo aage chal kar ye ghalti bana sakte hain.
  *
- * 2. Anuvaad me chhoote hue shabd.
+ * 2. Wo text jo `t()` tak pahunchta HI NAHI.
+ *
+ *    Ye sabse chupa hua tha. Purani jaanch sirf `t('...')` ke andar wale shabd
+ *    ginti thi — yani "100%" ka matlab tha "jo wrap kiya gaya wo poora ho
+ *    gaya", na ki "screen pe sab kuch anuvaad ho gaya". Jo line seedha JSX me
+ *    likh di gayi (`<p>Kul dena</p>`) wo ginti me aati hi nahi thi, aur
+ *    English chun kar bhi Hinglish hi dikhti rehti.
+ *
+ *    Isliye ab JSX ka seedha text aur user ko dikhne wale attribute
+ *    (placeholder, title, aria-label, label) bhi pakde jate hain.
+ *
+ * 3. Anuvaad me chhoote hue shabd.
  *
  *    `t('...')` me jo shabd hai wo dictionary me hai ya nahi. Na ho to app
  *    tooti nahi (Hinglish hi dikhega), par ginti saamne rehni chahiye — warna
@@ -36,6 +47,62 @@ function listFiles(dir, out = []) {
 
 const files = listFiles('src');
 const used = new Set();
+const unwrapped = [];
+
+// User ko DIKHNE wale attribute. `className`, `id`, `type` jaise nahi.
+/*
+  Wo attribute jinki value SEEDHE SCREEN PE CHHAPTI hai.
+
+  Ye list pehle chhoti thi. Phir scan karne pe pata chala ki apne hi UI
+  component ke aadhe prop is list se bahar the — `subtitle`, `message`,
+  `sub`, `confirmLabel`, `createNewLabel`. Yani PageHeader ka subtitle aur
+  EmptyState ka message jaanch se bach kar Hinglish me hi chhapte rahe,
+  jabki ginti "100%" bol rahi thi.
+
+  Naya visible-text wala prop banayein to uska naam yahan bhi likh dein —
+  warna jaanch use dekhegi hi nahi.
+*/
+const VISIBLE_ATTRS = new Set([
+  'placeholder', 'title', 'aria-label', 'label', 'alt', 'emptyText', 'hint',
+  'subtitle', 'message', 'sub', 'confirmLabel', 'cancelLabel', 'createNewLabel',
+]);
+
+/*
+  Ye text anuvaad maangta hai ya nahi.
+
+  Chhodne layak: khali/chinh wala text, ek-do akshar, aur wo shabd jo teeno
+  zubaan me ek jaise likhe jate hain. Inhe pakadna sirf shor banata hai.
+*/
+const SAME_IN_ALL = new Set([
+  'GST', 'GSTIN', 'HSN', 'UPI', 'PDF', 'CSV', 'SKU', 'IFSC', 'QR', 'OTP', 'WhatsApp',
+  'IGST', 'CGST', 'SGST', 'MRP', 'Email', 'PCS', 'KG', 'Rakh Rakhav',
+]);
+
+/*
+  Ek `t(naam)` ke peeche jitni bhi seedhi string ho sakti hai, sab uthao.
+
+  Sirf string aur ternary — `a ? 'x' : 'y'`, aur uske andar phir ternary.
+  Isse aage (function call, koi object ka field) hum nahi jate: wahan sach me
+  pata nahi chalta ki chalega kya, aur andaza lagakar chaabi banane se ginti
+  jhoothi ho jayegi. Ginti ka poora matlab hi ye hai ki uspe bharosa ho.
+*/
+function collectStrings(node, out) {
+  if (!node) return;
+  if (node.type === 'StringLiteral') { out.add(node.value); return; }
+  if (node.type === 'ConditionalExpression') {
+    collectStrings(node.consequent, out);
+    collectStrings(node.alternate, out);
+  }
+}
+
+function translatable(txt) {
+  const s2 = txt.replace(/\s+/g, ' ').trim();
+  if (s2.length < 3) return false;                    // '—', '·', 'ok'
+  if (!/[a-zA-Z]{3}/.test(s2)) return false;          // sirf number/chinh
+  if (SAME_IN_ALL.has(s2)) return false;
+  if (/^\{/.test(s2)) return false;                   // JSX expression
+  return true;
+}
 let errors = 0;
 let risky = 0;
 
@@ -86,7 +153,74 @@ for (const file of files) {
       }
 
       const arg = p.node.arguments[0];
-      if (arg && arg.type === 'StringLiteral') used.add(arg.value);
+      if (arg && arg.type === 'StringLiteral') { used.add(arg.value); return; }
+
+      /*
+        `t(title)` — chaabi seedhe likhi nahi hai, ek variable me hai.
+
+        Ye chup-chaap wali khai hai. TrendChart ne bilkul theek kiya tha:
+        `t(title)` se chhapa. Par `title` ka default value uske apne
+        parameter me pada tha —
+
+            function TrendChart({ title = 'Pichhle 14 din' })
+
+        — aur jaanch parameter ke default ko dekhti hi nahi thi. Nateeja:
+        wo shabd kabhi "istemal me" gina hi nahi gaya, kitaab me uska
+        anuvaad kabhi maanga hi nahi gaya, aur English chunne par screen pe
+        Hinglish me hi chhapta raha — jabki ginti 100% bol rahi thi.
+
+        Isliye ab: agar `t()` ko koi apna hi parameter diya gaya hai jiska
+        default ek seedhi string hai, to us default ko bhi chaabi maan lete
+        hain. Bahar se aane wali value pe hamara bas nahi — par default
+        kam se kam pakda jayega.
+      */
+      if (arg && arg.type === 'Identifier') {
+        const node = p.scope.getBinding(arg.name)?.path?.node;
+
+        // `function F({ title = '...' })` — ObjectPattern ke andar dhoondho
+        const props = node?.type === 'ObjectPattern' ? node.properties : [];
+        for (const pr of props) {
+          if (pr.type !== 'ObjectProperty' || pr.key?.name !== arg.name) continue;
+          const v = pr.value;
+          if (v?.type === 'AssignmentPattern' && v.right?.type === 'StringLiteral') used.add(v.right.value);
+        }
+        // `function F(title = '...')` — seedha parameter
+        if (node?.type === 'AssignmentPattern' && node.right?.type === 'StringLiteral') {
+          used.add(node.right.value);
+        }
+        /*
+          `const greet = subah ? 'Subah bakhair' : 'Namaste'` — phir `t(greet)`.
+
+          Dashboard pe bilkul yahi tha. Teeno salaam kabhi ginti me aaye hi
+          nahi, kitab me daale hi nahi gaye, aur English chunne par bhi
+          "Namaste, Ramesh" hi chhapta raha. Screenshot me pakda gaya, jaanch
+          me nahi — isliye ab jaanch ise bhi dekhti hai.
+        */
+        if (node?.type === 'VariableDeclarator') collectStrings(node.init, used);
+      }
+    },
+
+    /*
+      JSX me seedha likha hua text — jo `t()` se guzra hi nahi.
+
+      Kuch cheezein jaan-boojh kar chhodi hain: sirf number/chinh (`—`, `·`,
+      `₹`), ek-do akshar, aur wo shabd jo teeno zubaan me ek jaise hain
+      (GST, HSN, UPI, PDF...). Unhe pakadna shor paida karta hai aur asli
+      chhoot us shor me dab jati hai.
+    */
+    JSXText(p) {
+      const raw = p.node.value.trim();
+      if (!raw || !translatable(raw)) return;
+      unwrapped.push(`${file}:${p.node.loc.start.line}  ${raw.slice(0, 60)}`);
+    },
+
+    JSXAttribute(p) {
+      const name = p.node.name?.name;
+      if (!VISIBLE_ATTRS.has(name)) return;
+      const v = p.node.value;
+      if (!v || v.type !== 'StringLiteral') return;
+      if (!translatable(v.value)) return;
+      unwrapped.push(`${file}:${p.node.loc.start.line}  ${name}="${v.value.slice(0, 50)}"`);
     },
 
     Scopable(p) {
@@ -127,6 +261,12 @@ for (const m of dictSrc.matchAll(/export const NO_TRANSLATE = new Set\(\[([\s\S]
 }
 
 const missing = [...used].filter((k) => !known.has(k) && !skip.has(k));
+const looseAllowed = new Set(
+  (fs.existsSync('scripts/i18n-allow.txt')
+    ? fs.readFileSync('scripts/i18n-allow.txt', 'utf8').split('\n')
+    : []).map((l) => l.trim()).filter(Boolean),
+);
+const loose = unwrapped.filter((u) => !looseAllowed.has(u.split('  ').slice(1).join('  ')));
 
 /*
   100% SIRF TAB jab sach me ek bhi shabd na bacha ho.
@@ -146,6 +286,20 @@ if (missing.length && process.argv.includes('--missing')) {
   fs.writeFileSync('/tmp/i18n-missing.json', JSON.stringify(missing, null, 1));
 }
 if (risky) console.log(`${risky} jagah \`t\` naam ka apna variable hai (abhi kaam kar raha hai)`);
+
+/*
+  Jo text `t()` tak pahunchta hi nahi.
+
+  Ye upar wali ginti me kabhi aata hi nahi tha — isliye "100%" ke baad bhi
+  English chun kar Hinglish dikh jati thi. Ab ye alag se ginte hain aur GALTI
+  maante hain, chetavni nahi: chetavni ko log do din me dekhna chhod dete hain.
+*/
+if (loose.length) {
+  console.error(`\n${loose.length} jagah text \`t()\` se bahar hai — English chunne par ye Hinglish hi rahega:`);
+  console.error(loose.map((u) => `  ✗ ${u}`).join('\n'));
+  fs.writeFileSync('/tmp/i18n-loose.txt', loose.join('\n'));
+  errors += loose.length;
+}
 
 if (errors) {
   console.error(`\n${errors} ghalti — theek karke dobara chalayein`);

@@ -32,18 +32,18 @@ export default function JoinStaff() {
 
   useEffect(() => {
     let alive = true;
-    api.get(`/staff/invites/${token}`)
-      .then((res) => {
-        if (!alive) return;
-        setInvite(res.data);
-        // Malik ne number pehle se baandh diya ho to wahi bhar dete hain
-        if (res.data.lockedPhone) {
-          setForm((f) => ({ ...f, phone: res.data.lockedPhone }));
-        }
-      })
-      .catch((err) => { if (alive) setLinkError(err.message); })
-      .finally(() => { if (alive) setChecking(false); });
-    return () => { alive = false; };
+    api.get(`/staff/invites/${token}`).
+    then((res) => {
+      if (!alive) return;
+      setInvite(res.data);
+      // Malik ne number pehle se baandh diya ho to wahi bhar dete hain
+      if (res.data.lockedPhone) {
+        setForm((f) => ({ ...f, phone: res.data.lockedPhone }));
+      }
+    }).
+    catch((err) => {if (alive) setLinkError(err.message);}).
+    finally(() => {if (alive) setChecking(false);});
+    return () => {alive = false;};
   }, [token]);
 
   async function handleSubmit(e) {
@@ -68,8 +68,8 @@ export default function JoinStaff() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-400">
         <Spinner size={28} />
-      </div>
-    );
+      </div>);
+
   }
 
   if (linkError) {
@@ -87,25 +87,25 @@ export default function JoinStaff() {
             {t('Login page pe jayein')}
           </Link>
         </div>
-      </AuthShell>
-    );
+      </AuthShell>);
+
   }
 
   return (
     <AuthShell
       brandName={invite.businessName}
       logoUrl={invite.logoUrl}
-      subtitle={t('Apna login bana lijiye')}
-    >
+      subtitle={t('Apna login bana lijiye')}>
+      
       <div className="mb-4 flex items-start gap-2.5 rounded-lg bg-brand-50 p-3">
         <ShieldCheck size={16} className="mt-0.5 shrink-0 text-brand-700" />
         <div className="text-sm">
-          <p className="font-medium text-brand-900">
-            Aap {invite.staffRoleLabel} ke roop me jud rahe hain
+          <p className="font-medium text-brand-900">{t("Aap {a0} ke roop me jud rahe hain", { a0:
+              invite.staffRoleLabel })}
           </p>
-          {invite.roleHint && (
-            <p className="mt-0.5 text-xs text-brand-800">{invite.roleHint}</p>
-          )}
+          {invite.roleHint &&
+          <p className="mt-0.5 text-xs text-brand-800">{invite.roleHint}</p>
+          }
         </div>
       </div>
 
@@ -116,8 +116,8 @@ export default function JoinStaff() {
           placeholder={t('Ramesh Kumar')}
           value={form.name}
           onChange={set('name')}
-          error={fieldErrors.name}
-        />
+          error={fieldErrors.name} />
+        
         <Input
           label={t('Phone number')}
           required
@@ -128,10 +128,10 @@ export default function JoinStaff() {
           onChange={set('phone')}
           error={fieldErrors.phone}
           disabled={Boolean(invite.lockedPhone)}
-          hint={invite.lockedPhone
-            ? 'Malik ne ye number pehle se bhar diya hai'
-            : 'Isi number se login karenge'}
-        />
+          hint={invite.lockedPhone ?
+          'Malik ne ye number pehle se bhar diya hai' :
+          'Isi number se login karenge'} />
+        
         <Input
           label={t('Password banayein')}
           required
@@ -139,12 +139,12 @@ export default function JoinStaff() {
           value={form.password}
           onChange={set('password')}
           error={fieldErrors.password}
-          hint={t('Kam se kam 6 character. Ye sirf aapko pata rahega — malik ko bhi nahi.')}
-        />
+          hint={t('Kam se kam 6 character. Ye sirf aapko pata rahega — malik ko bhi nahi.')} />
+        
 
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-        )}
+        {error &&
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        }
 
         <Button type="submit" className="w-full" loading={loading}>
           {t('Jud jayein')}
@@ -152,11 +152,11 @@ export default function JoinStaff() {
       </form>
 
       <p className="mt-4 text-center text-xs text-slate-500">
-        Pehle se account hai?{' '}
+        {t('Pehle se account hai?')}{' '}
         <Link to="/login" className="font-medium text-brand-700 hover:underline">
           {t('Login karein')}
         </Link>
       </p>
-    </AuthShell>
-  );
+    </AuthShell>);
+
 }

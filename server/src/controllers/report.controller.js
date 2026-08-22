@@ -48,7 +48,7 @@ export const download = asyncHandler(async (req, res) => {
 /* ──────────────────────────────────────────────────────────────── dashboard */
 
 export const wholesalerHome = asyncHandler(async (req, res) =>
-  ok(res, await dashboard.getWholesalerDashboard(req.businessId, req.user)));
+  ok(res, await dashboard.getWholesalerDashboard(req.businessId, req.user, req.query)));
 
 export const retailerHome = asyncHandler(async (req, res) =>
   ok(res, await dashboard.getRetailerDashboard(req.businessId, req.partyId, req.user._id)));

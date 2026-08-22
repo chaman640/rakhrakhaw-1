@@ -33,7 +33,7 @@ export default function ReturnDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {load();}, [load]);
 
   async function remove() {
     setBusy(true);
@@ -69,12 +69,12 @@ export default function ReturnDetail() {
 
       <div className="no-print mb-5 flex flex-wrap items-center gap-2">
         <Badge tone={isSale ? 'amber' : 'blue'}>{TYPE_LABEL[note.type]}</Badge>
-        {note.againstNo && (
-          <button onClick={() => navigate(isSale ? `/invoices/${note.invoiceId}` : `/purchases/${note.purchaseId}`)}
-            className="flex items-center gap-1 text-sm text-brand-700 underline-offset-2 hover:underline">
+        {note.againstNo &&
+        <button onClick={() => navigate(isSale ? `/invoices/${note.invoiceId}` : `/purchases/${note.purchaseId}`)}
+        className="flex items-center gap-1 text-sm text-brand-700 underline-offset-2 hover:underline">
             <FileText size={13} /> {note.againstNo}
           </button>
-        )}
+        }
       </div>
 
       {/* ---- Chhapne wala note ---- */}
@@ -88,17 +88,17 @@ export default function ReturnDetail() {
               <p className="text-xs text-slate-600">
                 {[biz.address?.city, biz.address?.state, biz.address?.pincode].filter(Boolean).join(', ')}
               </p>
-              {biz.phone && <p className="text-xs text-slate-600">Phone: {biz.phone}</p>}
-              {gst && biz.gstin && <p className="text-xs font-medium text-slate-700">GSTIN: {biz.gstin}</p>}
+              {biz.phone && <p className="text-xs text-slate-600">{t("Phone: {a0}", { a0: biz.phone })}</p>}
+              {gst && biz.gstin && <p className="text-xs font-medium text-slate-700">{t("GSTIN: {a0}", { a0: biz.gstin })}</p>}
             </div>
           </div>
           <div className="text-right">
             <p className="text-sm font-bold tracking-wide text-slate-900">{NOTE_LABEL[note.type]}</p>
             <p className="mt-1 text-xs text-slate-600">No: <strong>{note.returnNo}</strong></p>
-            <p className="text-xs text-slate-600">Date: {formatDate(note.returnDate)}</p>
-            {note.againstNo && (
-              <p className="text-xs text-slate-600">Against: {note.againstNo}</p>
-            )}
+            <p className="text-xs text-slate-600">{t("Date: {a0}", { a0: formatDate(note.returnDate) })}</p>
+            {note.againstNo &&
+            <p className="text-xs text-slate-600">{t("Against: {a0}", { a0: note.againstNo })}</p>
+            }
           </div>
         </div>
 
@@ -108,12 +108,12 @@ export default function ReturnDetail() {
           </p>
           <p className="font-semibold text-slate-900">{party.shopName || party.name}</p>
           {party.shopName && party.name && <p className="text-xs text-slate-600">{party.name}</p>}
-          {party.phone && <p className="text-xs text-slate-600">Phone: {party.phone}</p>}
-          {gst && party.gstin && <p className="text-xs text-slate-600">GSTIN: {party.gstin}</p>}
+          {party.phone && <p className="text-xs text-slate-600">{t("Phone: {a0}", { a0: party.phone })}</p>}
+          {gst && party.gstin && <p className="text-xs text-slate-600">{t("GSTIN: {a0}", { a0: party.gstin })}</p>}
         </div>
 
         {/* Phone pe ginti wali table apne dabbe me khiskati hai — warna
-            column ek doosre se chipak jate the. Print pe ye hat jata hai. */}
+             column ek doosre se chipak jate the. Print pe ye hat jata hai. */}
         <div className={cn('sheet-scroll mt-3 overflow-x-auto', gst && 'sm:overflow-visible')}>
         <table className={cn('w-full text-xs [&_td]:pr-2 [&_th]:pr-2',
           '[&_td:last-child]:pr-0 [&_th:last-child]:pr-0',
@@ -133,7 +133,7 @@ export default function ReturnDetail() {
             </tr>
           </thead>
           <tbody>
-            {note.items.map((it, i) => (
+            {note.items.map((it, i) =>
               <tr key={i} className="border-b border-slate-200 align-top">
                 <td className="py-2">{i + 1}</td>
                 <td className="py-2">
@@ -149,26 +149,26 @@ export default function ReturnDetail() {
                 {gst && isIgst && <td className="tabular py-2 text-right">{formatMoney(it.igst)}</td>}
                 <td className="tabular py-2 text-right font-medium">{formatMoney(it.total)}</td>
               </tr>
-            ))}
+              )}
           </tbody>
         </table>
         </div>
 
-        {gst && (
-          <p className="no-print mt-1 text-[10px] text-slate-400 sm:hidden">
+        {gst &&
+        <p className="no-print mt-1 text-[10px] text-slate-400 sm:hidden">
             {t('GST ke khaane dekhne ke liye table ko ungli se side me khiskayein →')}
           </p>
-        )}
+        }
 
         <div className="mt-4 flex justify-end">
           <dl className="w-full max-w-xs space-y-1.5 text-xs">
             <Line label={t('Taxable')} value={formatMoney(note.taxableTotal)} />
-            {gst && !isIgst && (
-              <>
+            {gst && !isIgst &&
+            <>
                 <Line label="CGST" value={formatMoney(note.cgstTotal)} />
                 <Line label="SGST" value={formatMoney(note.sgstTotal)} />
               </>
-            )}
+            }
             {gst && isIgst && <Line label="IGST" value={formatMoney(note.igstTotal)} />}
             {note.roundOff !== 0 && <Line label={t('Round off')} value={formatMoney(note.roundOff)} />}
             <div className="border-t border-slate-300 pt-1.5">
@@ -180,30 +180,30 @@ export default function ReturnDetail() {
           </dl>
         </div>
 
-        {note.amountInWords && (
-          <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-600">
+        {note.amountInWords &&
+        <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-600">
             <span className="font-medium">{t('Rupees in words:')}</span> {note.amountInWords}
           </p>
-        )}
+        }
 
-        {note.reason && (
-          <p className="mt-2 text-xs text-slate-600">
+        {note.reason &&
+        <p className="mt-2 text-xs text-slate-600">
             <span className="font-medium">{t('Karan:')}</span> {note.reason}
           </p>
-        )}
+        }
         {note.notes && <p className="mt-1 text-xs text-slate-600">{note.notes}</p>}
 
         <p className="mt-4 border-t border-slate-200 pt-3 text-[10px] text-slate-500">
-          {isSale
-            ? 'Ye credit note hai — itni raqam aapke khate se kam kar di gayi hai.'
-            : 'Ye debit note hai — itni raqam supplier ke khate se kam kar di gayi hai.'}
+          {isSale ?
+          'Ye credit note hai — itni raqam aapke khate se kam kar di gayi hai.' :
+          'Ye debit note hai — itni raqam supplier ke khate se kam kar di gayi hai.'}
         </p>
 
         <div className="mt-8 flex justify-end">
           <div className="text-center text-xs">
             <div className="mb-1 h-10" />
-            <p className="border-t border-slate-400 px-8 pt-1 text-slate-600">
-              {biz.name} ke liye
+            <p className="border-t border-slate-400 px-8 pt-1 text-slate-600">{t("{a0} ke liye", { a0:
+                biz.name })}
             </p>
           </div>
         </div>
@@ -215,13 +215,13 @@ export default function ReturnDetail() {
         onConfirm={remove}
         loading={busy}
         title={`${note.returnNo} delete karein?`}
-        message={isSale
-          ? 'Stock wapas ghat jayega aur retailer ka udhaar dobara badh jayega. Ye wapas nahi hota.'
-          : 'Stock wapas badh jayega aur supplier ko dena dobara badh jayega. Ye wapas nahi hota.'}
-        confirmLabel="Haan, delete karein"
-      />
-    </>
-  );
+        message={isSale ?
+        'Stock wapas ghat jayega aur retailer ka udhaar dobara badh jayega. Ye wapas nahi hota.' :
+        'Stock wapas badh jayega aur supplier ko dena dobara badh jayega. Ye wapas nahi hota.'}
+        confirmLabel={t("Haan, delete karein")} />
+      
+    </>);
+
 }
 
 function Line({ label, value }) {
@@ -229,6 +229,6 @@ function Line({ label, value }) {
     <div className="flex justify-between">
       <dt className="text-slate-600">{label}</dt>
       <dd className="tabular text-slate-900">{value}</dd>
-    </div>
-  );
+    </div>);
+
 }

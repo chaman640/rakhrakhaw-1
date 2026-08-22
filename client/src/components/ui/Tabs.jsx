@@ -3,10 +3,36 @@ import { t } from '@/lib/i18n';
 
 export default function Tabs({ tabs, value, onChange, className }) {
   return (
+    /*
+      Kaun sa tab chuna hua hai, ye pehle SIRF rang aur neeche ki lakeer se
+      pata chalta tha. Aankh se dekhne wale ko chalta tha; screen reader
+      wale ko paanch ek jaise button sunai dete the, aur kaun sa khula hai
+      ye kahin bola hi nahi jata tha.
+
+      Wahi khamoshi test me bhi thi — "pehla tab History hai" wali jaanch us
+      waqt bhi pass ho gayi jab default badal kar "Lena hai" kar diya gaya,
+      kyunki naam to apni jagah hi khade the. Ab chunav khud bolta hai.
+    */
     <div className={cn('mb-5 flex gap-1 overflow-x-auto border-b border-slate-200', className)}>
       {tabs.map((tab) => (
         <button
           key={tab.value}
+          /*
+            `aria-pressed`, `role="tab"` nahi.
+
+            Pehli koshish me `role="tab"` likha tha. Wo do wajah se galat tha.
+            Ek, `role` DAL dene se button ka apna role HAT jata hai — aur app
+            ke apne teen purane test, jo `getByRole('button', { name:
+            'History' })` se tab dabate hain, wahin toot gaye. Do, poora
+            tablist ka niyam nibhane ke liye neeche wale hisse pe
+            `role="tabpanel"` aur `aria-controls` bhi chahiye, jo yahan hai
+            nahi — aadha niyam nibhana screen reader ko sach se zyada
+            bhatkata hai.
+
+            `aria-pressed` button ke saath poori tarah theek hai, kuch todta
+            nahi, aur wahi baat kehta hai: ye wala dabaya hua hai.
+          */
+          aria-pressed={value === tab.value}
           onClick={() => onChange(tab.value)}
           className={cn(
             // px-3 phone pe: chaar tab (Dukaan · Paisa lena · Bill · Mera

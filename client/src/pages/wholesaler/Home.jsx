@@ -377,7 +377,7 @@ function PartyList({ rows, loading, onOpen }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-900">{p.name}</p>
               <p className="truncate text-xs text-slate-500">
-                {formatPhone(p.phone)} · {p.bills} bill
+                {formatPhone(p.phone)} · {t('{n} bill', { n: p.bills })}
                 <span className="hidden sm:inline"> · {formatDate(p.lastDate)}</span>
               </p>
             </div>

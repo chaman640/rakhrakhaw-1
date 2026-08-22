@@ -29,11 +29,11 @@ export default function Join() {
 
   useEffect(() => {
     let alive = true;
-    api.get(`/auth/invite/${inviteCode}`)
-      .then((res) => { if (alive) setInvite(res.data); })
-      .catch((err) => { if (alive) setLinkError(err.message); })
-      .finally(() => { if (alive) setChecking(false); });
-    return () => { alive = false; };
+    api.get(`/auth/invite/${inviteCode}`).
+    then((res) => {if (alive) setInvite(res.data);}).
+    catch((err) => {if (alive) setLinkError(err.message);}).
+    finally(() => {if (alive) setChecking(false);});
+    return () => {alive = false;};
   }, [inviteCode]);
 
   async function handleSubmit(e) {
@@ -58,8 +58,8 @@ export default function Join() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-400">
         <Spinner size={28} />
-      </div>
-    );
+      </div>);
+
   }
 
   if (linkError) {
@@ -74,8 +74,8 @@ export default function Join() {
             {t('Login page pe jayein')}
           </Link>
         </div>
-      </AuthShell>
-    );
+      </AuthShell>);
+
   }
 
   return (
@@ -83,21 +83,21 @@ export default function Join() {
       brandName={invite.businessName}
       logoUrl={invite.logoUrl}
       subtitle={
-        <>
+      <>
           {[invite.city, invite.state].filter(Boolean).join(', ')}
           {(invite.city || invite.state) && <br />}
-          Yahan se order karne ke liye apni dukaan register karein
+          {t('Yahan se order karne ke liye apni dukaan register karein')}
         </>
       }
       footer={
-        <>
-          Pehle se account hai?{' '}
+      <>
+          {t('Pehle se account hai?')}{' '}
           <Link to="/login" className="font-medium text-brand-700 hover:underline">
             {t('Login karein')}
           </Link>
         </>
-      }
-    >
+      }>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label={t('Aapki dukaan ka naam')}
@@ -105,16 +105,16 @@ export default function Join() {
           placeholder={t('Suresh Auto Store')}
           value={form.shopName}
           onChange={set('shopName')}
-          error={fieldErrors.shopName}
-        />
+          error={fieldErrors.shopName} />
+        
         <Input
           label={t('Aapka naam')}
           required
           placeholder={t('Suresh Kumar')}
           value={form.name}
           onChange={set('name')}
-          error={fieldErrors.name}
-        />
+          error={fieldErrors.name} />
+        
         <Input
           label={t('Phone number')}
           required
@@ -124,8 +124,8 @@ export default function Join() {
           placeholder="98765 43210"
           value={form.phone}
           onChange={set('phone')}
-          error={fieldErrors.phone}
-        />
+          error={fieldErrors.phone} />
+        
         <Input
           label={t('Password banayein')}
           required
@@ -134,23 +134,23 @@ export default function Join() {
           placeholder={t('Kam se kam 6 character')}
           value={form.password}
           onChange={set('password')}
-          error={fieldErrors.password}
-        />
+          error={fieldErrors.password} />
+        
 
-        {error && !Object.keys(fieldErrors).length && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        {error && !Object.keys(fieldErrors).length &&
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
-        )}
+        }
 
         <Button type="submit" className="w-full" loading={loading}>
           {t('Register karein')}
         </Button>
 
-        <p className="text-center text-xs text-slate-500">
-          Register karne ke baad {invite.businessName} approve karenge, phir catalog khul jayega.
+        <p className="text-center text-xs text-slate-500">{t("Register karne ke baad {a0} approve karenge, phir catalog khul jayega.", { a0:
+            invite.businessName })}
         </p>
       </form>
-    </AuthShell>
-  );
+    </AuthShell>);
+
 }

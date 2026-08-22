@@ -50,7 +50,16 @@ const shortMoney = (n) => {
 
 export default function TrendChart({
   data = [],
-  title = 'Pichhle 14 din',
+  /*
+    Default me "Pichhle 14 din" likha tha — do galtiyan ek saath. Ek, Step 4
+    me arsa chunne wale chip aa gaye, to 7 din ya 1 saal chunne par bhi sar pe
+    "14 din" hi likha rehta tha. Do, ye default parameter me pada tha isliye
+    anuvaad ki jaanch ise dekh hi nahi pati thi — English chunne par yahi
+    ek line Hinglish me chhapti reh gayi thi.
+
+    Ab bulane wala apna asli arsa khud bhejta hai.
+  */
+  title = 'Bikri ka chart',
   height = 168,
   emptyText = 'Abhi tak koi bill nahi bana',
 }) {

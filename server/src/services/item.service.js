@@ -177,6 +177,45 @@ export async function getStats(businessId) {
   };
 }
 
+/**
+ * "GST ON karne se pehle kitna kaam baaki hai" — ek seedha jawab.
+ *
+ * Ye chetavni na hone se ek chup-chaap nuksaan hota tha. GST ON karte hi bill
+ * ka naam "TAX INVOICE" ho jata hai, par jin item pe rate 0 hai unpe tax lagta
+ * hi nahi. Bill dekhne me poora sahi lagta hai — bas usme tax hai hi nahi.
+ * Ye mahino chalta rehta hai aur pakda tab jata hai jab CA return bharne
+ * baithta hai, aur tab tak wo bill graahak ke paas ja chuke hote hain.
+ *
+ * HSN alag baat hai: uske bina bhi bill banta hai, par GST return me wo
+ * maanga jata hai. Isliye dono ginte hain, aur naam bhi bata dete hain —
+ * "12 item me rate nahi hai" se aage badhne ka rasta nahi milta.
+ */
+export async function gstReadiness(businessId) {
+  const items = await Item.find({ businessId, isActive: true })
+    .select('name gstRate hsn').lean();
+
+  const zero = items.filter((i) => !(Number(i.gstRate) > 0));
+  const noHsn = items.filter((i) => !String(i.hsn || '').trim());
+
+  return {
+    total: items.length,
+    zeroRate: zero.length,
+    noHsn: noHsn.length,
+    ready: zero.length === 0 && noHsn.length === 0,
+    // Pehle paanch naam — poori list ka koi fayda nahi, aur wo bhaari bhi hai
+    samples: [...new Set([...zero, ...noHsn].map((i) => String(i._id)))]
+      .slice(0, 5)
+      .map((id) => {
+        const it = items.find((x) => String(x._id) === id);
+        return {
+          _id: it._id,
+          name: it.name,
+          kya: !(Number(it.gstRate) > 0) ? 'rate nahi hai' : 'HSN nahi hai',
+        };
+      }),
+  };
+}
+
 export async function getLowStockItems(businessId, limit = 20) {
   return Item.find({
     businessId,

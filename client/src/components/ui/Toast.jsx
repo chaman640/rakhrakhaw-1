@@ -38,14 +38,29 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={toast}>
       {children}
       {createPortal(
-        <div className="fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2 px-4 sm:px-0">
+        /*
+          Toast ab UPAR aata hai, neeche nahi.
+
+          Neeche wali jagah phone pe teen cheezon se ladti thi: nav bar,
+          keyboard, aur "Save karein" jaisa neeche chipka hua button. Sabse
+          bura keyboard tha — bill banate waqt "stock kam hai" wala sandesh
+          keyboard ke PEECHHE chhup jata tha, yani wahi pal jab wo sabse
+          zaroori hota hai.
+
+          Upar-beech me wo har halat me dikhta hai, aur aankh waise bhi upar
+          hi hoti hai (sirnaam, back button — sab wahin hain).
+        */
+        <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] mx-auto flex w-full max-w-sm flex-col items-center gap-2 px-4">
           {toasts.map((t) => {
             const Icon = icons[t.type];
             return (
               <div
                 key={t.id}
+                /* `pointer-events-auto` — bahar wala dabba `none` hai taaki
+                    toast ke aas-paas ka click page tak pahunche; toast khud
+                    band ho sake, isliye uspe wapas `auto` */
                 className={cn(
-                  'flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg',
+                  'pointer-events-auto flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg',
                   styles[t.type]
                 )}
               >

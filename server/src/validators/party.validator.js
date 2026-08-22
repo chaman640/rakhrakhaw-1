@@ -16,7 +16,14 @@ export const createPartySchema = z.object({
   type: z.enum(Object.values(PARTY_TYPES)),
   name: z.string().trim().min(2, 'Naam kam se kam 2 akshar ka hona chahiye').max(80),
   shopName: z.string().trim().max(120).optional().default(''),
-  phone: z.string().trim().min(10, 'Phone number 10 digit ka hona chahiye'),
+  // Khali chalta hai (Party.js me wajah). Diya hai to poora hona chahiye —
+  // aadha number kisi kaam ka nahi, aur wo chup-chaap galat aadmi ko chala
+  // jata hai.
+  // Khali chalta hai (Party.js me wajah). Diya hai to poora hona chahiye —
+  // aadha number kisi kaam ka nahi, aur wo chup-chaap galat aadmi ko chala
+  // jata hai.
+  phone: z.string().trim().refine((v) => !v || v.length >= 10, 'Phone number 10 digit ka hona chahiye')
+    .optional().default(''),
   email: z.string().trim().email('Email galat hai').or(z.literal('')).optional().default(''),
   address: addressSchema,
   gstin: z.string().trim().toUpperCase().or(z.literal('')).optional().default(''),

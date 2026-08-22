@@ -1,0 +1,5 @@
+# Jo text har bhasha me bilkul wahi rehta hai — anuvaad ka koi matlab nahi.
+# Yahan sirf wahi daalein jismein sach me koi shabd hi na ho (naam, code,
+# unit), warna ye list "kaam se bachne ki jagah" ban jayegi.
+· GSTIN:
+UPI:

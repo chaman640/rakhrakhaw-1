@@ -24,7 +24,19 @@ const partySchema = new mongoose.Schema(
 
     name: { type: String, required: true, trim: true },
     shopName: { type: String, trim: true, default: '' },
-    phone: { type: String, required: true, trim: true },
+    /*
+      Phone MARZI SE — mandi ka aadha graahak number deta hi nahi.
+
+      Pehle ye zaroori tha, aur uska nateeja ulta nikalta tha: dukaandaar ya to
+      jhootha number bhar deta (9999999999, ya apna hi number) ya bill app me
+      daalta hi nahi. Pehle se party ki list me nakli number bhar jate aur
+      WhatsApp wali yaad-dahani galat aadmi ko chali jati; doosre se stock aur
+      khata dono se wo bikri gayab ho jati.
+
+      Ab khali chal jata hai. Naam hi pehchaan hai — aur bill pe wahi chhapta
+      hai.
+    */
+    phone: { type: String, trim: true, default: '' },
     email: { type: String, trim: true, lowercase: true, default: '' },
     address: { type: addressSchema, default: () => ({}) },
     gstin: { type: String, trim: true, uppercase: true, default: '' },
@@ -63,8 +75,18 @@ const partySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Ek business me ek phone number ek hi baar (retailer aur supplier alag alag)
-partySchema.index({ businessId: 1, type: 1, phone: 1 }, { unique: true });
+/*
+  Ek business me ek phone number ek hi baar (retailer aur supplier alag alag).
+
+  `partialFilterExpression` yahan zaroori hai. Phone ab khali ho sakta hai, aur
+  bina is chhalni ke DOOSRI hi bina-number wali party "duplicate phone" kehke
+  ruk jati — kyunki dono ka phone `''` hota. Ye rok un par lagni chahiye
+  jinke paas number HAI.
+*/
+partySchema.index(
+  { businessId: 1, type: 1, phone: 1 },
+  { unique: true, partialFilterExpression: { phone: { $gt: '' } } },
+);
 partySchema.index({ businessId: 1, name: 1 });
 // "Mere retailer" har list pe nikalte hain — isliye ye do sath me
 partySchema.index({ businessId: 1, assignedToUserId: 1 });

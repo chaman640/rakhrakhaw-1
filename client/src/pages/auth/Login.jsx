@@ -41,7 +41,7 @@ export default function Login() {
       subtitle={t('Apne phone number se login karein')}
       footer={
         <>
-          Nayi dukaan hai?{' '}
+          {t('Nayi dukaan hai?')}{' '}
           <Link to="/signup" className="font-medium text-brand-700 hover:underline">
             {t('Wholesaler account banayein')}
           </Link>

@@ -23,6 +23,9 @@ router.get('/import/sample', requirePermission('items:view'), ctrl.sampleCsv);
 router.post('/import', requirePermission('items:create'), validate({ body: importSchema }), ctrl.importCsv);
 router.post('/bulk', requirePermission('items:edit'), validate({ body: bulkActionSchema }), ctrl.bulk);
 
+// `/gst-ready` ko `/:id` se PEHLE rakhna hai, warna "gst-ready" ek id samajh
+// li jati hai aur jawab hamesha 404 aata hai
+router.get('/gst-ready', requirePermission('items:view'), ctrl.gstReady);
 router.get('/', requirePermission('items:view'), validate({ query: listItemsQuerySchema }), ctrl.list);
 router.post('/', requirePermission('items:create'), validate({ body: createItemSchema }), ctrl.create);
 

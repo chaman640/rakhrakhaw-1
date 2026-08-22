@@ -6,8 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Spinner, ConfirmModal,
-  ReadLineItem, ReadField, useToast,
-} from '@/components/ui';
+  ReadLineItem, ReadField, useToast } from
+'@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -39,7 +39,7 @@ export default function PurchaseDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {load();}, [load]);
 
   async function remove() {
     setBusy(true);
@@ -71,21 +71,21 @@ export default function PurchaseDetail() {
               {formatDate(p.purchaseDate)}
               {p.supplierBillNo && ` · Supplier bill: ${p.supplierBillNo}`}
             </p>
-            {p.supplier && (
-              <Link to={`/suppliers/${p.supplierId}`}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100">
+            {p.supplier &&
+            <Link to={`/suppliers/${p.supplierId}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100">
                 <Truck size={15} className="text-slate-400" />
                 <span className="font-medium text-slate-900">{p.supplier.shopName || p.supplier.name}</span>
                 <span className="text-slate-500">{formatPhone(p.supplier.phone)}</span>
               </Link>
-            )}
+            }
           </div>
 
           {/* Phone pe teen button ek line me nahi aate — Delete bahar nikal
-              jata tha. Isliye chhoti screen pe wrap, badi pe pehle jaisa. */}
+               jata tha. Isliye chhoti screen pe wrap, badi pe pehle jaisa. */}
           <div className="flex flex-wrap gap-2 no-print sm:shrink-0">
             <Button variant="secondary" size="sm" icon={Undo2}
-              onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${p._id}`)}>
+            onClick={() => navigate(`/returns/new?type=PURCHASE_RETURN&doc=${p._id}`)}>
               {t('Maal wapas bheja')}
             </Button>
             <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
@@ -112,51 +112,51 @@ export default function PurchaseDetail() {
                 </tr>
               </thead>
               <tbody>
-                {p.items.map((it, i) => (
-                  <tr key={i} className="border-b border-slate-100 last:border-0">
+                {p.items.map((it, i) =>
+                <tr key={i} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-900">{it.name}</p>
-                      {it.discount > 0 && (
-                        <p className="text-xs text-emerald-700">Discount {formatMoney(it.discount)}</p>
-                      )}
+                      {it.discount > 0 &&
+                    <p className="text-xs text-emerald-700">{t("Discount {a0}", { a0: formatMoney(it.discount) })}</p>
+                    }
                     </td>
                     <td className="tabular px-4 py-3 text-right">{formatQty(it.qty, it.unit)}</td>
                     <td className="tabular px-4 py-3 text-right">{formatMoney(it.rate)}</td>
-                    {gstEnabled && (
-                      <td className="tabular px-4 py-3 text-right text-slate-500">
+                    {gstEnabled &&
+                  <td className="tabular px-4 py-3 text-right text-slate-500">
                         {it.gstRate}% · {formatMoney(it.taxAmount)}
                       </td>
-                    )}
+                  }
                     <td className="tabular px-4 py-3 text-right font-medium">{formatMoney(it.total)}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Phone — har item ki apni line */}
           <div className="divide-y divide-slate-100 border-t border-slate-200 md:hidden">
-            {p.items.map((it, i) => (
-              <ReadLineItem
-                key={i}
-                title={it.name}
-                total={formatMoney(it.total)}
-                sub={it.discount > 0 && (
-                  <p className="text-xs text-emerald-700">Discount {formatMoney(it.discount)}</p>
-                )}
-              >
+            {p.items.map((it, i) =>
+            <ReadLineItem
+              key={i}
+              title={it.name}
+              total={formatMoney(it.total)}
+              sub={it.discount > 0 &&
+              <p className="text-xs text-emerald-700">{t("Discount {a0}", { a0: formatMoney(it.discount) })}</p>
+              }>
+              
                 <ReadField label={t('Qty')} value={formatQty(it.qty, it.unit)} />
                 <ReadField label={t('Rate')} value={formatMoney(it.rate)} />
-                {gstEnabled && (
-                  <ReadField label="GST" value={`${it.gstRate}% · ${formatMoney(it.taxAmount)}`} />
-                )}
+                {gstEnabled &&
+              <ReadField label="GST" value={`${it.gstRate}% · ${formatMoney(it.taxAmount)}`} />
+              }
               </ReadLineItem>
-            ))}
+            )}
           </div>
 
-          {p.notes && (
-            <p className="border-t border-slate-200 px-5 py-3 text-sm text-slate-600">{p.notes}</p>
-          )}
+          {p.notes &&
+          <p className="border-t border-slate-200 px-5 py-3 text-sm text-slate-600">{p.notes}</p>
+          }
         </Card>
 
         <div className="space-y-5">
@@ -173,7 +173,7 @@ export default function PurchaseDetail() {
               </div>
               <Row label={t('Diya')} value={formatMoney(p.paidAmount)} tone="green" />
               <div className={cn('flex items-center justify-between rounded-lg px-3 py-2 text-sm',
-                p.dueAmount > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
+              p.dueAmount > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
                 <span>{p.dueAmount > 0 ? 'Baaki' : 'Poora ho gaya'}</span>
                 <strong className="tabular">{formatMoney(p.dueAmount)}</strong>
               </div>
@@ -191,11 +191,11 @@ export default function PurchaseDetail() {
                     <span className="min-w-0 flex-1 truncate text-slate-700">{line?.name || 'Item'}</span>
                     <Badge tone="green">+{m.qty}</Badge>
                     <span className="tabular shrink-0 text-xs text-slate-500">→ {m.balanceAfter}</span>
-                  </li>
-                );
-              }) : (
-                <li className="py-3 text-sm text-slate-500">{t('Koi movement record nahi')}</li>
-              )}
+                  </li>);
+
+              }) :
+              <li className="py-3 text-sm text-slate-500">{t('Koi movement record nahi')}</li>
+              }
             </ul>
           </Card>
         </div>
@@ -208,10 +208,10 @@ export default function PurchaseDetail() {
         loading={busy}
         title={`${p.purchaseNo} delete karein?`}
         message={t('Stock utna hi wapas ghat jayega aur supplier ka khata bhi ulta ho jayega. Agar wo maal bik chuka hai to delete nahi hoga.')}
-        confirmLabel="Haan, delete karein"
-      />
-    </>
-  );
+        confirmLabel={t("Haan, delete karein")} />
+      
+    </>);
+
 }
 
 function Row({ label, value, tone }) {
@@ -219,9 +219,9 @@ function Row({ label, value, tone }) {
     <div className="flex items-center justify-between">
       <dt className="text-slate-500">{label}</dt>
       <dd className={cn('tabular',
-        tone === 'green' ? 'text-emerald-700' : tone === 'muted' ? 'text-slate-400' : 'text-slate-900')}>
+      tone === 'green' ? 'text-emerald-700' : tone === 'muted' ? 'text-slate-400' : 'text-slate-900')}>
         {value}
       </dd>
-    </div>
-  );
+    </div>);
+
 }

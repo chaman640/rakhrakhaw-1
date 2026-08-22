@@ -106,7 +106,7 @@ export default function Orders() {
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Naye order')} value={c.PLACED || 0} icon={ShoppingCart}
-          tone={c.PLACED ? 'amber' : 'brand'} sub="jinpe kaam shuru nahi hua" />
+          tone={c.PLACED ? 'amber' : 'brand'} sub={t("jinpe kaam shuru nahi hua")} />
         <StatCard label={t('Chal rahe hain')} value={stats.open} icon={Clock} tone="brand"
           sub={formatMoney(stats.openAmount)} />
         <StatCard label={t('Aaj ke order')} value={stats.todayCount} icon={Calendar} tone="green"

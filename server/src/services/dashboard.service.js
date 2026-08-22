@@ -25,9 +25,64 @@ function boundaries() {
 
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
-  const trendStart = new Date(todayStart); trendStart.setDate(trendStart.getDate() - 13);
+  return { todayStart, todayEnd, yStart, yEnd, monthStart };
+}
 
-  return { todayStart, todayEnd, yStart, yEnd, monthStart, trendStart };
+/*
+  CHART KITNE DIN KA — dukaandaar chunta hai, hum tay nahi karte.
+
+  Pehle 14 din pakke the. Wo ek achha default hai par jawab sirf ek sawal ka
+  deta hai: "is hafte kaisa chal raha hai". "Pichhle saal is waqt kya tha" ya
+  "teen mahine me dhandha badha ya ghata" — un dono ke liye chart bekaar tha,
+  aur wahi sawal mahine ke aakhir me sabse zyada poochha jata hai.
+
+  Ek pech: 365 alag-alag din ka chart padha hi nahi jata — bindiyan itni paas
+  aa jati hain ki line ek dhabba ban jati hai. Isliye lambe arse me din ki
+  jagah HAFTE ya MAHINE jodte hain. Chart ki har bindiya utna hi bada tukda
+  dikhati hai jitna aankh se pakda ja sake.
+*/
+const TREND_RANGES = {
+  7: { days: 7, bucket: 'day' },
+  14: { days: 14, bucket: 'day' },
+  30: { days: 30, bucket: 'day' },
+  90: { days: 90, bucket: 'week' },
+  365: { days: 365, bucket: 'month' },
+};
+
+export const trendRangeOf = (days) => TREND_RANGES[Number(days)] || TREND_RANGES[14];
+
+/**
+ * Din wali kataar ko hafte ya mahine me jodo.
+ *
+ * Har tukde ka `date` uske PEHLE din ka hai — chart pe kram usi se lagta hai,
+ * aur click karke aage jana ho to shuruaat ka din haath me hota hai.
+ *
+ * Aakhri tukda adhoora ho sakta hai (aaj hafte ke beech me hai). Use girate
+ * nahi — wahi to sabse taaza baat hai. Bas label me "se" lagakar saaf kar
+ * dete hain ki wo abhi chal raha hai.
+ */
+function bucketTrend(rows, bucket) {
+  const out = new Map();
+  for (const r of rows) {
+    let key;
+    let label;
+    if (bucket === 'week') {
+      const st = new Date(r.d);
+      st.setDate(st.getDate() - ((st.getDay() + 6) % 7));   // Somwar
+      key = dayKey(st);
+      label = st.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    } else {
+      const st = new Date(r.d.getFullYear(), r.d.getMonth(), 1);
+      key = dayKey(st);
+      label = st.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+    }
+    const cur = out.get(key) || { date: key, label, amount: 0, bills: 0, expense: 0 };
+    cur.amount = round2(cur.amount + r.amount);
+    cur.bills += r.bills;
+    cur.expense = round2(cur.expense + r.expense);
+    out.set(key, cur);
+  }
+  return [...out.values()];
 }
 
 const dayKey = (d) => {
@@ -37,9 +92,13 @@ const dayKey = (d) => {
 
 /* ─────────────────────────────────────────────────── wholesaler ka dashboard */
 
-export async function getWholesalerDashboard(businessId, user = null) {
+export async function getWholesalerDashboard(businessId, user = null, q = {}) {
   const bid = oid(businessId);
-  const { todayStart, todayEnd, yStart, yEnd, monthStart, trendStart } = boundaries();
+  const { todayStart, todayEnd, yStart, yEnd, monthStart } = boundaries();
+
+  const rangeCfg = trendRangeOf(q.days);
+  const trendStart = new Date(todayStart);
+  trendStart.setDate(trendStart.getDate() - (rangeCfg.days - 1));
 
   /*
     "SIRF APNA KAAM" WALI HADD — dashboard pe bhi.
@@ -191,12 +250,23 @@ export async function getWholesalerDashboard(businessId, user = null) {
   // Trend me khali din bhi chahiye, warna chart me gaddha dikhta hai
   const trendMap = Object.fromEntries(trendAgg.map((t) => [t._id, t]));
   const expenseMap = Object.fromEntries((expense.byDay || []).map((e) => [e._id, e.amount]));
-  const trend = [];
-  for (let i = 13; i >= 0; i--) {
+
+  /*
+    Din ki ginti se chart banta hai, phir zarurat ho to hafte/mahine me juda
+    jata hai (upar TREND_RANGES me wajah likhi hai).
+
+    Jodne ka kaam yahan hota hai, database me nahi — kyunki khali din bhi
+    chahiye. Database sirf un dino ke jawab deta hai jinme kuch hua tha, aur
+    bina khali dino ke chart jhooth bolta hai: do bikri ke beech ka sannata
+    line me dikhta hi nahi.
+  */
+  const dinWise = [];
+  for (let i = rangeCfg.days - 1; i >= 0; i--) {
     const d = new Date(todayStart);
     d.setDate(d.getDate() - i);
     const key = dayKey(d);
-    trend.push({
+    dinWise.push({
+      d,
       date: key,
       label: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
       amount: round2(trendMap[key]?.amount || 0),
@@ -206,10 +276,25 @@ export async function getWholesalerDashboard(businessId, user = null) {
     });
   }
 
+  const trend = rangeCfg.bucket === 'day' ? dinWise.map(({ d: _d, ...rest }) => rest)
+    : bucketTrend(dinWise, rangeCfg.bucket);
+
   const today = round2(todaySale[0]?.amount || 0);
   const yesterday = round2(yesterdaySale[0]?.amount || 0);
 
   const activity = buildActivity(recentInvoices, recentOrders, recentPayments);
+
+  // Munafa — usi hisaab se jo Reports pe chalta hai
+  const { profitLossReport } = await import('./report.service.js');
+  const plRes = await profitLossReport(businessId, { from: monthStart, to: todayEnd }, user);
+  const pl = {
+    month: round2(plRes.meta?.netProfit || 0),
+    grossMonth: round2(plRes.meta?.grossProfit || 0),
+    sale: round2(plRes.meta?.netSale || 0),
+    cost: round2(plRes.meta?.cost || 0),
+    expenses: round2(plRes.meta?.expenses || 0),
+    marginPct: plRes.meta?.netMarginPct ?? null,
+  };
 
   /**
    * Staff ko sirf wahi dikhe jiski ijazat hai.
@@ -240,6 +325,19 @@ export async function getWholesalerDashboard(businessId, user = null) {
       month: expense.month,
       monthCount: expense.monthCount,
     },
+    /*
+      IS MAHINE KA ASLI FAYDA — dashboard pe hi.
+
+      "Aaj ki sale ₹1,20,000" bada dikhta hai par wo dukaandaar ka sawal nahi
+      hai. Uska sawal ye hai: "isme se BACHA kitna?" Uska jawab abhi Reports
+      me chhupa tha — teen tap door, aur wo page mahine me ek baar khulta hai.
+      Nateeja: bikri roz dikhti thi, munafa kabhi nahi.
+
+      Hisaab yahan DOBARA nahi likha — `profitLossReport` hi bulate hain. Do
+      jagah likhne se dono dheere dheere alag ho jate, aur ek din dashboard
+      kuch aur kehta aur report kuch aur — dukaandaar dono par bharosa khota.
+    */
+    profit: pl,
     orders: {
       new: statusMap[ORDER_STATUS.PLACED] || 0,
       packed: statusMap[ORDER_STATUS.PACKED] || 0,
@@ -323,6 +421,15 @@ export async function getWholesalerDashboard(businessId, user = null) {
   if (!can('reports:view')) {
     delete full.trend;
     delete full.topItems;
+    /*
+      Munafa sabse sambhal kar rakhne wali baat hai.
+
+      Sale kitni hui ye salesman ko pata hi hota hai — bill wahi banata hai.
+      Par "isme se kitna bacha" me lagat hai, aur lagat matlab supplier ka
+      rate. Wo poori dukaan ka bhed hai, aur ek tile me chhap kar har us aadmi
+      tak pahunch jata jise Reports kholne ki bhi ijazat nahi.
+    */
+    delete full.profit;
     if (full.sale) {
       delete full.sale.month;
       delete full.sale.monthBills;

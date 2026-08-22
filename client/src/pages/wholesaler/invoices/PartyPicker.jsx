@@ -78,7 +78,9 @@ export default function PartyPicker({ value, onChange, disabled }) {
     }));
   }, []);
 
-  async function createParty() {
+  // `phoneArg` null = number wale raste se aaya (jo type kiya wahi lo).
+  // Khali string = naam wale raste se aaya, matlab number hai hi nahi.
+  async function createParty(phoneArg = null) {
     if (!newForm.name.trim()) { toast.error('Naam to daal dijiye'); return; }
     setCreating(true);
     try {
@@ -86,7 +88,8 @@ export default function PartyPicker({ value, onChange, disabled }) {
         type: 'retailer',
         name: newForm.name.trim(),
         shopName: newForm.shopName.trim(),
-        phone: digits,
+        // `phoneArg` khali string ho sakti hai — "number hai hi nahi"
+        phone: phoneArg === null ? digits : phoneArg,
       });
       const party = res.data;
       onChange({ value: party._id, label: party.shopName || party.name, raw: party });
@@ -152,9 +155,40 @@ export default function PartyPicker({ value, onChange, disabled }) {
           fetchOptions={fetchParties}
           emptyText={t('Koi active retailer nahi mila')}
         />
+
+        {/*
+          BINA NUMBER KE NAYA GRAAHAK.
+
+          Ye poore raste ki jad thi. "Naam se dhoondho" sirf DHOONDHTA tha —
+          naya banane ka ek hi rasta tha, number wala. Mandi me aadha graahak
+          number deta hi nahi, isliye dukaandaar ya to jhootha number bhar
+          deta tha (9999999999, ya apna hi) ya bill app me daalta hi nahi.
+          Pehle se list me nakli number bhar jate aur WhatsApp wali yaad-dahani
+          galat aadmi ko chali jati; doosre se poori bikri hi hisaab se gayab
+          ho jati.
+        */}
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-sm font-medium text-slate-900">{t('Number nahi hai?')}</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {t('Sirf naam se bhi bill ban jayega. Number baad me kabhi bhi jod sakte hain.')}
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Input label={t('Naam')} value={newForm.name}
+              onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder={t('Suresh Kumar')} />
+            <Input label={t('Dukaan ka naam')} value={newForm.shopName}
+              onChange={(e) => setNewForm((f) => ({ ...f, shopName: e.target.value }))}
+              placeholder={t('Suresh Auto Store')} hint={t('Bill pe yahi chhapega')} />
+          </div>
+          <Button className="mt-3" size="sm" icon={CheckCircle2} loading={creating}
+            onClick={() => createParty('')} disabled={!newForm.name.trim()}>
+            {t('Bina number ke jodein')}
+          </Button>
+        </div>
+
         {/* -my-1.5 + py-2 = dikhne me link, par tap ka ghera 32px+ */}
         <button type="button" onClick={() => setMode('phone')}
-          className="-my-1.5 mt-1 flex items-center gap-1.5 rounded py-2 text-xs font-medium text-brand-700 hover:underline focus-ring">
+          className="-my-1.5 mt-2 flex items-center gap-1.5 rounded py-2 text-xs font-medium text-brand-700 hover:underline focus-ring">
           <Phone size={13} /> {t('Number se dhundhein')}
         </button>
       </div>
@@ -210,8 +244,11 @@ export default function PartyPicker({ value, onChange, disabled }) {
               placeholder={t('Suresh Auto Store')} hint={t('Bill pe yahi chhapega')} />
           </div>
 
+          {/* Seedha `onClick={createParty}` mat likhna — React pehla argument
+              me CLICK KA EVENT bhejta hai, aur wo `phoneArg` ban kar phone ki
+              jagah chala jata hai */}
           <Button className="mt-3" size="sm" icon={CheckCircle2} loading={creating}
-            onClick={createParty} disabled={!newForm.name.trim()}>
+            onClick={() => createParty(null)} disabled={!newForm.name.trim()}>
             {t('Jodkar aage badhein')}
           </Button>
         </div>

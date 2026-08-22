@@ -163,7 +163,7 @@ export default function Combobox({
         >
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400">
-              <Spinner size={16} /> Dhundh raha hoon...
+              <Spinner size={16} /> {t('Dhundh raha hoon...')}
             </div>
           ) : !options.length ? (
             <div className="px-3 py-6 text-center text-sm text-slate-500">

@@ -1,6 +1,7 @@
 import { forwardRef, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 const Select = forwardRef(function Select(
   { label, error, hint, required, options = [], placeholder = 'Choose...', className, children, id, ...props },
@@ -33,11 +34,22 @@ const Select = forwardRef(function Select(
           )}
           {...props}
         >
-          {placeholder && <option value="">{placeholder}</option>}
+          {/*
+            Option ka naam yahan `t()` se guzarta hai, bulane wale ke yahan
+            nahi. Chips aur Tabs pehle se aisa hi karte the — Select reh gaya
+            tha, aur uska nateeja ye tha ki har dropdown me chunav Hinglish
+            me hi khada rehta tha: "Stock (zyada pehle)" English chunne par
+            bhi wahi ka wahi. Anuvaad kitab me maujood tha, bas koi use maang
+            hi nahi raha tha.
+
+            Ek jagah theek karne se app ke saare dropdown theek ho jate hain,
+            aur kisi bulane wale ko kuch badalna nahi padta.
+          */}
+          {placeholder && <option value="">{t(placeholder)}</option>}
           {options.map((opt) => {
             const value = typeof opt === 'string' ? opt : opt.value;
             const labelText = typeof opt === 'string' ? opt : opt.label;
-            return <option key={value} value={value}>{labelText}</option>;
+            return <option key={value} value={value}>{t(labelText)}</option>;
           })}
           {children}
         </select>

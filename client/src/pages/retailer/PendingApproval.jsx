@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { t } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Ban, RefreshCw, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -33,9 +34,9 @@ export default function PendingApproval() {
       <div className="flex flex-col items-center py-4 text-center">
         <div
           className={`mb-4 flex h-14 w-14 items-center justify-center rounded-full ${
-            blocked ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'
-          }`}
-        >
+          blocked ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`
+          }>
+          
           {blocked ? <Ban size={24} /> : <Clock size={24} />}
         </div>
 
@@ -44,26 +45,26 @@ export default function PendingApproval() {
         </h2>
 
         <p className="mt-2 max-w-xs text-sm text-slate-500">
-          {blocked
-            ? `${business?.name || 'Wholesaler'} ne aapka access rok diya hai. Unse baat karein.`
-            : `${business?.name || 'Wholesaler'} ne abhi aapki dukaan approve nahi ki. Approve hote hi catalog apne aap khul jayega.`}
+          {blocked ?
+          `${business?.name || 'Wholesaler'} ne aapka access rok diya hai. Unse baat karein.` :
+          `${business?.name || 'Wholesaler'} ne abhi aapki dukaan approve nahi ki. Approve hote hi catalog apne aap khul jayega.`}
         </p>
 
-        {party?.shopName && (
-          <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+        {party?.shopName &&
+        <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
             {party.shopName} · {party.phone}
           </p>
-        )}
+        }
 
         <div className="mt-6 flex w-full gap-2">
-          <Button variant="secondary" className="flex-1" icon={RefreshCw} onClick={refresh}>
-            Check karein
+          <Button variant="secondary" className="flex-1" icon={RefreshCw} onClick={refresh}>{t("Check karein")}
+
           </Button>
-          <Button variant="ghost" icon={LogOut} onClick={handleLogout}>
-            Logout
+          <Button variant="ghost" icon={LogOut} onClick={handleLogout}>{t("Logout")}
+
           </Button>
         </div>
       </div>
-    </AuthShell>
-  );
+    </AuthShell>);
+
 }

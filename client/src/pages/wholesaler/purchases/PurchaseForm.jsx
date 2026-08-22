@@ -6,8 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Textarea, Combobox,
-  Switch, Badge, LineItemCard, NumField, useToast,
-} from '@/components/ui';
+  Switch, Badge, LineItemCard, NumField, useToast } from
+'@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -36,7 +36,7 @@ export default function PurchaseForm() {
     const sid = params.get('supplier');
     if (sid) {
       api.get(`/parties/${sid}`).then((r) =>
-        setSupplier({ value: r.data._id, label: r.data.shopName || r.data.name })).catch(() => {});
+      setSupplier({ value: r.data._id, label: r.data.shopName || r.data.name })).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -47,7 +47,7 @@ export default function PurchaseForm() {
       value: p._id,
       label: p.shopName || p.name,
       sublabel: p.phone,
-      right: p.balance > 0 ? formatMoney(p.balance) : '',
+      right: p.balance > 0 ? formatMoney(p.balance) : ''
     }));
   }, []);
 
@@ -58,12 +58,12 @@ export default function PurchaseForm() {
       label: i.name,
       sublabel: [i.sku, i.category].filter(Boolean).join(' · '),
       right: formatQty(i.stockQty, i.unit),
-      raw: i,
+      raw: i
     }));
   }, []);
 
   function setRow(key, patch) {
-    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+    setRows((rs) => rs.map((r) => r.key === key ? { ...r, ...patch } : r));
   }
 
   function pickItem(key, opt) {
@@ -71,18 +71,18 @@ export default function PurchaseForm() {
     setRow(key, {
       itemId: i._id, name: i.name, unit: i.unit, stockQty: i.stockQty,
       rate: String(i.purchasePrice || ''), gstRate: i.gstRate || 0,
-      qty: rows.find((r) => r.key === key)?.qty || '1',
+      qty: rows.find((r) => r.key === key)?.qty || '1'
     });
   }
 
-  function addRow() { setRows((rs) => [...rs, emptyRow()]); }
+  function addRow() {setRows((rs) => [...rs, emptyRow()]);}
   function removeRow(key) {
-    setRows((rs) => (rs.length === 1 ? [emptyRow()] : rs.filter((r) => r.key !== key)));
+    setRows((rs) => rs.length === 1 ? [emptyRow()] : rs.filter((r) => r.key !== key));
   }
 
   // ---- Live totals (server pe bhi yahi hisaab hota hai) ----
   const totals = useMemo(() => {
-    let subTotal = 0, discountTotal = 0, taxableTotal = 0, taxTotal = 0;
+    let subTotal = 0,discountTotal = 0,taxableTotal = 0,taxTotal = 0;
     for (const r of rows) {
       if (!r.itemId) continue;
       const qty = Number(r.qty || 0);
@@ -90,7 +90,7 @@ export default function PurchaseForm() {
       const disc = Number(r.discount || 0);
       const gross = round2(qty * rate);
       const taxable = round2(gross - disc);
-      const tax = gstEnabled ? round2((taxable * Number(r.gstRate || 0)) / 100) : 0;
+      const tax = gstEnabled ? round2(taxable * Number(r.gstRate || 0) / 100) : 0;
       subTotal = round2(subTotal + gross);
       discountTotal = round2(discountTotal + disc);
       taxableTotal = round2(taxableTotal + taxable);
@@ -108,7 +108,7 @@ export default function PurchaseForm() {
 
   async function save() {
     // Supplier ab zaroori nahi — nakad kharid bhi entry ho sakti hai
-    if (!filledRows.length) { toast.error('Kam se kam ek item daalein'); return; }
+    if (!filledRows.length) {toast.error('Kam se kam ek item daalein');return;}
 
     setSaving(true);
     try {
@@ -121,11 +121,11 @@ export default function PurchaseForm() {
           qty: Number(r.qty),
           rate: Number(r.rate || 0),
           discount: Number(r.discount || 0),
-          gstRate: gstEnabled ? Number(r.gstRate || 0) : 0,
+          gstRate: gstEnabled ? Number(r.gstRate || 0) : 0
         })),
         paidAmount: Number(paidAmount || 0),
         notes,
-        updatePurchasePrice: updatePrice,
+        updatePurchasePrice: updatePrice
       });
       toast.success(res.message);
       navigate(`/purchases/${res.data._id}`, { replace: true });
@@ -140,8 +140,8 @@ export default function PurchaseForm() {
     <>
       <PageHeader
         title={t('Nayi purchase')}
-        subtitle={preview ? `Number: ${preview}` : 'Supplier se aaya maal'}
-      />
+        subtitle={preview ? `Number: ${preview}` : 'Supplier se aaya maal'} />
+      
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
@@ -159,22 +159,22 @@ export default function PurchaseForm() {
                   fetchOptions={fetchSuppliers}
                   emptyText={t('Koi supplier nahi mila')}
                   onCreateNew={() => navigate('/suppliers')}
-                  createNewLabel="Suppliers page pe jaayein"
-                />
+                  createNewLabel={t("Suppliers page pe jaayein")} />
+                
                 {/*
-                  Ye line "khali chhod sakte hain" se zyada kehti hai — wo
-                  batati hai ki khali chhodne par HOGA KYA. Bina uske
-                  dukaandaar supplier isliye bhar deta tha ki use pata hi nahi
-                  tha ki chhodne se kya bigdega.
-                */}
-                {!supplier && (
-                  <p className="mt-1.5 text-xs text-slate-500">
+                   Ye line "khali chhod sakte hain" se zyada kehti hai — wo
+                   batati hai ki khali chhodne par HOGA KYA. Bina uske
+                   dukaandaar supplier isliye bhar deta tha ki use pata hi nahi
+                   tha ki chhodne se kya bigdega.
+                  */}
+                {!supplier &&
+                <p className="mt-1.5 text-xs text-slate-500">
                     {t('Khali chhod dein to ye nakad kharid maani jayegi — stock aur lagat chadhegi, kisi ka khata nahi banega.')}
                   </p>
-                )}
+                }
               </div>
               <Input label={t('Supplier ka bill number')} value={billNo}
-                onChange={(e) => setBillNo(e.target.value)} placeholder={t('ST/2026/119')} />
+              onChange={(e) => setBillNo(e.target.value)} placeholder={t('ST/2026/119')} />
               <Input label={t('Tareekh')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </Card>
@@ -208,7 +208,7 @@ export default function PurchaseForm() {
                     const qty = Number(r.qty || 0);
                     const rate = Number(r.rate || 0);
                     const taxable = round2(qty * rate - Number(r.discount || 0));
-                    const tax = gstEnabled ? round2((taxable * Number(r.gstRate || 0)) / 100) : 0;
+                    const tax = gstEnabled ? round2(taxable * Number(r.gstRate || 0) / 100) : 0;
                     return (
                       <tr key={r.key} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2">
@@ -220,54 +220,54 @@ export default function PurchaseForm() {
                             fetchOptions={fetchItems}
                             emptyText={t('Koi item nahi mila')}
                             onCreateNew={() => navigate('/items')}
-                            createNewLabel="Items page pe jaayein"
-                          />
-                          {r.itemId && (
-                            <p className="mt-1 text-xs text-slate-400">
-                              Abhi stock: {formatQty(r.stockQty, r.unit)}
-                            </p>
-                          )}
+                            createNewLabel={t("Items page pe jaayein")} />
+                          
+                          {r.itemId &&
+                          <p className="mt-1 text-xs text-slate-400">{t("Abhi stock: {a0}", { a0:
+                              formatQty(r.stockQty, r.unit) })}
+                          </p>
+                          }
                         </td>
                         <td className="px-3 py-2">
                           <input type="number" step="0.01" min="0" inputMode="decimal"
-                            aria-label={`Row ${idx + 1} quantity`}
-                            value={r.qty} onChange={(e) => setRow(r.key, { qty: e.target.value })}
-                            className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
+                          aria-label={`Row ${idx + 1} quantity`}
+                          value={r.qty} onChange={(e) => setRow(r.key, { qty: e.target.value })}
+                          className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
                         </td>
                         <td className="px-3 py-2">
                           <input type="number" step="0.01" min="0" inputMode="decimal"
-                            aria-label={`Row ${idx + 1} rate`}
-                            value={r.rate} onChange={(e) => setRow(r.key, { rate: e.target.value })}
-                            className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
+                          aria-label={`Row ${idx + 1} rate`}
+                          value={r.rate} onChange={(e) => setRow(r.key, { rate: e.target.value })}
+                          className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
                         </td>
                         <td className="px-3 py-2">
                           <input type="number" step="0.01" min="0" inputMode="decimal"
-                            aria-label={`Row ${idx + 1} discount`}
-                            value={r.discount} onChange={(e) => setRow(r.key, { discount: e.target.value })}
-                            className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
+                          aria-label={`Row ${idx + 1} discount`}
+                          value={r.discount} onChange={(e) => setRow(r.key, { discount: e.target.value })}
+                          className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
                         </td>
-                        {gstEnabled && (
-                          <td className="px-3 py-2">
+                        {gstEnabled &&
+                        <td className="px-3 py-2">
                             <input type="number" step="1" min="0" max="28" inputMode="decimal"
-                              aria-label={`Row ${idx + 1} GST`}
-                              value={r.gstRate} onChange={(e) => setRow(r.key, { gstRate: e.target.value })}
-                              className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
+                          aria-label={`Row ${idx + 1} GST`}
+                          value={r.gstRate} onChange={(e) => setRow(r.key, { gstRate: e.target.value })}
+                          className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
                           </td>
-                        )}
+                        }
                         <td className="tabular px-3 py-2 text-right font-medium text-slate-900">
                           {r.itemId ? formatMoney(taxable + tax) : '—'}
                         </td>
                         <td className="px-2 py-2">
                           <button type="button" onClick={() => removeRow(r.key)}
-                            aria-label={`Row ${idx + 1} hatayein`}
-                            // h-9 w-9 = 36px. p-1.5 pe ye 28px ka tha aur tablet pe ungli se
-                            // chookta tha (mobile-audit ne pakda)
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600">
+                          aria-label={`Row ${idx + 1} hatayein`}
+                          // h-9 w-9 = 36px. p-1.5 pe ye 28px ka tha aur tablet pe ungli se
+                          // chookta tha (mobile-audit ne pakda)
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600">
                             <Trash2 size={16} />
                           </button>
                         </td>
-                      </tr>
-                    );
+                      </tr>);
+
                   })}
                 </tbody>
               </table>
@@ -278,44 +278,44 @@ export default function PurchaseForm() {
               {rows.map((r, idx) => {
                 const qty = Number(r.qty || 0);
                 const taxable = round2(qty * Number(r.rate || 0) - Number(r.discount || 0));
-                const tax = gstEnabled ? round2((taxable * Number(r.gstRate || 0)) / 100) : 0;
+                const tax = gstEnabled ? round2(taxable * Number(r.gstRate || 0) / 100) : 0;
                 return (
                   <LineItemCard
                     key={r.key}
                     index={idx}
                     onRemove={() => removeRow(r.key)}
                     total={r.itemId ? formatMoney(taxable + tax) : '—'}
-                    picker={(
-                      <Combobox
-                        placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
-                        onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
-                        emptyText={t('Koi item nahi mila')}
-                        onCreateNew={() => navigate('/items')}
-                        createNewLabel="Items page pe jaayein"
-                      />
-                    )}
-                    note={r.itemId && (
-                      <p className="mt-1.5 text-xs text-slate-400">
-                        Abhi stock: {formatQty(r.stockQty, r.unit)}
-                      </p>
-                    )}
-                  >
+                    picker={
+                    <Combobox
+                      placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
+                      onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
+                      emptyText={t('Koi item nahi mila')}
+                      onCreateNew={() => navigate('/items')}
+                      createNewLabel={t("Items page pe jaayein")} />
+
+                    }
+                    note={r.itemId &&
+                    <p className="mt-1.5 text-xs text-slate-400">{t("Abhi stock: {a0}", { a0:
+                        formatQty(r.stockQty, r.unit) })}
+                    </p>
+                    }>
+                    
                     <NumField label={t('Qty')} srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
-                      value={r.qty}
-                      onChange={(e) => setRow(r.key, { qty: e.target.value })} />
+                    value={r.qty}
+                    onChange={(e) => setRow(r.key, { qty: e.target.value })} />
                     <NumField label={t('Rate')} srLabel={`Item ${idx + 1} rate`} step="0.01" min="0"
-                      value={r.rate}
-                      onChange={(e) => setRow(r.key, { rate: e.target.value })} />
+                    value={r.rate}
+                    onChange={(e) => setRow(r.key, { rate: e.target.value })} />
                     <NumField label={t('Discount')} srLabel={`Item ${idx + 1} discount`} step="0.01" min="0"
-                      value={r.discount}
-                      onChange={(e) => setRow(r.key, { discount: e.target.value })} />
-                    {gstEnabled && (
-                      <NumField label={t('GST %')} srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
-                        value={r.gstRate}
-                        onChange={(e) => setRow(r.key, { gstRate: e.target.value })} />
-                    )}
-                  </LineItemCard>
-                );
+                    value={r.discount}
+                    onChange={(e) => setRow(r.key, { discount: e.target.value })} />
+                    {gstEnabled &&
+                    <NumField label={t('GST %')} srLabel={`Item ${idx + 1} GST`} step="1" min="0" max="28"
+                    value={r.gstRate}
+                    onChange={(e) => setRow(r.key, { gstRate: e.target.value })} />
+                    }
+                  </LineItemCard>);
+
               })}
             </div>
 
@@ -326,7 +326,7 @@ export default function PurchaseForm() {
 
           <Card>
             <Textarea label={t('Note')} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
-              placeholder={t('Gaadi number / kis truck se aaya')} />
+            placeholder={t('Gaadi number / kis truck se aaya')} />
           </Card>
         </div>
 
@@ -337,13 +337,13 @@ export default function PurchaseForm() {
 
             <dl className="space-y-2 text-sm">
               <Row label={t('Kul maal')} value={formatMoney(totals.subTotal)} />
-              {totals.discountTotal > 0 && (
-                <Row label={t('Discount')} value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
-              )}
+              {totals.discountTotal > 0 &&
+              <Row label={t('Discount')} value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
+              }
               {gstEnabled && <Row label="GST" value={formatMoney(totals.taxTotal)} />}
-              {totals.roundOff !== 0 && (
-                <Row label={t('Round off')} value={formatMoney(totals.roundOff)} tone="muted" />
-              )}
+              {totals.roundOff !== 0 &&
+              <Row label={t('Round off')} value={formatMoney(totals.roundOff)} tone="muted" />
+              }
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                 <dt className="font-semibold text-slate-900">{t('Kul dena')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">{formatMoney(totals.grandTotal)}</dd>
@@ -351,33 +351,33 @@ export default function PurchaseForm() {
             </dl>
 
             {/*
-              Supplier hi na ho to "kitna diya / kitna baaki" ka koi matlab
-              nahi — baaki kisko dena hai? Isliye ye poora khaana hat jata hai
-              aur uski jagah seedhi baat likhi hai. Khaana dikhakar bekaar kar
-              dena ("aap bhar to sakte hain par kuch nahi hoga") isse bura hai.
-            */}
-            {supplier ? (
-              <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
+               Supplier hi na ho to "kitna diya / kitna baaki" ka koi matlab
+               nahi — baaki kisko dena hai? Isliye ye poora khaana hat jata hai
+               aur uski jagah seedhi baat likhi hai. Khaana dikhakar bekaar kar
+               dena ("aap bhar to sakte hain par kuch nahi hoga") isse bura hai.
+              */}
+            {supplier ?
+            <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
                 <Input label={t('Abhi kitna diya')} type="number" step="0.01" min="0" prefix="₹"
-                  value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
-                  hint={t('Khali chhod do to poora udhaar')} />
+              value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
+              hint={t('Khali chhod do to poora udhaar')} />
 
                 <div className={cn(
-                  'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
-                  due > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'
-                )}>
+                'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
+                due > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'
+              )}>
                   <span>{due > 0 ? 'Baaki dena hai' : 'Poora ho gaya'}</span>
                   <strong className="tabular">{formatMoney(due)}</strong>
                 </div>
-              </div>
-            ) : (
-              <div className="mt-5 border-t border-slate-200 pt-4">
+              </div> :
+
+            <div className="mt-5 border-t border-slate-200 pt-4">
                 <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
                   <span>{t('Nakad kharid — poora chukta')}</span>
                   <strong className="tabular">{formatMoney(totals.grandTotal)}</strong>
                 </div>
               </div>
-            )}
+            }
 
             <div className="mt-5 border-t border-slate-200 pt-4">
               <Switch
@@ -385,26 +385,26 @@ export default function PurchaseForm() {
                 checked={updatePrice}
                 onChange={setUpdatePrice}
                 label={t('Purchase price update karein')}
-                description={t('Item ka purchase price is bill ke rate se badal jayega')}
-              />
+                description={t('Item ka purchase price is bill ke rate se badal jayega')} />
+              
             </div>
 
             <Button className="mt-5 w-full" size="lg" icon={Save} loading={saving} onClick={save}
-              disabled={!filledRows.length}>
+            disabled={!filledRows.length}>
               {t('Save karein')}
             </Button>
 
             <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">
               <Info size={13} className="mt-0.5 shrink-0" />
-              {supplier
-                ? `Save karte hi ${filledRows.length || 0} item ka stock badh jayega aur supplier ke khate me ${formatMoney(totals.grandTotal)} chadh jayega.`
-                : `Save karte hi ${filledRows.length || 0} item ka stock badh jayega. Kisi ka khata nahi banega.`}
+              {supplier ?
+              `Save karte hi ${filledRows.length || 0} item ka stock badh jayega aur supplier ke khate me ${formatMoney(totals.grandTotal)} chadh jayega.` :
+              `Save karte hi ${filledRows.length || 0} item ka stock badh jayega. Kisi ka khata nahi banega.`}
             </p>
           </Card>
         </div>
       </div>
-    </>
-  );
+    </>);
+
 }
 
 function Row({ label, value, tone }) {
@@ -412,9 +412,9 @@ function Row({ label, value, tone }) {
     <div className="flex items-center justify-between">
       <dt className="text-slate-500">{label}</dt>
       <dd className={cn('tabular',
-        tone === 'green' ? 'text-emerald-700' : tone === 'muted' ? 'text-slate-400' : 'text-slate-900')}>
+      tone === 'green' ? 'text-emerald-700' : tone === 'muted' ? 'text-slate-400' : 'text-slate-900')}>
         {value}
       </dd>
-    </div>
-  );
+    </div>);
+
 }

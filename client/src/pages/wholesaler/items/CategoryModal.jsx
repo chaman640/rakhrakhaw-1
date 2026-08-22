@@ -27,7 +27,7 @@ export default function CategoryModal({ open, onClose, onChanged }) {
     }
   }
 
-  useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open]);
+  useEffect(() => {if (open) load(); /* eslint-disable-next-line */}, [open]);
 
   async function add() {
     const name = newName.trim();
@@ -82,8 +82,8 @@ export default function CategoryModal({ open, onClose, onChanged }) {
         size="md"
         title={t('Categories')}
         description={t('Items ko group karne ke liye')}
-        footer={<Button variant="secondary" onClick={onClose}>{t('Band karein')}</Button>}
-      >
+        footer={<Button variant="secondary" onClick={onClose}>{t('Band karein')}</Button>}>
+        
         <div className="space-y-4">
           <div className="flex items-end gap-2">
             <Input
@@ -91,69 +91,69 @@ export default function CategoryModal({ open, onClose, onChanged }) {
               placeholder={t('Bearings')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
-            />
+              onKeyDown={(e) => {if (e.key === 'Enter') {e.preventDefault();add();}}} />
+            
             <Button icon={Plus} onClick={add} loading={adding}>{t('Add')}</Button>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-8 text-slate-400"><Spinner /></div>
-          ) : !data.categories.length ? (
-            <EmptyState
-              icon={Tag}
-              title={t('Koi category nahi')}
-              message={t('Bearings, Chains, Plugs — jaise apne maal ke hisaab se bana lein.')}
-            />
-          ) : (
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {data.categories.map((c) => (
-                <li key={c._id} className="flex items-center gap-2 px-3 py-2.5">
-                  {editingId === c._id ? (
-                    <>
+          {loading ?
+          <div className="flex justify-center py-8 text-slate-400"><Spinner /></div> :
+          !data.categories.length ?
+          <EmptyState
+            icon={Tag}
+            title={t('Koi category nahi')}
+            message={t('Bearings, Chains, Plugs — jaise apne maal ke hisaab se bana lein.')} /> :
+
+
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+              {data.categories.map((c) =>
+            <li key={c._id} className="flex items-center gap-2 px-3 py-2.5">
+                  {editingId === c._id ?
+              <>
                       <input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(c._id); }}
-                        autoFocus
-                        className="h-9 flex-1 rounded-lg border border-slate-300 px-2 text-sm focus-ring"
-                      />
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {if (e.key === 'Enter') saveEdit(c._id);}}
+                  autoFocus
+                  className="h-9 flex-1 rounded-lg border border-slate-300 px-2 text-sm focus-ring" />
+                
                       <button onClick={() => saveEdit(c._id)} className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50">
                         <Check size={16} />
                       </button>
                       <button onClick={() => setEditingId(null)} className="rounded p-1.5 text-slate-400 hover:bg-slate-100">
                         <X size={16} />
                       </button>
-                    </>
-                  ) : (
-                    <>
+                    </> :
+
+              <>
                       <span className="flex-1 truncate text-sm font-medium text-slate-800">{c.name}</span>
-                      <Badge>{c.itemCount} item</Badge>
+                      <Badge>{t("{a0} item", { a0: c.itemCount })}</Badge>
                       <button
-                        onClick={() => { setEditingId(c._id); setEditName(c.name); }}
-                        className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        aria-label={t('Naam badlein')}
-                      >
+                  onClick={() => {setEditingId(c._id);setEditName(c.name);}}
+                  className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  aria-label={t('Naam badlein')}>
+                  
                         <Pencil size={15} />
                       </button>
                       <button
-                        onClick={() => setConfirmDelete(c)}
-                        className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        aria-label={t('Hatayein')}
-                      >
+                  onClick={() => setConfirmDelete(c)}
+                  className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  aria-label={t('Hatayein')}>
+                  
                         <Trash2 size={15} />
                       </button>
                     </>
-                  )}
+              }
                 </li>
-              ))}
+            )}
             </ul>
-          )}
+          }
 
-          {data.uncategorizedCount > 0 && (
-            <p className="text-xs text-slate-500">
-              {data.uncategorizedCount} item bina category ke hain.
-            </p>
-          )}
+          {data.uncategorizedCount > 0 &&
+          <p className="text-xs text-slate-500">{t("{a0} item bina category ke hain.", { a0:
+              data.uncategorizedCount })}
+          </p>
+          }
         </div>
       </Modal>
 
@@ -164,12 +164,12 @@ export default function CategoryModal({ open, onClose, onChanged }) {
         loading={busy}
         title={`"${confirmDelete?.name}" hatayein?`}
         message={
-          confirmDelete?.itemCount
-            ? `Iske ${confirmDelete.itemCount} item delete NAHI honge — wo "bina category" me chale jayenge.`
-            : 'Ye category hat jayegi.'
+        confirmDelete?.itemCount ?
+        `Iske ${confirmDelete.itemCount} item delete NAHI honge — wo "bina category" me chale jayenge.` :
+        'Ye category hat jayegi.'
         }
-        confirmLabel="Haan, hatayein"
-      />
-    </>
-  );
+        confirmLabel={t("Haan, hatayein")} />
+      
+    </>);
+
 }

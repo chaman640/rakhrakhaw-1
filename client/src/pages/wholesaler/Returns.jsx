@@ -128,7 +128,7 @@ export default function Returns() {
           <EmptyState
             icon={PackageX}
             title={t('Abhi koi return nahi')}
-            message="Retailer maal wapas kare ya aap supplier ko wapas bhejein — yahin entry karein. Bill kholkar 'Maal wapas aaya' dabana sabse aasan hai."
+            message={t("Retailer maal wapas kare ya aap supplier ko wapas bhejein — yahin entry karein. Bill kholkar 'Maal wapas aaya' dabana sabse aasan hai.")}
             action={<Button icon={Plus} onClick={() => navigate('/returns/new')}>{t('Pehla return')}</Button>}
           />
         ) : (

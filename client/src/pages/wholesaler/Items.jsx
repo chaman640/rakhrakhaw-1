@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus, Package, IndianRupee, TriangleAlert, XCircle, Tag,
-  Upload, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck,
-} from 'lucide-react';
+  Upload, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck } from
+'lucide-react';
 import api from '@/lib/api';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { downloadText } from '@/lib/download';
 import { formatMoney, formatQty, expiryInfo } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Select, Table, Badge,
-  SearchInput, Chips, Pagination, EmptyState, ConfirmModal, SkeletonRows, useToast,
-} from '@/components/ui';
+  SearchInput, Chips, Pagination, EmptyState, ConfirmModal, SkeletonRows, useToast } from
+'@/components/ui';
 
 import ItemFormModal from './items/ItemFormModal';
 import StockModal from './items/StockModal';
@@ -22,13 +23,13 @@ import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 const SORTS = [
-  { value: 'name', label: 'Naam (A-Z)' },
-  { value: '-name', label: 'Naam (Z-A)' },
-  { value: 'stockQty', label: 'Stock (kam pehle)' },
-  { value: '-stockQty', label: 'Stock (zyada pehle)' },
-  { value: '-createdAt', label: 'Naye pehle' },
-  { value: '-salePrice', label: 'Mehnga pehle' },
-];
+{ value: 'name', label: 'Naam (A-Z)' },
+{ value: '-name', label: 'Naam (Z-A)' },
+{ value: 'stockQty', label: 'Stock (kam pehle)' },
+{ value: '-stockQty', label: 'Stock (zyada pehle)' },
+{ value: '-createdAt', label: 'Naye pehle' },
+{ value: '-salePrice', label: 'Mehnga pehle' }];
+
 
 export default function Items() {
   const toast = useToast();
@@ -61,21 +62,22 @@ export default function Items() {
     try {
       const res = await api.get('/categories');
       setCategories(res.data.categories);
-    } catch { /* chup-chaap */ }
+    } catch {/* chup-chaap */}
   }, []);
 
   const loadStats = useCallback(async () => {
     try {
       const res = await api.get('/items/stats');
       setStats(res.data);
-    } catch { /* chup-chaap */ }
+    } catch {/* chup-chaap */}
   }, []);
 
-  const loadItems = useCallback(async () => {
-    setLoading(true);
+  const loadItems = useCallback(async (chupChaap = false) => {
+    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
+    if (!chupChaap) setLoading(true);
     try {
       const res = await api.get('/items', {
-        params: { q: debouncedQ, categoryId, stock, expiry, sort, page, limit: 25 },
+        params: { q: debouncedQ, categoryId, stock, expiry, sort, page, limit: 25 }
       });
       setItems(res.data);
       setMeta(res.meta);
@@ -87,16 +89,18 @@ export default function Items() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, categoryId, stock, expiry, sort, page]);
 
-  useEffect(() => { loadCategories(); loadStats(); }, [loadCategories, loadStats]);
-  useEffect(() => { loadItems(); }, [loadItems]);
-  useEffect(() => { setPage(1); }, [debouncedQ, categoryId, stock, expiry, sort]);
+  useEffect(() => {loadCategories();loadStats();}, [loadCategories, loadStats]);
+  useEffect(() => {loadItems();}, [loadItems]);
+  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
+  useAutoRefresh(loadItems);
+  useEffect(() => {setPage(1);}, [debouncedQ, categoryId, stock, expiry, sort]);
 
   function refreshAll() {
-    loadItems(); loadStats(); loadCategories(); setSelected([]);
+    loadItems();loadStats();loadCategories();setSelected([]);
   }
 
   const toggleSelect = (id) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
 
   const allSelected = items.length > 0 && selected.length === items.length;
   const toggleSelectAll = () => setSelected(allSelected ? [] : items.map((i) => i._id));
@@ -129,105 +133,105 @@ export default function Items() {
 
   const columns = useMemo(() => {
     const cols = [
-      {
-        key: 'select',
-        width: 44,
-        header: (
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onChange={toggleSelectAll}
-            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
-            aria-label={t('Sab chunein')}
-          />
-        ),
-        render: (row) => (
-          <input
-            type="checkbox"
-            checked={selected.includes(row._id)}
-            onChange={() => toggleSelect(row._id)}
-            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
-            aria-label={`${row.name} chunein`}
-          />
-        ),
-      },
-      {
-        key: 'name',
-        header: t('Item'),
-        render: (row) => (
-          <div className="flex items-center gap-3">
-            {row.imageUrl ? (
-              <img src={row.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+    {
+      key: 'select',
+      width: 44,
+      header:
+      <input
+        type="checkbox"
+        checked={allSelected}
+        onChange={toggleSelectAll}
+        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
+        aria-label={t('Sab chunein')} />,
+
+
+      render: (row) =>
+      <input
+        type="checkbox"
+        checked={selected.includes(row._id)}
+        onChange={() => toggleSelect(row._id)}
+        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
+        aria-label={`${row.name} chunein`} />
+
+
+    },
+    {
+      key: 'name',
+      header: t('Item'),
+      render: (row) =>
+      <div className="flex items-center gap-3">
+            {row.imageUrl ?
+        <img src={row.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" /> :
+
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
                 <Package size={16} />
               </div>
-            )}
+        }
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 truncate font-medium text-slate-900">
                 {row.name}
-                {row.warrantyMonths > 0 && (
-                  <ShieldCheck size={13} className="shrink-0 text-emerald-600"
-                    aria-label={`${row.warrantyText} warranty`} />
-                )}
+                {row.warrantyMonths > 0 &&
+            <ShieldCheck size={13} className="shrink-0 text-emerald-600"
+            aria-label={`${row.warrantyText} warranty`} />
+            }
               </p>
               <p className="truncate text-xs text-slate-500">
                 {[row.brand, row.sku, row.category].filter(Boolean).join(' · ') || '—'}
                 {row.rack && <span className="text-slate-400"> · {row.rack}</span>}
               </p>
               {/*
-                Maal ka byora yahan bhi — pehle ye sirf phone wale card pe tha.
-                Wo aadha kaam tha: laptop pe baithe dukaandaar ne size aur wazan
-                bhara aur list me kahin dikha hi nahi, to use lagta hai save
-                hua hi nahi.
-              */}
+             Maal ka byora yahan bhi — pehle ye sirf phone wale card pe tha.
+             Wo aadha kaam tha: laptop pe baithe dukaandaar ne size aur wazan
+             bhara aur list me kahin dikha hi nahi, to use lagta hai save
+             hua hi nahi.
+            */}
               {(() => {
-                const byora = [row.size, row.shape,
-                  row.weight ? `${row.weight} ${(row.weightUnit || 'KG').toLowerCase()}` : ''].filter(Boolean);
-                return byora.length ? (
-                  <p className="truncate text-xs text-slate-400">{byora.join(' · ')}</p>
-                ) : null;
-              })()}
+            const byora = [row.size, row.shape,
+            row.weight ? `${row.weight} ${(row.weightUnit || 'KG').toLowerCase()}` : ''].filter(Boolean);
+            return byora.length ?
+            <p className="truncate text-xs text-slate-400">{byora.join(' · ')}</p> :
+            null;
+          })()}
               {/* Expiry sirf tab jab wo sach me paas ho — poori tareekh har
-                  row pe likhna list ko shor bana deta hai */}
+               row pe likhna list ko shor bana deta hai */}
               {(() => {
-                const exp = expiryInfo(row.expiryDate);
-                return exp && exp.din <= 30 ? (
-                  <p className={cn('truncate text-xs font-medium',
-                    exp.tone === 'red' ? 'text-red-600' : 'text-amber-700')}>
+            const exp = expiryInfo(row.expiryDate);
+            return exp && exp.din <= 30 ?
+            <p className={cn('truncate text-xs font-medium',
+            exp.tone === 'red' ? 'text-red-600' : 'text-amber-700')}>
                     {t(exp.key, { n: exp.n })}
-                  </p>
-                ) : null;
-              })()}
+                  </p> :
+            null;
+          })()}
             </div>
           </div>
-        ),
-      },
-      {
-        key: 'stockQty',
-        header: t('Stock'),
-        align: 'right',
-        render: (row) => (
-          <button onClick={() => setStockItem(row)} className="focus-ring rounded">
+
+    },
+    {
+      key: 'stockQty',
+      header: t('Stock'),
+      align: 'right',
+      render: (row) =>
+      <button onClick={() => setStockItem(row)} className="focus-ring rounded">
             <Badge tone={row.isOutOfStock ? 'red' : row.isLowStock ? 'amber' : 'green'}>
               {row.isOutOfStock ? 'Khatam' : formatQty(row.stockQty, row.unit)}
             </Badge>
           </button>
-        ),
-      },
-      { key: 'purchasePrice', header: t('Purchase'), align: 'right', render: (r) => formatMoney(r.purchasePrice) },
-      { key: 'salePrice', header: t('Sale'), align: 'right', render: (r) => formatMoney(r.salePrice) },
-      {
-        key: 'wholesalePrice',
-        header: t('Wholesale'),
-        align: 'right',
-        render: (r) => (
-          <span className={r.wholesalePrice ? 'font-medium text-slate-900' : 'text-slate-400'}>
+
+    },
+    { key: 'purchasePrice', header: t('Purchase'), align: 'right', render: (r) => formatMoney(r.purchasePrice) },
+    { key: 'salePrice', header: t('Sale'), align: 'right', render: (r) => formatMoney(r.salePrice) },
+    {
+      key: 'wholesalePrice',
+      header: t('Wholesale'),
+      align: 'right',
+      render: (r) =>
+      <span className={r.wholesalePrice ? 'font-medium text-slate-900' : 'text-slate-400'}>
             {r.wholesalePrice ? formatMoney(r.wholesalePrice) : '—'}
           </span>
-        ),
-      },
-    ];
+
+    }];
+
 
     if (gstEnabled) {
       cols.push({ key: 'gstRate', header: 'GST', align: 'right', render: (r) => `${r.gstRate || 0}%` });
@@ -237,24 +241,24 @@ export default function Items() {
       key: 'actions',
       header: '',
       align: 'right',
-      render: (row) => (
-        <div className="flex justify-end gap-1">
+      render: (row) =>
+      <div className="flex justify-end gap-1">
           <button
-            onClick={() => setStockItem(row)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            title={t('Stock badlein')}
-          >
+          onClick={() => setStockItem(row)}
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          title={t('Stock badlein')}>
+          
             <Boxes size={16} />
           </button>
           <button
-            onClick={() => { setFormItem(row); setFormOpen(true); }}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            title={t('Edit')}
-          >
+          onClick={() => {setFormItem(row);setFormOpen(true);}}
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          title={t('Edit')}>
+          
             <Pencil size={16} />
           </button>
         </div>
-      ),
+
     });
 
     return cols;
@@ -267,7 +271,7 @@ export default function Items() {
         title={t('Items')}
         subtitle={t('Aapka saara maal, stock aur rate')}
         action={
-          <>
+        <>
             <Button variant="secondary" icon={Tag} onClick={() => setCategoryOpen(true)}>
               <span className="hidden sm:inline">{t('Categories')}</span>
             </Button>
@@ -277,18 +281,18 @@ export default function Items() {
             <Button variant="secondary" icon={Download} onClick={handleExport}>
               <span className="hidden sm:inline">{t('Export')}</span>
             </Button>
-            <Button icon={Plus} onClick={() => { setFormItem(null); setFormOpen(true); }}>
+            <Button icon={Plus} onClick={() => {setFormItem(null);setFormOpen(true);}}>
               {t('Naya item')}
             </Button>
           </>
-        }
-      />
+        } />
+      
 
       {/* ---- Stats ---- */}
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Kul items')} value={stats.totalItems} icon={Package} tone="brand" />
         <StatCard label={t('Stock ki keemat')} value={formatMoney(stats.stockValue)} icon={IndianRupee}
-          tone="green" sub="Purchase price se" />
+        tone="green" sub={t("Purchase price se")} />
         <StatCard label={t('Low stock')} value={stats.lowStock} icon={TriangleAlert} tone="amber" />
         <StatCard label={t('Khatam')} value={stats.outOfStock} icon={XCircle} tone="red" />
       </div>
@@ -297,51 +301,51 @@ export default function Items() {
       <Card className="mb-5" padding={false}>
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
           <SearchInput value={q} onChange={setQ} placeholder={t('Naam, brand, SKU, model ya barcode...')}
-            className="lg:w-72" />
+          className="lg:w-72" />
 
           <Chips
             value={stock}
             onChange={setStock}
             options={[
-              { value: 'all', label: t('Sab') },
-              { value: 'low', label: t('Low stock'), count: stats.lowStock },
-              { value: 'out', label: t('Khatam'), count: stats.outOfStock },
-            ]}
-          />
+            { value: 'all', label: t('Sab') },
+            { value: 'low', label: t('Low stock'), count: stats.lowStock },
+            { value: 'out', label: t('Khatam'), count: stats.outOfStock }]
+            } />
+          
 
           {/*
-            Expiry ki chhalni SIRF tab dikhti hai jab dukaan me expiry wala
-            maal ho hi. Bolt aur bearing bechne wale ko ye chip kabhi nahi
-            dikhegi — uske liye wo ek aur bekaar button hai, aur bekaar button
-            hi page ko dara dene wala banate hain.
-          */}
-          {stats.expiringSoon > 0 && (
-            <Chips
-              value={expiry}
-              onChange={setExpiry}
-              options={[
-                { value: 'all', label: t('Sab') },
-                { value: 'soon', label: t('Expiry paas'), count: stats.expiringSoon },
-                { value: 'gone', label: t('Expire ho chuka') },
-              ]}
-            />
-          )}
+             Expiry ki chhalni SIRF tab dikhti hai jab dukaan me expiry wala
+             maal ho hi. Bolt aur bearing bechne wale ko ye chip kabhi nahi
+             dikhegi — uske liye wo ek aur bekaar button hai, aur bekaar button
+             hi page ko dara dene wala banate hain.
+            */}
+          {stats.expiringSoon > 0 &&
+          <Chips
+            value={expiry}
+            onChange={setExpiry}
+            options={[
+            { value: 'all', label: t('Sab') },
+            { value: 'soon', label: t('Expiry paas'), count: stats.expiringSoon },
+            { value: 'gone', label: t('Expire ho chuka') }]
+            } />
+
+          }
 
           <div className="flex flex-1 gap-3 lg:max-w-md">
             <Select placeholder={t('Sab categories')} value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              options={[
-                { value: 'none', label: t('Bina category') },
-                ...categories.map((c) => ({ value: c._id, label: `${c.name} (${c.itemCount})` })),
-              ]} />
+            onChange={(e) => setCategoryId(e.target.value)}
+            options={[
+            { value: 'none', label: t('Bina category') },
+            ...categories.map((c) => ({ value: c._id, label: `${c.name} (${c.itemCount})` }))]
+            } />
             <Select placeholder="" value={sort} onChange={(e) => setSort(e.target.value)} options={SORTS} />
           </div>
         </div>
 
         {/* ---- Bulk bar ---- */}
-        {selected.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 bg-brand-50 px-4 py-3">
-            <span className="text-sm font-medium text-brand-900">{selected.length} chune gaye</span>
+        {selected.length > 0 &&
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 bg-brand-50 px-4 py-3">
+            <span className="text-sm font-medium text-brand-900">{t("{a0} chune gaye", { a0: selected.length })}</span>
             <div className="flex-1" />
             <Button size="sm" variant="secondary" icon={Eye} onClick={() => runBulk('showToRetailers')}>
               {t('Dikhayein')}
@@ -354,39 +358,39 @@ export default function Items() {
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected([])}>{t('Cancel')}</Button>
           </div>
-        )}
+        }
       </Card>
 
       {/* ---- List ---- */}
       <Card padding={false}>
-        {!loading && !items.length ? (
-          <EmptyState
-            icon={Package}
-            title={hasFilters ? 'Is filter me kuch nahi mila' : 'Abhi koi item nahi hai'}
-            message={
-              hasFilters
-                ? 'Filter hata kar dobara dekhein.'
-                : 'Pehla item add karein, ya Excel/CSV se ek saath sab import kar lein.'
-            }
-            action={
-              hasFilters ? (
-                <Button variant="secondary" onClick={() => { setQ(''); setCategoryId(''); setStock('all'); }}>
+        {!loading && !items.length ?
+        <EmptyState
+          icon={Package}
+          title={hasFilters ? 'Is filter me kuch nahi mila' : 'Abhi koi item nahi hai'}
+          message={
+          hasFilters ?
+          'Filter hata kar dobara dekhein.' :
+          'Pehla item add karein, ya Excel/CSV se ek saath sab import kar lein.'
+          }
+          action={
+          hasFilters ?
+          <Button variant="secondary" onClick={() => {setQ('');setCategoryId('');setStock('all');}}>
                   {t('Filter hatayein')}
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button icon={Plus} onClick={() => { setFormItem(null); setFormOpen(true); }}>
+                </Button> :
+
+          <div className="flex gap-2">
+                  <Button icon={Plus} onClick={() => {setFormItem(null);setFormOpen(true);}}>
                     {t('Pehla item add karein')}
                   </Button>
                   <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>
                     {t('CSV import')}
                   </Button>
                 </div>
-              )
-            }
-          />
-        ) : (
-          <>
+
+          } /> :
+
+
+        <>
             {/* Desktop */}
             <div className="hidden md:block">
               <Table columns={columns} rows={items} loading={loading} />
@@ -394,26 +398,26 @@ export default function Items() {
 
             {/* Mobile */}
             <div className="md:hidden">
-              {loading ? (
-                <SkeletonRows />
-              ) : (
-                items.map((item) => (
-                  <ItemCard
-                    key={item._id}
-                    item={item}
-                    selected={selected.includes(item._id)}
-                    onSelect={toggleSelect}
-                    onEdit={(i) => { setFormItem(i); setFormOpen(true); }}
-                    onStock={setStockItem}
-                  />
-                ))
-              )}
+              {loading ?
+            <SkeletonRows /> :
+
+            items.map((item) =>
+            <ItemCard
+              key={item._id}
+              item={item}
+              selected={selected.includes(item._id)}
+              onSelect={toggleSelect}
+              onEdit={(i) => {setFormItem(i);setFormOpen(true);}}
+              onStock={setStockItem} />
+
+            )
+            }
             </div>
 
             <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total}
-              limit={meta.limit} onChange={setPage} />
+          limit={meta.limit} onChange={setPage} />
           </>
-        )}
+        }
       </Card>
 
       {/* ---- Modals ---- */}
@@ -423,15 +427,15 @@ export default function Items() {
         item={formItem}
         categories={categories}
         onSaved={refreshAll}
-        onCategoryAdded={(c) => setCategories((list) => [...list, { ...c, itemCount: 0 }])}
-      />
+        onCategoryAdded={(c) => setCategories((list) => [...list, { ...c, itemCount: 0 }])} />
+      
 
       <StockModal
         open={Boolean(stockItem)}
         onClose={() => setStockItem(null)}
         item={stockItem}
-        onSaved={refreshAll}
-      />
+        onSaved={refreshAll} />
+      
 
       <CategoryModal open={categoryOpen} onClose={() => setCategoryOpen(false)} onChanged={refreshAll} />
 
@@ -444,8 +448,8 @@ export default function Items() {
         loading={busy}
         title={`${selected.length} item delete karein?`}
         message={t('Jo item kisi purane bill ya purchase me hain wo delete nahi honge — sirf hide ho jayenge, taaki purane record kharab na hon.')}
-        confirmLabel="Haan, delete karein"
-      />
-    </>
-  );
+        confirmLabel={t("Haan, delete karein")} />
+      
+    </>);
+
 }

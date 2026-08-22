@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ShoppingCart, TruckIcon, Wallet, TriangleAlert, CheckCheck } from 'lucide-react';
+import { Bell, ShoppingCart, TruckIcon, Wallet, TriangleAlert, X } from 'lucide-react';
 import api from '@/lib/api';
 import { useNotifications } from '@/context/NotificationContext';
 import { formatDateTime } from '@/lib/format';
@@ -33,7 +33,27 @@ export default function NotificationBell() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (open) load(); }, [open, load]);
+  /*
+    DARAZ KHOLTE HI SAB "PADH LIYA".
+
+    Pehle laal ginti tabhi hatti thi jab har notification pe alag alag click
+    karo, ya "Sab padh liya" dhoondh kar dabao. Nateeja: ginti hamesha lagi
+    rehti thi, aur jo cheez hamesha laal rehti hai uspe aankh jana band kar
+    deti hai — yani asli zaroori khabar bhi dikhna band ho jati.
+
+    Daraz khol lena hi "dekh liya" hai. Poora padhna alag baat hai, aur uske
+    liye har line apni jagah khuli padi hai.
+  */
+  useEffect(() => {
+    if (!open) return;
+    load();
+    if (count > 0) {
+      api.post('/notifications/read-all')
+        .then(() => { setCount(0); setRows((rs) => rs.map((r) => ({ ...r, isRead: true }))); })
+        .catch(() => { /* chup-chaap — khabar dikhna zaroori hai, ginti nahi */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   async function openItem(n) {
     setOpen(false);
@@ -46,13 +66,6 @@ export default function NotificationBell() {
     if (n.link) navigate(n.link);
   }
 
-  async function readAll() {
-    try {
-      await api.post('/notifications/read-all');
-      setCount(0);
-      setRows((rs) => rs.map((r) => ({ ...r, isRead: true })));
-    } catch { /* chup-chaap */ }
-  }
 
   return (
     <div className="relative">
@@ -76,12 +89,19 @@ export default function NotificationBell() {
           <div className="fixed inset-x-2 top-16 z-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-1 sm:w-96">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <p className="text-sm font-semibold text-slate-900">{t('Notifications')}</p>
-              {count > 0 && (
-                <button onClick={readAll}
-                  className="flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
-                  <CheckCheck size={13} /> Sab padh liya
-                </button>
-              )}
+              {/*
+                Band karne ka button — phone pe ye sabse zaroori hai.
+
+                Daraz poori screen ghere hue hai; band karne ka ek hi rasta tha
+                uske BAHAR kahin tap karna. Wo desktop pe saaf hai, phone pe
+                nahi — bahar bacha hi kitna hai. Log back button dabate the aur
+                poore page se hi bahar chale jate the.
+              */}
+              <button onClick={() => setOpen(false)}
+                aria-label={t('Band karein')}
+                className="-mr-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-ring">
+                <X size={16} />
+              </button>
             </div>
 
             <div className="max-h-96 overflow-y-auto">

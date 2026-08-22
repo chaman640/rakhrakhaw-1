@@ -110,7 +110,8 @@ export default function PartyFormModal({ open, onClose, party, type, onSaved }) 
             value={form.shopName} onChange={set('shopName')} error={fieldErrors.shopName} />
           <Input label={t('Vyakti ka naam')} required placeholder={t('Suresh Kumar')}
             value={form.name} onChange={set('name')} error={fieldErrors.name} />
-          <Input label={t('Phone')} required type="tel" inputMode="numeric" prefix="+91"
+          <Input label={t('Phone (marzi se)')} type="tel" inputMode="numeric" prefix="+91"
+            hint={t('Nahi hai to khali chhod dein — naam se bhi bill ban jayega')}
             placeholder="98765 43210" value={form.phone} onChange={set('phone')}
             error={fieldErrors.phone}
             hint={isRetailer && !isEdit ? 'Isi number se wo link kholkar login karega' : undefined} />

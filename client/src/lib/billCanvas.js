@@ -125,6 +125,34 @@ export function drawBill(canvas, invoice, { qrImage = null, logoImage = null } =
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
+  /*
+    WATERMARK — dukaan ka naam, kagaz ke aar-paar, bahut halka.
+
+    Do kaam karta hai. Ek, nakal mushkil karta hai: khali kagaz pe wahi bill
+    dobara chhap kar kisi aur ke naam se dena aasaan tha. Do, dukaandaar ka
+    naam bill pe do jagah aata hai — upar chhota, beech me bada — aur graahak
+    ke paas mahino padi parchi pe wahi pehchaan hai.
+
+    Cancel hua bill iske UPAR apna alag theppa bhi paata hai (neeche), kyunki
+    "ye bill radd hai" wali baat halke rang me kehne ki nahi hai.
+
+    Sab kuch drawing se PEHLE — warna ye baaki sab ko dhak leta.
+  */
+  const markText = (b.name || '').trim();
+  if (markText) {
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(-Math.PI / 9);                 // ~20°, taaki padhne me na aaye
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Naam jitna lamba, font utna chhota — warna lamba naam kinare se bahar
+    const size = Math.max(38, Math.min(86, 1500 / Math.max(6, markText.length)));
+    ctx.font = `700 ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.045)';   // itna halka ki chhapai me bhi na chubhe
+    ctx.fillText(markText.toUpperCase(), 0, 0);
+    ctx.restore();
+  }
+
   let y = M;
 
   /* ───────────── cancel ka theppa ───────────── */
@@ -307,6 +335,41 @@ export function drawBill(canvas, invoice, { qrImage = null, logoImage = null } =
   }
 
   y = Math.max(ty, wy) + 18;
+
+  /* ───────────── HSN ke hisaab se jod ─────────────
+     GST return me yahi table maanga jata hai. Hisaab pehle se banta tha
+     (`hsnSummary`) par kagaz pe kahin aata hi nahi tha — CA ko har bill se
+     haath se jodna padta. Sirf GST wale bill pe, aur tabhi jab do ya zyada
+     alag HSN hon (ek hi ho to upar wali line hi kaafi hai). */
+  const hsnRows = gst ? (invoice.hsnSummary || []) : [];
+  if (hsnRows.length > 1) {
+    const hy0 = y;
+    p.text('HSN wise summary', M, hy0, { size: 9, weight: 700, color: MUTED });
+    let hy = hy0 + 12;
+    const cols = isIgst
+      ? [['HSN', M, 'left'], ['Rate', M + 90, 'left'], ['Taxable', M + 160, 'right'], ['IGST', M + 250, 'right']]
+      : [['HSN', M, 'left'], ['Rate', M + 90, 'left'], ['Taxable', M + 160, 'right'], ['CGST', M + 250, 'right'], ['SGST', M + 330, 'right']];
+    for (const [label, cx, align] of cols) {
+      p.text(label, cx, hy + 10, { size: 8.5, weight: 700, color: MUTED, align });
+    }
+    hy += 15;
+    p.line(M, hy, M + (isIgst ? 250 : 330), hy);
+    for (const h of hsnRows.slice(0, 8)) {
+      hy += 3;
+      const vals = isIgst
+        ? [[h.hsn, M, 'left'], [`${h.gstRate}%`, M + 90, 'left'],
+          [formatMoney(h.taxableValue), M + 160, 'right'], [formatMoney(h.igst), M + 250, 'right']]
+        : [[h.hsn, M, 'left'], [`${h.gstRate}%`, M + 90, 'left'],
+          [formatMoney(h.taxableValue), M + 160, 'right'],
+          [formatMoney(h.cgst), M + 250, 'right'], [formatMoney(h.sgst), M + 330, 'right']];
+      for (const [val, cx, align] of vals) {
+        p.text(String(val), cx, hy + 10, { size: 9, color: INK, align });
+      }
+      hy += 14;
+    }
+    y = hy + 10;
+  }
+
 
   /* ───────────── paisa kahan bhejein ─────────────
      QR sirf UPI ID se banta hai. Account+IFSC ka QR banta hi nahi (wo NEFT ka
