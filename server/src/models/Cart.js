@@ -13,6 +13,19 @@ const cartItemSchema = new mongoose.Schema(
   {
     itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
     qty: { type: Number, required: true, min: 0.01 },
+    /**
+     * DAALTE WAQT jo rate DIKHA tha.
+     *
+     * Ye rate hisaab me kabhi nahi lagta — order aaj ke rate pe hi jata hai,
+     * aur wahi theek hai. Ye sirf ye batane ke liye hai ki BADAL GAYA HAI.
+     *
+     * Bina iske ek chup-chaap dhokha hota tha: retailer ne ₹100 dekh kar cart
+     * me daala, wholesaler ne beech me rate ₹120 kar diya, aur checkout pe
+     * ₹120 likha aa gaya — bina kisi ishare ke. Retailer ko lagta tha usne
+     * galat padha tha, ya app jhooth bol raha hai. Ab wo saaf dikhta hai:
+     * "pehle ₹100 tha".
+     */
+    addedRate: { type: Number, default: 0 },
     addedAt: { type: Date, default: Date.now },
   },
   { _id: false }

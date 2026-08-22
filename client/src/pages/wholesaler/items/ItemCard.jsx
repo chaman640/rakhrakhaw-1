@@ -1,11 +1,16 @@
 import { Package, MoreVertical } from 'lucide-react';
-import { formatMoney, formatQty } from '@/lib/format';
+import { formatMoney, formatQty, expiryInfo } from '@/lib/format';
 import { Badge } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 // Mobile ke liye — table ki jagah card
 export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) {
+  const exp = expiryInfo(item.expiryDate);
+  // Byora sirf tab jab bhara ho — khali khaane ka koi matlab nahi
+  const byora = [item.size, item.shape,
+    item.weight ? `${item.weight} ${(item.weightUnit || 'KG').toLowerCase()}` : ''].filter(Boolean);
+
   return (
     <div className={cn(
       'flex gap-3 border-b border-slate-100 p-4 last:border-0',
@@ -35,6 +40,9 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) 
               {[item.brand, item.sku, item.category].filter(Boolean).join(' · ') || 'Bina category'}
               {item.rack && <span className="text-slate-400"> · {item.rack}</span>}
             </p>
+            {byora.length > 0 && (
+              <p className="truncate text-xs text-slate-400">{byora.join(' · ')}</p>
+            )}
           </button>
           <button
             onClick={() => onEdit(item)}
@@ -54,6 +62,9 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) 
           <span className="tabular text-sm text-slate-700">
             {formatMoney(item.wholesalePrice || item.salePrice)}
           </span>
+          {/* Expiry sirf tab jab wo sach me paas ho — warna har card pe ek
+              aur tareekh, jo padhi hi nahi jati */}
+          {exp && exp.din <= 30 && <Badge tone={exp.tone}>{t(exp.key, { n: exp.n })}</Badge>}
           {!item.visibleToRetailers && <Badge tone="slate">{t('Retailer se chhupa')}</Badge>}
         </div>
       </div>

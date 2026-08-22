@@ -12,9 +12,7 @@ import PendingApproval from '@/pages/retailer/PendingApproval';
 import Settings from '@/pages/wholesaler/Settings';
 import Items from '@/pages/wholesaler/Items';
 import Retailers from '@/pages/wholesaler/Retailers';
-import Suppliers from '@/pages/wholesaler/Suppliers';
 import PartyDetail from '@/pages/wholesaler/parties/PartyDetail';
-import Purchases from '@/pages/wholesaler/Purchases';
 import Orders from '@/pages/wholesaler/Orders';
 import WholesalerOrderDetail from '@/pages/wholesaler/orders/OrderDetail';
 import PurchaseForm from '@/pages/wholesaler/purchases/PurchaseForm';
@@ -37,7 +35,7 @@ import Notifications from '@/pages/Notifications';
 import MenuPage from '@/pages/wholesaler/MenuPage';
 import Staff from '@/pages/wholesaler/Staff';
 import Returns from '@/pages/wholesaler/Returns';
-import Expenses from '@/pages/wholesaler/Expenses';
+import Buying from '@/pages/wholesaler/Buying';
 import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
 import ReturnDetail from '@/pages/wholesaler/returns/ReturnDetail';
 import RetailerProfile from '@/pages/retailer/Profile';
@@ -107,9 +105,17 @@ export default function AppRoutes() {
         <Route path="/items" element={<RequirePermission permission="items"><Items /></RequirePermission>} />
         <Route path="/retailers" element={<RequirePermission permission="parties"><Retailers /></RequirePermission>} />
         <Route path="/retailers/:id" element={<RequirePermission permission="parties"><PartyDetail type="retailer" /></RequirePermission>} />
-        <Route path="/suppliers" element={<RequirePermission permission="parties"><Suppliers /></RequirePermission>} />
+        {/*
+          Teen pate, ek page.
+
+          `/suppliers`, `/purchases` aur `/expenses` — teeno ab ek hi `Buying`
+          page kholte hain, aur wo pata dekh kar sahi tab chun leta hai. Isliye
+          har purana link, bookmark aur andar ka `navigate()` bina chhue chalta
+          rehta hai; sirf dekhne me teen page ek ho gaye hain.
+        */}
+        <Route path="/suppliers" element={<RequirePermission permission="parties"><Buying /></RequirePermission>} />
         <Route path="/suppliers/:id" element={<RequirePermission permission="parties"><PartyDetail type="supplier" /></RequirePermission>} />
-        <Route path="/purchases" element={<RequirePermission permission="purchases"><Purchases /></RequirePermission>} />
+        <Route path="/purchases" element={<RequirePermission permission="purchases"><Buying /></RequirePermission>} />
         <Route path="/purchases/new" element={<RequirePermission permission="purchases:create"><PurchaseForm /></RequirePermission>} />
         <Route path="/purchases/:id" element={<RequirePermission permission="purchases"><PurchaseDetail /></RequirePermission>} />
         <Route path="/invoices" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
@@ -133,7 +139,7 @@ export default function AppRoutes() {
         <Route path="/returns" element={<RequirePermission permission="returns"><Returns /></RequirePermission>} />
         <Route path="/returns/new" element={<RequirePermission permission="returns:create"><ReturnForm /></RequirePermission>} />
         <Route path="/returns/:id" element={<RequirePermission permission="returns"><ReturnDetail /></RequirePermission>} />
-        <Route path="/expenses" element={<RequirePermission permission="expenses"><Expenses /></RequirePermission>} />
+        <Route path="/expenses" element={<RequirePermission permission="expenses"><Buying /></RequirePermission>} />
         <Route path="/reports" element={<RequirePermission permission="reports"><Reports /></RequirePermission>} />
         {/*
           Staff aur "kisne kya kiya" ab ek hi page ke do tab hain.

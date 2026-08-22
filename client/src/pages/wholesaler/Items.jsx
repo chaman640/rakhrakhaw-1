@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { downloadText } from '@/lib/download';
-import { formatMoney, formatQty } from '@/lib/format';
+import { formatMoney, formatQty, expiryInfo } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Button, Select, Table, Badge,
   SearchInput, Chips, Pagination, EmptyState, ConfirmModal, SkeletonRows, useToast,
@@ -18,6 +18,7 @@ import StockModal from './items/StockModal';
 import CategoryModal from './items/CategoryModal';
 import ImportModal from './items/ImportModal';
 import ItemCard from './items/ItemCard';
+import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 const SORTS = [
@@ -43,6 +44,7 @@ export default function Items() {
   const debouncedQ = useDebounce(q);
   const [categoryId, setCategoryId] = useState('');
   const [stock, setStock] = useState('all');
+  const [expiry, setExpiry] = useState('all');
   const [sort, setSort] = useState('name');
   const [page, setPage] = useState(1);
 
@@ -73,7 +75,7 @@ export default function Items() {
     setLoading(true);
     try {
       const res = await api.get('/items', {
-        params: { q: debouncedQ, categoryId, stock, sort, page, limit: 25 },
+        params: { q: debouncedQ, categoryId, stock, expiry, sort, page, limit: 25 },
       });
       setItems(res.data);
       setMeta(res.meta);
@@ -83,11 +85,11 @@ export default function Items() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, categoryId, stock, sort, page]);
+  }, [debouncedQ, categoryId, stock, expiry, sort, page]);
 
   useEffect(() => { loadCategories(); loadStats(); }, [loadCategories, loadStats]);
   useEffect(() => { loadItems(); }, [loadItems]);
-  useEffect(() => { setPage(1); }, [debouncedQ, categoryId, stock, sort]);
+  useEffect(() => { setPage(1); }, [debouncedQ, categoryId, stock, expiry, sort]);
 
   function refreshAll() {
     loadItems(); loadStats(); loadCategories(); setSelected([]);
@@ -173,6 +175,30 @@ export default function Items() {
                 {[row.brand, row.sku, row.category].filter(Boolean).join(' · ') || '—'}
                 {row.rack && <span className="text-slate-400"> · {row.rack}</span>}
               </p>
+              {/*
+                Maal ka byora yahan bhi — pehle ye sirf phone wale card pe tha.
+                Wo aadha kaam tha: laptop pe baithe dukaandaar ne size aur wazan
+                bhara aur list me kahin dikha hi nahi, to use lagta hai save
+                hua hi nahi.
+              */}
+              {(() => {
+                const byora = [row.size, row.shape,
+                  row.weight ? `${row.weight} ${(row.weightUnit || 'KG').toLowerCase()}` : ''].filter(Boolean);
+                return byora.length ? (
+                  <p className="truncate text-xs text-slate-400">{byora.join(' · ')}</p>
+                ) : null;
+              })()}
+              {/* Expiry sirf tab jab wo sach me paas ho — poori tareekh har
+                  row pe likhna list ko shor bana deta hai */}
+              {(() => {
+                const exp = expiryInfo(row.expiryDate);
+                return exp && exp.din <= 30 ? (
+                  <p className={cn('truncate text-xs font-medium',
+                    exp.tone === 'red' ? 'text-red-600' : 'text-amber-700')}>
+                    {t(exp.key, { n: exp.n })}
+                  </p>
+                ) : null;
+              })()}
             </div>
           </div>
         ),
@@ -282,6 +308,24 @@ export default function Items() {
               { value: 'out', label: t('Khatam'), count: stats.outOfStock },
             ]}
           />
+
+          {/*
+            Expiry ki chhalni SIRF tab dikhti hai jab dukaan me expiry wala
+            maal ho hi. Bolt aur bearing bechne wale ko ye chip kabhi nahi
+            dikhegi — uske liye wo ek aur bekaar button hai, aur bekaar button
+            hi page ko dara dene wala banate hain.
+          */}
+          {stats.expiringSoon > 0 && (
+            <Chips
+              value={expiry}
+              onChange={setExpiry}
+              options={[
+                { value: 'all', label: t('Sab') },
+                { value: 'soon', label: t('Expiry paas'), count: stats.expiringSoon },
+                { value: 'gone', label: t('Expire ho chuka') },
+              ]}
+            />
+          )}
 
           <div className="flex flex-1 gap-3 lg:max-w-md">
             <Select placeholder={t('Sab categories')} value={categoryId}

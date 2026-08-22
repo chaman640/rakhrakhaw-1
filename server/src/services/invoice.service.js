@@ -14,6 +14,7 @@ import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../
 import { assertInvoiceWithinLimits } from '../utils/limits.js';
 import { computeInvoice, decideTaxType, hsnSummary } from './gst.service.js';
 import { applyStockChange } from './stock.service.js';
+import { khepNikalo, khepWapas } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { releaseInvoiceFromPayments, removeInlinePayments } from './payment.service.js';
 import { applyCredit } from './settlement.service.js';
@@ -363,6 +364,21 @@ async function undoHalfInvoice(businessId, state, userId) {
       userId,
       allowNegative: true,
     }));
+
+    /*
+      Khep bhi wahin wapas — par SIRF utni jitni sach me nikli thi.
+
+      Rollback beech me kahin bhi ho sakta hai: ho sakta hai stock ghata ho aur
+      khep abhi nikli hi na ho. Isliye yahan `line.lots` dekhte hain, `line.qty`
+      nahi. Khali ho to matlab khep chhui hi nahi gayi — usse kuch wapas karna
+      ULTA nuksaan karega, godown me lagat do baar chadh jayegi.
+    */
+    if (line.lots?.length) {
+      await step(`${line.name} ki khep wapas`, () => khepWapas({
+        businessId, itemId: line.itemId, pieces: line.lots,
+        refNo: `${invoiceNo} adhoora`,
+      }));
+    }
   }
 
   await step('adhoora bill hatana', () => Invoice.deleteOne({ _id: invoice._id, businessId }));
@@ -567,6 +583,7 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
 
   try {
     // ---- YAHIN STOCK GHATTA HAI (order pe nahi) ----
+    let lotsChanged = false;
     for (const line of totals.items) {
       await applyStockChange({
         businessId,
@@ -579,6 +596,38 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
         userId,
       });
       doneStock.push(line);
+
+      /*
+        ASLI LAGAT — purani khep pehle (FIFO).
+
+        Upar line pe jo `costPrice` rakhi thi wo item ka AAJ ka rate tha; wo
+        sirf ek andaza tha aur ab ki jagah nahi le sakta. Jan me ₹80 wala
+        bolt Feb me bhi ₹80 ka hi pada tha, chahe Feb ki kharid ₹100 me aayi
+        ho. Yahi wo baat hai jiske liye poori khep wali vyavastha bani.
+
+        Nikalne ke baad hi pata chalta hai ki kaunsi khep se kitna gaya, isliye
+        bill pe ye baad me likhi jati hai — bill save ho chuka hota hai.
+      */
+      const { cost, unitCost, pieces } = await khepNikalo({
+        businessId,
+        itemId: line.itemId,
+        qty: line.qty,
+        fallbackCost: line.costPrice || 0,
+      });
+      line.lots = pieces;
+      line.costPrice = unitCost;
+      line.costTotal = cost;
+      lotsChanged = true;
+    }
+
+    if (lotsChanged) {
+      invoice.items = totals.items.map((l, i) => ({
+        ...(invoice.items[i].toObject?.() || invoice.items[i]),
+        costPrice: l.costPrice,
+        costTotal: l.costTotal || 0,
+        lots: l.lots || [],
+      }));
+      await invoice.save();
     }
 
     // ---- Khata: retailer ka udhaar badha ----
@@ -748,6 +797,16 @@ export async function cancelInvoice(businessId, id, { reason }, userId, viewer =
       refType: 'Invoice', refId: invoice._id,
       note: `${invoice.invoiceNo} cancel hua`,
       userId,
+    });
+
+    // Aur maal apni PURANI khep me hi wapas — kram wahi rehta hai jo tha
+    await khepWapas({
+      businessId, itemId: line.itemId,
+      pieces: line.lots?.length
+        ? line.lots
+        : [{ lotId: null, qty: line.qty, unitCost: line.costPrice || 0 }],
+      date: invoice.invoiceDate,
+      refNo: `${invoice.invoiceNo} cancel`,
     });
   }
 

@@ -20,7 +20,15 @@ const purchaseItemSchema = new mongoose.Schema(
 const purchaseSchema = new mongoose.Schema(
   {
     businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
-    supplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
+    /*
+      Supplier KHALI ho sakta hai — nakad kharid.
+      Poori wajah purchase.service.js me likhi hai. Yahan sirf itna: khali
+      hone par khata banta hi nahi, par stock, khep aur lagat waise hi chadhte
+      hain.
+    */
+    supplierId: {
+      type: mongoose.Schema.Types.ObjectId, ref: 'Party', default: null, index: true,
+    },
 
     purchaseNo: { type: String, required: true },
     supplierBillNo: { type: String, default: '' },  // supplier ka apna bill number

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Trash2, ShoppingCart, Package, TriangleAlert, Send, Store, Tag,
+  Trash2, ShoppingCart, Package, TriangleAlert, Send, Store, Tag, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useCart } from '@/context/CartContext';
@@ -155,6 +155,19 @@ export default function Cart() {
                             </span>
                           )}
                         </p>
+                        {/*
+                          Rate cart me daalne ke baad badla — chup-chaap naya
+                          number dikha dena dhokha lagta hai. Order naye rate
+                          pe hi jayega (wahi theek hai), par retailer ko dikhna
+                          chahiye ki wo badla hai aur kis taraf.
+                        */}
+                        {l.rateChanged && (
+                          <p className={cn('mt-0.5 flex items-center gap-1 text-xs',
+                            l.rate > l.addedRate ? 'text-amber-700' : 'text-emerald-700')}>
+                            {l.rate > l.addedRate ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
+                            Pehle {formatMoney(l.addedRate)} tha
+                          </p>
+                        )}
                       </div>
                       <button
                         onClick={() => removeItem(l.itemId)}

@@ -99,8 +99,24 @@ export async function saleReport(businessId, q = {}, viewer = null) {
           qty: { $sum: '$items.qty' },
           taxable: { $sum: '$items.taxableValue' },
           total: { $sum: '$items.total' },
-          // Bill ke saath jami hui lagat — jitni line me hai utni hi
-          snapCost: { $sum: { $multiply: ['$items.qty', { $ifNull: ['$items.costPrice', 0] }] } },
+          /*
+            Bill ke saath jami hui lagat — jitni line me hai utni hi.
+
+            `costTotal` PEHLE dekhte hain aur `qty × costPrice` sirf tab jab wo
+            ho hi na (purane bill). Wajah Invoice.js me likhi hai: ek line do
+            khep se ban sakti hai, uski per-piece lagat tootti hai, aur wapas
+            guna karne pe har line pe kuch paise ka farak aata hai. Report
+            mahine bhar ki line jodti hai — wahan wo paise dikhne lagte hain.
+          */
+          snapCost: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $ifNull: ['$items.costTotal', 0] }, 0] },
+                '$items.costTotal',
+                { $multiply: ['$items.qty', { $ifNull: ['$items.costPrice', 0] }] },
+              ],
+            },
+          },
           // Kitni quantity aisi hai jiski lagat bill me hai hi nahi (purane bill)
           snapQty: {
             $sum: { $cond: [{ $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }, '$items.qty', 0] },
@@ -707,7 +723,16 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
         _id: '$items.itemId',
         qty: { $sum: '$items.qty' },
         taxable: { $sum: '$items.taxableValue' },
-        snapCost: { $sum: { $multiply: ['$items.qty', { $ifNull: ['$items.costPrice', 0] }] } },
+        // Wahi niyam jo upar — `costTotal` pehle, phir purana tarika
+        snapCost: {
+          $sum: {
+            $cond: [
+              { $gt: [{ $ifNull: ['$items.costTotal', 0] }, 0] },
+              '$items.costTotal',
+              { $multiply: ['$items.qty', { $ifNull: ['$items.costPrice', 0] }] },
+            ],
+          },
+        },
         snapQty: { $sum: { $cond: [{ $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }, '$items.qty', 0] } },
       },
     },

@@ -37,6 +37,25 @@ export async function getCart(businessId, partyId) {
     const qty = round2(line.qty);
     const amount = round2(qty * item.rate);
 
+    /*
+      RATE BADAL GAYA — chup-chaap mat badlo, BATAO.
+
+      Order aaj ke rate pe hi jayega (wahi theek hai — purana rate pakadna
+      dukaandaar ke saath dhokha hoga). Par retailer ne jis rate pe haan kaha
+      tha wo alag tha, aur usse bina bataye badal dena uska bharosa todta hai.
+      Isliye number badalta hai aur saath me wajah bhi dikhti hai.
+    */
+    const pehleRate = round2(line.addedRate || 0);
+    const rateBadla = pehleRate > 0 && Math.abs(pehleRate - item.rate) >= 0.01;
+    if (rateBadla) {
+      warnings.push({
+        type: 'rate', itemId: item._id, oldRate: pehleRate, newRate: item.rate,
+        message: item.rate > pehleRate
+          ? `${item.name} ka rate ₹${pehleRate} se ₹${item.rate} ho gaya hai`
+          : `${item.name} ka rate ₹${pehleRate} se ghat kar ₹${item.rate} ho gaya hai`,
+      });
+    }
+
     if (item.stockQty <= 0) {
       warnings.push({ type: 'out', itemId: item._id, message: `${item.name} abhi khatam hai` });
     } else if (qty > item.stockQty) {
@@ -57,6 +76,8 @@ export async function getCart(businessId, partyId) {
       hasSpecialRate: item.rateSource === 'custom',
       qty,
       amount,
+      addedRate: pehleRate,
+      rateChanged: rateBadla,
       stockQty: item.stockQty,
       inStock: item.stockQty > 0,
       enough: item.stockQty >= qty,
@@ -67,7 +88,9 @@ export async function getCart(businessId, partyId) {
   if (lines.length !== cart.items.length) {
     await Cart.updateOne(
       { businessId, partyId },
-      { items: lines.map((l) => ({ itemId: l.itemId, qty: l.qty })) }
+      // `addedRate` bhi saath rakhna hai — warna gayab item saaf karte waqt
+      // baaki sabka ishara bhi chup-chaap mit jata
+      { items: lines.map((l) => ({ itemId: l.itemId, qty: l.qty, addedRate: l.addedRate })) }
     );
   }
 
@@ -84,7 +107,9 @@ export async function getCart(businessId, partyId) {
 async function assertOrderable(businessId, itemId) {
   const item = await Item.findOne({
     _id: itemId, businessId, isActive: true, visibleToRetailers: true,
-  }).select('name stockQty unit minOrderQty').lean();
+    // Rate ke do khaane bhi chahiye — cart me daalte waqt "abhi kya dikh raha
+    // hai" wahi se nikalta hai (Cart.js me wajah)
+  }).select('name stockQty unit minOrderQty salePrice wholesalePrice').lean();
 
   if (!item) throw ApiError.notFound('Ye item available nahi hai');
   if (item.stockQty <= 0) throw ApiError.badRequest(`${item.name} abhi khatam hai`);
@@ -119,8 +144,18 @@ export async function addToCart(businessId, partyId, { itemId, qty }) {
   const newQty = round2((existing?.qty || 0) + qty);
   assertMinQty(item, newQty);
 
+  /*
+    Jo rate ABHI dikh raha hai wahi yaad rakh lo (Cart.js me poori wajah).
+
+    Pehle se cart me pada item dobara daalne par purana `addedRate` NAHI
+    badalte: sawal ye hai ki retailer ne pehli baar kis rate pe haan kaha tha.
+    Nahi to har baar "+1" karne se badla hua rate chup-chaap naya sach ban
+    jata aur ishara mit jata.
+  */
+  const [priced] = await resolveRates(businessId, partyId, [item]);
+
   if (existing) existing.qty = newQty;
-  else cart.items.push({ itemId, qty: newQty });
+  else cart.items.push({ itemId, qty: newQty, addedRate: round2(priced?.rate || 0) });
 
   await cart.save();
   return { cart: await getCart(businessId, partyId), message: `${item.name} cart me daal diya` };
@@ -138,7 +173,12 @@ export async function setCartQty(businessId, partyId, itemId, qty) {
     assertMinQty(item, round2(qty));
     const existing = cart.items.find((i) => String(i.itemId) === String(itemId));
     if (existing) existing.qty = round2(qty);
-    else cart.items.push({ itemId, qty: round2(qty) });
+    else {
+      // Naya item yahan se bhi aa sakta hai — uska bhi "pehle kya dikha tha"
+      // yaad rakhna hoga, warna ishara sirf ek raste pe kaam karta
+      const [priced] = await resolveRates(businessId, partyId, [item]);
+      cart.items.push({ itemId, qty: round2(qty), addedRate: round2(priced?.rate || 0) });
+    }
   }
 
   await cart.save();

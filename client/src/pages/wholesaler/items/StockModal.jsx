@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Plus, Minus, Equal, History } from 'lucide-react';
+import { Plus, Minus, Equal, History, Layers } from 'lucide-react';
 import api from '@/lib/api';
-import { formatDateTime, formatQty } from '@/lib/format';
+import { formatDateTime, formatQty, formatMoney, formatDate } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Badge, Spinner, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
@@ -24,6 +24,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [movements, setMovements] = useState([]);
+  const [khep, setKhep] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
       .then((res) => setMovements(res.data))
       .catch(() => setMovements([]))
       .finally(() => setLoadingHistory(false));
+    api.get(`/items/${item._id}/lots`).then((res) => setKhep(res.data)).catch(() => setKhep(null));
   }, [open, item]);
 
   if (!item) return null;
@@ -127,6 +129,46 @@ export default function StockModal({ open, onClose, item, onSaved }) {
           onChange={(e) => setNote(e.target.value)}
           placeholder={mode === 'remove' ? 'Damage / sample / ghar le gaya' : 'Supplier se aaya / ginti sahi ki'}
         />
+
+        {/*
+          "Ye maal mujhe kitne ka pada hai" — ab ek number ka jawab nahi hai.
+
+          Ek hi item ki alag alag khep alag rate pe aayi ho sakti hai, aur
+          bikta purana pehle hai. Isliye yahan poori kataar dikhti hai, usi
+          kram me jis kram me bikega. Sabse upar wali line hi wo hai jo agle
+          bill pe lagegi — dukaandaar ko rate tay karte waqt yahi dekhna hota
+          hai, aur pehle ye kahin dikhta hi nahi tha.
+        */}
+        {khep?.lots?.length > 1 && (
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <Layers size={15} /> {t('Kaunsa maal kitne ka pada hai')}
+              </span>
+              <span className="text-xs text-slate-500">
+                {t('Ausat')} {formatMoney(khep.avgCost)}
+              </span>
+            </div>
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+              {khep.lots.slice(0, 6).map((l, i) => (
+                <li key={l._id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                  <Badge tone={i === 0 ? 'brand' : 'slate'}>
+                    {i === 0 ? t('Ab yahi bikega') : `#${i + 1}`}
+                  </Badge>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-slate-700">
+                      {formatQty(l.qty, item.unit)} × {formatMoney(l.unitCost)}
+                    </p>
+                    <p className="truncate text-xs text-slate-400">
+                      {l.refNo || t('Ginti theek ki')} · {formatDate(l.date)}
+                    </p>
+                  </div>
+                  <span className="tabular shrink-0 text-xs text-slate-500">{formatMoney(l.value)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* History */}
         <div>

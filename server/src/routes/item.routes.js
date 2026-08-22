@@ -31,6 +31,7 @@ router.put('/:id', requirePermission('items:edit'), validate({ params: idParamSc
 router.delete('/:id', requirePermission('items:delete'), validate({ params: idParamSchema }), ctrl.remove);
 
 router.get('/:id/movements', requirePermission('items:view'), validate({ params: idParamSchema }), ctrl.movements);
+router.get('/:id/lots', requirePermission('items:view'), validate({ params: idParamSchema }), ctrl.lots);
 router.post('/:id/stock', requirePermission('items:edit'), validate({ params: idParamSchema, body: adjustStockSchema }), ctrl.adjustStock);
 router.post('/:id/photo', requirePermission('items:edit'), validate({ params: idParamSchema }), uploadImage.single('photo'), handleUploadError, ctrl.uploadPhoto);
 router.delete('/:id/photo', requirePermission('items:edit'), validate({ params: idParamSchema }), ctrl.deletePhoto);

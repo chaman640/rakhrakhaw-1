@@ -57,7 +57,10 @@ export default function MenuPage() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return all;
-    return all.filter((n) => `${n.name} ${n.meaning} ${n.label} ${n.desc || ''}`
+    // `alt` = wo purane naam jo ab menu me nahi hain par log abhi bhi dhoondhte
+    // hain ("supplier", "kharch"). Bina iske teen page ek me milne ke baad
+    // khoj se hi gayab ho jate
+    return all.filter((n) => `${n.name} ${n.meaning} ${n.label} ${n.desc || ''} ${n.alt || ''}`
       .toLowerCase().includes(needle));
   }, [all, q]);
 

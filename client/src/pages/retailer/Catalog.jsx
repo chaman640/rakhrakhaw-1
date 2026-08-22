@@ -41,8 +41,11 @@ export default function Catalog() {
   const [adding, setAdding] = useState(null);
   const [justAdded, setJustAdded] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (chupChaap = false) => {
+    // `chupChaap` = list ko khali karke skeleton mat dikhao, sirf badal do.
+    // Wapas aane par poori list ka gayab ho kar dobara aana aisa lagta hai
+    // jaise page toot gaya ho.
+    if (!chupChaap) setLoading(true);
     try {
       const res = await api.get('/catalog', {
         params: { q: debouncedQ, categoryId, stock, sort, page, limit: 24 },
@@ -62,6 +65,29 @@ export default function Catalog() {
   }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debouncedQ, categoryId, stock, sort]);
+
+  /*
+    WAPAS AANE PAR CATALOG TAAZA.
+
+    Ye page ghanton khula pada reh sakta hai — retailer subah kholta hai, phone
+    jeb me daal deta hai, shaam ko order karta hai. Us beech wholesaler rate
+    badal chuka hota hai aur stock khatam ho chuka hota hai, par screen wahi
+    purani tasveer dikhati rehti hai. Retailer ₹100 dekh kar order karta hai
+    aur bill ₹120 ka aata hai — aur galti app ki dikhti hai.
+
+    Isliye jab bhi ye tab dobara saamne aata hai, list chup-chaap taaza ho jati
+    hai. `visibilitychange` isi ke liye hai: dobara khulne par hi chalta hai,
+    background me nahi — na battery jati hai, na bekaar request.
+  */
+  useEffect(() => {
+    const onWapas = () => { if (document.visibilityState === 'visible') load(true); };
+    document.addEventListener('visibilitychange', onWapas);
+    window.addEventListener('focus', onWapas);
+    return () => {
+      document.removeEventListener('visibilitychange', onWapas);
+      window.removeEventListener('focus', onWapas);
+    };
+  }, [load]);
 
   // Kuch item pe wholesaler ne "kam se kam itna hi lena" laga rakha hai —
   // default 1 rakhne se "Daal dein" dabate hi server mana kar deta tha

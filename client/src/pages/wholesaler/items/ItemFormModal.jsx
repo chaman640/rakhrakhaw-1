@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload, Trash2, Package, Plus } from 'lucide-react';
+import { Upload, Trash2, Package, Plus, ChevronRight } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney } from '@/lib/format';
 import { Modal, Button, Input, Select, Textarea, Switch, useToast } from '@/components/ui';
+import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 const UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', 'LTR', 'ML', 'MTR', 'FT', 'BAG', 'BUNDLE'];
@@ -16,8 +17,20 @@ const blank = {
   openingStock: '', lowStockAt: '5', rack: '', minOrderQty: '',
   hsn: '', gstRate: '0',
   warrantyMonths: '0', warrantyNote: '',
+  expiryDate: '', mfgDate: '', size: '', shape: '', weight: '', weightUnit: 'KG',
   visibleToRetailers: true,
 };
+
+// Wazan ki ikaai — thos aur tarl, dono
+const WEIGHT_UNITS = [
+  { value: 'G', label: 'gram' },
+  { value: 'KG', label: 'kilo' },
+  { value: 'ML', label: 'ml' },
+  { value: 'LTR', label: 'litre' },
+];
+
+// Date ke khaane ko "2026-08-22" chahiye; server poori ISO tareekh bhejta hai
+const dateInput = (v) => (v ? String(v).slice(0, 10) : '');
 
 // Jo warranty aam taur pe di jaati hai — type karne ki zarurat na pade
 const WARRANTY_PRESETS = [
@@ -74,6 +87,12 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         gstRate: String(item.gstRate ?? 0),
         warrantyMonths: String(item.warrantyMonths ?? 0),
         warrantyNote: item.warrantyNote || '',
+        expiryDate: dateInput(item.expiryDate),
+        mfgDate: dateInput(item.mfgDate),
+        size: item.size || '',
+        shape: item.shape || '',
+        weight: String(item.weight || ''),
+        weightUnit: item.weightUnit || 'KG',
         visibleToRetailers: item.visibleToRetailers !== false,
       });
       setPhoto({ url: item.imageUrl || '', pendingFile: null });
@@ -84,6 +103,16 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   }, [open, item, business]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // Byora wala hissa apne aap khula rahe jab usme kuch bhara ho — warna edit
+  // karte waqt bhari hui expiry chhupi rehti aur dikhti hi nahi
+  const hasByora = Boolean(form.expiryDate || form.mfgDate || form.size
+    || form.shape || Number(form.weight || 0));
+
+  // Expiry me kitne din bache — minus matlab beet chuki
+  const expiryDin = form.expiryDate
+    ? Math.ceil((new Date(form.expiryDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+    : null;
 
   const cost = Number(form.purchasePrice || 0);
   const sell = Number(form.wholesalePrice || form.salePrice || 0);
@@ -160,6 +189,20 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       gstRate: Number(form.gstRate || 0),
       warrantyMonths: Number(form.warrantyMonths || 0),
       warrantyNote: form.warrantyNote.trim(),
+      /*
+        Khali tareekh `''` nahi, `null` jati hai.
+
+        `''` ko Date me daalte hi "Invalid Date" ban jata hai aur wo poora save
+        gira deta hai — aur error bhi aisa aata hai jisse kuch samajh nahi
+        aata. Server pe bhi yahi badla hai, par yahan bhi karna theek hai:
+        khali ka matlab "likha hi nahi", aur wo `null` hai.
+      */
+      expiryDate: form.expiryDate || null,
+      mfgDate: form.mfgDate || null,
+      size: form.size.trim(),
+      shape: form.shape.trim(),
+      weight: Number(form.weight || 0),
+      weightUnit: form.weightUnit,
       visibleToRetailers: form.visibleToRetailers,
     };
     if (!isEdit) payload.openingStock = Number(form.openingStock || 0);
@@ -342,6 +385,52 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             </div>
           </div>
         )}
+
+        {/* ---- Maal ka apna byora — sab marzi se ---- */}
+        {/*
+          Ye hissa BAND rehta hai jab tak koi khole nahi.
+
+          Wajah wahi jo model me likhi hai: paanchon khaane har dukaan ke kaam
+          ke nahi. Bolt bechne wale ko expiry se koi matlab nahi. Har item pe
+          paanch khali khaane dikhana form ko lamba aur dara dene wala bana
+          deta hai, aur jise sach me zarurat hai wo ek tap me khol lega. Jinme
+          kuch bhara hua hai, wo apne aap khula milta hai.
+        */}
+        <details className="rounded-lg border border-slate-200 p-4" open={hasByora}>
+          <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 focus-ring">
+            <span className="inline-flex items-center gap-2">
+              <ChevronRight size={14} className="transition-transform [details[open]_&]:rotate-90" />
+              {t('Maal ka byora')}
+              <span className="font-normal text-slate-400">{t('(marzi se)')}</span>
+            </span>
+          </summary>
+          <p className="mt-2 text-xs text-slate-500">
+            {t('Expiry, size, wazan — jo aapke maal pe lagta ho wahi bharein. Baaki khali chhod dein.')}
+          </p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <Input label={t('Expiry')} type="date" value={form.expiryDate} onChange={set('expiryDate')}
+              hint={t('Dawa, oil, khane-peene ka saamaan')} />
+            <Input label={t('Banane ki tareekh')} type="date" value={form.mfgDate} onChange={set('mfgDate')} />
+            <Input label={t('Size')} placeholder={t('42, XL, 10mm')} value={form.size} onChange={set('size')}
+              hint={t('Jo shabd aap bolte hain wahi likhein')} />
+            <Input label={t('Shape')} placeholder={t('Gol, chaukor')} value={form.shape} onChange={set('shape')} />
+            <Input label={t('Wazan')} type="number" step="0.001" min="0"
+              value={form.weight} onChange={set('weight')} />
+            <Select label={t('Wazan ki ikaai')} value={form.weightUnit} placeholder=""
+              onChange={set('weightUnit')} options={WEIGHT_UNITS} />
+          </div>
+          {expiryDin !== null && (
+            <p className={cn('mt-3 rounded-lg px-3 py-2 text-xs',
+              expiryDin < 0 ? 'bg-red-50 text-red-800'
+                : expiryDin <= 30 ? 'bg-amber-50 text-amber-900'
+                  : 'bg-slate-50 text-slate-600')}>
+              {expiryDin < 0
+                ? `Ye maal ${Math.abs(expiryDin)} din pehle expire ho chuka hai`
+                : expiryDin === 0 ? 'Ye maal aaj expire ho raha hai'
+                  : `Expiry me ${expiryDin} din bache hain`}
+            </p>
+          )}
+        </details>
 
         {/* ---- Warranty ---- */}
         <div className="rounded-lg border border-slate-200 p-4">

@@ -20,7 +20,7 @@ const statusTone = { pending: 'amber', active: 'green', blocked: 'red' };
 const statusLabel = { pending: 'Approval baaki', active: 'Active', blocked: 'Blocked' };
 
 /** Retailers aur Suppliers dono isi component se chalte hain */
-export default function PartyList({ type }) {
+export default function PartyList({ type, embedded = false }) {
   const isRetailer = type === 'retailer';
   const toast = useToast();
   const navigate = useNavigate();
@@ -128,17 +128,32 @@ export default function PartyList({ type }) {
 
   return (
     <>
-      <PageHeader
-        title={isRetailer ? 'Retailers' : 'Suppliers'}
-        subtitle={isRetailer
-          ? 'Jo aapse maal lete hain — access, rate aur udhaar'
-          : 'Jinse aap maal khareedte hain'}
-        action={
+      {/*
+        `embedded` = ye page kisi aur page ke TAB ke andar chal raha hai.
+
+        Us halat me apna bada sirnaam nahi dikhana — wo upar wale page ka kaam
+        hai, aur do sirnaam ek ke neeche doosra sirf jagah khata hai. Button
+        phir bhi chahiye, isliye wo apni ek chhoti si line me aa jata hai.
+      */}
+      {embedded ? (
+        <div className="mb-4 flex justify-end">
           <Button icon={Plus} onClick={() => { setFormParty(null); setFormOpen(true); }}>
             {isRetailer ? 'Naya retailer' : 'Naya supplier'}
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title={isRetailer ? 'Retailers' : 'Suppliers'}
+          subtitle={isRetailer
+            ? 'Jo aapse maal lete hain — access, rate aur udhaar'
+            : 'Jinse aap maal khareedte hain'}
+          action={
+            <Button icon={Plus} onClick={() => { setFormParty(null); setFormOpen(true); }}>
+              {isRetailer ? 'Naya retailer' : 'Naya supplier'}
+            </Button>
+          }
+        />
+      )}
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={isRetailer ? 'Kul retailers' : 'Kul suppliers'} value={stats.total}

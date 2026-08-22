@@ -3,6 +3,7 @@ import { ok, created } from '../utils/response.js';
 import { UNITS } from '../config/constants.js';
 import * as service from '../services/item.service.js';
 import { getMovements } from '../services/stock.service.js';
+import { khepList } from '../services/lot.service.js';
 import { logAction, diff } from '../services/audit.service.js';
 
 export const list = asyncHandler(async (req, res) => {
@@ -26,6 +27,15 @@ export const detail = asyncHandler(async (req, res) =>
 
 export const movements = asyncHandler(async (req, res) =>
   ok(res, await getMovements(req.businessId, req.params.id)));
+
+/**
+ * "Ye stock mujhe kitne ka pada hai" — khep ke hisaab se.
+ *
+ * Ginti to item pe pehle se hai; ye uski LAGAT batata hai, aur wo ek number
+ * nahi hota: 40 piece ₹80 ke aur 100 piece ₹100 ke — dono ek hi item ke.
+ */
+export const lots = asyncHandler(async (req, res) =>
+  ok(res, await khepList(req.businessId, req.params.id)));
 
 export const create = asyncHandler(async (req, res) => {
   const item = await service.createItem(req.businessId, req.body, req.user._id);

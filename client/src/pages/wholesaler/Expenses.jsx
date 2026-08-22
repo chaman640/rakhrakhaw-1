@@ -56,7 +56,7 @@ function rangeDates(value) {
 
 const MODE_TONE = { CASH: 'slate', UPI: 'brand', BANK: 'blue', CHEQUE: 'amber' };
 
-export default function Expenses() {
+export default function Expenses({ embedded = false }) {
   const toast = useToast();
   const { can } = useAuth();
 
@@ -120,13 +120,22 @@ export default function Expenses() {
 
   return (
     <>
-      <PageHeader
-        title={t('Kharch')}
-        subtitle={t('Chai, petrol, tankhwah, kiraya — jo bhi paisa maal ke alawa bahar gaya')}
-        action={can('expenses:create') && (
-          <Button icon={Plus} onClick={openNew}>{t('Kharch likhein')}</Button>
-        )}
-      />
+      {/* `embedded` — wajah PartyList.jsx me likhi hai */}
+      {embedded ? (
+        can('expenses:create') && (
+          <div className="mb-4 flex justify-end">
+            <Button icon={Plus} onClick={openNew}>{t('Kharch likhein')}</Button>
+          </div>
+        )
+      ) : (
+        <PageHeader
+          title={t('Kharch')}
+          subtitle={t('Chai, petrol, tankhwah, kiraya — jo bhi paisa maal ke alawa bahar gaya')}
+          action={can('expenses:create') && (
+            <Button icon={Plus} onClick={openNew}>{t('Kharch likhein')}</Button>
+          )}
+        />
+      )}
 
       {/* ── upar ki ginti ── */}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

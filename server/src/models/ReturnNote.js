@@ -20,6 +20,31 @@ const returnItemSchema = new mongoose.Schema(
     unit: { type: String, enum: UNITS, default: 'PCS' },
     // Bill jaisa hi snapshot — wajah Invoice.js me likhi hai
     costPrice: { type: Number, default: 0 },
+    // Aur wahi khep ka nishaan — wajah Invoice.js me likhi hai.
+    // Sale return me: maal kis khep me WAPAS gaya.
+    // Purchase return me: maal kis khep se NIKLA.
+    /**
+     * Poori line ki lagat — `qty × costPrice` se ye BEHTAR hai.
+     *
+     * Ek line do khep se ban sakti hai (40 @ ₹80 + 20 @ ₹100 = ₹5,200), aur
+     * uski per-piece lagat ₹86.67 par tootti hai. 60 × 86.67 wapas guna karo
+     * to ₹5,200.20 milta hai — har aisi line pe kuch paise ka jhooth, aur
+     * mahine bhar ke report me wo paise jud kar dikhne lagte hain.
+     *
+     * Isliye asli jod yahin likha jata hai. `costPrice` sirf "ek piece kitne
+     * ka pada" batane ke liye rehti hai, hisaab ke liye nahi.
+     */
+    costTotal: { type: Number, default: 0 },
+
+    lots: {
+      type: [{
+        lotId: { type: mongoose.Schema.Types.ObjectId, ref: 'StockLot', default: null },
+        qty: Number,
+        unitCost: Number,
+        _id: false,
+      }],
+      default: [],
+    },
     qty: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0 },

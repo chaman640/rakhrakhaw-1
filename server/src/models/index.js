@@ -6,6 +6,7 @@ export { default as Category } from './Category.js';
 export { default as Item } from './Item.js';
 export { default as PartyItemRate } from './PartyItemRate.js';
 export { default as StockMovement } from './StockMovement.js';
+export { default as StockLot } from './StockLot.js';
 export { default as Purchase } from './Purchase.js';
 export { default as Order } from './Order.js';
 export { default as Invoice } from './Invoice.js';

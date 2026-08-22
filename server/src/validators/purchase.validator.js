@@ -13,7 +13,8 @@ export const purchaseItemSchema = z.object({
 });
 
 export const createPurchaseSchema = z.object({
-  supplierId: objectId,
+  // Khali chalti hai — nakad kharid (purchase.service.js me wajah likhi hai)
+  supplierId: objectId.or(z.literal('')).nullable().optional().default(''),
   supplierBillNo: z.string().trim().max(40).optional().default(''),
   purchaseDate: z.coerce.date().optional(),
   items: z.array(purchaseItemSchema).min(1, 'Kam se kam ek item daalein').max(200),

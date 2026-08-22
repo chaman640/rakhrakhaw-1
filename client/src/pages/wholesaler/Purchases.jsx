@@ -80,7 +80,7 @@ const ageTone = (date) => {
  * chaabi hoti hai par paise ki nahi, aur wo theek hai. Us halat me tab dikhta
  * hi nahi (khali tab dikhana usse bura hai).
  */
-export default function Purchases() {
+export default function Purchases({ embedded = false }) {
   const navigate = useNavigate();
   const { can } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -96,11 +96,18 @@ export default function Purchases() {
 
   return (
     <>
-      <PageHeader
-        title={t('Purchase')}
-        subtitle={t('Supplier se aaya maal — stock apne aap badhta hai')}
-        action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>{t('Nayi purchase')}</Button>}
-      />
+      {/* `embedded` — wajah PartyList.jsx me likhi hai */}
+      {embedded ? (
+        <div className="mb-4 flex justify-end">
+          <Button icon={Plus} onClick={() => navigate('/purchases/new')}>{t('Nayi purchase')}</Button>
+        </div>
+      ) : (
+        <PageHeader
+          title={t('Purchase')}
+          subtitle={t('Supplier se aaya maal — stock apne aap badhta hai')}
+          action={<Button icon={Plus} onClick={() => navigate('/purchases/new')}>{t('Nayi purchase')}</Button>}
+        />
+      )}
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Kul purchases')} value={stats.totalPurchases || 0} icon={Truck} tone="brand" />
@@ -197,7 +204,10 @@ function PurchaseList({ navigate }) {
         </button>
       ),
     },
-    { key: 'supplier', header: t('Supplier'), render: (r) => r.supplier?.name || '—' },
+    // Bina supplier wali kharid ko "—" dikhana galat hai: wo khali khaana nahi,
+    // ek alag KISM ki entry hai. Naam dena hi use pehchaan deta hai.
+    { key: 'supplier', header: t('Supplier'),
+      render: (r) => (r.supplier?.name || <span className="text-slate-400">{t('Nakad kharid')}</span>) },
     { key: 'itemCount', header: t('Items'), align: 'right', render: (r) => r.itemCount },
     { key: 'grandTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.grandTotal) },
     {
@@ -299,7 +309,7 @@ function PurchaseList({ navigate }) {
                       className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-slate-50">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-slate-900">
-                          {r.supplier?.name || r.purchaseNo}
+                          {r.supplier?.name || t('Nakad kharid')}
                         </p>
                         <p className="truncate text-xs text-slate-500">
                           {r.purchaseNo}{r.itemCount > 0 && ` · ${r.itemCount} ${t('item')}`}

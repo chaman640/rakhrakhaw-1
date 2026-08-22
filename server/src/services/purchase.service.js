@@ -5,8 +5,9 @@ import {
 } from '../config/constants.js';
 import { round2, splitRoundOff } from '../utils/money.js';
 import { getFinancialYear } from '../utils/financialYear.js';
-import { Purchase, Party, Item, Business, Counter, StockMovement } from '../models/index.js';
+import { Purchase, Party, Item, Business, Counter, StockMovement, StockLot } from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
+import { khepBanao, khepHatao } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -203,10 +204,27 @@ export async function nextNumber(businessId) {
 export async function createPurchase(businessId, payload, userId) {
   const business = await Business.findById(businessId).select('gstEnabled').lean();
 
-  const supplier = await Party.findOne({
-    _id: payload.supplierId, businessId, type: PARTY_TYPES.SUPPLIER,
-  }).lean();
-  if (!supplier) throw ApiError.badRequest('Supplier nahi mila — pehle Suppliers page se add karein');
+  /*
+    SUPPLIER AB ZAROORI NAHI.
+
+    Aadhi kharid mandi se hoti hai — nakad, parchi bhi nahi, aur us aadmi ka
+    naam bhi shayad pata na ho. Pehle aise maal ko app me daalne ka koi rasta
+    hi nahi tha: ya to jhootha supplier banao ("Cash", "Local"), ya entry hi
+    mat karo. Dono me se ek bhi theek nahi tha — pehle wale se supplier ki
+    list kachra ho jati aur uske naam pe jhootha khata banta rehta, doosre se
+    stock aur lagat dono galat ho jate.
+
+    Ab supplier khali ho sakta hai. Us halat me KHATA banta hi nahi (kisko
+    dena hai? kisi ko nahi), par stock, khep aur lagat — teeno waise hi
+    chadhte hain. Paisa Fayda-Nuksan me lagat ke roop me aata hi hai, kyunki
+    lagat bikri ke waqt khep se ginte hain, kisi khate se nahi.
+  */
+  const supplier = payload.supplierId
+    ? await Party.findOne({ _id: payload.supplierId, businessId, type: PARTY_TYPES.SUPPLIER }).lean()
+    : null;
+  if (payload.supplierId && !supplier) {
+    throw ApiError.badRequest('Supplier nahi mila — pehle Suppliers page se add karein');
+  }
 
   // Saare item ek saath nikal lo (har row pe alag query nahi)
   const itemIds = payload.items.map((i) => i.itemId);
@@ -230,7 +248,18 @@ export async function createPurchase(businessId, payload, userId) {
 
   const totals = computeTotals(lines, { gstEnabled: business?.gstEnabled });
 
-  const paidAmount = round2(Math.min(payload.paidAmount || 0, totals.grandTotal));
+  /*
+    Supplier na ho to kharid POORI CHUKTA hai — udhaar kisse?
+
+    Ye chhoti si line ek bade jhoot ko rokti hai. Bina iske nakad wali kharid
+    "₹8,000 dena baaki" ban kar "Dena hai" wali list me baith jati, aur wahan
+    se hatane ka koi rasta hi na hota — na koi supplier jise paisa de sakein,
+    na koi khata jisme entry ho. Dukaandaar rozana ek aisa number dekhta jo
+    kisi ka bhi nahi hai.
+  */
+  const paidAmount = supplier
+    ? round2(Math.min(payload.paidAmount || 0, totals.grandTotal))
+    : totals.grandTotal;
   const dueAmount = round2(totals.grandTotal - paidAmount);
 
   const { number: purchaseNo } = await Counter.nextNumber({
@@ -240,7 +269,7 @@ export async function createPurchase(businessId, payload, userId) {
 
   const purchase = await Purchase.create({
     businessId,
-    supplierId: supplier._id,
+    supplierId: supplier?._id || null,
     purchaseNo,
     supplierBillNo: payload.supplierBillNo,
     purchaseDate: payload.purchaseDate || new Date(),
@@ -267,7 +296,30 @@ export async function createPurchase(businessId, payload, userId) {
       qty: line.qty,
       refType: 'Purchase',
       refId: purchase._id,
-      note: `${purchaseNo} · ${supplier.shopName || supplier.name}`,
+      note: `${purchaseNo} · ${supplier?.shopName || supplier?.name || 'Cash kharid'}`,
+      userId,
+    });
+
+    /*
+      Aur is maal ki apni KHEP bhi — apni lagat ke saath.
+
+      Lagat me GST nahi jodte: wo sarkar ka paisa hai, aapki lagat nahi (aur
+      wapas bhi mil jata hai). Isliye `taxableValue` — yani discount ke baad,
+      GST se pehle wali raqam.
+
+      Tareekh kharid ki hai, aaj ki nahi. Pichhle hafte ka bill aaj entry karo
+      to wo khep PURANI hai, aur FIFO me uska number pehle aana chahiye.
+    */
+    await khepBanao({
+      businessId,
+      itemId: line.itemId,
+      qty: line.qty,
+      unitCost: line.qty > 0 ? round2(line.taxableValue / line.qty) : 0,
+      source: 'PURCHASE',
+      refType: 'Purchase',
+      refId: purchase._id,
+      refNo: purchaseNo,
+      date: purchase.purchaseDate,
       userId,
     });
   }
@@ -284,25 +336,28 @@ export async function createPurchase(businessId, payload, userId) {
   }
 
   // ---- Khata: supplier ka hisaab badha ----
-  await postEntry({
-    businessId, partyId: supplier._id, type: LEDGER_TYPES.PURCHASE,
-    debit: totals.grandTotal,
-    date: purchase.purchaseDate,
-    refType: 'Purchase', refId: purchase._id, refNo: purchaseNo,
-    note: payload.supplierBillNo ? `Bill ${payload.supplierBillNo}` : 'Maal aaya',
-    userId,
-  });
-
-  // ---- Turant kuch paisa diya to wo bhi khate me ----
-  if (paidAmount > 0) {
+  // Supplier hi na ho to khata banta hi nahi — dena kisko hai?
+  if (supplier) {
     await postEntry({
-      businessId, partyId: supplier._id, type: LEDGER_TYPES.PAYMENT_OUT,
-      credit: paidAmount,
+      businessId, partyId: supplier._id, type: LEDGER_TYPES.PURCHASE,
+      debit: totals.grandTotal,
       date: purchase.purchaseDate,
       refType: 'Purchase', refId: purchase._id, refNo: purchaseNo,
-      note: 'Purchase ke saath diya',
+      note: payload.supplierBillNo ? `Bill ${payload.supplierBillNo}` : 'Maal aaya',
       userId,
     });
+
+    // ---- Turant kuch paisa diya to wo bhi khate me ----
+    if (paidAmount > 0) {
+      await postEntry({
+        businessId, partyId: supplier._id, type: LEDGER_TYPES.PAYMENT_OUT,
+        credit: paidAmount,
+        date: purchase.purchaseDate,
+        refType: 'Purchase', refId: purchase._id, refNo: purchaseNo,
+        note: 'Purchase ke saath diya',
+        userId,
+      });
+    }
   }
 
   return getPurchase(businessId, purchase._id);
@@ -333,6 +388,32 @@ export async function deletePurchase(businessId, id, userId) {
     }
   }
 
+  /*
+    Doosri, ZYADA SAKHT jaanch: ISI kharid ka maal bika hai ya nahi.
+
+    Upar wali jaanch sirf ginti dekhti hai, aur usme ek chhed hai: 10 kharido,
+    10 bech do, 10 aur kharido — ab item ka stock 10 hai, isliye pehli kharid
+    delete "ho sakti" thi. Par jo maal bika wo PEHLI wali khep ka tha, aur uski
+    lagat un bill pe jam chuki hai. Us kharid ko mita dena us bill ke munafe ko
+    hawa me latka deta.
+
+    Khep khud batati hai ki usme se kitna nikal chuka hai — wahi asli jawab hai.
+  */
+  // Ginti JS me — `$expr` har jagah nahi chalta, aur khep waise bhi ginti ki
+  // hoti hain (ek kharid me jitne item, utni)
+  const myLots = await StockLot.find({ businessId, refType: 'Purchase', refId: purchase._id })
+    .select('itemId qty remaining').lean();
+  const soldLots = myLots.filter((l) => round2(l.remaining) < round2(l.qty));
+
+  if (soldLots.length) {
+    const first = soldLots[0];
+    const item = stockMap.get(String(first.itemId));
+    throw ApiError.badRequest(
+      `${item?.name || 'Is item'} ka ${round2(first.qty - first.remaining)} ${item?.unit || ''} `
+      + 'isi kharid me se bik chuka hai — uski lagat bill pe chadh chuki hai, isliye ye kharid delete nahi ho sakti'
+    );
+  }
+
   // Stock wapas nikalo
   //
   // Dono record — "maal aaya" aur "maal wapas gaya" — bane rehte hain.
@@ -351,6 +432,9 @@ export async function deletePurchase(businessId, id, userId) {
       userId,
     });
   }
+
+  // Is kharid ki khep bhi hat jaye — warna godown me lagat ka bhoot reh jata
+  await khepHatao({ businessId, refType: 'Purchase', refId: purchase._id });
 
   // Khata ulta karo
   await reverseEntriesFor({ businessId, refType: 'Purchase', refId: purchase._id, userId });

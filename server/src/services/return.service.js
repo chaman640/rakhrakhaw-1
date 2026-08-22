@@ -11,6 +11,7 @@ import {
 } from '../models/index.js';
 import { scopeByParty, isScoped, canSeeDoc } from '../utils/scope.js';
 import { applyStockChange } from './stock.service.js';
+import { khepNikalo, khepWapas } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { applyCredit, releaseCredit, tradedQty } from './settlement.service.js';
 import { decideTaxType, computeInvoice, hsnSummary } from './gst.service.js';
@@ -18,6 +19,51 @@ import { decideTaxType, computeInvoice, hsnSummary } from './gst.service.js';
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const IS_SALE = (type) => type === RETURN_TYPES.SALE_RETURN;
+
+/**
+ * Bill ki line par jo khep likhi hai, usme se "ab wali" wapasi ka hissa chuno.
+ *
+ * Bill me ek hi item do khep se ja sakta hai — 60 purane ₹80 wale, 40 naye
+ * ₹100 wale. Retailer 50 wapas kare to wo un 60 me se hi hain, kyunki bikte
+ * bhi wahi pehle the.
+ *
+ * `pehleWapas` yahan asli baat hai. Uske bina do adhoori wapasi (50 + 50)
+ * DONO shuru se ginti aur dono wahi purani khep me 50-50 daal deti — us khep
+ * me 100 wapas chala jata jabki usme se nikle sirf 60 the. Ginti sahi dikhti
+ * rehti, par godown me ₹800 ki lagat hawa se paida ho jati. Isliye pehle
+ * utna hissa CHHOD kar aage badhte hain jitna pehle wapas ho chuka hai.
+ *
+ * Bill hi na juda ho (ya purane bill me khep ka nishaan hi na ho) to `null` —
+ * bulane wala tab andaze wali lagat pe nayi khep bana leta hai.
+ */
+function khepChuno(billLots, pehleWapas, chahiye) {
+  if (!billLots?.length) return null;
+
+  let chhodna = round2(pehleWapas || 0);
+  let bacha = round2(chahiye);
+  const out = [];
+
+  for (const lot of billLots) {
+    if (bacha <= 0) break;
+    let isme = round2(lot.qty);
+
+    if (chhodna > 0) {
+      const kata = Math.min(chhodna, isme);
+      chhodna = round2(chhodna - kata);
+      isme = round2(isme - kata);
+      if (isme <= 0) continue;
+    }
+
+    const lena = round2(Math.min(bacha, isme));
+    out.push({ lotId: lot.lotId || null, qty: lena, unitCost: lot.unitCost || 0 });
+    bacha = round2(bacha - lena);
+  }
+
+  // Bill pe likhi khep kam pad gayi (purana data) — bache hue ko andaze pe chhodo
+  if (bacha > 0) out.push({ lotId: null, qty: bacha, unitCost: billLots[0]?.unitCost || 0 });
+
+  return out;
+}
 
 const CONFIG = {
   [RETURN_TYPES.SALE_RETURN]: {
@@ -294,8 +340,12 @@ export async function createReturn(businessId, payload, userId) {
   }
 
   // Bill se zyada wapas na ho jaye
+  //
+  // `already` neeche khep ka hisaab lagane me bhi chahiye (kitna pehle hi
+  // wapas ho chuka), isliye ye is block ke bahar rehta hai.
+  let already = {};
   if (original) {
-    const already = await returnedSoFar(businessId, isSale
+    already = await returnedSoFar(businessId, isSale
       ? { invoiceId: original._id } : { purchaseId: original._id });
 
     for (const [itemId, wantQty] of wantedByItem) {
@@ -461,7 +511,61 @@ export async function createReturn(businessId, payload, userId) {
       note: `${returnNo}${note.againstNo ? ` (${note.againstNo})` : ''}`,
       userId,
     });
+
+    /*
+      Khep bhi sambhalo — aur dono taraf ka matlab ULTA hai.
+
+      SALE RETURN (retailer ne wapas kiya): maal ghar aa raha hai. Wo USI khep
+      me lautna chahiye jahan se gaya tha. Bill juda ho to wo nishaan bill ki
+      line pe hi likha hai — seedha wahi istemal karte hain, isliye wapas aaya
+      maal apni asli lagat aur apni asli jagah dono paa leta hai.
+
+      Bill juda na ho to hum jaan hi nahi sakte ki maal kis khep ka tha.
+      Aise me nayi khep banti hai, aur uski lagat wo hai jis par ye wapasi
+      likhi gayi — andaza hi sahi, par saaf aur bataya hua andaza.
+
+      PURCHASE RETURN (supplier ko wapas bheja): maal ja raha hai — FIFO se
+      nikalta hai, bilkul bikri ki tarah.
+    */
+    if (isSale) {
+      const fromBill = original?.items?.find((i) => String(i.itemId) === String(line.itemId));
+      const pieces = khepChuno(fromBill?.lots, already[String(line.itemId)] || 0, line.qty)
+        || [{ lotId: null, qty: line.qty, unitCost: line.costPrice || 0 }];
+      await khepWapas({
+        businessId, itemId: line.itemId, pieces,
+        date: note.returnDate, refNo: returnNo,
+      });
+      line.lots = pieces;
+      /*
+        Wapas aaye maal ki lagat bhi wahi jo GAYA tha, aaj ka rate nahi.
+
+        Fayda-Nuksan me becha hua maal ki lagat ghatai jati hai; wapas aane par
+        wo ghatana ulta karna padta hai. Agar yahan aaj ka rate rakh dein to
+        ₹80 me becha maal ₹100 pe wapas aayega aur har wapasi chup-chaap ₹20
+        ka jhootha fayda bana degi.
+      */
+      const wapasKul = round2(pieces.reduce((s, x) => s + x.qty * x.unitCost, 0));
+      line.costPrice = line.qty > 0 ? round2(wapasKul / line.qty) : 0;
+      line.costTotal = wapasKul;
+    } else {
+      const { cost, unitCost, pieces } = await khepNikalo({
+        businessId, itemId: line.itemId, qty: line.qty,
+        fallbackCost: line.costPrice || 0,
+      });
+      line.lots = pieces;
+      line.costPrice = unitCost;
+      line.costTotal = cost;
+    }
   }
+
+  // Khep ka nishaan aur asli lagat note pe likh do
+  note.items = note.items.map((it, i) => ({
+    ...(it.toObject?.() || it),
+    costPrice: totals.items[i].costPrice,
+    costTotal: totals.items[i].costTotal || 0,
+    lots: totals.items[i].lots || [],
+  }));
+  await note.save();
 
   // ---- Khata ----
   // Dono taraf hisaab GHATTA hai, isliye dono me credit:
@@ -538,6 +642,29 @@ export async function deleteReturn(businessId, id, userId, viewer = null) {
       userId,
       allowNegative: true,
     });
+
+    /*
+      Khep bhi ulti — banate waqt jo kiya tha, uska ulta.
+
+      Sale return ne maal khep me DAALA tha, to delete uske utna hi NIKALEGA
+      (aur wahi khep pehle, kyunki FIFO ka kram wahi hai). Purchase return ne
+      NIKALA tha, to delete usi khep me wapas daalega.
+    */
+    if (note.type === RETURN_TYPES.SALE_RETURN) {
+      await khepNikalo({
+        businessId, itemId: line.itemId, qty: line.qty,
+        fallbackCost: line.costPrice || 0,
+      });
+    } else {
+      await khepWapas({
+        businessId, itemId: line.itemId,
+        pieces: line.lots?.length
+          ? line.lots
+          : [{ lotId: null, qty: line.qty, unitCost: line.costPrice || 0 }],
+        date: note.returnDate,
+        refNo: `${note.returnNo} delete`,
+      });
+    }
   }
 
   await reverseEntriesFor({ businessId, refType: 'ReturnNote', refId: note._id, userId });

@@ -97,7 +97,7 @@ async function maybeWarnLowStock(businessId, item, qty) {
 
 /** Stock ko seedha ek number pe set karna (physical count ke baad) */
 export async function setStock({ businessId, itemId, newQty, note = '', userId = null }) {
-  const item = await Item.findOne({ _id: itemId, businessId }).select('stockQty').lean();
+  const item = await Item.findOne({ _id: itemId, businessId }).select('stockQty purchasePrice').lean();
   if (!item) throw ApiError.notFound('Item nahi mila');
 
   const delta = Number(newQty) - Number(item.stockQty);
@@ -105,7 +105,7 @@ export async function setStock({ businessId, itemId, newQty, note = '', userId =
     return Item.findById(itemId);
   }
 
-  return applyStockChange({
+  const updated = await applyStockChange({
     businessId,
     itemId,
     type: STOCK_MOVEMENT_TYPES.ADJUSTMENT,
@@ -114,6 +114,34 @@ export async function setStock({ businessId, itemId, newQty, note = '', userId =
     userId,
     allowNegative: true,
   });
+
+  /*
+    Ginti badli to LAGAT bhi sambhalni padti hai.
+
+    Physical count me do baatein hoti hain. Maal nikla (chori, toot-phoot,
+    galat ginti) — to jo nikla wo purani khep me se hi nikalna chahiye, warna
+    godown me maal to ghat jata par uski lagat khep me padi reh jati aur agli
+    bikri sasti dikhne lagti. Aur maal mila — to uski koi khep hai hi nahi,
+    isliye aaj ke rate pe nayi khep banti hai.
+
+    Ye kaam yahin hona zaroori hai, kisi upar wale page pe nahi: stock badalne
+    ka poore project me ek hi darwaza hai, aur lagat ko usi darwaze pe khada
+    rehna chahiye — warna koi ek raasta bhool jane par hisaab chup-chaap
+    bigadta rahega.
+  */
+  const { khepBanao, khepNikalo } = await import('./lot.service.js');
+  if (delta > 0) {
+    await khepBanao({
+      businessId, itemId, qty: delta,
+      unitCost: item.purchasePrice || 0,
+      source: 'ADJUSTMENT', refType: 'Item', refId: itemId,
+      refNo: 'Ginti theek ki', userId,
+    });
+  } else {
+    await khepNikalo({ businessId, itemId, qty: -delta, fallbackCost: item.purchasePrice || 0 });
+  }
+
+  return updated;
 }
 
 export async function getMovements(businessId, itemId, { limit = 50 } = {}) {

@@ -38,13 +38,20 @@ export const wholesalerNav = [
     to: '/retailers', label: 'Retailers', icon: Users, part: 4, perm: 'parties',
     desc: 'Jinko aap maal bechte hain',
   },
+  /*
+    Teen ki jagah ek: "Kharid".
+
+    Purchase, Supplier aur Kharch teeno ek hi page ke tab ban gaye hain
+    (Buying.jsx me poori wajah likhi hai), isliye menu me bhi teen jagah lene
+    ka koi matlab nahi bacha. Menu jitna lamba, usme dhoondhna utna hi mushkil
+    — aur ye teen ek hi sawal ke hisse hain: "paisa kahan gaya?"
+
+    Khoj (search) me teeno naam se milta hai — `alt` neeche.
+  */
   {
-    to: '/suppliers', label: 'Suppliers', icon: Truck, part: 4, perm: 'parties',
-    desc: 'Jinse aap maal khareedte hain',
-  },
-  {
-    to: '/purchases', label: 'Purchase', icon: Truck, part: 15, perm: 'purchases',
-    desc: 'Maal andar aaya — kis din kitna, aur kisko dena hai',
+    to: '/purchases', label: 'Kharid', icon: Truck, part: 16, perm: 'purchases',
+    desc: 'Maal andar aaya, supplier, aur dukaan ka kharcha — teeno ek jagah',
+    alt: 'purchase supplier kharch expense buying',
   },
   // Menu me "Sale" — dukaandaar bill ki list ko "invoices" nahi, sale hi
   // kehta hai. Page wahi hai; /invoices bhi chalta rehta hai (purane link).
@@ -66,10 +73,6 @@ export const wholesalerNav = [
   {
     to: '/payments', label: 'Payment', icon: Wallet, part: 15, perm: 'khata:create',
     desc: 'Kisse udhaar lena hai, aur paisa aane-jaane ka record',
-  },
-  {
-    to: '/expenses', label: 'Kharch', icon: Wallet2, part: 15, perm: 'expenses',
-    desc: 'Chai, petrol, kiraya, tankhwah — dukaan ka kharcha',
   },
   {
     to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports',

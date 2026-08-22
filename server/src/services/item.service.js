@@ -6,6 +6,7 @@ import { saveImage, deleteImage } from '../utils/storage.js';
 import { parseCsvToObjects, toCsv } from '../utils/csv.js';
 import { Item, Category, StockMovement, PartyItemRate, Invoice, Purchase, ReturnNote } from '../models/index.js';
 import { applyStockChange, setStock } from './stock.service.js';
+import { khepBanao, khepValueMap } from './lot.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -32,6 +33,25 @@ export async function listItems(businessId, q) {
   else if (q.stock === 'in') filter.stockQty = { $gt: 0 };
   else if (q.stock === 'low') {
     filter.$expr = { $and: [{ $lte: ['$stockQty', '$lowStockAt'] }, { $gt: ['$stockQty', 0] }] };
+  }
+
+  /*
+    Expiry ki chhalni.
+
+    "Soon" ka matlab AGLE 30 DIN — aur usme wo bhi aate hain jo expire ho chuke
+    hain. Wajah seedhi hai: dukaandaar ye list "kya nikalna hai" dekhne ke liye
+    kholta hai, aur jo kal expire hua wo bhi wahi kaam hai. Alag alag dikhana
+    ho to "Expire ho chuka" wali chhalni alag se hai.
+
+    Jinki expiry likhi hi nahi (`null`) wo kabhi nahi aate — na "soon" me, na
+    "gone" me. Khali khaana "expire nahi hua" hai, "pata nahi" nahi.
+  */
+  if (q.expiry === 'soon') {
+    const tak = new Date();
+    tak.setDate(tak.getDate() + 30);
+    filter.expiryDate = { $ne: null, $lte: tak };
+  } else if (q.expiry === 'gone') {
+    filter.expiryDate = { $ne: null, $lt: new Date() };
   }
 
   const skip = (q.page - 1) * q.limit;
@@ -117,11 +137,43 @@ export async function getStats(businessId) {
     },
   ]);
 
+  /*
+    STOCK KI KEEMAT ab KHEP se aati hai, `stockQty × purchasePrice` se nahi.
+
+    Purana tarika ab seedha jhooth bol raha hota: `purchasePrice` aaj ka rate
+    hai, aur godown me pada aadha maal purane sasta rate ka ho sakta hai. 100
+    bolt me se 40 ₹80 wale aur 60 ₹100 wale — purana hisaab 100 × ₹100 =
+    ₹10,000 dikhata, sach ₹9,200 hai.
+
+    Jinki koi khep hai hi nahi (is feature se pehle ka maal) unke liye purana
+    tarika hi rehta hai — usse behtar kuch hai nahi, aur unhe chhod dena poori
+    keemat ko aur galat kar deta.
+  */
+  const [lotMap, bina] = await Promise.all([
+    khepValueMap(businessId),
+    Item.find({ businessId, isActive: true }).select('stockQty purchasePrice').lean(),
+  ]);
+
+  let stockValue = 0;
+  for (const it of bina) {
+    const lot = lotMap[String(it._id)];
+    stockValue = round2(stockValue + (lot ? lot.value : (it.stockQty || 0) * (it.purchasePrice || 0)));
+  }
+
+  // Agle 30 din me expire hone wale (aur jo ho chuke) — ek hi ginti, kyunki
+  // dono ka kaam ek hi hai: aaj shelf se nikalna
+  const soon = new Date();
+  soon.setDate(soon.getDate() + 30);
+  const expiringSoon = await Item.countDocuments({
+    businessId, isActive: true, expiryDate: { $ne: null, $lte: soon },
+  });
+
   return {
     totalItems: agg?.totalItems || 0,
-    stockValue: round2(agg?.stockValue || 0),
+    stockValue,
     lowStock: agg?.lowStock || 0,
     outOfStock: agg?.outOfStock || 0,
+    expiringSoon,
   };
 }
 
@@ -186,6 +238,26 @@ export async function createItem(businessId, payload, userId) {
       balanceAfter: openingStock,
       note: 'Opening stock',
       createdBy: userId,
+    });
+
+    /*
+      Pehle din ka maal bhi ek KHEP hai.
+
+      Iske bina FIFO ka pehla din hi khali hota: jo maal app shuru karte waqt
+      dukaan me pada tha uski koi lagat kahin darj hi na hoti, aur uske bikne
+      par lagat andaze se aati. Jo rate dukaandaar ne item banate waqt likha,
+      wahi is khep ki lagat hai — usse behtar sach hai bhi nahi.
+    */
+    await khepBanao({
+      businessId,
+      itemId: item._id,
+      qty: openingStock,
+      unitCost: Number(payload.purchasePrice || 0),
+      source: 'OPENING',
+      refType: 'Item',
+      refId: item._id,
+      refNo: 'Opening stock',
+      userId,
     });
   }
 

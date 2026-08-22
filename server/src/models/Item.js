@@ -22,6 +22,30 @@ const itemSchema = new mongoose.Schema(
     warrantyMonths: { type: Number, default: 0, min: 0, max: 240 },
     warrantyNote: { type: String, trim: true, default: '', maxlength: 200 },
 
+    /* ---- Maal ka apna byora (Step 2) ----
+     *
+     * Paanchon MARZI SE hain aur khali hi rehte hain jab tak koi bhare nahi.
+     * Yahi is hisse ki sabse zaroori baat hai: har dukaan ko in sab ki zarurat
+     * nahi hoti. Bolt bechne wale ko expiry se koi matlab nahi, dawa ya oil
+     * wale ke liye wo sabse badi baat hai; kapde wale ko size aur shape
+     * chahiye, aur loha bechne wale ko wazan.
+     *
+     * Isliye ye alag alag maap ke khaane nahi hain — `size` aur `shape` seedha
+     * TEXT hain. "42", "XL", "10mm × 4mm", "gol", "chaukor" — jo bhi dukaandaar
+     * likhna chahe. Ginti wali koi cheez inpe nahi tikti, isliye unhe dabba
+     * banane ka koi fayda nahi tha, aur nuksaan ye hota ki jo shabd wo rozana
+     * bolta hai wahi na likh pata.
+     *
+     * `weight` ginti hai (`weightUnit` uske saath) kyunki wazan par sach me
+     * jod-ghatav hota hai — courier ka bhaav, truck ka load.
+     */
+    expiryDate: { type: Date, default: null },
+    mfgDate: { type: Date, default: null },
+    size: { type: String, trim: true, default: '', maxlength: 40 },
+    shape: { type: String, trim: true, default: '', maxlength: 40 },
+    weight: { type: Number, default: 0, min: 0 },
+    weightUnit: { type: String, enum: ['G', 'KG', 'ML', 'LTR'], default: 'KG' },
+
     // ---- Godown (Part 11) ----
     rack: { type: String, trim: true, default: '' },         // "A-3", "upar wali almari"
 
@@ -65,6 +89,8 @@ itemSchema.index({ businessId: 1, sku: 1 });
 itemSchema.index({ businessId: 1, categoryId: 1 });
 itemSchema.index({ businessId: 1, brand: 1 });
 itemSchema.index({ businessId: 1, barcode: 1 });
+// "Kaunsa maal expire hone wala hai" — Items page ka chip isi pe chalta hai
+itemSchema.index({ businessId: 1, expiryDate: 1 });
 
 // Low stock flag — API response me seedha mil jayega
 itemSchema.virtual('isLowStock').get(function () {

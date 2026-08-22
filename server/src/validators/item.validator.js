@@ -33,6 +33,21 @@ export const createItemSchema = z.object({
   gstRate: z.coerce.number().min(0).max(28).optional().default(0),
   priceIncludesGst: z.boolean().optional().default(false),
 
+
+  /*
+    Maal ka apna byora — sab MARZI SE (Item.js me wajah likhi hai).
+
+    Tareekh khali chhodne par `null` — `''` nahi. Khali string Date me daalte
+    hi "Invalid Date" ban jati hai aur wo poore document ko le doobti hai,
+    isliye yahan hi badal dete hain, model tak pahunchne se pehle.
+  */
+  expiryDate: z.coerce.date().nullable().optional().or(z.literal('').transform(() => null)),
+  mfgDate: z.coerce.date().nullable().optional().or(z.literal('').transform(() => null)),
+  size: z.string().trim().max(40).optional().default(''),
+  shape: z.string().trim().max(40).optional().default(''),
+  weight: z.coerce.number().min(0).max(1000000).optional().default(0),
+  weightUnit: z.enum(['G', 'KG', 'ML', 'LTR']).optional().default('KG'),
+
   visibleToRetailers: z.boolean().optional().default(true),
 });
 
@@ -62,6 +77,16 @@ export const updateItemSchema = z.object({
   gstRate: z.coerce.number().min(0).max(28).optional(),
   priceIncludesGst: z.boolean().optional(),
 
+
+  // Wahi paanch — update me default nahi, warna chhua na hua khaana bhi
+  // chup-chaap khali ho jata
+  expiryDate: z.coerce.date().nullable().optional().or(z.literal('').transform(() => null)),
+  mfgDate: z.coerce.date().nullable().optional().or(z.literal('').transform(() => null)),
+  size: z.string().trim().max(40).optional(),
+  shape: z.string().trim().max(40).optional(),
+  weight: z.coerce.number().min(0).max(1000000).optional(),
+  weightUnit: z.enum(['G', 'KG', 'ML', 'LTR']).optional(),
+
   visibleToRetailers: z.boolean().optional(),
   isActive: z.boolean().optional(),
 }).strict();
@@ -71,6 +96,8 @@ export const listItemsQuerySchema = z.object({
   categoryId: objectId.or(z.literal('')).or(z.literal('none')).optional().default(''),
   brand: z.string().trim().max(60).optional().default(''),
   stock: z.enum(['all', 'low', 'out', 'in']).optional().default('all'),
+  // "Expiry paas hai" / "Expire ho chuka" — dawa, oil, khane-peene wale ke liye
+  expiry: z.enum(['all', 'soon', 'gone']).optional().default('all'),
   status: z.enum(['active', 'inactive', 'all']).optional().default('active'),
   sort: z.enum(['name', '-name', 'stockQty', '-stockQty', 'createdAt', '-createdAt', 'salePrice', '-salePrice'])
     .optional().default('name'),

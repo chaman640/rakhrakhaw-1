@@ -107,13 +107,13 @@ export default function PurchaseForm() {
   const filledRows = rows.filter((r) => r.itemId && Number(r.qty) > 0);
 
   async function save() {
-    if (!supplier) { toast.error('Pehle supplier chunein'); return; }
+    // Supplier ab zaroori nahi — nakad kharid bhi entry ho sakti hai
     if (!filledRows.length) { toast.error('Kam se kam ek item daalein'); return; }
 
     setSaving(true);
     try {
       const res = await api.post('/purchases', {
-        supplierId: supplier.value,
+        supplierId: supplier?.value || '',
         supplierBillNo: billNo,
         purchaseDate: date,
         items: filledRows.map((r) => ({
@@ -151,7 +151,7 @@ export default function PurchaseForm() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="sm:col-span-1">
                 <Combobox
-                  label={t('Supplier')} required
+                  label={t('Supplier')}
                   placeholder={t('Supplier chunein')}
                   display={supplier?.label}
                   value={supplier?.value}
@@ -161,6 +161,17 @@ export default function PurchaseForm() {
                   onCreateNew={() => navigate('/suppliers')}
                   createNewLabel="Suppliers page pe jaayein"
                 />
+                {/*
+                  Ye line "khali chhod sakte hain" se zyada kehti hai — wo
+                  batati hai ki khali chhodne par HOGA KYA. Bina uske
+                  dukaandaar supplier isliye bhar deta tha ki use pata hi nahi
+                  tha ki chhodne se kya bigdega.
+                */}
+                {!supplier && (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    {t('Khali chhod dein to ye nakad kharid maani jayegi — stock aur lagat chadhegi, kisi ka khata nahi banega.')}
+                  </p>
+                )}
               </div>
               <Input label={t('Supplier ka bill number')} value={billNo}
                 onChange={(e) => setBillNo(e.target.value)} placeholder={t('ST/2026/119')} />
@@ -339,19 +350,34 @@ export default function PurchaseForm() {
               </div>
             </dl>
 
-            <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
-              <Input label={t('Abhi kitna diya')} type="number" step="0.01" min="0" prefix="₹"
-                value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
-                hint={t('Khali chhod do to poora udhaar')} />
+            {/*
+              Supplier hi na ho to "kitna diya / kitna baaki" ka koi matlab
+              nahi — baaki kisko dena hai? Isliye ye poora khaana hat jata hai
+              aur uski jagah seedhi baat likhi hai. Khaana dikhakar bekaar kar
+              dena ("aap bhar to sakte hain par kuch nahi hoga") isse bura hai.
+            */}
+            {supplier ? (
+              <div className="mt-5 space-y-3 border-t border-slate-200 pt-4">
+                <Input label={t('Abhi kitna diya')} type="number" step="0.01" min="0" prefix="₹"
+                  value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
+                  hint={t('Khali chhod do to poora udhaar')} />
 
-              <div className={cn(
-                'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
-                due > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'
-              )}>
-                <span>{due > 0 ? 'Baaki dena hai' : 'Poora ho gaya'}</span>
-                <strong className="tabular">{formatMoney(due)}</strong>
+                <div className={cn(
+                  'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
+                  due > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'
+                )}>
+                  <span>{due > 0 ? 'Baaki dena hai' : 'Poora ho gaya'}</span>
+                  <strong className="tabular">{formatMoney(due)}</strong>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
+                  <span>{t('Nakad kharid — poora chukta')}</span>
+                  <strong className="tabular">{formatMoney(totals.grandTotal)}</strong>
+                </div>
+              </div>
+            )}
 
             <div className="mt-5 border-t border-slate-200 pt-4">
               <Switch
@@ -364,14 +390,15 @@ export default function PurchaseForm() {
             </div>
 
             <Button className="mt-5 w-full" size="lg" icon={Save} loading={saving} onClick={save}
-              disabled={!supplier || !filledRows.length}>
+              disabled={!filledRows.length}>
               {t('Save karein')}
             </Button>
 
             <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">
               <Info size={13} className="mt-0.5 shrink-0" />
-              Save karte hi {filledRows.length || 0} item ka stock badh jayega aur supplier ke khate me
-              {' '}{formatMoney(totals.grandTotal)} chadh jayega.
+              {supplier
+                ? `Save karte hi ${filledRows.length || 0} item ka stock badh jayega aur supplier ke khate me ${formatMoney(totals.grandTotal)} chadh jayega.`
+                : `Save karte hi ${filledRows.length || 0} item ka stock badh jayega. Kisi ka khata nahi banega.`}
             </p>
           </Card>
         </div>

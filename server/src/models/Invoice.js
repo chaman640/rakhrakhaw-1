@@ -28,6 +28,41 @@ const invoiceItemSchema = new mongoose.Schema(
      */
     costPrice: { type: Number, default: 0 },
 
+    /**
+     * Ye lagat KIS KHEP se aayi.
+     *
+     * Sirf hisaab ke liye nahi — wapasi ke liye zaroori hai. Maal wapas aaye
+     * (credit note, ya bill cancel) to wo USI khep me lautna chahiye jahan se
+     * gaya tha. Nayi khep bana dene par wo kataar me sabse peechhe chala jata
+     * aur agli bikri naya mehnga maal pehle kha jati — ginti sahi rehti,
+     * lagat chup-chaap khisak jati.
+     *
+     * `lotId` khali ho to matlab us hisse ki lagat kisi khep se nahi, item ke
+     * aaj ke rate se aayi thi (purana data, ya stock minus me gaya ho).
+     */
+    /**
+     * Poori line ki lagat — `qty × costPrice` se ye BEHTAR hai.
+     *
+     * Ek line do khep se ban sakti hai (40 @ ₹80 + 20 @ ₹100 = ₹5,200), aur
+     * uski per-piece lagat ₹86.67 par tootti hai. 60 × 86.67 wapas guna karo
+     * to ₹5,200.20 milta hai — har aisi line pe kuch paise ka jhooth, aur
+     * mahine bhar ke report me wo paise jud kar dikhne lagte hain.
+     *
+     * Isliye asli jod yahin likha jata hai. `costPrice` sirf "ek piece kitne
+     * ka pada" batane ke liye rehti hai, hisaab ke liye nahi.
+     */
+    costTotal: { type: Number, default: 0 },
+
+    lots: {
+      type: [{
+        lotId: { type: mongoose.Schema.Types.ObjectId, ref: 'StockLot', default: null },
+        qty: Number,
+        unitCost: Number,
+        _id: false,
+      }],
+      default: [],
+    },
+
     qty: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0 },
