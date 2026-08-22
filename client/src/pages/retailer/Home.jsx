@@ -6,7 +6,7 @@ import {
   TruckIcon, CircleCheck, Bell } from
 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useQuery } from '@/hooks/useQuery';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatDate } from '@/lib/format';
 import { Card, CardHeader, Button, Badge, Spinner, useToast } from '@/components/ui';
@@ -24,24 +24,18 @@ export default function RetailerHome() {
   const navigate = useNavigate();
   const { user, business } = useAuth();
 
-  const [d, setD] = useState(null);
-  const [loading, setLoading] = useState(true);
+  /*
+    CACHE — dobara kholne par page khali nahi hota.
 
-  const load = useCallback(async (chupChaap = false) => {
-    try {
-      const res = await api.get('/dashboard');
-      setD(res.data);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {load();}, [load]);
-  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
-  useAutoRefresh(load);
+    Pehle seedha `api.get` tha: har baar wapas aane par spinner, aur do second
+    ka intezaar. Retailer din me yahi chakkar bees baar lagata hai.
+    `useQuery` purana data turant de deta hai aur naya peeche-peeche laata hai.
+  */
+  const { data: d, loading } = useQuery(
+    ['my-dashboard'],
+    () => api.get('/dashboard').then((r) => r.data),
+    { onError: (err) => toast.error(err.message) },
+  );
 
   if (loading) {
     return <div className="flex justify-center py-24 text-slate-400"><Spinner size={28} /></div>;

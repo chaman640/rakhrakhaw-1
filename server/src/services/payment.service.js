@@ -4,7 +4,7 @@ import {
   PARTY_TYPES, LEDGER_TYPES, PAYMENT_STATUS, COUNTER_KEYS, NOTIFICATION_TYPES,
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
-import { Payment, Party, Invoice, Counter, Business, LedgerEntry } from '../models/index.js';
+import { Payment, Party, Invoice, Counter, Business, LedgerEntry, Order } from '../models/index.js';
 import {
   scopeByParty, scopePartiesMatch, isScoped, canSeeDoc, ownPartyIds, toObjectIds,
 } from '../utils/scope.js';
@@ -624,6 +624,16 @@ export async function deletePayment(businessId, id, userId, viewer = null) {
       await recalcBalances(businessId, payment.partyId);
     }
   }
+
+  /*
+    Agar ye paisa kisi order ke "payment mili" se aaya tha, to us order pe se
+    nishaan bhi hatana hai.
+
+    Bina iske order hamesha ke liye "paisa aa gaya" dikhata rehta, jabki khate
+    me kuch bhi na hota — aur wahi ek jhooth hai jisse bachne ke liye humne
+    order pe alag tick rakha hi nahi tha.
+  */
+  await Order.updateOne({ businessId, paymentId: payment._id }, { $set: { paymentId: null } });
 
   return {
     deleted: true,

@@ -30,6 +30,11 @@ export const setStatus = asyncHandler(async (req, res) => {
   return ok(res, order, messages[req.body.status]);
 });
 
+export const markPaid = asyncHandler(async (req, res) => {
+  const order = await service.markOrderPaid(req.businessId, req.params.id, req.body, req.user._id, req.user);
+  ok(res, order, `${order.orderNo} ka paisa khate me chadha diya`);
+});
+
 export const cancel = asyncHandler(async (req, res) => {
   const order = await service.cancelOrder(req.businessId, req.params.id, req.body, req.user._id, req.user);
   await logAction(req, {

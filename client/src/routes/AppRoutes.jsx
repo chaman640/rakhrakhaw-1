@@ -39,6 +39,7 @@ import Buying from '@/pages/wholesaler/Buying';
 import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
 import ReturnDetail from '@/pages/wholesaler/returns/ReturnDetail';
 import RetailerProfile from '@/pages/retailer/Profile';
+import RetailerSettings from '@/pages/retailer/Settings';
 import WholesalerProfile from '@/pages/wholesaler/Profile';
 import WholesalerHome from '@/pages/wholesaler/Home';
 
@@ -60,6 +61,20 @@ function HomeByRole() {
 function ProfileByRole() {
   const { isRetailer } = useAuth();
   return isRetailer ? <RetailerProfile /> : <WholesalerProfile />;
+}
+
+/*
+  Settings ab dono role ke paas hai.
+
+  Retailer ke liye ye page tha hi nahi — wo wholesaler wale group ke andar pada
+  tha, isliye retailer wahan pahunchta to redirect ho jata. Bhasha aur akshar
+  ka size uske liye utne hi zaroori hain jitne malik ke liye; baaki tab
+  (business, staff, backup) uske matlab ke nahi hain, isliye uska apna chhota
+  page hai.
+*/
+function SettingsByRole() {
+  const { isRetailer } = useAuth();
+  return isRetailer ? <RetailerSettings /> : <Settings />;
 }
 
 function HomeRedirect() {
@@ -148,7 +163,6 @@ export default function AppRoutes() {
         */}
         <Route path="/staff" element={<RequirePermission permission="staff:view"><Staff /></RequirePermission>} />
         <Route path="/activity" element={<Navigate to="/staff?tab=record" replace />} />
-        <Route path="/settings" element={<Settings />} />
       </Route>
 
       {/* ---- Retailer ---- */}
@@ -183,6 +197,16 @@ export default function AppRoutes() {
         }
       >
         <Route path="/notifications" element={<Notifications />} />
+        {/*
+          Settings bhi yahin, Notifications ki tarah — aur bilkul usi wajah se.
+
+          Pehle ise dono role-group ke andar daala tha. React Router pehla
+          milta hua route uthata hai, aur wholesaler wala group upar hai —
+          isliye retailer `/settings` kholte hi wholesaler wale pehre me phans
+          kar wapas bhej diya jata tha. Page bana hua tha, nav me link bhi tha,
+          par khulta hi nahi tha.
+        */}
+        <Route path="/settings" element={<SettingsByRole />} />
         <Route path="/home" element={<HomeByRole />} />
         {/*
           Menu bhi dono ke liye ek hi page hai — andar `isRetailer` dekh kar

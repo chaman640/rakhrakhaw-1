@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import { Package, ShoppingCart, Check, Store, Tag, ShieldCheck } from 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -27,10 +27,6 @@ export default function Catalog() {
   const { business } = useAuth();
   const { refresh: refreshCart, count: cartCount } = useCart();
 
-  const [items, setItems] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 24, total: 0, totalPages: 1 });
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q);
@@ -41,35 +37,54 @@ export default function Catalog() {
 
   const [qtys, setQtys] = useState({});
   const [adding, setAdding] = useState(null);
-  const [justAdded, setJustAdded] = useState(null);
+  /*
+    "DAAL DIYA" WALA JAWAB — ye teen jagah se toota hua tha.
 
-  const load = useCallback(async (chupChaap = false) => {
-    // `chupChaap` = list ko khali karke skeleton mat dikhao, sirf badal do.
-    // Wapas aane par poori list ka gayab ho kar dobara aana aisa lagta hai
-    // jaise page toot gaya ho.
-    if (!chupChaap) setLoading(true);
-    try {
-      const res = await api.get('/catalog', {
-        params: { q: debouncedQ, categoryId, stock, sort, page, limit: 24 }
-      });
-      setItems(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, categoryId, stock, sort, page]);
+    1. Wahi item dobara daalo to `setJustAdded(sameId)` se state badalti hi
+       nahi thi — React dobara chhapta hi nahi, aur aadmi ko koi jawab nahi
+       milta tha. Wo dobara dabata tha, aur cart me teen chale jate the.
+    2. Pehle add ka timer chalta rehta tha. Doosre add ke 0.2 second baad wahi
+       purana timer "Daal diya" hata deta tha — jawab poora dikhne se pehle hi
+       gayab.
+    3. Page chhod dene par timer chalta rehta tha aur hate hue component pe
+       state set karta tha.
 
-  useEffect(() => {
-    api.get('/catalog/categories').then((r) => setCategories(r.data)).catch(() => {});
-  }, []);
-  useEffect(() => {load();}, [load]);
+    Ab: har add ka apna number (`n`) hai — isliye state hamesha badalti hai;
+    purana timer naya lagane se pehle mita diya jata hai; aur page chhodte hi
+    timer bhi chala jata hai.
+
+    Sabse zaroori: ab jawab me cart ka ASLI number dikhta hai. "Daal diya"
+    dobara dekhna aur "Cart me 6" dekhna — dono me farq saaf hai.
+  */
+  const [justAdded, setJustAdded] = useState(null);   // { id, qty, n }
+  const addTimer = useRef(null);
+  const addSeq = useRef(0);
+  useEffect(() => () => clearTimeout(addTimer.current), []);
+
+  /*
+    CACHE — page dobara kholne par khali nahi hota.
+
+    Pehle yahan seedha `api.get` tha. Iska matlab tha: catalog se ek item
+    dekha, cart me daala, wapas aaye — aur poora catalog phir se khali hokar
+    spinner dikhata tha. Dukaan me aadmi ye chakkar din me bees baar lagata
+    hai, aur har baar do second ka intezaar aur apni jagah ka kho jana.
+
+    `useQuery` purana data TURANT de deta hai aur naya peeche-peeche laata
+    hai. Isliye wapas aane par list wahin ki wahin dikhti hai, aur agar rate
+    badla hoga to ek pal me chup-chaap sudhar jayega.
+  */
+  const { rows: items, meta, loading } = useListQuery(
+    ['catalog', { q: debouncedQ, categoryId, stock, sort, page }],
+    () => api.get('/catalog', { params: { q: debouncedQ, categoryId, stock, sort, page, limit: 24 } }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  const { data: categories = [] } = useQuery(
+    ['catalog-categories'],
+    () => api.get('/catalog/categories').then((r) => r.data),
+  );
+
   useEffect(() => {setPage(1);}, [debouncedQ, categoryId, stock, sort]);
-
-  // Bina refresh dabaye taaza — poori wajah useAutoRefresh.js me
-  useAutoRefresh(load);
 
   // Kuch item pe wholesaler ne "kam se kam itna hi lena" laga rakha hai —
   // default 1 rakhne se "Daal dein" dabate hi server mana kar deta tha
@@ -80,11 +95,19 @@ export default function Catalog() {
     if (qty <= 0) return;
     setAdding(item._id);
     try {
-      await api.post('/cart/items', { itemId: item._id, qty });
+      const res = await api.post('/cart/items', { itemId: item._id, qty });
       await refreshCart();
       setQtys((s) => ({ ...s, [item._id]: minQty(item) }));
-      setJustAdded(item._id);
-      setTimeout(() => setJustAdded((v) => v === item._id ? null : v), 1800);
+
+      // Cart me is item ke ab kitne hain — jawab me yahi dikhana hai
+      const line = res.data?.items?.find((l) => String(l.itemId) === String(item._id));
+      addSeq.current += 1;
+      setJustAdded({ id: item._id, qty: line?.qty ?? qty, n: addSeq.current });
+
+      bust('cart');
+
+      clearTimeout(addTimer.current);
+      addTimer.current = setTimeout(() => setJustAdded(null), 2200);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -98,7 +121,9 @@ export default function Catalog() {
     <>
       <PageHeader
         title={t("Catalog")}
-        subtitle={business?.name ? `${business.name} ka saman` : 'Order karne ke liye item chunein'}
+        subtitle={business?.name
+          ? t('{naam} ka saman', { naam: business.name })
+          : t('Order karne ke liye item chunein')}
         action={
         cartCount > 0 &&
         <Button icon={ShoppingCart} onClick={() => navigate('/cart')}>{t("Cart ({a0})", { a0:
@@ -131,10 +156,12 @@ export default function Catalog() {
       <Card>
           <EmptyState
           icon={hasFilters ? Package : Store}
-          title={hasFilters ? 'Kuch nahi mila' : 'Abhi catalog khali hai'}
-          message={hasFilters ?
-          'Doosre naam se dhundh kar dekhein ya filter hata dein.' :
-          `${business?.name || 'Wholesaler'} ne abhi koi item nahi daala. Thodi der baad dekhein.`}
+          title={hasFilters ? t('Kuch nahi mila') : t('Abhi catalog khali hai')}
+          message={hasFilters
+          ? t('Doosre naam se dhundh kar dekhein ya filter hata dein.')
+          : t('{naam} ne abhi koi item nahi daala. Thodi der baad dekhein.', {
+            naam: business?.name || t('Wholesaler'),
+          })}
           action={hasFilters &&
           <Button variant="secondary" onClick={() => {setQ('');setCategoryId('');setStock('all');}}>{t("Filter hatayein")}
 
@@ -153,7 +180,7 @@ export default function Catalog() {
             onQty={(v) => setQtys((s) => ({ ...s, [item._id]: v }))}
             onAdd={() => add(item)}
             adding={adding === item._id}
-            added={justAdded === item._id} />
+            added={justAdded?.id === item._id ? justAdded : null} />
 
           )}
           </div>
@@ -230,10 +257,16 @@ function ItemCard({ item, qty, onQty, onAdd, adding, added }) {
         {item.inStock ?
         <div className="flex flex-col gap-2">
             <QtyStepper value={qty} onChange={onQty} min={Math.max(1, item.minOrderQty || 1)}
-          size="sm" unit={item.unit} label={`${item.name} quantity`} />
+          size="sm" unit={item.unit} label={t('{naam} quantity', { naam: item.name })} />
             <Button size="sm" className="w-full" loading={adding} onClick={onAdd}
           variant={added ? 'success' : 'primary'} icon={added ? Check : ShoppingCart}>
-              {added ? 'Daal diya' : 'Daal dein'}
+              {/*
+                Unit yahan JAAN-BOOJH KAR nahi hai. 390px ke phone pe card
+                aadhi chaudai ka hota hai, aur "Cart me 2 PCS" kat kar
+                "Cart me 2 P..." dikhta tha — jo jawab dene ke bajaye tooti
+                hui cheez lagti hai. Unit upar stepper me pehle se likha hai.
+              */}
+              {added ? t('Cart me {q}', { q: added.qty }) : t('Daal dein')}
             </Button>
           </div> :
 

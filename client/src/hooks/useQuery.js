@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  keyOf, getEntry, subscribe, fetchInto, invalidate, subscribeBusy, isBusy,
+  keyOf, getEntry, subscribe, fetchInto, invalidate, primeCache, subscribeBusy, isBusy,
 } from '@/lib/queryCache';
 
 /**
@@ -179,6 +179,17 @@ export function useListQuery(key, fetcher, options) {
  * wale ko sirf itna sochna hai ki "maine kya badla", ye nahi ki "iska asar
  * kaunse kaunse page pe padega".
  */
+/*
+  Mutation ka jawab seedha cache me — `bust()` + dobara fetch ke bajaye.
+
+  `bust()` tab theek hai jab aapko pata ho ki KUCH badla par naya sach aapke
+  paas nahi hai. Jab server ne poora naya jawab de hi diya ho, tab dobara
+  mangwana sirf ek bekaar ka chakkar hai.
+*/
+export function prime(key, data) {
+  return primeCache(key, data);
+}
+
 export function bust(...prefixes) {
   for (const p of prefixes) invalidate(p);
 }

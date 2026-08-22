@@ -85,7 +85,7 @@ export default function Orders() {
     { key: 'itemsTotal', header: t('Kul'), align: 'right', render: (r) => formatMoney(r.itemsTotal) },
     {
       key: 'status', header: t('Status'),
-      render: (r) => <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>,
+      render: (r) => <Badge tone={STATUS_TONE[r.status]}>{t(STATUS_LABEL[r.status])}</Badge>,
     },
     {
       key: 'actions', header: '', align: 'right',
@@ -160,7 +160,7 @@ export default function Orders() {
                         {r.party?.name} · {formatDate(r.createdAt)}
                       </p>
                       <div className="mt-1.5 flex items-center gap-2">
-                        <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                        <Badge tone={STATUS_TONE[r.status]}>{t(STATUS_LABEL[r.status])}</Badge>
                         <span className="tabular text-sm font-medium text-slate-900">
                           {formatMoney(r.itemsTotal)}
                         </span>

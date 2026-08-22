@@ -3,7 +3,7 @@ import { t } from '@/lib/i18n';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Package, XCircle, Store, Clock, Receipt } from 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useQuery, bust } from '@/hooks/useQuery';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty, formatDateTime } from '@/lib/format';
 import {
@@ -21,38 +21,37 @@ export default function OrderDetail() {
   const toast = useToast();
   const { business } = useAuth();
 
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const isNew = params.get('new') === '1';
 
-  const load = useCallback(async (chupChaap = false) => {
-    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
-    if (!chupChaap) setLoading(true);
-    try {
-      const res = await api.get(`/my-orders/${id}`);
-      setOrder(res.data);
-    } catch (err) {
-      toast.error(err.message);
-      navigate('/my-orders', { replace: true });
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  /*
+    CACHE — dobara kholne par page khali nahi hota.
 
-  useEffect(() => {load();}, [load]);
-  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
-  useAutoRefresh(load);
+    Pehle seedha `api.get` tha: har baar wapas aane par spinner, aur do second
+    ka intezaar. Retailer din me yahi chakkar bees baar lagata hai.
+    `useQuery` purana data turant de deta hai aur naya peeche-peeche laata hai.
+  */
+  const { data: order, loading, refetch } = useQuery(
+    ['my-order', id],
+    () => api.get(`/my-orders/${id}`).then((r) => r.data),
+    {
+      onError: (err) => {
+        toast.error(err.message);
+        navigate('/my-orders', { replace: true });
+      },
+    },
+  );
 
   async function cancel() {
     setBusy(true);
     try {
       const res = await api.post(`/my-orders/${id}/cancel`);
-      setOrder(res.data);
       toast.success(res.message);
+      // Order badla — uski apni entry aur list dono purani ho gayin
+      bust('my-order', 'my-orders');
+      await refetch();
       setConfirm(false);
     } catch (err) {
       toast.error(err.message);
@@ -89,7 +88,7 @@ export default function OrderDetail() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold text-slate-900">{order.orderNo}</h1>
-              <Badge tone={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</Badge>
+              <Badge tone={STATUS_TONE[order.status]}>{t(STATUS_LABEL[order.status])}</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-500">{t("{a0} · {a1} item", { a0:
                 formatDateTime(order.orderDate || order.createdAt), a1: order.itemCount })}
@@ -124,7 +123,7 @@ export default function OrderDetail() {
                   </div>
                   <span className={cn('text-center text-[11px] leading-tight',
               i <= currentStep ? 'font-medium text-slate-900' : 'text-slate-400')}>
-                    {STATUS_LABEL[step]}
+                    {t(STATUS_LABEL[step])}
                   </span>
                 </div>
                 {i < FLOW.length - 1 &&
@@ -187,7 +186,7 @@ export default function OrderDetail() {
                   {i < order.statusHistory.length - 1 && <div className="mt-1 w-px flex-1 bg-slate-200" />}
                 </div>
                 <div className="pb-1">
-                  <p className="text-sm font-medium text-slate-900">{STATUS_LABEL[h.status]}</p>
+                  <p className="text-sm font-medium text-slate-900">{t(STATUS_LABEL[h.status])}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(h.at)}</p>
                   {h.note && <p className="mt-0.5 text-xs text-slate-500">{h.note}</p>}
                 </div>

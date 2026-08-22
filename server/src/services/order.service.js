@@ -1,13 +1,15 @@
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import {
-  ORDER_STATUS, ORDER_STATUS_FLOW, COUNTER_KEYS, PARTY_STATUS, NOTIFICATION_TYPES,
+  ORDER_STATUS, ORDER_STATUS_FLOW, ORDER_PAYMENT_MODES, COUNTER_KEYS, PARTY_STATUS,
+  NOTIFICATION_TYPES,
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { Order, Cart, Item, Party, Business, Counter } from '../models/index.js';
 import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
 import { resolveRates } from './rate.service.js';
 import { getCart, clearCart } from './cart.service.js';
+import { createPayment } from './payment.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
 
 /**
@@ -17,7 +19,7 @@ import { notifyWholesaler, notifyRetailer } from './notification.service.js';
  * Stock invoice banne pe ghatega (Part 8). Wajah: order aane aur maal dene ke beech
  * wholesaler kuch aur bhi bech sakta hai, aur order cancel bhi ho sakta hai.
  */
-export async function placeOrder(businessId, partyId, userId, { note }) {
+export async function placeOrder(businessId, partyId, userId, { note, paymentMode }) {
   const party = await Party.findOne({ _id: partyId, businessId }).select('name shopName status').lean();
   if (!party) throw ApiError.notFound('Aapki dukaan ki entry nahi mili');
   if (party.status !== PARTY_STATUS.ACTIVE) {
@@ -72,6 +74,7 @@ export async function placeOrder(businessId, partyId, userId, { note }) {
     itemCount: lines.length,
     status: ORDER_STATUS.PLACED,
     statusHistory: [{ status: ORDER_STATUS.PLACED, at: new Date(), byUserId: userId, note: 'Retailer ne order kiya' }],
+    paymentMode: paymentMode || ORDER_PAYMENT_MODES.UDHAAR,
     retailerNote: note || cart.note || '',
   });
 
@@ -81,7 +84,9 @@ export async function placeOrder(businessId, partyId, userId, { note }) {
   await notifyWholesaler(businessId, {
     type: NOTIFICATION_TYPES.NEW_ORDER,
     title: `Naya order — ${party.shopName || party.name}`,
-    body: `${order.itemCount} item · ${order.itemsTotal}`,
+    // Paise ka irada khabar me hi — maal tayyar karne se PEHLE pata hona chahiye
+    body: `${order.itemCount} item · ${order.itemsTotal}${
+      order.paymentMode === ORDER_PAYMENT_MODES.UDHAAR ? '' : ` · ${order.paymentMode} pe denge`}`,
     link: `/orders/${order._id}`,
     data: { orderId: order._id, orderNo },
   });
@@ -300,6 +305,52 @@ export async function getOrderForWholesaler(businessId, id, viewer = null) {
     shortLines: lines.filter((l) => !l.enough).length,
     nextStatuses: ORDER_STATUS_FLOW[order.status] || [],
   };
+}
+
+/*
+  "PAYMENT MILI" — order pe paisa aa gaya.
+
+  Yahan sirf ek tick nahi lagta, khate me SACH ME payment chadhti hai. Wajah
+  simple hai: tick aur khata do alag sach ban jate hain. Malik order pe tick
+  laga kar nishchint ho jata, aur mahine ke aakhir me khata kuch aur bolta —
+  aur us jhagde me app ka kasoor nikalta.
+
+  Ek baat dhyan dene layak hai: is waqt tak BILL bana hi nahi hota (bill order
+  ke baad banta hai). Isliye ye paisa kisi bill pe nahi lagta — wo JAMA
+  (advance) ban kar khade rehta hai, aur jab bill banega tab Step 1 wala jama
+  system use apne aap us bill me laga dega. Isiliye `allowAdvance: true` —
+  bina iske "bill se zyada paisa" kehkar rok diya jata.
+*/
+export async function markOrderPaid(businessId, id, { amount, mode, reference, note }, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
+  const order = await Order.findOne({ _id: id, businessId });
+  if (!order) throw ApiError.notFound('Order nahi mila');
+  if (order.status === ORDER_STATUS.CANCELLED) {
+    throw ApiError.badRequest('Cancel ho chuke order pe payment nahi lag sakti');
+  }
+  if (order.paymentId) throw ApiError.badRequest('Is order ki payment pehle se chadh chuki hai');
+
+  const amt = round2(amount ?? order.itemsTotal);
+  if (!(amt > 0)) throw ApiError.badRequest('Amount 0 se zyada hona chahiye');
+
+  const payment = await createPayment(businessId, {
+    partyId: order.partyId,
+    amount: amt,
+    // Retailer ne jo kaha tha wahi default — par malik badal sakta hai
+    mode: mode || (order.paymentMode === ORDER_PAYMENT_MODES.UPI ? 'UPI' : 'CASH'),
+    reference: reference || '',
+    note: note || `Order ${order.orderNo} ka paisa`,
+    allowAdvance: true,
+  }, userId);
+
+  order.paymentId = payment._id;
+  order.statusHistory.push({
+    status: order.status, at: new Date(), byUserId: userId,
+    note: `Payment mili — ${amt}`,
+  });
+  await order.save();
+
+  return getOrderForWholesaler(businessId, id, viewer);
 }
 
 const STATUS_MESSAGE = {

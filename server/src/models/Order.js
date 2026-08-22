@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ORDER_STATUS, UNITS } from '../config/constants.js';
+import { ORDER_STATUS, ORDER_PAYMENT_MODES, UNITS } from '../config/constants.js';
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -42,6 +42,33 @@ const orderSchema = new mongoose.Schema(
 
     // Stock order pe LOCK nahi hota — invoice banne pe ghatega (Part 8).
     invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', default: null },
+
+    /*
+      PAISA KAISE DENGE — retailer order karte waqt hi bata deta hai.
+
+      Ab tak har order chup-chaap udhaar maan liya jata tha. Dukaan me aisa
+      hota nahi: aadha maal cash pe jata hai, aur wo baat phone pe alag se
+      hoti thi. Wholesaler ko maal tayyar karte waqt ye pata hona chahiye,
+      warna gaadi bhejne ke baad pata chalta hai ki paisa aana tha.
+
+      `UDHAAR` matlab khate me chadhega — wahi purana wala rasta, isliye wahi
+      default hai. Purane order me ye field hai hi nahi, aur unke liye bhi
+      yahi matlab theek hai.
+    */
+    paymentMode: {
+      type: String,
+      enum: [...Object.values(ORDER_PAYMENT_MODES)],
+      default: ORDER_PAYMENT_MODES.UDHAAR,
+    },
+
+    /*
+      "Payment mili" dabane pe jo asli Payment banti hai, uska pata.
+
+      Nishaan (tick) alag se nahi rakha — kyunki do sach ho jate: order pe tick
+      laga hota aur khate me kuch na hota, ya ulta. Ek hi jagah sach rakhne se
+      wo faasla ban hi nahi sakta. Payment hat gayi to ye bhi khali ho jata hai.
+    */
+    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment', default: null },
 
     retailerNote: { type: String, default: '' },
     wholesalerNote: { type: String, default: '' },

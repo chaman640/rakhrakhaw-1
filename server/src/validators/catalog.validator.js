@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ORDER_PAYMENT_MODES } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
 
@@ -24,6 +25,12 @@ export const itemIdParamSchema = z.object({ itemId: objectId });
 
 export const placeOrderSchema = z.object({
   note: z.string().trim().max(500).optional().default(''),
+  /*
+    Purane app se aaya order is field ke bina aayega, aur wo bilkul theek hai —
+    tab wahi matlab lagta hai jo pehle chup-chaap lagta tha: udhaar.
+  */
+  paymentMode: z.enum(Object.values(ORDER_PAYMENT_MODES))
+    .optional().default(ORDER_PAYMENT_MODES.UDHAAR),
 });
 
 export const idParamSchema = z.object({ id: objectId });

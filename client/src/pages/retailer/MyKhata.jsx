@@ -6,7 +6,7 @@ import {
   CircleCheck, CircleX, RotateCcw } from
 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Badge, Modal, Textarea,
@@ -34,34 +34,28 @@ export default function MyKhata() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [payOpen, setPayOpen] = useState(false);
 
-  const load = useCallback(async (chupChaap = false) => {
-    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
-    if (!chupChaap) setLoading(true);
-    try {
-      const [khata, pays] = await Promise.all([
-      api.get('/my/khata', { params: { from: from || undefined, to: to || undefined } }),
-      api.get('/my/payments', { params: { limit: 10 } })]
-      );
-      setData(khata.data);
-      setPayments(pays.data);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from, to]);
+  /*
+    CACHE — khata dobara kholne par khali nahi hota.
 
-  useEffect(() => {load();}, [load]);
-  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
-  useAutoRefresh(load);
+    Do alag maang hain isliye do alag key: khata date-filter ke saath badalta
+    hai, par "maine jo bheja" wali choti list uspe tikti hi nahi. Ek hi key me
+    daal dete to date badalte hi wo list bhi bekaar me dobara aati.
+  */
+  const { data, loading } = useQuery(
+    ['my-khata', { from, to }],
+    () => api.get('/my/khata', { params: { from: from || undefined, to: to || undefined } })
+      .then((r) => r.data),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  const { data: payments = [] } = useQuery(
+    ['my-payments'],
+    () => api.get('/my/payments', { params: { limit: 10 } }).then((r) => r.data),
+  );
 
   if (loading && !data) {
     return <div className="flex justify-center py-20 text-slate-400"><Spinner size={28} /></div>;
@@ -154,7 +148,7 @@ export default function MyKhata() {
                       {formatDate(p.date)}{p.reference && ` · ${p.reference}`}
                     </p>
                   </div>
-                  <Badge tone={statusTone[p.status]}>{statusLabel[p.status]}</Badge>
+                  <Badge tone={statusTone[p.status]}>{t(statusLabel[p.status])}</Badge>
                 </div>);
 
           })}
@@ -191,7 +185,10 @@ export default function MyKhata() {
         onClose={() => setPayOpen(false)}
         upi={data.upi}
         due={due}
-        onSent={load} />
+        onSent={() => {
+          // Paisa bhej diya — khata, bheji hui payment ki list, aur bill sab purane ho gaye
+          bust('my-khata', 'my-payments', 'my-bills');
+        }} />
       
     </>);
 

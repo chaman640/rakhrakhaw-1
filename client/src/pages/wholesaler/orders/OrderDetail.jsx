@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
-  Package, Phone, XCircle, CheckCircle2, Pencil, Save, X,
+  Package, Phone, XCircle, CheckCircle2, Pencil, Save, X, Wallet,
   TriangleAlert, FileText, Printer, Store } from
 'lucide-react';
 import api from '@/lib/api';
 import { formatMoney, formatQty, formatDateTime, formatPhone } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Spinner, ConfirmModal, Modal, Textarea,
-  QtyStepper, ReadLineItem, ReadField, useToast } from
+  QtyStepper, ReadLineItem, ReadField, Input, useToast } from
 '@/components/ui';
 import { STATUS_TONE, STATUS_LABEL } from '../Orders';
 import { cn } from '@/lib/cn';
@@ -33,6 +33,8 @@ export default function OrderDetail() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [editOpen, setEditOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +51,27 @@ export default function OrderDetail() {
   }, [id]);
 
   useEffect(() => {load();}, [load]);
+
+  /*
+    "Payment mili" — order pe paisa aa gaya.
+
+    Yahan sirf ek tick nahi lagta: khate me sach me payment chadh jati hai.
+    Bill abhi bana nahi hota, isliye wo paisa JAMA ban kar khada rehta hai aur
+    bill bante hi apne aap us bill me lag jata hai.
+  */
+  async function markPaid() {
+    setBusy(true);
+    try {
+      const res = await api.post(`/orders/${id}/payment`, { amount: Number(payAmount) || undefined });
+      setOrder(res.data);
+      setPayOpen(false);
+      toast.success(res.message);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function setStatus(status) {
     setBusy(true);
@@ -93,7 +116,7 @@ export default function OrderDetail() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold text-slate-900">{order.orderNo}</h1>
-              <Badge tone={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</Badge>
+              <Badge tone={STATUS_TONE[order.status]}>{t(STATUS_LABEL[order.status])}</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-500">{t("{a0} · {a1} item · {a2}", { a0:
                 formatDateTime(order.createdAt), a1: order.itemCount, a2: formatMoney(order.itemsTotal) })}
@@ -142,7 +165,7 @@ export default function OrderDetail() {
                   </div>
                   <span className={cn('text-center text-[11px] leading-tight',
               i <= currentStep ? 'font-medium text-slate-900' : 'text-slate-400')}>
-                    {STATUS_LABEL[step]}
+                    {t(STATUS_LABEL[step])}
                   </span>
                 </div>
                 {i < FLOW.length - 1 &&
@@ -165,15 +188,39 @@ export default function OrderDetail() {
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4 no-print">
             <Button size="lg" loading={busy} onClick={() => setStatus(nextStatus)}
           variant={NEXT_ACTION[nextStatus]?.tone || 'primary'}>
-              {NEXT_ACTION[nextStatus]?.label || nextStatus}
+              {t(NEXT_ACTION[nextStatus]?.label || nextStatus)}
             </Button>
             <p className="text-sm text-slate-500">
-              {nextStatus === 'READY' ?
-            'Retailer ko turant khabar chali jayegi' :
-            nextStatus === 'DELIVERED' ?
-            'Bill Part 8 me yahin se ban jayega' :
-            'Retailer ko dikh jayega ki kaam shuru ho gaya'}
+              {nextStatus === 'READY'
+            ? t('Retailer ko turant khabar chali jayegi')
+            : nextStatus === 'DELIVERED'
+            ? t('Bill yahin se ban jayega')
+            : t('Retailer ko dikh jayega ki kaam shuru ho gaya')}
             </p>
+          </div>
+        }
+
+        {/* ---- Paisa ---- */}
+        {!cancelled &&
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4 no-print">
+            {order.paymentId ?
+          <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+                <CheckCircle2 size={16} />
+                {t('Paisa mil chuka hai — khate me chadh gaya')}
+              </p> :
+
+          <>
+                <Button size="lg" variant="secondary" icon={Wallet}
+            onClick={() => { setPayAmount(String(order.itemsTotal ?? '')); setPayOpen(true); }}>
+                  {t('Payment mili')}
+                </Button>
+                <p className="text-sm text-slate-500">
+                  {order.paymentMode === 'UDHAAR'
+                ? t('Retailer ne udhaar kaha tha — paisa aa gaya ho to yahan likh dein')
+                : t('Retailer ne {mode} kaha tha', { mode: order.paymentMode })}
+                </p>
+              </>
+          }
           </div>
         }
 
@@ -307,7 +354,7 @@ export default function OrderDetail() {
                   {i < order.statusHistory.length - 1 && <div className="mt-1 w-px flex-1 bg-slate-200" />}
                 </div>
                 <div className="pb-1">
-                  <p className="text-sm font-medium text-slate-900">{STATUS_LABEL[h.status]}</p>
+                  <p className="text-sm font-medium text-slate-900">{t(STATUS_LABEL[h.status])}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(h.at)}</p>
                   {h.note && <p className="mt-0.5 text-xs text-slate-500">{h.note}</p>}
                 </div>
@@ -316,6 +363,23 @@ export default function OrderDetail() {
           </ol>
         </Card>
       </div>
+
+      {/*
+        Poora jod pehle se bhara hua aata hai, kyunki das me se nau baar wahi
+        hota hai. Aadha paisa aaya ho to number badal dein — jitna likhenge
+        utna hi khate me chadhega.
+      */}
+      <Modal open={payOpen} onClose={() => setPayOpen(false)} title={t('Payment mili')}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setPayOpen(false)}>{t('Cancel')}</Button>
+            <Button onClick={markPaid} loading={busy} icon={Wallet}>{t('Khate me chadha dein')}</Button>
+          </div>
+        }>
+        <Input label={t('Kitna paisa mila')} type="number" min="0" step="0.01"
+          value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
+          hint={t('Bill abhi bana nahi hai, isliye ye paisa jama rahega aur bill bante hi usme lag jayega.')} />
+      </Modal>
 
       <EditItemsModal
         open={editOpen}

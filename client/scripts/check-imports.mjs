@@ -2,6 +2,10 @@
 // Vite build aise galti nahi pakadta (wo runtime pe ReferenceError banti hai),
 // isliye ye chhota scan chalate hain.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { parse } from '@babel/parser';
+import _traverse from '@babel/traverse';
+
+const traverse = _traverse.default || _traverse;
 import { join } from 'node:path';
 
 import { fileURLToPath } from 'node:url';
@@ -63,6 +67,64 @@ for (const file of walk(ROOT)) {
     const used = new RegExp(`(<${name}[\\s/>]|[^\\w.'"\`]${name}\\s*\\()`).test(src);
     if (used) problems.push(`${file.replace(ROOT + '/', '')}: "${name}" istemaal hua par import nahi`);
   }
+}
+
+/*
+  DOOSRI JAANCH — koi bhi aisa naam jo kahin declare hi nahi hua.
+
+  Upar wali list-wali jaanch sirf un naamon ko dekhti hai jo pehle se list me
+  likhe hain. Wo apna kaam karti hai, par uski hadd saaf hai: jo naam list me
+  nahi, wo chhoot jata hai.
+
+  Aur wahi hua. Retailer ka MyKhata `useQuery` pe aaya, uska purana `load()`
+  hat gaya — par ek jagah `onSent={load}` reh gaya. `load` list me tha hi
+  nahi, isliye jaanch khush rahi. Build bhi khush rahi (Vite aise naam ko
+  runtime tak chhodta hai). Wo phatta browser me, tab, jab retailer paisa
+  bhejne ke baad parda band karta — yaani sabse bure pal me.
+
+  Ab har naam ki jaanch hoti hai: agar kisi naam ka koi thikana nahi (na
+  import, na is file me bana, na browser ka jaana-pehchana naam), to wahi
+  ReferenceError hai jo aage chal kar page safed karta.
+*/
+const GLOBALS = new Set([
+  'window', 'document', 'navigator', 'console', 'localStorage', 'sessionStorage',
+  'fetch', 'FormData', 'Blob', 'File', 'FileReader', 'URL', 'URLSearchParams',
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame',
+  'cancelAnimationFrame', 'MutationObserver', 'IntersectionObserver', 'ResizeObserver',
+  'Image', 'Audio', 'CustomEvent', 'Event', 'AbortController', 'crypto', 'structuredClone',
+  'Math', 'JSON', 'Object', 'Array', 'String', 'Number', 'Boolean', 'Date', 'RegExp',
+  'Map', 'Set', 'WeakMap', 'WeakSet', 'Promise', 'Symbol', 'Error', 'TypeError',
+  'Intl', 'BigInt', 'Infinity', 'NaN', 'undefined', 'globalThis', 'process',
+  'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURIComponent', 'decodeURIComponent',
+  'atob', 'btoa', 'alert', 'confirm', 'prompt', 'HTMLElement', 'Node', 'DOMParser',
+  'Uint8Array', 'Uint16Array', 'Int32Array', 'Float32Array', 'Float64Array', 'ArrayBuffer',
+  'DataView', 'TextEncoder', 'TextDecoder', 'Proxy', 'Reflect', 'WeakRef', 'queueMicrotask',
+  'React', 'arguments', 'import', 'require', 'module', 'exports',
+]);
+
+for (const file of walk(ROOT)) {
+  const src = readFileSync(file, 'utf8');
+  let ast;
+  try {
+    ast = parse(src, { sourceType: 'module', plugins: ['jsx'] });
+  } catch {
+    continue;                      // padhi hi nahi gayi — doosri jaanch bolegi
+  }
+
+  const seen = new Set();
+  traverse(ast, {
+    ReferencedIdentifier(path) {
+      const name = path.node.name;
+      if (GLOBALS.has(name) || seen.has(name)) return;
+      // JSX me chhote akshar wale tag asli HTML hain (`div`, `span`), naam nahi
+      if (path.parentPath.isJSXOpeningElement() && /^[a-z]/.test(name)) return;
+      if (path.scope.hasBinding(name, true)) return;
+      seen.add(name);
+      problems.push(
+        `${file.replace(ROOT + '/', '')}:${path.node.loc.start.line}  "${name}" kahin declare nahi hua — page khulte hi ReferenceError`,
+      );
+    },
+  });
 }
 
 if (problems.length) {

@@ -5,7 +5,7 @@ import {
   Trash2, ShoppingCart, Package, TriangleAlert, Send, Store, Tag, ArrowUp, ArrowDown } from
 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useQuery, prime, bust } from '@/hooks/useQuery';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
@@ -15,38 +15,65 @@ import {
 '@/components/ui';
 import { cn } from '@/lib/cn';
 
+/*
+  Teen hi chunav hain, aur teeno wahi hain jo dukaan me sach me bole jate hain.
+  `label` bina `t()` ke hai — wo chaabi hai; anuvaad wahan hota hai jahan
+  chhapta hai, warna bhasha badalne par ye list purani reh jati.
+*/
+const PAY_MODES = [
+  { value: 'UDHAAR', label: 'Udhaar', hint: 'Khate me chadha dein' },
+  { value: 'CASH', label: 'Cash', hint: 'Maal ke saath de denge' },
+  { value: 'UPI', label: 'UPI', hint: 'Online bhej denge' },
+];
+
 export default function Cart() {
   const toast = useToast();
   const navigate = useNavigate();
   const { business } = useAuth();
   const { refresh: refreshCart } = useCart();
 
-  const [cart, setCart] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [note, setNote] = useState('');
+
+  /*
+    Paise ka irada order ke SAATH jata hai.
+
+    Pehle har order chup-chaap udhaar maan liya jata tha, aur "cash pe lunga"
+    wali baat phone pe alag se hoti thi. Wholesaler ko maal tayyar karte waqt
+    ye pata hona chahiye — warna gaadi nikal jane ke baad pata chalta hai ki
+    paisa aana tha.
+
+    Default `UDHAAR` hi hai: jo aadmi kuch nahi chunta, uske liye aaj tak jo
+    hota aaya hai wahi hota rahe.
+  */
+  const [paymentMode, setPaymentMode] = useState('UDHAAR');
   const [busyItem, setBusyItem] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  const load = useCallback(async (chupChaap = false) => {
-    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
-    if (!chupChaap) setLoading(true);
-    try {
-      const res = await api.get('/cart');
-      setCart(res.data);
-      setNote(res.data.note || '');
-      res.data.warnings?.forEach((w) => toast.info(w.message));
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /*
+    CACHE — Catalog se laut kar aane par cart khali nahi dikhta.
 
-  useEffect(() => {load();}, [load]);
-  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
-  useAutoRefresh(load);
+    Retailer ka aadha waqt Catalog aur Cart ke beech aane-jane me jata hai.
+    Pehle har baar spinner aata tha.
+
+    Mutation (quantity badalna, hatana) ka jawab server POORA NAYA CART hi
+    deta hai — isliye use `prime()` se seedha cache me rakh dete hain. `bust()`
+    lagakar dobara mangwate to ek bekaar ka round-trip hota aur beech ke us pal
+    me purana number dikhta.
+  */
+  const { data: cart, loading } = useQuery(
+    ['cart'],
+    () => api.get('/cart').then((r) => {
+      r.data.warnings?.forEach((w) => toast.info(w.message));
+      return r.data;
+    }),
+    { onError: (err) => toast.error(err.message) },
+  );
+
+  // Server se abhi mila cart — seedha cache me
+  const setCart = (data) => prime(['cart'], data);
+
+  useEffect(() => { if (cart) setNote(cart.note || ''); }, [cart]);
 
   async function setQty(itemId, qty) {
     setBusyItem(itemId);
@@ -80,7 +107,7 @@ export default function Cart() {
       setCart(res.data);
       await refreshCart();
       setConfirmClear(false);
-      toast.info('Cart khali kar diya');
+      toast.info(t('Cart khali kar diya'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -89,8 +116,10 @@ export default function Cart() {
   async function placeOrder() {
     setPlacing(true);
     try {
-      const res = await api.post('/my-orders', { note });
+      const res = await api.post('/my-orders', { note, paymentMode });
       await refreshCart();
+      // Cart khali ho gaya aur ek naya order bana — dono jagah ka purana data hata do
+      bust('cart', 'my-orders');
       toast.success(res.message);
       navigate(`/my-orders/${res.data._id}?new=1`, { replace: true });
     } catch (err) {
@@ -126,7 +155,7 @@ export default function Cart() {
     <>
       <PageHeader
         title={t("Cart")}
-        subtitle={`${cart.itemCount} item · ${business?.name || ''}`}
+        subtitle={`${t('{n} item', { n: cart.itemCount })} · ${business?.name || ''}`}
         action={
         <Button variant="ghost" icon={Trash2} onClick={() => setConfirmClear(true)}>{t("Khali karein")}
 
@@ -176,7 +205,7 @@ export default function Cart() {
                       </div>
                       <button
                       onClick={() => removeItem(l.itemId)}
-                      aria-label={`${l.name} hatayein`}
+                      aria-label={t('{naam} hatayein', { naam: l.name })}
                       className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
                       
                         <Trash2 size={16} />
@@ -186,9 +215,9 @@ export default function Cart() {
                     {!l.enough &&
                   <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-700">
                         <TriangleAlert size={12} />
-                        {l.inStock ?
-                    `Abhi sirf ${formatQty(l.stockQty, l.unit)} hai` :
-                    'Abhi khatam hai'}
+                        {l.inStock
+                    ? t('Abhi sirf {q} hai', { q: formatQty(l.stockQty, l.unit) })
+                    : t('Abhi khatam hai')}
                       </p>
                   }
 
@@ -210,13 +239,35 @@ export default function Cart() {
           </Card>
 
           <Card>
-            <Textarea
-              label={t("Wholesaler ke liye note")}
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t("Aaj shaam tak chahiye / gaadi bhej raha hoon")} />
-            
+            <p className="mb-2 text-sm font-medium text-slate-700">{t('Paisa kaise denge')}</p>
+            <div className="flex flex-wrap gap-2">
+              {PAY_MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  aria-pressed={paymentMode === m.value}
+                  onClick={() => setPaymentMode(m.value)}
+                  className={cn(
+                    'flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors focus-ring',
+                    paymentMode === m.value
+                      ? 'border-brand-600 bg-brand-50 text-brand-800'
+                      : 'border-slate-300 text-slate-600 hover:bg-slate-50',
+                  )}
+                >
+                  {t(m.label)}
+                  <span className="mt-0.5 block text-[11px] font-normal text-slate-500">{t(m.hint)}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4">
+              <Textarea
+                label={t("Wholesaler ke liye note")}
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("Aaj shaam tak chahiye / gaadi bhej raha hoon")} />
+            </div>
           </Card>
         </div>
 

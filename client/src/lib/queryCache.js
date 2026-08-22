@@ -148,6 +148,26 @@ export async function fetchInto(key, fetcher, { force = false } = {}) {
   return promise;
 }
 
+/*
+  SERVER SE ABHI-ABHI MILA JAWAB SEEDHA CACHE ME RAKH DO.
+
+  Hamare bahut se mutation apne aap poori nayi cheez wapas dete hain — cart me
+  quantity badlo to naya poora cart hi milta hai. Aise me cache ko "purana"
+  bata kar dobara mangwana do baar ka kaam hai: ek round-trip bekaar jata hai,
+  aur beech ke us pal me screen purana number dikhati hai.
+
+  `seq` yahan bhi badhaya jata hai, aur wahi is chhote se function ka asli
+  kaam hai: agar peeche koi purani request abhi bhi chal rahi ho, to lautne
+  par uska jawab is naye sach ke UPAR nahi chipkega.
+*/
+export function primeCache(key, data) {
+  const k = keyOf(key);
+  const entry = store.get(k) || {};
+  store.set(k, { ...entry, data, at: Date.now(), error: null, promise: null, seq: ++seqCounter });
+  emit(k);
+  return data;
+}
+
 /**
  * Kuch badal gaya — jo bhi is naam se shuru hota hai wo sab purana maan lo.
  *

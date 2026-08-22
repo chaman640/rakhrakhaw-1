@@ -1405,6 +1405,82 @@ const DICT = {
   '{n} retailer': { hi: '{n} रिटेलर', en: '{n} retailers' },
   '{n} item kam': { hi: '{n} आइटम कम', en: '{n} items running low' },
   'Choose...': { hi: 'चुनें...', en: 'Choose...' },
+
+  /* ══ Part 21, step 6: retailer ka cache, paise ka irada, aur Settings ══ */
+
+  /* ── cart ── */
+  'Cart khali kar diya': { hi: 'कार्ट खाली कर दिया', en: 'Cart cleared' },
+  '{n} item': { hi: '{n} आइटम', en: '{n} items' },
+  '{naam} hatayein': { hi: '{naam} हटाएँ', en: 'Remove {naam}' },
+  'Abhi sirf {q} hai': { hi: 'अभी सिर्फ़ {q} है', en: 'Only {q} available' },
+  'Abhi khatam hai': { hi: 'अभी खत्म है', en: 'Out of stock' },
+
+  /* ── paise ka irada (order ke saath jata hai) ── */
+  'Paisa kaise denge': { hi: 'पैसा कैसे देंगे', en: 'How will you pay' },
+  'Khate me chadha dein': { hi: 'खाते में चढ़ा दें', en: 'Put it on account' },
+  'Maal ke saath de denge': { hi: 'माल के साथ दे देंगे', en: 'Pay on delivery' },
+  'Online bhej denge': { hi: 'ऑनलाइन भेज देंगे', en: 'Send it online' },
+
+  /* ── catalog ── */
+  '{naam} ka saman': { hi: '{naam} का सामान', en: 'Goods from {naam}' },
+  'Order karne ke liye item chunein': { hi: 'ऑर्डर करने के लिए आइटम चुनें', en: 'Pick items to order' },
+  'Abhi catalog khali hai': { hi: 'अभी कैटलॉग खाली है', en: 'The catalogue is empty' },
+  'Doosre naam se dhundh kar dekhein ya filter hata dein.': {
+    hi: 'दूसरे नाम से ढूँढ कर देखें या फ़िल्टर हटा दें।',
+    en: 'Try another name, or clear the filters.',
+  },
+  '{naam} ne abhi koi item nahi daala. Thodi der baad dekhein.': {
+    hi: '{naam} ने अभी कोई आइटम नहीं डाला। थोड़ी देर बाद देखें।',
+    en: '{naam} has not added any items yet. Check back in a while.',
+  },
+  '{naam} quantity': { hi: '{naam} मात्रा', en: '{naam} quantity' },
+  'Cart me {q}': { hi: 'कार्ट में {q}', en: '{q} in cart' },
+  'Daal dein': { hi: 'डाल दें', en: 'Add' },
+  'Sasta pehle': { hi: 'सस्ता पहले', en: 'Cheapest first' },
+  'Jo available hai': { hi: 'जो available है', en: 'In stock only' },
+
+  /* ── settings ── */
+  'Bhasha, roshni aur akshar ka size': {
+    hi: 'भाषा, रोशनी और अक्षर का साइज़',
+    en: 'Language, theme and text size',
+  },
+
+  /* ── order ka agla kadam ── */
+  'Retailer ko turant khabar chali jayegi': {
+    hi: 'रिटेलर को तुरंत खबर चली जाएगी',
+    en: 'The retailer is notified straight away',
+  },
+  'Bill yahin se ban jayega': { hi: 'बिल यहीं से बन जाएगा', en: 'The bill is made from here' },
+  'Retailer ko dikh jayega ki kaam shuru ho gaya': {
+    hi: 'रिटेलर को दिख जाएगा कि काम शुरू हो गया',
+    en: 'The retailer sees that work has started',
+  },
+
+  /* ── "payment mili" ── */
+  'Payment mili': { hi: 'पेमेंट मिली', en: 'Payment received' },
+  'Paisa mil chuka hai — khate me chadh gaya': {
+    hi: 'पैसा मिल चुका है — खाते में चढ़ गया',
+    en: 'Payment received — it is on the account',
+  },
+  'Retailer ne udhaar kaha tha — paisa aa gaya ho to yahan likh dein': {
+    hi: 'रिटेलर ने उधार कहा था — पैसा आ गया हो तो यहाँ लिख दें',
+    en: 'The retailer said credit — if the money has come in, record it here',
+  },
+  'Retailer ne {mode} kaha tha': { hi: 'रिटेलर ने {mode} कहा था', en: 'The retailer said {mode}' },
+  'Kitna paisa mila': { hi: 'कितना पैसा मिला', en: 'How much came in' },
+  'Bill abhi bana nahi hai, isliye ye paisa jama rahega aur bill bante hi usme lag jayega.': {
+    hi: 'बिल अभी बना नहीं है, इसलिए ये पैसा जमा रहेगा और बिल बनते ही उसमें लग जाएगा।',
+    en: 'There is no bill yet, so this money sits as credit and goes against the bill as soon as it is made.',
+  },
+
+  /* ── retailer ki bheji hui payment ka haal ── */
+  'Confirm hona baaki': { hi: 'कन्फर्म होना बाकी', en: 'Awaiting confirmation' },
+  'Confirm ho gaya': { hi: 'कन्फर्म हो गया', en: 'Confirmed' },
+  'Reject ho gaya': { hi: 'रिजेक्ट हो गया', en: 'Rejected' },
+  /* ── order ka haal (config me pade the, isliye ginti me kabhi aaye hi nahi) ── */
+  Naya: { hi: 'नया', en: 'New' },
+  'Pack ho raha': { hi: 'पैक हो रहा', en: 'Being packed' },
+  'De diya': { hi: 'दे दिया', en: 'Delivered' },
 };
 
 export default DICT;

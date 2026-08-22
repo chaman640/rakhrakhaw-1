@@ -101,7 +101,17 @@ export const retailerNav = [
   { to: '/my-bills', label: 'Mere Bills', icon: Receipt, part: 8, desc: 'Aapke saare bill' },
   { to: '/my-khata', label: 'My Khata', icon: BookOpen, part: 9, desc: 'Kitna baaki hai' },
   { to: '/notifications', label: 'Notifications', icon: Bell, part: 10, desc: 'Naye alert' },
-  { to: '/profile', label: 'Profile', icon: Settings, part: 2, desc: 'Aapka account' },
+  /*
+    Profile aur Settings ALAG hain, aur alag hi rehne chahiye.
+
+    Pehle sirf Profile tha, aur uspe bhi Settings wala hi icon laga tha —
+    isliye jo aadmi bhasha ya akshar ka size dhoondh raha hota tha wo wahi
+    khol kar khali haath laut aata tha. Ab Profile = account (dukaan ka naam,
+    password, logout), aur Settings = ISI phone ka roop (bhasha, roshni,
+    akshar). Icon bhi ab alag hain, warna do khane ek jaise dikhte hain.
+  */
+  { to: '/profile', label: 'Profile', icon: UserCircle, part: 2, desc: 'Aapka account' },
+  { to: '/settings', label: 'Settings', icon: Settings, part: 2, desc: 'Bhasha, roshni aur akshar ka size' },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────

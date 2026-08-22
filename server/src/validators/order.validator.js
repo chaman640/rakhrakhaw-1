@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ORDER_STATUS, NOTIFICATION_TYPES } from '../config/constants.js';
+import { ORDER_STATUS, NOTIFICATION_TYPES, PAYMENT_MODES } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
 
@@ -16,6 +16,17 @@ export const listOrdersQuerySchema = z.object({
 
 export const statusSchema = z.object({
   status: z.enum([ORDER_STATUS.PACKED, ORDER_STATUS.READY, ORDER_STATUS.DELIVERED]),
+  note: z.string().trim().max(300).optional().default(''),
+});
+
+/*
+  Amount na bheja to poora order ka jod maan lete hain — sabse aam haalat wahi
+  hai. Par adha paisa aaya ho to malik khud number likh sakta hai.
+*/
+export const markPaidSchema = z.object({
+  amount: z.coerce.number().positive().max(100000000).optional(),
+  mode: z.enum(Object.values(PAYMENT_MODES)).optional(),
+  reference: z.string().trim().max(120).optional().default(''),
   note: z.string().trim().max(300).optional().default(''),
 });
 

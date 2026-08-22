@@ -3,7 +3,7 @@ import { t } from '@/lib/i18n';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FileText, ChevronRight, Printer, IndianRupee, TriangleAlert } from 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useListQuery } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Table, Badge, Button, Chips, Pagination,
@@ -18,30 +18,21 @@ export function MyBills() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [rows, setRows] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [paymentStatus, setPaymentStatus] = useState('all');
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (chupChaap = false) => {
-    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
-    if (!chupChaap) setLoading(true);
-    try {
-      const res = await api.get('/my-bills', { params: { paymentStatus, page, limit: 25 } });
-      setRows(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentStatus, page]);
+  /*
+    CACHE — dobara kholne par page khali nahi hota.
 
-  useEffect(() => {load();}, [load]);
-  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
-  useAutoRefresh(load);
+    Pehle seedha `api.get` tha: har baar wapas aane par spinner, aur do second
+    ka intezaar. Retailer din me yahi chakkar bees baar lagata hai.
+    `useQuery` purana data turant de deta hai aur naya peeche-peeche laata hai.
+  */
+  const { rows, meta, loading } = useListQuery(
+    ['my-bills', { paymentStatus, page }],
+    () => api.get('/my-bills', { params: { paymentStatus, page, limit: 25 } }),
+    { onError: (err) => toast.error(err.message) },
+  );
   useEffect(() => {setPage(1);}, [paymentStatus]);
 
   const totalDue = rows.reduce((s, r) => s + (r.dueAmount || 0), 0);

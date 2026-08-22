@@ -55,6 +55,25 @@ export const ORDER_STATUS = {
 };
 
 // Aage kaunsa status allowed hai — Part 7 me status flow validate karne ke liye
+/*
+  ORDER PE PAISE KA IRADA — retailer order karte waqt batata hai.
+
+  Ye PAYMENT_MODES se alag list hai, jaan-boojh kar. PAYMENT_MODES batata hai
+  ki paisa KIS RASTE aaya (cash, UPI, bank, cheque) — wo tab likha jata hai jab
+  paisa sach me aa chuka ho. Yahan sawal doosra hai: paisa aayega bhi ya khate
+  me chadhega. `UDHAAR` uska jawab hai, aur wo kisi payment ka mode ho hi nahi
+  sakta — udhaar ka matlab hi hai ki abhi paisa nahi aaya.
+
+  Dono ko ek list me milane ki koshish ki thi. Tab `UDHAAR` ek aisa payment
+  mode ban jata jiski koi payment kabhi banti hi nahi — aur har report me use
+  chhaant kar hatana padta. Alag rakhna sasta pada.
+*/
+export const ORDER_PAYMENT_MODES = {
+  UDHAAR: 'UDHAAR',
+  CASH: 'CASH',
+  UPI: 'UPI',
+};
+
 export const ORDER_STATUS_FLOW = {
   PLACED: ['PACKED', 'CANCELLED'],
   PACKED: ['READY', 'CANCELLED'],
