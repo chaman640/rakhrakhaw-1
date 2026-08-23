@@ -10,6 +10,7 @@ import {
   Spinner, useToast,
 } from '@/components/ui';
 import AccountTab from './settings/AccountTab';
+import ModeSwitch from '@/components/layout/ModeSwitch';
 import { t } from '@/lib/i18n';
 
 /**
@@ -61,6 +62,15 @@ export default function Profile() {
           ? t('Dukaan ki pehchan, paisa lene ka tarika aur apna login')
           : t('Aapka apna login')}
       />
+
+      {/*
+        Seller ⇄ Buyer — sabse upar, tab se pehle.
+
+        Tab ke andar daalne ki koshish ki thi ("Dukaan" wale tab me). Wo galat
+        tha: wo tab sirf malik ko dikhta hai, jabki godown incharge ko bhi
+        khareedna hota hai — aur uske liye wo button kabhi dikhta hi nahi.
+      */}
+      <ModeSwitch />
 
       <Tabs
         value={tab}

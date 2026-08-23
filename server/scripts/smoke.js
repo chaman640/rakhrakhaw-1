@@ -13,7 +13,7 @@ import { connectDB } from '../src/config/db.js';
 import { round2 } from '../src/utils/money.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
-  Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense,
+  Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense, Membership, StockIntake,
 } from '../src/models/index.js';
 /*
   Ijazat ki ginti YAHAN SE aati hai, haath se likhi hui nahi.
@@ -42,12 +42,26 @@ const BASE = `http://localhost:${PORT}/api`;
 const WHOLESALER_PHONE = '9000000001';
 const RETAILER_PHONE = '9000000002';
 
-async function call(method, path, { body, token, raw } = {}) {
+// Part 17 — "wholesaler ka wholesaler" aur do naye staff
+const BIG_PHONE = '9000000021';     // bada wholesaler, jisse hamara wholesaler maal leta hai
+const STORE_PHONE = '9000000022';   // godown incharge — isse kharidne ka haq milna chahiye
+const SALES_PHONE = '9000000023';   // salesman — isse NAHI milna chahiye
+
+/*
+  `shop` — Part 17 me juda.
+
+  Buy-side ka har route ab `X-Shop-Id` header dekh kar tay karta hai ki KIS
+  dukaan ke andar kaam ho raha hai. Client bhi bilkul yahi bhejta hai
+  (client/src/lib/api.js), isliye test bhi usi raste se jata hai — warna test
+  ek raste ko pass karta rehta aur asli app doosre raste pe tooti rehti.
+*/
+async function call(method, path, { body, token, raw, shop } = {}) {
   const res = await fetch(BASE + path, {
     method,
     headers: {
       ...(body && !raw ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(shop ? { 'X-Shop-Id': String(shop) } : {}),
     },
     body: raw ? body : body ? JSON.stringify(body) : undefined,
   });
@@ -58,7 +72,8 @@ async function call(method, path, { body, token, raw } = {}) {
 
 async function cleanup() {
   // Part 11 ke staff numbers bhi saaf karo
-  const phones = [WHOLESALER_PHONE, RETAILER_PHONE, '9000000011', '9000000012'];
+  const phones = [WHOLESALER_PHONE, RETAILER_PHONE, '9000000011', '9000000012',
+    BIG_PHONE, STORE_PHONE, SALES_PHONE];
   const users = await User.find({ phone: { $in: phones } }).lean();
   const businessIds = users.map((u) => u.businessId).filter(Boolean);
   await Promise.all([
@@ -78,13 +93,30 @@ async function cleanup() {
     ReturnNote.deleteMany({ businessId: { $in: businessIds } }),
     // Part 15 me juda — bina iske har run pe purane kharch jama hote rehte hain
     Expense.deleteMany({ businessId: { $in: businessIds } }),
+    // Part 17 — rishta dono taraf se saaf karo (bechne wali dukaan se bhi,
+    // kharidne wali se bhi), warna agle run me "pehle se juda hai" mil jata hai
+    // Part 17 step 3 — dono taraf se (kharidne wali dukaan me pada hai,
+    // par dhoondha bechne wali se bhi jata hai)
+    StockIntake.deleteMany({
+      $or: [
+        { businessId: { $in: businessIds } },
+        { sellerBusinessId: { $in: businessIds } },
+      ],
+    }),
+    Membership.deleteMany({
+      $or: [
+        { businessId: { $in: businessIds } },
+        { buyerBusinessId: { $in: businessIds } },
+        { userId: { $in: users.map((u) => u._id) } },
+      ],
+    }),
   ]);
   await Business.deleteMany({ _id: { $in: businessIds } });
   await User.deleteMany({ $or: [{ phone: { $in: phones } }, { businessId: { $in: businessIds } }] });
 }
 
 async function run() {
-  console.log(`\n${Y}Rakh Rakhav — smoke test (Part 1-11)${N}`);
+  console.log(`\n${Y}Rakh Rakhav — smoke test (Part 1-17)${N}`);
   console.log(`${D}Database: ${env.mongoUri.replace(/\/\/[^@]*@/, '//***@')}${N}\n`);
 
   await connectDB();
@@ -884,11 +916,20 @@ async function run() {
 
     console.log(`\n${Y}Tenant isolation (Part 6)${N}`);
 
+    /*
+      Part 17 se pehle yahan 403 aata tha: "wholesaler ka is API pe kaam hi
+      nahi". Ab wholesaler bhi khareed sakta hai, isliye rok BADAL gayi hai —
+      band nahi hui.
+
+      Ab jawab 400 hai aur uska matlab alag hai: "aap khareed to sakte hain, par
+      abhi kisi dukaan se jude hi nahi". Yahi sahi bhi hai — is waqt is
+      wholesaler ne kisi dukaan ka number search nahi kiya hai.
+    */
     r = await call('GET', '/cart', { token: wToken });
-    check('wholesaler cart API nahi khol saka', r.status === 403, `status ${r.status}`);
+    check('bina dukaan jude wholesaler ka cart nahi khula', r.status === 400, `status ${r.status}`);
 
     r = await call('GET', '/catalog', { token: wToken });
-    check('wholesaler catalog API nahi khol saka', r.status === 403, `status ${r.status}`);
+    check('bina dukaan jude wholesaler ka catalog nahi khula', r.status === 400, `status ${r.status}`);
 
     r = await call('GET', '/catalog');
     check('bina login catalog band hai', r.status === 401, `status ${r.status}`);
@@ -1248,7 +1289,7 @@ async function run() {
     check('retailer wholesaler ke bills nahi khol saka', r.status === 403, `status ${r.status}`);
 
     r = await call('GET', '/my-bills', { token: wToken });
-    check('wholesaler my-bills nahi khol saka', r.status === 403, `status ${r.status}`);
+    check('bina dukaan jude wholesaler ke my-bills nahi khule', r.status === 400, `status ${r.status}`);
 
 
     // ============================================================ PART 9
@@ -1537,7 +1578,7 @@ async function run() {
     check('retailer khud entry nahi kar saka', r.status === 403, `status ${r.status}`);
 
     r = await call('GET', '/my/khata', { token: wToken });
-    check('wholesaler my/khata nahi khol saka', r.status === 403, `status ${r.status}`);
+    check('bina dukaan jude wholesaler ka my/khata nahi khula', r.status === 400, `status ${r.status}`);
 
     r = await call('POST', `/payments/${paymentOut}/confirm`, { token: rToken });
     check('retailer khud confirm nahi kar saka', r.status === 403, `status ${r.status}`);
@@ -2995,6 +3036,504 @@ async function run() {
 
     r = await call('GET', '/backup/download', { token: rToken });
     check('retailer backup nahi le saka', r.status === 403, `status ${r.status}`);
+
+    /* ═════════════ Part 17 — do darwaze, ek login me kai dukaan ═════════════
+
+       Yahi wo hissa hai jisne "ek retailer, ek hi wholesaler" wali gaanth kholi.
+       Isliye is section me sirf naya feature nahi, PURANE RASTE ka bhi test hai:
+       header na bheja jaye to retailer bilkul wahin pahunche jahan pehle
+       pahunchta tha. Naya feature purane login ko tode — is project me wahi
+       sabse mehnga bug hoga, kyunki wo chalte hue dukaan me pakda jayega.
+       ═══════════════════════════════════════════════════════════════════════ */
+    console.log(`\n${Y}Do darwaze — ek login, kai dukaan (Part 17)${N}`);
+
+    // "Wholesaler ka wholesaler" — hamara wholesaler isse maal lega
+    r = await call('POST', '/auth/wholesaler/signup', {
+      body: { name: 'Bada Bhai', phone: BIG_PHONE, password: 'bada1234', businessName: 'Bada Traders' },
+    });
+    const bigToken = r.data?.token;
+    const bigBizId = r.data?.business?._id;
+    check('bada wholesaler ban gaya', r.status === 201 && Boolean(bigToken), `${r.message}`);
+
+    await call('PUT', '/business/me', { token: bigToken, body: { autoApproveRetailers: true } });
+
+    r = await call('POST', '/categories', { token: bigToken, body: { name: 'Tyres' } });
+    const bigCat = r.data?._id;
+
+    r = await call('POST', '/items', {
+      token: bigToken,
+      body: { name: 'Tyre 90/90', categoryId: bigCat, unit: 'PCS',
+        purchasePrice: 700, salePrice: 1100, wholesalePrice: 1000, openingStock: 30,
+        // Part 17 step 3 — tax wala rasta bhi jaanch me aaye
+        hsn: '4011', gstRate: 18 },
+    });
+    const bigItem = r.data?._id;
+    check('bade wholesaler ne maal daala', r.status === 201, `${r.message}`);
+
+    // ---- number se dukaan dhoondhna ----
+    r = await call('GET', `/shops/lookup?phone=${BIG_PHONE}`, { token: wToken });
+    check('number se dukaan mil gayi', r.status === 200 && r.data?.name === 'Bada Traders', `${r.message}`);
+    check('maal aur category ki ginti bhi aayi',
+      r.data?.itemCount === 1 && r.data?.categoryCount === 1,
+      `${r.data?.itemCount} item / ${r.data?.categoryCount} category`);
+    check('abhi juda nahi hai', r.data?.connected === false, `${r.data?.connected}`);
+
+    r = await call('GET', '/shops/lookup?phone=9111111119', { token: wToken });
+    check('anjaan number pe koi dukaan nahi mili', r.status === 404, `status ${r.status}`);
+
+    r = await call('GET', '/shops/lookup?phone=98765', { token: wToken });
+    check('aadha number reject hua (taad-bin ka rasta band)', r.status === 400, `status ${r.status}`);
+
+    r = await call('GET', `/shops/lookup?phone=${WHOLESALER_PHONE}`, { token: wToken });
+    check('apni hi dukaan pe nishaan laga', r.data?.isOwn === true, `${r.data?.isOwn}`);
+
+    r = await call('POST', '/shops/connect', { token: wToken, body: { phone: WHOLESALER_PHONE } });
+    check('apni hi dukaan se judna block hua', r.status === 400, `status ${r.status}`);
+
+    // ---- judna ----
+    r = await call('POST', '/shops/connect', { token: wToken, body: { phone: BIG_PHONE } });
+    check('wholesaler bade wholesaler se jud gaya',
+      r.status === 201 && r.data?.connected === true, `${r.message}`);
+    check('auto-approve se turant active hua', r.data?.partyStatus === 'active', `${r.data?.partyStatus}`);
+
+    r = await call('GET', '/parties?type=retailer', { token: bigToken });
+    check('bade wholesaler ke yahan uski party ban gayi',
+      (r.data || []).some((x) => x.phone === WHOLESALER_PHONE),
+      JSON.stringify((r.data || []).map((x) => x.phone)));
+
+    r = await call('POST', '/shops/connect', { token: wToken, body: { phone: BIG_PHONE } });
+    check('dobara judne pe error nahi aaya', r.status === 201, `${r.message}`);
+    r = await call('GET', '/parties?type=retailer', { token: bigToken });
+    check('...aur doosri party BHI nahi bani',
+      (r.data || []).filter((x) => x.phone === WHOLESALER_PHONE).length === 1,
+      `${(r.data || []).filter((x) => x.phone === WHOLESALER_PHONE).length} party`);
+
+    // ---- doosri dukaan ka catalog ----
+    r = await call('GET', '/catalog', { token: wToken, shop: bigBizId });
+    check('buy mode me doosri dukaan ka maal dikha',
+      r.status === 200 && (r.data || []).some((x) => x.name === 'Tyre 90/90'), `status ${r.status}`);
+
+    r = await call('GET', '/catalog', { token: rToken, shop: bigBizId });
+    check('jisse jude nahi uska catalog nahi khula', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/catalog', { token: wToken, shop: '507f1f77bcf86cd799439011' });
+    check('bina-rishte wali id pe bhi 403 mila', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/catalog', { token: wToken, shop: 'kuch-bhi' });
+    check('galat shakal ki id reject hui', r.status === 400, `status ${r.status}`);
+
+    // ---- har dukaan ka apna cart ----
+    r = await call('POST', '/cart/items', {
+      token: wToken, shop: bigBizId, body: { itemId: bigItem, qty: 2 },
+    });
+    check('doosri dukaan ke maal se cart bana', r.status === 200, `${r.message}`);
+
+    r = await call('GET', '/cart/count', { token: wToken, shop: bigBizId });
+    check('us dukaan ke cart me maal hai', r.data?.count === 1, `${r.data?.count}`);
+
+    /* ─────────── PURANA RASTA — retailer ka kuch bhi na toote ─────────── */
+
+    const w1Name = (await call('GET', '/business/me', { token: wToken })).data?.name;
+
+    r = await call('GET', '/catalog/shop', { token: rToken });
+    check('bina header retailer apni PURANI dukaan me hi raha',
+      r.data?.name === w1Name, `${r.data?.name}`);
+
+    // Ab retailer doosri dukaan se BHI judta hai — yahi is poore update ka dil
+    r = await call('POST', '/shops/connect', { token: rToken, body: { phone: BIG_PHONE } });
+    check('retailer doosri dukaan se bhi jud gaya (lock toota)',
+      r.status === 201 && r.data?.partyStatus === 'active', `${r.message}`);
+
+    r = await call('GET', '/shops/saved', { token: rToken });
+    check('retailer ke paas ab do dukaan hain', (r.data || []).length === 2, `${(r.data || []).length}`);
+
+    r = await call('GET', '/catalog/shop', { token: rToken, shop: bigBizId });
+    check('header dene par retailer doosri dukaan me pahuncha',
+      r.data?.name === 'Bada Traders', `${r.data?.name}`);
+
+    r = await call('GET', '/catalog/shop', { token: rToken });
+    check('header hataate hi wapas apni purani dukaan me',
+      r.data?.name === w1Name, `${r.data?.name}`);
+
+    r = await call('GET', '/dashboard', { token: rToken });
+    check('retailer ka purana dashboard waise ka waisa', typeof r.data?.balance === 'number',
+      `${JSON.stringify(Object.keys(r.data || {}))}`);
+
+    r = await call('GET', '/dashboard', { token: wToken });
+    check('seller mode me wholesaler ko apna hi dashboard mila',
+      typeof r.data?.sale?.today === 'number', `${JSON.stringify(Object.keys(r.data || {}))}`);
+
+    r = await call('GET', '/dashboard', { token: wToken, shop: bigBizId });
+    check('buy mode me use us dukaan ka hisaab mila',
+      typeof r.data?.balance === 'number' && r.data?.sale === undefined,
+      `${JSON.stringify(Object.keys(r.data || {}))}`);
+
+    /* ─────────── save / save hataana ─────────── */
+
+    r = await call('DELETE', `/shops/${bigBizId}/save`, { token: rToken });
+    check('save hat gaya', r.status === 200 && r.data?.saved === false, `${r.message}`);
+
+    r = await call('GET', '/shops/saved', { token: rToken });
+    check('save hatane par search wali list se hat gayi',
+      (r.data || []).length === 1, `${(r.data || []).length}`);
+
+    r = await call('GET', '/shops/saved?all=1', { token: rToken });
+    check('par RISHTA nahi toota (khata wahin bacha raha)',
+      (r.data || []).length === 2, `${(r.data || []).length}`);
+
+    r = await call('POST', `/shops/${bigBizId}/save`, { token: rToken });
+    check('dobara save ho gaya', r.data?.saved === true, `${r.data?.saved}`);
+
+    /* ─────────── kis staff ko kharidne ka haq ─────────── */
+
+    r = await call('POST', '/staff', {
+      token: wToken,
+      body: { name: 'Godown Bhaiya', phone: STORE_PHONE, password: 'store123', staffRole: 'storekeeper' },
+    });
+    check('godown incharge ban gaya', r.status === 201, `${r.message}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: STORE_PHONE, password: 'store123' } });
+    const storeToken = r.data?.token;
+    check('godown incharge ko kharidne ka haq mila', r.data?.user?.canBuy === true, `${r.data?.user?.canBuy}`);
+
+    r = await call('GET', `/shops/lookup?phone=${BIG_PHONE}`, { token: storeToken });
+    check('godown incharge dukaan dhoondh saka', r.status === 200, `status ${r.status}`);
+
+    r = await call('GET', '/shops/saved', { token: storeToken });
+    check('malik ne jo dukaan jodi thi wo staff ko bhi dikhi',
+      (r.data || []).some((x) => String(x._id) === String(bigBizId)),
+      `${(r.data || []).length} dukaan`);
+
+    r = await call('GET', '/catalog', { token: storeToken, shop: bigBizId });
+    check('godown incharge ne us dukaan ka maal dekha', r.status === 200, `status ${r.status}`);
+
+    r = await call('GET', '/cart/count', { token: storeToken, shop: bigBizId });
+    check('cart bhi wahi ek (dukaan ka cart, aadmi ka nahi)',
+      r.data?.count === 1, `${r.data?.count}`);
+
+    r = await call('POST', '/staff', {
+      token: wToken,
+      body: { name: 'Chhotu Salesman', phone: SALES_PHONE, password: 'sales123', staffRole: 'salesman' },
+    });
+    check('salesman ban gaya', r.status === 201, `${r.message}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: SALES_PHONE, password: 'sales123' } });
+    const salesToken17 = r.data?.token;
+    check('salesman ko kharidne ka haq NAHI mila', r.data?.user?.canBuy === false, `${r.data?.user?.canBuy}`);
+
+    r = await call('GET', `/shops/lookup?phone=${BIG_PHONE}`, { token: salesToken17 });
+    check('salesman dukaan nahi dhoondh saka', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/cart', { token: salesToken17, shop: bigBizId });
+    check('salesman doosri dukaan ka cart bhi nahi khol saka', r.status === 403, `status ${r.status}`);
+
+    /* ═══════ Part 17 step 2 — har dukaan ka apna dabba, apna order ═══════
+
+       Yahan do baatein sabse zaroori hain, aur dono aisi hain jinka tootna
+       screen pe DIKHTA NAHI:
+
+         1. Ek dukaan me kuch badalne se doosri dukaan ka cart na hile.
+         2. Ek confirm pe har dukaan ka ALAG order bane — apne number, apne
+            paise ke irade aur apne note ke saath. Ek bada order banane se
+            stock, khata, GST aur notification — sab ek saath toot jate.
+       ═══════════════════════════════════════════════════════════════════ */
+    console.log(`\n${Y}Har dukaan ka apna dabba aur apna order (Part 17 step 2)${N}`);
+
+    const w1BizId = (await call('GET', '/business/me', { token: wToken })).data?._id;
+
+    // Retailer ke do cart — apni purani dukaan me, aur Bada Traders me
+    r = await call('POST', '/cart/items', { token: rToken, body: { itemId: bearingId, qty: 3 } });
+    check('retailer ne apni purani dukaan me maal daala', r.status === 200, `${r.message}`);
+
+    r = await call('POST', '/cart/items', {
+      token: rToken, shop: bigBizId, body: { itemId: bigItem, qty: 2 },
+    });
+    check('usi retailer ne doosri dukaan me bhi maal daala', r.status === 200, `${r.message}`);
+
+    r = await call('GET', '/buy/cart', { token: rToken });
+    check('cart me DO dukaan ke alag alag dabbe bane', r.data?.shopCount === 2, `${r.data?.shopCount}`);
+    check('har dabbe pe dukaan ka naam aur pehchan hai',
+      (r.data?.shops || []).every((s) => s.shop?.name && s.shop?._id),
+      JSON.stringify((r.data?.shops || []).map((s) => s.shop?.name)));
+    check('har dabbe ka apna jod hai', (r.data?.shops || []).every((s) => s.total > 0));
+
+    const boxSum = round2((r.data?.shops || []).reduce((s, x) => s + x.total, 0));
+    check('kul jod = sab dabbon ke jod ka jod',
+      Math.abs((r.data?.grandTotal || 0) - boxSum) < 0.01, `${r.data?.grandTotal} vs ${boxSum}`);
+
+    const w1QtyBefore = (r.data?.shops || [])
+      .find((s) => String(s.shop._id) === String(w1BizId))?.items?.[0]?.qty;
+
+    r = await call('GET', '/buy/cart/count', { token: rToken });
+    check('badge SAB dukaanon ki ginti dikhata hai',
+      r.data?.count === 2 && r.data?.shopCount === 2, JSON.stringify(r.data));
+
+    // ---- ek dukaan me quantity badlo, doosri ko haath na lage ----
+    r = await call('PUT', `/cart/items/${bigItem}`, {
+      token: rToken, shop: bigBizId, body: { qty: 5 },
+    });
+    check('ek dukaan ki quantity badal gayi', r.status === 200, `${r.message}`);
+
+    r = await call('GET', '/buy/cart', { token: rToken });
+    const bigBox = (r.data?.shops || []).find((s) => String(s.shop._id) === String(bigBizId));
+    const w1Box = (r.data?.shops || []).find((s) => String(s.shop._id) === String(w1BizId));
+    check('...usi dukaan me lagi', bigBox?.items?.[0]?.qty === 5, `${bigBox?.items?.[0]?.qty}`);
+    check('...aur DOOSRI dukaan ka cart bilkul nahi hila',
+      w1Box?.items?.[0]?.qty === w1QtyBefore, `${w1Box?.items?.[0]?.qty} vs ${w1QtyBefore}`);
+
+    // ---- EK CONFIRM, DO ALAG ORDER ----
+    const w1OrdersBefore = (await call('GET', '/orders?limit=1', { token: wToken })).meta?.total;
+    const bigOrdersBefore = (await call('GET', '/orders?limit=1', { token: bigToken })).meta?.total;
+
+    r = await call('POST', '/buy/checkout', {
+      token: rToken,
+      body: {
+        orders: [
+          { shopId: String(bigBizId), paymentMode: 'CASH', note: 'Tyre jaldi chahiye' },
+          { shopId: String(w1BizId), paymentMode: 'UDHAAR' },
+        ],
+      },
+    });
+    check('ek confirm pe DO order bane', r.status === 201 && r.data?.placed?.length === 2, `${r.message}`);
+    check('koi dukaan chhooti nahi', (r.data?.failed || []).length === 0, JSON.stringify(r.data?.failed));
+    check('dono order ke apne apne number hain',
+      Boolean(r.data?.placed?.[0]?.orderNo)
+      && r.data.placed[0].orderNo !== r.data.placed[1].orderNo,
+      JSON.stringify((r.data?.placed || []).map((x) => x.orderNo)));
+    check('jawab me har dukaan ka naam bhi aaya',
+      (r.data?.placed || []).every((x) => Boolean(x.shopName)),
+      JSON.stringify((r.data?.placed || []).map((x) => x.shopName)));
+
+    const w1OrdersAfter = (await call('GET', '/orders?limit=1', { token: wToken })).meta?.total;
+    const bigOrdersAfter = (await call('GET', '/orders?limit=1', { token: bigToken })).meta?.total;
+    check('dono wholesaler ke yahan EK-EK naya order pahuncha',
+      w1OrdersAfter === w1OrdersBefore + 1 && bigOrdersAfter === bigOrdersBefore + 1,
+      `${w1OrdersBefore}→${w1OrdersAfter}, ${bigOrdersBefore}→${bigOrdersAfter}`);
+
+    // Paise ka irada aur note — har dukaan ka apna, ek doosre pe nahi chadha
+    r = await call('GET', '/orders?limit=5', { token: bigToken });
+    check('bade wholesaler ko CASH wala irada mila', r.data?.[0]?.paymentMode === 'CASH', `${r.data?.[0]?.paymentMode}`);
+    check('...aur uska apna note bhi', r.data?.[0]?.retailerNote === 'Tyre jaldi chahiye', `${r.data?.[0]?.retailerNote}`);
+
+    r = await call('GET', '/orders?limit=5', { token: wToken });
+    check('doosre wholesaler ko UDHAAR wala irada mila', r.data?.[0]?.paymentMode === 'UDHAAR', `${r.data?.[0]?.paymentMode}`);
+    check('...aur uspe doosri dukaan ka note nahi chipka', !r.data?.[0]?.retailerNote?.includes('Tyre'), `${r.data?.[0]?.retailerNote}`);
+
+    // ---- alag alag notification ----
+    r = await call('GET', '/notifications?type=NEW_ORDER&limit=5', { token: bigToken });
+    check('bade wholesaler ko apni ALAG khabar mili', (r.data || []).length >= 1, `${(r.data || []).length}`);
+    r = await call('GET', '/notifications?type=NEW_ORDER&limit=5', { token: wToken });
+    check('doosre wholesaler ko apni ALAG khabar mili', (r.data || []).length >= 1, `${(r.data || []).length}`);
+
+    r = await call('GET', '/buy/cart', { token: rToken });
+    check('order jane ke baad DONO cart khali ho gaye', r.data?.shopCount === 0, `${r.data?.shopCount}`);
+
+    // ---- galat / khali halat ----
+    r = await call('POST', '/buy/checkout', {
+      token: rToken, body: { orders: [{ shopId: '507f1f77bcf86cd799439011' }] },
+    });
+    check('jisse jude nahi uska order nahi gaya', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/buy/checkout', { token: rToken, body: { orders: [] } });
+    check('khali list reject hui', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/buy/checkout', {
+      token: rToken, body: { orders: [{ shopId: String(bigBizId) }] },
+    });
+    check('khali cart pe order nahi gaya', r.status === 400, `status ${r.status}`);
+
+    /*
+      EK DUKAAN FAIL HO TO BAAKI NA RUKE — ye sabse zaroori jaanch hai.
+
+      Poora checkout fail kar dena sabse bura hota: kharidaar ko lagta kuch gaya
+      hi nahi, wo dobara dabata, aur pehli dukaan me DO order chale jate.
+    */
+    await call('POST', '/cart/items', { token: rToken, shop: bigBizId, body: { itemId: bigItem, qty: 1 } });
+    r = await call('POST', '/buy/checkout', {
+      token: rToken,
+      body: {
+        orders: [
+          { shopId: String(bigBizId) },   // iska cart bhara hai  -> jayega
+          { shopId: String(w1BizId) },    // iska cart khali hai  -> nahi jayega
+        ],
+      },
+    });
+    check('ek dukaan fail hui par doosri ka order CHALA GAYA',
+      r.status === 201 && r.data?.placed?.length === 1 && r.data?.failed?.length === 1,
+      `${r.message} | ${JSON.stringify(r.data?.failed)}`);
+    check('fail wali dukaan ka naam aur wajah dono bataye gaye',
+      Boolean(r.data?.failed?.[0]?.shopName) && Boolean(r.data?.failed?.[0]?.message),
+      JSON.stringify(r.data?.failed));
+
+    // ---- shop page ka header (Instagram wali window) ----
+    r = await call('GET', '/catalog/shop', { token: rToken, shop: bigBizId });
+    check('shop page ke header me maal aur category ki ginti aayi',
+      r.data?.itemCount === 1 && r.data?.categoryCount === 1,
+      `${r.data?.itemCount} item / ${r.data?.categoryCount} category`);
+    check('...aur save ka haal bhi', r.data?.saved === true, `${r.data?.saved}`);
+    check('header me GSTIN abhi bhi nahi aaya', r.data?.gstin === undefined);
+
+    r = await call('GET', '/buy/cart', { token: salesToken17 });
+    check('salesman poora cart bhi nahi khol saka', r.status === 403, `status ${r.status}`);
+
+    /* ═══════ Part 17 step 3 — kharida hua maal apni dukaan me ═══════
+
+       Sabse zaroori jaanch yahan ek hi hai, aur wo dikhne me chhoti lagti hai:
+       "Add karke aage" dabane se STOCK NAHI BADHNA CHAHIYE. Maal sirf aakhri
+       kadam pe chadhta hai, wahi purane `createPurchase()` se — taaki stock,
+       khep (FIFO ki lagat), supplier ka khata aur GST ka input credit sab ek
+       saath aur ek hi hisaab se banein.
+
+       Bina is rok ke maal do baar chadh jata: ek baar item banate waqt, doosri
+       baar purchase se. Wo galti screen pe dikhti bhi nahi — mahino baad stock
+       ginte waqt pakdi jati hai.
+       ═══════════════════════════════════════════════════════════════════ */
+    console.log(`\n${Y}Kharida hua maal apni dukaan me (Part 17 step 3)${N}`);
+
+    r = await call('PUT', '/business/me', {
+      token: bigToken, body: { gstEnabled: true, gstin: '09AAACH7409R1ZZ' },
+    });
+    check('bade wholesaler ne GST on kiya', r.data?.gstEnabled === true, `${r.message}`);
+
+    const w1PartyInBig = (await call('GET', '/parties?type=retailer', { token: bigToken })).data
+      ?.find((x) => x.phone === WHOLESALER_PHONE)?._id;
+    check('bade wholesaler ke yahan hamari party maujood hai', Boolean(w1PartyInBig));
+
+    const intakesBefore = (await call('GET', '/stock-intake?status=all&limit=1', { token: wToken })).meta?.total || 0;
+
+    r = await call('POST', '/invoices', {
+      token: bigToken,
+      body: { partyId: w1PartyInBig, items: [{ itemId: bigItem, qty: 4, rate: 1000 }], paidAmount: 0 },
+    });
+    check('bade wholesaler ne bill bana diya', r.status === 201, `${r.message}`);
+    const bigInvNo = r.data?.invoiceNo;
+    const bigInvTotal = r.data?.grandTotal;
+    check('bill pe GST laga', (r.data?.taxTotal || 0) > 0, `tax ${r.data?.taxTotal}`);
+
+    // ---- bill bante hi kaam apne aap ban gaya ----
+    r = await call('GET', '/stock-intake', { token: wToken });
+    const intake = (r.data || []).find((x) => x.sourceInvoiceNo === bigInvNo);
+    check('BILL BANTE HI kharidne wale ke yahan kaam ban gaya',
+      Boolean(intake), `${(r.data || []).length} kaam mile`);
+    check('usme bechne wale ka naam hai', intake?.sellerName === 'Bada Traders', `${intake?.sellerName}`);
+    check('bill ka poora maal usme aaya', intake?.itemCount === 1, `${intake?.itemCount}`);
+    check('...aur uska jod bhi bill jaisa hai',
+      Math.abs((intake?.grandTotal || 0) - bigInvTotal) < 0.01,
+      `${intake?.grandTotal} vs ${bigInvTotal}`);
+
+    r = await call('GET', '/notifications?type=STOCK_INTAKE&limit=5', { token: wToken });
+    check('"maal stock me daal lijiye" wali khabar bhi gayi',
+      (r.data || []).length >= 1, `${(r.data || []).length}`);
+
+    const intakesAfter = (await call('GET', '/stock-intake?status=all&limit=1', { token: wToken })).meta?.total || 0;
+    check('ek bill ka ek hi kaam bana', intakesAfter === intakesBefore + 1,
+      `${intakesBefore} -> ${intakesAfter}`);
+
+    // ---- ek ek item ----
+    r = await call('GET', `/stock-intake/${intake._id}/lines/0/matches`, { token: wToken });
+    check('line ki poori detail mili', r.data?.line?.sourceName === 'Tyre 90/90', `${r.data?.line?.sourceName}`);
+    check('lagat GST ke BINA nikali (GST wale ke liye)',
+      r.data?.line?.unitCostExTax === 1000, `${r.data?.line?.unitCostExTax}`);
+    check('lagat GST ke SAATH bhi rakhi (bina GST wale ke liye)',
+      r.data?.line?.unitCostIncTax > 1000, `${r.data?.line?.unitCostIncTax}`);
+
+    r = await call('POST', `/stock-intake/${intake._id}/lines/0`, { token: wToken, body: {} });
+    check('bina bechne ka rate diye item add nahi hua', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', `/stock-intake/${intake._id}/lines/0`, {
+      token: wToken,
+      body: { sellingPrice: 1300, newItem: { name: 'Tyre 90/90', unit: 'PCS', hsn: '4011', gstRate: 18 } },
+    });
+    check('"Add karke aage" chala', r.status === 200, `${r.message}`);
+    check('...aur ab koi item baaki nahi', r.data?.pendingCount === 0, `${r.data?.pendingCount}`);
+
+    r = await call('GET', '/items?q=Tyre 90/90', { token: wToken });
+    const madeItem = (r.data || []).find((x) => x.name === 'Tyre 90/90');
+    check('naya item apne aap ban gaya', Boolean(madeItem), `${(r.data || []).length} mile`);
+    check('bechne ka rate item pe turant lag gaya', madeItem?.salePrice === 1300, `${madeItem?.salePrice}`);
+    check('PAR STOCK ABHI NAHI BADHA — wo purchase se aayega',
+      madeItem?.stockQty === 0, `stock ${madeItem?.stockQty}`);
+
+    // ---- aakhri kadam: ab maal sach me stock me ----
+    const purchasesBefore = (await call('GET', '/purchases?limit=1', { token: wToken })).meta?.total || 0;
+
+    r = await call('POST', `/stock-intake/${intake._id}/finish`, { token: wToken, body: { paidAmount: 0 } });
+    check('maal stock me chala gaya', r.status === 201, `${r.message}`);
+    const madePurchase = r.data?.purchase;
+    check('...aur uski ek purchase bhi ban gayi', Boolean(madePurchase?.purchaseNo), `${madePurchase?.purchaseNo}`);
+
+    r = await call('GET', `/items/${madeItem._id}`, { token: wToken });
+    check('AB stock badh gaya', r.data?.stockQty === 4, `stock ${r.data?.stockQty}`);
+    check('lagat bhi item pe chadh gayi (GST ke bina)',
+      r.data?.purchasePrice === 1000, `${r.data?.purchasePrice}`);
+    check('bechne ka rate waise ka waisa raha', r.data?.salePrice === 1300, `${r.data?.salePrice}`);
+
+    const purchasesAfter = (await call('GET', '/purchases?limit=1', { token: wToken })).meta?.total || 0;
+    check('purchase ki ginti ek badhi', purchasesAfter === purchasesBefore + 1,
+      `${purchasesBefore} -> ${purchasesAfter}`);
+    check('purchase ka jod bill se milta hai',
+      Math.abs((madePurchase?.grandTotal || 0) - bigInvTotal) < 1,
+      `${madePurchase?.grandTotal} vs ${bigInvTotal}`);
+    check('bill ka number purchase pe likha hai',
+      madePurchase?.supplierBillNo === bigInvNo, `${madePurchase?.supplierBillNo}`);
+
+    r = await call('GET', '/parties?type=supplier', { token: wToken });
+    const autoSupplier = (r.data || []).find((x) => x.phone === BIG_PHONE);
+    check('bechne wala apne aap SUPPLIER ban gaya',
+      Boolean(autoSupplier), JSON.stringify((r.data || []).map((x) => x.name)));
+    check('uske khate me poora bill chadh gaya',
+      Math.abs((autoSupplier?.balance || 0) - bigInvTotal) < 1,
+      `${autoSupplier?.balance} vs ${bigInvTotal}`);
+
+    r = await call('POST', `/stock-intake/${intake._id}/finish`, { token: wToken, body: {} });
+    check('DOBARA stock me nahi chadha', r.status === 400, `status ${r.status}`);
+
+    r = await call('GET', `/stock-intake/${intake._id}`, { token: wToken });
+    check('kaam ab "ho gaya" me hai', r.data?.status === 'DONE', `${r.data?.status}`);
+    check('...aur usse bani purchase se juda hua', Boolean(r.data?.purchaseId));
+
+    // ---- kis staff ko ye kaam ----
+    r = await call('GET', '/stock-intake', { token: storeToken });
+    check('godown incharge ye kaam dekh saka', r.status === 200, `status ${r.status}`);
+    r = await call('GET', '/stock-intake', { token: salesToken17 });
+    check('salesman ye kaam nahi dekh saka', r.status === 403, `status ${r.status}`);
+
+    // ---- bechne wale ne bill cancel kar diya ----
+    r = await call('POST', '/invoices', {
+      token: bigToken,
+      body: { partyId: w1PartyInBig, items: [{ itemId: bigItem, qty: 1, rate: 1000 }], paidAmount: 0 },
+    });
+    const inv2No = r.data?.invoiceNo;
+    check('doosra bill bana', r.status === 201, `${r.message}`);
+
+    r = await call('POST', `/invoices/${r.data?._id}/cancel`, {
+      token: bigToken, body: { reason: 'Galti se ban gaya' },
+    });
+    check('bada wholesaler ne wo bill cancel kar diya', r.status === 200, `${r.message}`);
+
+    r = await call('GET', '/stock-intake?status=CANCELLED', { token: wToken });
+    check('bill cancel hote hi wo kaam bhi ruk gaya',
+      (r.data || []).some((x) => x.sourceInvoiceNo === inv2No),
+      `${(r.data || []).length} cancel wale`);
+
+    // ---- aam retailer ka apna stock hota hi nahi ----
+    r = await call('GET', '/stock-intake?status=all', { token: rToken });
+    check('aam retailer ke liye ye page hai hi nahi', r.status === 403, `status ${r.status}`);
+
+    /*
+      Aur uske bill se koi kaam banta bhi nahi.
+
+      Is poore smoke me wholesaler ne retailer ko KAI bill diye hain. Un sab se
+      bhi kaam banne lagta to yahan ginti bahut zyada hoti. Sirf DO hain — wahi
+      do jo bade wholesaler ne HAMARI DUKAAN ko diye. Yahi saboot hai ki ye kaam
+      sirf tab banta hai jab kharidaar khud ek dukaan ho.
+    */
+    r = await call('GET', '/stock-intake?status=all&limit=100', { token: wToken });
+    check('sirf dukaan wale kharidaar ke liye kaam bana (retailer ke bill se nahi)',
+      (r.meta?.total || 0) === 2, `${r.meta?.total} kaam bane`);
+    check('...aur dono usi bade wholesaler ke hain',
+      (r.data || []).every((x) => x.sellerName === 'Bada Traders'),
+      JSON.stringify((r.data || []).map((x) => x.sellerName)));
 
     // ---------------------------------------------------------- Validation
     console.log(`\n${Y}Validation${N}`);

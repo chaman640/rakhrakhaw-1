@@ -3,14 +3,14 @@ import mongoose from 'mongoose';
 
 import { env } from '../config/env.js';
 import { ROLES, PARTY_TYPES, PARTY_STATUS,  } from '../config/constants.js';
-import { ALL_PERMISSIONS, STAFF_ROLE_LABEL } from '../config/permissions.js';
+import { ALL_PERMISSIONS, STAFF_ROLE_LABEL, userCan } from '../config/permissions.js';
 import ApiError from '../utils/ApiError.js';
 import { normalizePhone } from '../utils/phone.js';
 import { getStateCode } from '../config/states.js';
 import { validateGstin } from '../utils/gstin.js';
 import { generateInviteCode } from '../utils/generateCode.js';
 import { businessForUser } from '../utils/businessView.js';
-import { User, Business, Party } from '../models/index.js';
+import { User, Business, Party, Membership } from '../models/index.js';
 
 /**
  * Token banane wala.
@@ -48,6 +48,20 @@ function publicUser(user) {
     // "Sirf apna kaam" wala hai kya — client isse "sabka data" wale filter
     // aur tab chhupa deta hai
     scope: user.role === 'wholesaler' ? (staffRole === 'owner' ? 'all' : (user.scope || 'all')) : 'all',
+
+    /*
+      KHAREEDNE KA DARWAZA khulega ya nahi.
+
+      Retailer ka poora kaam hi khareedna hai. Wholesaler ke liye wahi ek shart
+      hai jo server pe lagti hai — `purchases:create` (middleware/auth.js ka
+      `requireBuyer` dekhein). Do jagah do alag shart likhne se wo dheere dheere
+      alag ho jati hain aur button dikhta hai par dabate hi "ijazat nahi" aata
+      hai; isliye naam bhi wahi rakha hai aur matlab bhi.
+
+      Isse GODOWN INCHARGE ko bhi Buy wala button dikh jata hai — uske role me
+      `purchases:create` pehle se hai.
+    */
+    canBuy: user.role === 'retailer' ? true : userCan(user, 'purchases:create'),
 
     // Paise ki hadd — form me pehle hi bata dena behtar hai, save karke
     // "ijazat nahi" dikhane se
@@ -151,10 +165,23 @@ export async function signupRetailer({ inviteCode, name, shopName, phone, passwo
   if (!business) throw ApiError.notFound('Invite link galat hai ya expire ho gaya');
   if (!business.inviteEnabled) throw ApiError.forbidden('Ye link abhi band hai');
 
+  /*
+    Ye number pehle se registered hai.
+
+    Pehle yahan likha tha "ek number sirf ek hi dukaan se jud sakta hai" — ab wo
+    baat SACH NAHI RAHI. Doosri dukaan se judne ke liye ab naya account banane
+    ki zarurat hi nahi: login karke Buy → dukaan ka number search kar lo, ek tap
+    me jud jate ho, aur dono dukaanon ka khata alag alag apni jagah rehta hai.
+
+    Isliye rok wahi hai (ek number, ek login), par rasta ab band nahi hai — aur
+    sandesh me wahi rasta bataya jata hai. Purana sandesh aadmi ko doosra SIM
+    dhoondhne bhej deta tha.
+  */
   const existingUser = await User.findOne({ phone: cleanPhone });
   if (existingUser) {
     throw ApiError.conflict(
-      'Ye number pehle se registered hai. Ek number sirf ek hi dukaan se jud sakta hai — login karein ya doosra number use karein.'
+      'Ye number pehle se registered hai. Naya account banane ki zarurat nahi — '
+      + 'login karke Buy me is dukaan ka number search kar lein, ek tap me jud jayenge.'
     );
   }
 
@@ -198,6 +225,32 @@ export async function signupRetailer({ inviteCode, name, shopName, phone, passwo
 
   user.partyId = party._id;
   await user.save();
+
+  /*
+    Rishta NAYE tarike se bhi likh do.
+
+    `User.businessId` abhi bhi bharta hai (purana sab kuch usi pe chal raha
+    hai), par asli list ab Membership hai — usi se ye retailer aage aur
+    dukaanein jod payega aur uski pehli dukaan search wali list me dikhegi.
+
+    Ye fail ho jaye to signup nahi rukta: startup ka backfill ise apne aap bana
+    deta hai, aur tab tak purana rasta chalta rehta hai. Naya account ban jane
+    ke baad use ek chhoti si entry ki wajah se lauta dena bahut bura hoga.
+  */
+  try {
+    await Membership.create({
+      userId: user._id,
+      buyerBusinessId: null,
+      businessId: business._id,
+      partyId: party._id,
+      isSaved: true,
+      isPrimary: true,
+      connectedByUserId: user._id,
+      lastUsedAt: new Date(),
+    });
+  } catch (err) {
+    console.warn('[auth] Membership nahi ban payi (backfill baad me bana dega):', err.message);
+  }
 
   return {
     token: signToken(user),

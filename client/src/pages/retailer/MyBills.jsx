@@ -3,6 +3,7 @@ import { t } from '@/lib/i18n';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FileText, ChevronRight, Printer, IndianRupee, TriangleAlert } from 'lucide-react';
 import api from '@/lib/api';
+import ShopStrip from '@/components/buy/ShopStrip';
 import { useListQuery } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
@@ -72,6 +73,9 @@ export function MyBills() {
   return (
     <>
       <PageHeader title={t("Mere bills")} subtitle={t("Wholesaler ke bheje hue saare bill")} />
+
+      {/* Kis dukaan ke bill dikh rahe hain */}
+      <ShopStrip />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4">
         <StatCard label={t("Is page ke bills")} value={meta.total} icon={FileText} tone="brand" />

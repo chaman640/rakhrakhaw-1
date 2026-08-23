@@ -1,8 +1,9 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import RequireAuth from './RequireAuth';
 import RequirePermission from './RequirePermission';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
@@ -17,7 +18,10 @@ import Orders from '@/pages/wholesaler/Orders';
 import WholesalerOrderDetail from '@/pages/wholesaler/orders/OrderDetail';
 import PurchaseForm from '@/pages/wholesaler/purchases/PurchaseForm';
 import PurchaseDetail from '@/pages/wholesaler/purchases/PurchaseDetail';
-import Catalog from '@/pages/retailer/Catalog';
+import StockIntakePage from '@/pages/wholesaler/StockIntake';
+import IntakeReview from '@/pages/wholesaler/intake/IntakeReview';
+import ShopSearch from '@/pages/buy/ShopSearch';
+import ShopPage from '@/pages/buy/ShopPage';
 import CartPage from '@/pages/retailer/Cart';
 import MyOrders from '@/pages/retailer/MyOrders';
 import OrderDetail from '@/pages/retailer/OrderDetail';
@@ -53,9 +57,18 @@ import WholesalerHome from '@/pages/wholesaler/Home';
  * hai — neeche uska note hai). Isliye route ek hi hai aur role ka faisla
  * yahan andar hota hai.
  */
+/*
+  Ab faisla sirf role se nahi, DARWAZE se hota hai.
+
+  Wholesaler jab Buy mode me hai to `/home` pe uski apni dukaan ka hisaab
+  dikhana galat hoga — us waqt use wo hisaab chahiye jo us dukaan ka hai jisse
+  wo maal le raha hai (kitna udhaar, kaunse order chal rahe hain). Wahi page
+  pehle se bana hai (RetailerHome), isliye naya banane ki zarurat nahi padi.
+*/
 function HomeByRole() {
   const { isRetailer } = useAuth();
-  return isRetailer ? <RetailerHome /> : <WholesalerHome />;
+  const { buying } = useShop();
+  return (isRetailer || buying) ? <RetailerHome /> : <WholesalerHome />;
 }
 
 function ProfileByRole() {
@@ -75,6 +88,44 @@ function ProfileByRole() {
 function SettingsByRole() {
   const { isRetailer } = useAuth();
   return isRetailer ? <RetailerSettings /> : <Settings />;
+}
+
+/**
+ * KHAREEDNE WALE KA PEHRA.
+ *
+ * Pehle ye poora hissa `RequireAuth roles={['retailer']}` ke andar tha — yaani
+ * catalog, cart aur my-orders sirf retailer ke liye. Ab ek wholesaler bhi
+ * (Profile → Buyer) inhi pages pe aata hai, isliye role wali shart hat gayi
+ * aur uski jagah "khareedne ka haq" wali shart aa gayi.
+ *
+ * Naya group banane ki koshish MAT karna. React Router pehla milta hua rasta
+ * uthata hai — `/cart` do jagah likha to jo upar hoga wahi chalega, aur doosre
+ * role wala aadmi chup-chaap bahar phenk diya jayega. (Yahi galti
+ * `/notifications` pe ek baar ho chuki hai; neeche uska note hai.) Isliye ek hi
+ * group, aur faisla yahan andar.
+ */
+function RequireBuyer({ children }) {
+  const { isRetailer, canBuy } = useAuth();
+  const { isBuyMode, shopId } = useShop();
+  const { pathname } = useLocation();
+
+  if (!isRetailer && !canBuy) return <Navigate to="/home" replace />;
+
+  /*
+    Buy mode hai, par dukaan chuni hi nahi.
+
+    Cart, My Orders, Mere Bills, My Khata — in sab ka pehla sawal "kis dukaan
+    ka?" hai. Bina jawab ke har ek page server se 400 le kar aata aur screen pe
+    "Pehle dukaan chunein" ka error toast baith jata — chaar page, chaar bekaar
+    ki request, aur aadmi ko koi rasta nahi dikhta.
+    Ek jagah rok kar seedha wahin bhej dete hain jahan uska jawab hai.
+
+    Retailer par ye kabhi nahi lagta: uski dukaan pehle se judi hai, aur
+    `shopId` khali hone par server khud wahi purani dukaan chun leta hai.
+  */
+  if (isBuyMode && !shopId && pathname !== '/buy') return <Navigate to="/buy" replace />;
+
+  return children;
 }
 
 function HomeRedirect() {
@@ -133,6 +184,15 @@ export default function AppRoutes() {
         <Route path="/purchases" element={<RequirePermission permission="purchases"><Buying /></RequirePermission>} />
         <Route path="/purchases/new" element={<RequirePermission permission="purchases:create"><PurchaseForm /></RequirePermission>} />
         <Route path="/purchases/:id" element={<RequirePermission permission="purchases"><PurchaseDetail /></RequirePermission>} />
+        {/*
+          Doosri dukaan se aaya maal apne stock me daalna (Part 17 step 3).
+
+          Ijazat wahi hai jo kharid ki hai — isse godown incharge ko ye kaam
+          apne aap mil jata hai, aur wahi theek bhi hai: maal andar karna uska
+          hi roz ka kaam hai.
+        */}
+        <Route path="/stock-intake" element={<RequirePermission permission="purchases"><StockIntakePage /></RequirePermission>} />
+        <Route path="/stock-intake/:id" element={<RequirePermission permission="purchases"><IntakeReview /></RequirePermission>} />
         <Route path="/invoices" element={<RequirePermission permission="invoices"><Invoices /></RequirePermission>} />
         {/*
           Wahi page, do naam. Menu me "Sale" likha hai kyunki dukaandaar bill
@@ -165,15 +225,26 @@ export default function AppRoutes() {
         <Route path="/activity" element={<Navigate to="/staff?tab=record" replace />} />
       </Route>
 
-      {/* ---- Retailer ---- */}
+      {/* ---- Khareedne wala (retailer, aur buy mode wala wholesaler) ---- */}
       <Route
         element={
-          <RequireAuth roles={['retailer']}>
-            <AppLayout />
+          <RequireAuth>
+            <RequireBuyer>
+              <AppLayout />
+            </RequireBuyer>
           </RequireAuth>
         }
       >
-        <Route path="/shop" element={<Catalog />} />
+        {/*
+          Do kadam, do page.
+
+          `/buy`  — number se dukaan dhoondho, judo, save karo (search history)
+          `/shop` — chuni hui dukaan ka apna page: logo, naam, kitna maal,
+                    kitni category, Save ka button, aur uska poora catalog.
+                    Purana `Catalog` page yahi ban gaya hai.
+        */}
+        <Route path="/buy" element={<ShopSearch />} />
+        <Route path="/shop" element={<ShopPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/my-orders/:id" element={<OrderDetail />} />

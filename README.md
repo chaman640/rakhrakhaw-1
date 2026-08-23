@@ -9,6 +9,43 @@ seedha order karein. Vyapar + Thokmarket ka hybrid.
 
 ## Ab tak kya bana
 
+### Part 17 — Do darwaze (Step 3/3) · [poori detail: STEP-3.md](STEP-3.md)
+- [x] **Bill bante hi kaam apne aap ban jata hai** — kharidne wale ke yahan, poora bhara hua
+- [x] **"Maal aaya" wali khabar** apni alag chhalni ke saath, aur menu me badge
+- [x] **Ek ek item — "Add karke aage"** · app khud batati hai "ye aapka kaunsa item hai"
+- [x] **Bechne ka rate** — lagat saamne, +10/20/30% ek tap me, munafa live, lagat se kam pe warning
+- [x] **Stock yahan se NAHI badhta** — aakhri kadam pe wahi purana `createPurchase()`
+- [x] Isliye stock, **khep (FIFO), supplier ka khata, GST ka input credit** — sab pehle jaise
+- [x] Bina GST wale ke liye bill ka tax **lagat me jud jata hai** (jod bill se poora milta hai)
+- [x] **Bechne wala apne aap supplier** ban jata hai, khate ke saath
+- [x] Bill cancel ho to kaam bhi ruk jata hai; ho chuka ho to sirf khabar (apne aap ulta nahi)
+- [x] Ek bill ka **ek hi kaam**, aur dobara finish nahi hota
+
+### Part 17 — Do darwaze (Step 2/3) · [poori detail: STEP-2.md](STEP-2.md)
+- [x] **Dukaan ka apna page** — logo, naam, kitne item, kitni category, aur Save ka button (follow jaisa)
+- [x] **Filter ek button ke andar** — naam, category, stock, kram; button pe hi ginti dikhti hai
+- [x] **Cart me har dukaan ka apna dabba** — uska naam, logo, maal aur uska apna jod; aakhir me kul jod
+- [x] **Paise ka irada aur note — har dukaan ka apna** (ek se udhaar, doosre ko nakad)
+- [x] **Ek confirm, har dukaan ka apna order** — apne number ke saath, us dukaan ke apne business me
+- [x] **Alag alag notification** — har wholesaler ko uski apni khabar (apne aap, `placeOrder` se)
+- [x] **Ek dukaan fail ho to baaki na ruke** — jiska gaya uska cart khali, baaki ka maal jaisa ka waisa
+- [x] Badge ab poore cart ka — sab dukaanon ki ginti
+- [x] **Dukaan badalne ki patti** — My Orders / Mere Bills / My Khata ke upar
+- [x] Khabar pe tap → pehle sahi dukaan me, phir wo page
+
+### Part 17 — Do darwaze (Step 1/3) · [poori detail: STEP-1.md](STEP-1.md)
+- [x] **Ek login, kai dukaan** — naya `Membership` rishta; "ek retailer ek hi wholesaler" wala lock toota
+- [x] Kharidaar us dukaan ke andar ek **Party** banta hai — isliye khata, GST, return aur FIFO ka ek bhi niyam nahi badla
+- [x] **`X-Shop-Id` header** se har request pe tay hota hai ki kis dukaan ke andar hain (`withBuyerTenant`)
+- [x] Header **sirf Buy mode me** jata hai — Seller mode bilkul pehle jaisa
+- [x] **Wholesaler bhi khareed sakta hai** — buy-side routes pe `requireRole(RETAILER)` ki jagah `requireBuyer`
+- [x] **Godown incharge ko kharidne ka haq** (uske role me `purchases:create` pehle se tha)
+- [x] **Number se dukaan dhoondho, judo, save karo** — `/api/shops` (poora 10 ank; aadha number nahi chalta)
+- [x] Profile pe **Seller ⇄ Buyer** toggle; buy mode ka apna menu (Catalog ki jagah "Dukaan")
+- [x] Purane retailer apne aap naye system me — startup ka backfill
+- [x] `npm run selfcheck` — 61 jaanch, **bina database ke**
+
+
 ### Part 1 — Foundation
 - [x] Folder structure (client + server alag)
 - [x] **Saara database schema — 14 models ek saath**
@@ -502,6 +539,50 @@ to purane bill "Bill of Supply" hi rahenge — yahi legally sahi hai.
 | GET | `/api/backup/csv/:kind` | **owner** | parties/invoices/khata/payments/purchases/returns |
 
 ---
+
+### Part 17 ke endpoints (kharidne ka side)
+
+Sab pe `protect` + `requireBuyer` — yaani retailer, ya wo wholesaler jiske paas
+`purchases:create` hai (malik, sah-malik, manager, munshi, **godown incharge**).
+
+| Method | Path | Kaam |
+|---|---|---|
+| GET | `/api/shops/saved` | Save ki hui dukaanein (search history jaisi). `?all=1` se save hatayi hui bhi |
+| GET | `/api/shops/lookup?phone=` | Poora 10 ank ka number → dukaan. Aadha number 400 |
+| POST | `/api/shops/connect` | `{ phone }` ya `{ businessId }` → us dukaan me apni Party + Membership |
+| GET | `/api/shops/:id` | Ek dukaan ka poora page (naam, logo, kitne item, kitni category) |
+| POST | `/api/shops/:id/save` | Save (follow jaisa) |
+| DELETE | `/api/shops/:id/save` | Save hataana — **rishta phir bhi bana rehta hai** (khata wahin) |
+| POST | `/api/shops/:id/touch` | "abhi isi dukaan me hoon" — search history ka kram |
+
+**Kai dukaanein ek saath** (step 2) — inpe `X-Shop-Id` nahi lagta, ye khud saari
+Membership uthate hain:
+
+| Method | Path | Kaam |
+|---|---|---|
+| GET | `/api/buy/cart` | Sab dukaanon ka cart — har ek ka apna jod, aur kul jod |
+| GET | `/api/buy/cart/count` | Badge ke liye — kitne item, kitni dukaan |
+| POST | `/api/buy/checkout` | `{ orders: [{ shopId, paymentMode, note }] }` → har dukaan ka apna order |
+
+**Kharida hua maal apne stock me** (step 3) — ye APNI dukaan ka kaam hai, isliye
+purana `withTenant`; ijazat wahi jo kharid ki hai (`purchases`):
+
+| Method | Path | Kaam |
+|---|---|---|
+| GET | `/api/stock-intake` | Jo kaam baaki hain (`?status=PENDING/DONE/CANCELLED/all`) |
+| GET | `/api/stock-intake/count` | Menu ke badge ke liye |
+| GET | `/api/stock-intake/:id` | Ek bill ka poora kaam |
+| GET | `/api/stock-intake/:id/lines/:index/matches` | "Ye mera kaunsa item hai" ke andaze |
+| POST | `/api/stock-intake/:id/lines/:index` | **Add karke aage** (ya `{ skip: true }`) |
+| DELETE | `/api/stock-intake/:id/lines/:index` | Peeche — faisla badalna |
+| POST | `/api/stock-intake/:id/finish` | **Stock me daal dein** → purchase ban jati hai |
+
+**Baaki buy-side ke saare route** (`/catalog`, `/cart`, `/my-orders`, `/my-bills`,
+`/my`) ab `X-Shop-Id` header dekhte hain:
+
+- header **hai** → us dukaan me, par tabhi jab uski Membership ho (warna 403)
+- header **nahi hai** → retailer apni purani dukaan me (bilkul pehle jaisa);
+  wholesaler ki ek hi dukaan judi ho to wahi, ek se zyada ho to 400 ("dukaan chunein")
 
 ## Invite flow (Part 2 ka dil)
 

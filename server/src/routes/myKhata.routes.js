@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
-import { withTenant, requireActiveParty } from '../middleware/tenant.js';
+import { protect, requireBuyer } from '../middleware/auth.js';
+import { withBuyerTenant, requireActiveParty } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
-import { ROLES } from '../config/constants.js';
 import * as khataCtrl from '../controllers/khata.controller.js';
 import * as payCtrl from '../controllers/payment.controller.js';
 import * as returnCtrl from '../controllers/return.controller.js';
@@ -16,7 +15,7 @@ import { listReturnsQuerySchema } from '../validators/return.validator.js';
  * Yahan sab kuch req.partyId se lock hai — dusre ki entry chhu bhi nahi sakta.
  */
 const router = Router();
-router.use(protect, requireRole(ROLES.RETAILER), withTenant, requireActiveParty);
+router.use(protect, requireBuyer, withBuyerTenant, requireActiveParty);
 
 router.get('/khata', validate({ query: ledgerQuerySchema }), khataCtrl.myKhata);
 

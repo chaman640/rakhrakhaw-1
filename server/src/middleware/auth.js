@@ -75,6 +75,45 @@ export const requirePermission = (...permissions) => (req, res, next) => {
   next();
 };
 
+/**
+ * KHAREEDNE KA HAQ — buy-side ke har route pe.
+ *
+ * Pehle in raston pe `requireRole(ROLES.RETAILER)` laga tha. Uska matlab tha:
+ * catalog, cart, my-orders, my-bills aur my-khata sirf retailer ke liye. Ek
+ * wholesaler kisi doosre wholesaler se maal nahi mangwa sakta tha — jabki mandi
+ * me sabse zyada yahi hota hai.
+ *
+ * Ab do tarah ke log andar aate hain:
+ *
+ *   retailer   — hamesha (uska poora kaam hi khareedna hai)
+ *   wholesaler — jab uske paas `purchases:create` ho, yaani "maal khareedna"
+ *
+ * `purchases:create` hi kyun: ye pehle se maujood ijazat hai aur uska matlab
+ * bilkul yahi hai. Nayi ijazat banane ka matlab hota har purane staff ki list
+ * me use jodna, aur jo chhoot jata uska kaam chup-chaap ruk jata.
+ *
+ * Isi ek line se GODOWN INCHARGE ko bhi khareedne ka haq mil jata hai — uske
+ * role me `purchases:create` pehle se hai (permissions.js dekhein). Malik,
+ * sah-malik, manager aur munshi bhi is chhalni se aaram se nikal jate hain;
+ * salesman, cashier aur CA nahi — aur wahi theek hai.
+ */
+export const requireBuyer = (req, res, next) => {
+  if (!req.user) return next(ApiError.unauthorized());
+
+  if (req.user.role === ROLES.RETAILER) return next();
+
+  if (req.user.role === ROLES.WHOLESALER) {
+    if (permCheck(req.user, 'purchases:create')) return next();
+    return next(ApiError.forbidden(
+      'Aapko maal khareedne ki ijazat nahi hai. Malik se kahiye ki Staff me '
+      + '"Purchase (maal khareedna) — Banana" laga dein.',
+      { needed: ['purchases:create'] }
+    ));
+  }
+
+  return next(ApiError.forbidden('Ye page aapke role ke liye nahi hai'));
+};
+
 /** Sirf malik — staff add karna, backup lena, business profile badalna */
 export const requireOwner = (req, res, next) => {
   if (!req.user) return next(ApiError.unauthorized());

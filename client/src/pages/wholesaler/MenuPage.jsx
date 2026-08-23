@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ChevronRight, LogOut, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
-import { wholesalerNav, retailerNav } from '@/components/layout/navConfig';
+import { useIntakeBadge } from '@/hooks/useIntakeBadge';
+import { wholesalerNav, buyerNav } from '@/components/layout/navConfig';
 import { Card, Button, ConfirmModal, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
@@ -36,23 +38,25 @@ import { t } from '@/lib/i18n';
  */
 export default function MenuPage() {
   const toast = useToast();
-  const { isRetailer, user, business, can, logout } = useAuth();
+  const { user, business, can, logout } = useAuth();
+  const { buying, isBuyMode, shop } = useShop();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
+  const intakeCount = useIntakeBadge();
 
   const [q, setQ] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const [askLogout, setAskLogout] = useState(false);
 
-  const badges = { cartCount, newOrders };
+  const badges = { cartCount, newOrders, intakeCount };
 
   const all = useMemo(() => {
-    const nav = isRetailer ? retailerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
+    const nav = buying ? buyerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
     // Anuvaad ke BAAD chhantna zaroori hai — Hindi me "खाता" ka akshar alag hai
     return [...nav]
       .map((n) => ({ ...n, name: t(n.label), meaning: n.desc ? t(n.desc) : '' }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [isRetailer, can]);
+  }, [buying, can]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -91,7 +95,7 @@ export default function MenuPage() {
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{t('Menu')}</h1>
         <p className="mt-0.5 truncate text-sm text-slate-500">
-          {business?.name} · {filtered.length} {t('jagah')}
+          {(isBuyMode && shop?.name) || business?.name} · {filtered.length} {t('jagah')}
         </p>
       </div>
 

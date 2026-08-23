@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { round2 } from '../utils/money.js';
-import { Item, Category, Business } from '../models/index.js';
+import { Item, Category } from '../models/index.js';
 import { resolveRates } from './rate.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -125,10 +125,15 @@ export async function listCatalogCategories(businessId) {
     .filter((c) => c.itemCount > 0);
 }
 
-/** Retailer ko dukaan ki basic detail (catalog header ke liye) */
-export async function getShopInfo(businessId) {
-  const business = await Business.findById(businessId)
-    .select('name phone address logoUrl gstEnabled').lean();
-  if (!business) throw ApiError.notFound('Dukaan nahi mili');
-  return business;
-}
+/*
+  `getShopInfo` yahan se HATA diya gaya (Part 17 step 2).
+
+  Wo dukaan ki basic detail deta tha — naam, logo, address. Ab shop page ke
+  header pe uske saath "kitna maal, kitni category, save hai ya nahi, kitna
+  baaki hai" bhi dikhta hai, aur wo poora card `shop.service.js` banati hai
+  (`getCurrentShopCard`).
+
+  Do jagah do card banane ka nateeja hamesha ek hi hota hai: dono dheere dheere
+  alag ho jate hain aur ek hi dukaan search me kuch aur dikhti hai, page pe kuch
+  aur. Isliye yahan se hata hi diya — banane ki jagah ab ek hi hai.
+*/

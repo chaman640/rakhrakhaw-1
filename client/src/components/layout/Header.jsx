@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, LogOut, ChevronDown, Store, UserCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 import NotificationBell from './NotificationBell';
 import { t } from '@/lib/i18n';
 
@@ -33,9 +34,24 @@ function canGoBack() {
  */
 export default function Header({ title, showBack, backTo }) {
   const { user, business, logout } = useAuth();
+  const { isBuyMode, shop } = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  /*
+    Buy mode me upar KIS dukaan ka naam.
+
+    Apni dukaan ka naam likhna yahan sabse bada dhokha hoga — neeche ka catalog,
+    cart aur khata doosri dukaan ka hai. Isliye buy mode me wahi naam dikhta hai
+    jiske andar aap abhi hain. Dukaan chuni hi na ho to "Dukaan chunein" —
+    kyunki tabhi wo tap kar ke chun paayega.
+  */
+  const headName = isBuyMode
+    ? (shop?.name || t('Dukaan chunein'))
+    : (business?.name || 'Rakh Rakhav');
+  const headLogo = (isBuyMode ? shop?.logoUrl : business?.logoUrl) || '';
+  const headTo = isBuyMode ? '/buy' : '/profile';
 
   const handleLogout = () => {
     logout();
@@ -69,12 +85,12 @@ export default function Header({ title, showBack, backTo }) {
         // Root page pe dukaan ki pehchan — mobile pe sidebar dikhti hi nahi,
         // to user ko pata to chale ki wo kis dukaan me hai
         <button
-          onClick={() => navigate('/profile')}
-          aria-label={t('Profile')}
+          onClick={() => navigate(headTo)}
+          aria-label={isBuyMode ? t('Dukaan badlein') : t('Profile')}
           className="flex min-w-0 shrink-0 items-center gap-2 rounded-lg focus-ring lg:hidden"
         >
-          {business?.logoUrl ? (
-            <img src={business.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
+          {headLogo ? (
+            <img src={headLogo} alt="" className="h-8 w-8 rounded-lg object-cover" />
           ) : (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-white">
               <Store size={16} />
@@ -101,13 +117,23 @@ export default function Header({ title, showBack, backTo }) {
         </h2>
       ) : (
         <button
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate(headTo)}
           // `self-stretch` — button poori patti jitna uncha. Sirf likhaayi
           // jitna rakhne pe wo 20px ka ho jata tha, aur 20px pe ungli aksar
           // chook jati hai (44px se kam kuch bhi tap ke liye chhota hai).
-          className="flex min-w-0 flex-1 items-center self-stretch rounded-lg text-left text-sm font-semibold text-slate-800 hover:text-brand-700 focus-ring sm:text-base"
+          className="flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-lg text-left text-sm font-semibold text-slate-800 hover:text-brand-700 focus-ring sm:text-base"
         >
-          <span className="truncate">{business?.name || 'Rakh Rakhav'}</span>
+          <span className="truncate">{headName}</span>
+          {/*
+            Buy mode ka nishaan — bina iske wahi screen, wahi patti, aur pata hi
+            nahi chalta ki ye aapki dukaan hai ya kisi aur ki. Ek chhoti si
+            patti kaafi hai, par honi zaroori hai.
+          */}
+          {isBuyMode && (
+            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              {t('Buy')}
+            </span>
+          )}
         </button>
       )}
 

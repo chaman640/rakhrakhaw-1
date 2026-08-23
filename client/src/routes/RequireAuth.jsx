@@ -24,8 +24,16 @@ export default function RequireAuth({ roles, allowUnapproved = false, children }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  /*
+    Galat darwaze pe aa gaya — ghar bhej do.
+
+    Pehle retailer ko `/shop` (catalog) pe bheja jata tha. Ab har kharidaar ke
+    paas kai dukaanein ho sakti hain, aur jab tak koi dukaan chuni na ho catalog
+    ka koi matlab hi nahi banta — wo khali page dikhata. `/home` dono ke liye
+    theek hai: wahan se aage ka rasta khud dikh jata hai.
+  */
   if (roles?.length && !roles.includes(user.role)) {
-    return <Navigate to={user.role === 'retailer' ? '/shop' : '/home'} replace />;
+    return <Navigate to="/home" replace />;
   }
 
   // Retailer approve nahi hua to sirf pending screen dikhegi

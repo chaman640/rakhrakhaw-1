@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  House, UserCircle, Wallet2, UsersRound,
+  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus,
 } from 'lucide-react';
 
 /**
@@ -53,6 +53,23 @@ export const wholesalerNav = [
     desc: 'Maal andar aaya, supplier, aur dukaan ka kharcha — teeno ek jagah',
     alt: 'purchase supplier kharch expense buying',
   },
+  /*
+    Kharid ke bilkul saath — kyunki ye uska hi doosra roop hai.
+
+    "Kharid" wo maal hai jo aapne khud entry kiya. Ye wo maal hai jo doosri
+    dukaan ne aapko bill de kar bheja, aur jiska poora hisaab aapke app me
+    pehle se bhara pada hai — aapko sirf itna batana hai ki wo aapka kaunsa
+    item hai aur bechenge kitne me.
+
+    Badge zaroori hai: ye ek KAAM hai jo baaki hai, khabar nahi. Jab tak ye na
+    ho, us maal ka stock aapke app me hai hi nahi.
+  */
+  {
+    to: '/stock-intake', label: 'Maal stock me', icon: PackagePlus, part: 17,
+    perm: 'purchases', badgeKey: 'intakeCount',
+    desc: 'Doosri dukaan se aaya maal apne stock me chadhayein',
+    alt: 'intake stock add kharida maal bill se',
+  },
   // Menu me "Sale" — dukaandaar bill ki list ko "invoices" nahi, sale hi
   // kehta hai. Page wahi hai; /invoices bhi chalta rehta hai (purane link).
   {
@@ -93,9 +110,29 @@ export const wholesalerNav = [
   },
 ];
 
-export const retailerNav = [
+/**
+ * KHAREEDNE WALE KA MENU — retailer ka bhi, aur wholesaler ke buy mode ka bhi.
+ *
+ * Pehle iska naam `retailerNav` tha aur wo naam sach bhi tha: khareedta sirf
+ * retailer tha. Ab ek wholesaler bhi apne Profile se "Buyer" chun kar isi
+ * duniya me aata hai, isliye naam badla — kaam wahi hai.
+ *
+ * SABSE BADA BADLAAV: "Dukaan" (`/buy`) sabse upar aa gaya hai.
+ *
+ * Pehle Catalog hi pehla page tha, kyunki dukaan ek hi thi — chunne ko kuch tha
+ * hi nahi. Ab kai dukaanein ho sakti hain, isliye pehla sawal ye hai ki "kis
+ * dukaan se lena hai", aur uska jawab dene wala page pehle aana chahiye.
+ * Catalog ab bhi hai (`/shop`) — wo chuni hui dukaan ka maal dikhata hai — bas
+ * ab wo doosra kadam hai, pehla nahi.
+ */
+export const buyerNav = [
   { to: '/home', label: 'Home', icon: LayoutDashboard, part: 10, desc: 'Aapka hisaab ek nazar me' },
-  { to: '/shop', label: 'Catalog', icon: Store, part: 6, desc: 'Poora maal aur uske rate' },
+  {
+    to: '/buy', label: 'Dukaan', icon: Search, part: 17,
+    desc: 'Number se dukaan dhundhein aur save karein',
+    alt: 'shop search dukaan khoj wholesaler number',
+  },
+  { to: '/shop', label: 'Catalog', icon: Store, part: 6, desc: 'Chuni hui dukaan ka poora maal aur rate' },
   { to: '/cart', label: 'Cart', icon: ShoppingCart, part: 6, badgeKey: 'cartCount', desc: 'Jo maal aapne chuna hai' },
   { to: '/my-orders', label: 'My Orders', icon: FileText, part: 7, desc: 'Aapke bheje hue order' },
   { to: '/my-bills', label: 'Mere Bills', icon: Receipt, part: 8, desc: 'Aapke saare bill' },
@@ -136,7 +173,16 @@ export const retailerNav = [
    ───────────────────────────────────────────────────────────────────────── */
 
 const BOTTOM_WHOLESALER = ['/home', '/dashboard', '/sales', '/payments'];
-const BOTTOM_RETAILER = ['/home', '/shop', '/cart', '/my-orders'];
+/*
+  Kharidne wale ki patti: Home · Dukaan · Cart · My Orders
+
+  Catalog yahan se HATA hai, aur uski jagah "Dukaan" (search) aa gaya. Wajah
+  seedhi hai: ab pehla sawal "kaunsi dukaan" hai, "kaunsa item" nahi. Catalog
+  ek tap door hai — Dukaan pe koi bhi dukaan dabate hi wahi khulta hai — aur
+  patti me paanchva khana daalne ki jagah hai hi nahi (360px ke phone pe naam
+  kat jate hain aur galat button dab jata hai).
+*/
+const BOTTOM_BUYER = ['/home', '/buy', '/cart', '/my-orders'];
 
 /**
  * Neeche wali patti ke char khane nikalna.
@@ -144,9 +190,11 @@ const BOTTOM_RETAILER = ['/home', '/shop', '/cart', '/my-orders'];
  * Staff ke paas kisi ki ijazat na ho (jaise salesman ke paas khata nahi) to us
  * khane ki jagah khali nahi chhodte — poore menu me se agla kaam ka item utha
  * lete hain. Isse patti hamesha bhari rehti hai aur koi mara hua button nahi dikhta.
+ *
+ * `isBuyer` — retailer, ya wo wholesaler jisne Profile se Buyer chun rakha hai.
  */
-export function bottomNavFor(nav, isRetailer) {
-  const wanted = isRetailer ? BOTTOM_RETAILER : BOTTOM_WHOLESALER;
+export function bottomNavFor(nav, isBuyer) {
+  const wanted = isBuyer ? BOTTOM_BUYER : BOTTOM_WHOLESALER;
 
   const picked = wanted
     .map((to) => nav.find((n) => n.to === to))
@@ -168,7 +216,7 @@ export function bottomNavFor(nav, isRetailer) {
  * `/menu` bhi ismein hai: wo patti ka apna khana hai, isliye uspe back dikhana
  * ulta lagta hai (kahan se peeche? patti to saamne hi hai).
  */
-export function isRootPage(pathname, nav, isRetailer) {
+export function isRootPage(pathname, nav, isBuyer) {
   if (pathname === '/menu') return true;
-  return bottomNavFor(nav, isRetailer).some((n) => n.to === pathname);
+  return bottomNavFor(nav, isBuyer).some((n) => n.to === pathname);
 }

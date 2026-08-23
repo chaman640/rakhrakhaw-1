@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, ShoppingCart, TruckIcon, Wallet, TriangleAlert, CheckCheck,
-  Trash2, BellOff, X,
+  Trash2, BellOff, X, PackagePlus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useNotifications } from '@/context/NotificationContext';
+import { useShop } from '@/context/ShopContext';
 import { formatDateTime } from '@/lib/format';
 import {
   PageHeader, Card, Button, Chips, Pagination, EmptyState, Spinner, useToast,
@@ -20,6 +21,7 @@ const TYPES = [
   { value: 'PAYMENT_RECEIVED', label: 'Payment' },
   { value: 'PAYMENT_REMINDER', label: 'Yaad dilana' },
   { value: 'LOW_STOCK', label: 'Stock' },
+  { value: 'STOCK_INTAKE', label: 'Maal aaya' },
 ];
 
 const ICONS = {
@@ -28,6 +30,7 @@ const ICONS = {
   PAYMENT_RECEIVED: Wallet,
   PAYMENT_REMINDER: Wallet,
   LOW_STOCK: TriangleAlert,
+  STOCK_INTAKE: PackagePlus,
 };
 
 const TONE = {
@@ -36,6 +39,7 @@ const TONE = {
   PAYMENT_RECEIVED: 'bg-emerald-50 text-emerald-700',
   PAYMENT_REMINDER: 'bg-amber-50 text-amber-700',
   LOW_STOCK: 'bg-red-50 text-red-700',
+  STOCK_INTAKE: 'bg-amber-50 text-amber-700',
 };
 
 /** Aaj / Kal / uske pehle — date se zyada ye samajh aata hai */
@@ -52,6 +56,8 @@ export default function Notifications() {
   const toast = useToast();
   const navigate = useNavigate();
   const { setCount, refresh } = useNotifications();
+  // Khabar us dukaan me le jati hai jiski wo hai (ShopContext me poori wajah)
+  const { enterShopForLink } = useShop();
 
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ page: 1, limit: 30, total: 0, totalPages: 1 });
@@ -97,7 +103,10 @@ export default function Notifications() {
         loadCounts();
       } catch { /* chup-chaap */ }
     }
-    if (n.link) navigate(n.link);
+    if (n.link) {
+      enterShopForLink(n.link, n.businessId);
+      navigate(n.link);
+    }
   }
 
   async function readAll() {

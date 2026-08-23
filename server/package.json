@@ -9,7 +9,8 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "seed": "node src/utils/seed.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "selfcheck": "node scripts/selfcheck.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

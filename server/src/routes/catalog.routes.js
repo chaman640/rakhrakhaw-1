@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
-import { withTenant, requireActiveParty } from '../middleware/tenant.js';
+import { protect, requireBuyer } from '../middleware/auth.js';
+import { withBuyerTenant, requireActiveParty } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
-import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/catalog.controller.js';
 import {
   catalogQuerySchema, cartItemSchema, cartQtySchema, itemIdParamSchema,
@@ -11,8 +10,14 @@ import {
 
 const router = Router();
 
-// Sab kuch sirf approved retailer ke liye
-router.use(protect, requireRole(ROLES.RETAILER), withTenant, requireActiveParty);
+/*
+  Sab kuch sirf APPROVED KHARIDAAR ke liye — chahe wo retailer ho ya khud koi
+  wholesaler jo doosri dukaan se maal mangwa raha hai.
+
+  `X-Shop-Id` header se tay hota hai ki kis dukaan ka catalog khul raha hai.
+  Header na aaye to retailer ke liye bilkul purana wala hi rasta chalta hai.
+*/
+router.use(protect, requireBuyer, withBuyerTenant, requireActiveParty);
 
 // Catalog
 router.get('/shop', ctrl.shop);

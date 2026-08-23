@@ -2,9 +2,11 @@ import { NavLink } from 'react-router-dom';
 import { Store } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
-import { wholesalerNav, retailerNav } from './navConfig';
+import { useIntakeBadge } from '@/hooks/useIntakeBadge';
+import { wholesalerNav, buyerNav } from './navConfig';
 import { t } from '@/lib/i18n';
 
 const STAFF_LABEL = { manager: 'Manager', salesman: 'Salesman', accountant: 'Munshi' };
@@ -23,20 +25,35 @@ const STAFF_LABEL = { manager: 'Manager', salesman: 'Salesman', accountant: 'Mun
  */
 export default function Sidebar() {
   const { isRetailer, business, user, can, staffRole } = useAuth();
+  const { buying, isBuyMode, shop } = useShop();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
+  const intakeCount = useIntakeBadge();
 
   // Staff ko sirf uske kaam ka menu dikhega
-  const nav = isRetailer ? retailerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
-  const badges = { cartCount, newOrders };
+  const nav = buying ? buyerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
+  const badges = { cartCount, newOrders, intakeCount };
+
+  /*
+    Upar kis dukaan ka naam likha ho.
+
+    Buy mode me apni dukaan ka naam likhna sabse bada dhokha hoga: neeche jo
+    catalog, cart aur khata dikh raha hai wo DOOSRI dukaan ka hai. Isliye buy
+    mode me wahi dukaan dikhti hai jiske andar aap abhi hain.
+  */
+  const headName = (isBuyMode && shop?.name) || business?.name || 'Rakh Rakhav';
+  const headLogo = (isBuyMode && shop?.logoUrl) || business?.logoUrl || '';
+  const headRole = isBuyMode
+    ? 'Buyer'
+    : (isRetailer ? 'Retailer' : (staffRole && staffRole !== 'owner' ? STAFF_LABEL[staffRole] : 'Wholesaler'));
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
       {/* Dukaan ka naam */}
       <div className="flex h-16 shrink-0 items-center border-b border-slate-200 px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          {business?.logoUrl ? (
-            <img src={business.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+          {headLogo ? (
+            <img src={headLogo} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
           ) : (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-white">
               <Store size={18} />
@@ -44,10 +61,10 @@ export default function Sidebar() {
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900">
-              {business?.name || 'Rakh Rakhav'}
+              {headName}
             </p>
             <p className="truncate text-xs text-slate-500">
-              {isRetailer ? t('Retailer') : t(staffRole && staffRole !== 'owner' ? STAFF_LABEL[staffRole] : 'Wholesaler')}
+              {t(headRole)}
             </p>
           </div>
         </div>

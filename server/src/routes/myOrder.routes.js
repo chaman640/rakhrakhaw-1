@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
-import { withTenant, requireActiveParty } from '../middleware/tenant.js';
+import { protect, requireBuyer } from '../middleware/auth.js';
+import { withBuyerTenant, requireActiveParty } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
-import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/catalog.controller.js';
 import { placeOrderSchema, idParamSchema, myOrdersQuerySchema } from '../validators/catalog.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.RETAILER), withTenant, requireActiveParty);
+router.use(protect, requireBuyer, withBuyerTenant, requireActiveParty);
 
 router.get('/summary', ctrl.myOrderSummary);
 router.get('/', validate({ query: myOrdersQuerySchema }), ctrl.myOrders);

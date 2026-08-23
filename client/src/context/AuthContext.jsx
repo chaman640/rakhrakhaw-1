@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import api from '@/lib/api';
+import api, { setActiveShopId } from '@/lib/api';
 import { clearCache } from '@/lib/queryCache';
 
 const AuthContext = createContext(null);
@@ -37,6 +37,9 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (phone, password) => {
     const res = await api.post('/auth/login', { phone, password });
     localStorage.setItem(TOKEN_KEY, res.data.token);
+    // Naya aadmi, nayi shuruaat — pichhle wale ki chuni hui dukaan yahin chhod do
+    setActiveShopId(null);
+    clearCache();
     applySession(res.data);
     return res.data;
   }, [applySession]);
@@ -71,6 +74,11 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try { await api.post('/auth/logout'); } catch { /* token expire ho chuka hoga */ }
     localStorage.removeItem(TOKEN_KEY);
+    // Chuni hui dukaan bhi bhool jao — warna agla aadmi jo isi phone pe login
+    // karega uski har request PICHHLE wale ki dukaan ka header le kar jayegi,
+    // aur server 403 dekar use har page se bahar kar dega. Dikhta ye hai ki
+    // "app kharab ho gaya", jabki bas ek purana header pada reh gaya tha.
+    setActiveShopId(null);
     // Cache bhi khali karo — warna usi computer pe agla aadmi login karega
     // aur ek pal ke liye PICHHLE wale ka data dekh lega (cache turant dikhata
     // hai, chahe wo kisi aur ka ho). Ye chhoti si line hi wo rok hai.
@@ -85,6 +93,9 @@ export function AuthProvider({ children }) {
     refresh: loadSession,
     isWholesaler: user?.role === 'wholesaler',
     isRetailer: user?.role === 'retailer',
+    // Maal khareed sakta hai ya nahi — server ka faisla (`purchases:create`).
+    // Isi se Profile pe Buyer wala button dikhta hai.
+    canBuy: Boolean(user?.canBuy),
     // Retailer approve hua ya nahi
     isApproved: user?.role !== 'retailer' || party?.status === 'active',
     partyStatus: party?.status || null,

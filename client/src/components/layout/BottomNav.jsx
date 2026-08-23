@@ -2,9 +2,11 @@ import { NavLink } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
-import { wholesalerNav, retailerNav, bottomNavFor } from './navConfig';
+import { useIntakeBadge } from '@/hooks/useIntakeBadge';
+import { wholesalerNav, buyerNav, bottomNavFor } from './navConfig';
 import { t } from '@/lib/i18n';
 
 /**
@@ -22,13 +24,15 @@ import { t } from '@/lib/i18n';
  * wali line home wale danda (home indicator) ke peeche chali jati hai.
  */
 export default function BottomNav() {
-  const { isRetailer, can } = useAuth();
+  const { can } = useAuth();
+  const { buying } = useShop();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
+  const intakeCount = useIntakeBadge();
 
-  const nav = isRetailer ? retailerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
-  const items = bottomNavFor(nav, isRetailer);
-  const badges = { cartCount, newOrders };
+  const nav = buying ? buyerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
+  const items = bottomNavFor(nav, buying);
+  const badges = { cartCount, newOrders, intakeCount };
 
   return (
     <nav

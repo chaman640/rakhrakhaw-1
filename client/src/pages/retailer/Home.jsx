@@ -3,13 +3,14 @@ import { t } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import {
   Store, ShoppingCart, Receipt, BookOpen, ChevronRight, Package,
-  TruckIcon, CircleCheck, Bell } from
+  TruckIcon, CircleCheck, Bell, Search } from
 'lucide-react';
 import api from '@/lib/api';
 import { useQuery } from '@/hooks/useQuery';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 import { formatMoney, formatDate } from '@/lib/format';
-import { Card, CardHeader, Button, Badge, Spinner, useToast } from '@/components/ui';
+import { Card, CardHeader, Button, Badge, EmptyState, Spinner, useToast } from '@/components/ui';
 
 const STATUS_LABEL = {
   PLACED: 'Bheja hai', PACKED: 'Pack ho raha', READY: 'Tayyar hai',
@@ -23,6 +24,16 @@ export default function RetailerHome() {
   const toast = useToast();
   const navigate = useNavigate();
   const { user, business } = useAuth();
+  /*
+    Ye ghar kis dukaan ka hai.
+
+    Buy mode me yahan jo udhaar, order aur bill dikh rahe hain wo AAPKI dukaan
+    ke nahi — us dukaan ke hain jisse aap maal le rahe hain. Naam bhi wahi
+    dikhna chahiye, warna aadmi apna hisaab samajh kar padh leta hai.
+  */
+  const { shop, isBuyMode, shopId } = useShop();
+  const needShop = isBuyMode && !shopId;
+  const shopName = shop?.name || business?.name || '';
 
   /*
     CACHE — dobara kholne par page khali nahi hota.
@@ -34,8 +45,24 @@ export default function RetailerHome() {
   const { data: d, loading } = useQuery(
     ['my-dashboard'],
     () => api.get('/dashboard').then((r) => r.data),
-    { onError: (err) => toast.error(err.message) },
+    { enabled: !needShop, onError: (err) => toast.error(err.message) },
   );
+
+  // Buy mode, par dukaan chuni hi nahi — maangne ko kuch hai hi nahi
+  if (needShop) {
+    return (
+      <Card>
+        <EmptyState
+          icon={Store}
+          title={t('Kis dukaan se maal lena hai?')}
+          message={t('Uska number daal kar jud jaiye. Uske baad uska poora hisaab yahin dikhega.')}
+          action={
+            <Button icon={Search} onClick={() => navigate('/buy')}>{t('Dukaan dhundhein')}</Button>
+          }
+        />
+      </Card>
+    );
+  }
 
   if (loading) {
     return <div className="flex justify-center py-24 text-slate-400"><Spinner size={28} /></div>;
@@ -50,7 +77,7 @@ export default function RetailerHome() {
         <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{t("Namaste, {a0}", { a0:
             user?.name?.split(' ')[0] || 'ji' })}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">{t("{a0} se juda hua", { a0: business?.name })}</p>
+        <p className="mt-1 text-sm text-slate-500">{t("{a0} se juda hua", { a0: shopName })}</p>
       </div>
 
       {/* ---- Udhaar ---- */}

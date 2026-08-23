@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, ShoppingCart, TruckIcon, Wallet, TriangleAlert, X } from 'lucide-react';
 import api from '@/lib/api';
 import { useNotifications } from '@/context/NotificationContext';
+import { useShop } from '@/context/ShopContext';
 import { formatDateTime } from '@/lib/format';
 import { Spinner } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -18,6 +19,7 @@ const ICONS = {
 
 export default function NotificationBell() {
   const { count, refresh, setCount } = useNotifications();
+  const { enterShopForLink } = useShop();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
@@ -63,7 +65,12 @@ export default function NotificationBell() {
         setCount(res.data.count);
       } catch { /* chup-chaap */ }
     }
-    if (n.link) navigate(n.link);
+    if (n.link) {
+      // Khabar jis dukaan ki hai, pehle usi me pahuncho — warna buy mode me
+      // "Order nahi mila" aa jata hai (ShopContext me poori wajah)
+      enterShopForLink(n.link, n.businessId);
+      navigate(n.link);
+    }
   }
 
 

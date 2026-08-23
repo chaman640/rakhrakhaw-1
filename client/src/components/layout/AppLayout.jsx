@@ -3,9 +3,10 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
 import { useAuth } from '@/context/AuthContext';
+import { useShop } from '@/context/ShopContext';
 import { useIsFetching } from '@/hooks/useQuery';
 import { RefreshBar } from '@/components/ui';
-import { wholesalerNav, retailerNav, isRootPage } from './navConfig';
+import { wholesalerNav, buyerNav, isRootPage } from './navConfig';
 import { t } from '@/lib/i18n';
 
 /**
@@ -19,19 +20,22 @@ import { t } from '@/lib/i18n';
  * patti ke peeche chhup jata hai aur user use daba hi nahi pata.
  */
 export default function AppLayout() {
-  const { isRetailer, can } = useAuth();
+  const { can } = useAuth();
+  // Menu ab role se nahi, DARWAZE se tay hota hai — wahi wholesaler Seller me
+  // apni dukaan chalata hai aur Buyer me doosri dukaan se maal mangwata hai
+  const { buying } = useShop();
   const { pathname } = useLocation();
   const fetching = useIsFetching();
 
-  const fullNav = isRetailer ? retailerNav : wholesalerNav;
-  const allowedNav = isRetailer ? retailerNav : fullNav.filter((n) => !n.perm || can(n.perm));
+  const fullNav = buying ? buyerNav : wholesalerNav;
+  const allowedNav = buying ? buyerNav : fullNav.filter((n) => !n.perm || can(n.perm));
 
   // Sabse lamba milta hua rasta — `/invoices/123` pe bhi "Invoices" dikhe
   const current = [...fullNav]
     .sort((a, b) => b.to.length - a.to.length)
     .find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`));
 
-  const atRoot = isRootPage(pathname, allowedNav, isRetailer);
+  const atRoot = isRootPage(pathname, allowedNav, buying);
 
   /**
    * Back ka "plan B" — jab history khali ho (link se seedha khola ya refresh).

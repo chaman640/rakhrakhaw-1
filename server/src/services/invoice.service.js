@@ -20,6 +20,7 @@ import { releaseInvoiceFromPayments, removeInlinePayments } from './payment.serv
 import { applyCredit } from './settlement.service.js';
 import { resolveRates } from './rate.service.js';
 import { notifyRetailer } from './notification.service.js';
+import { createIntakeFromInvoice, cancelIntakeForInvoice } from './intake.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -751,6 +752,25 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     data: { invoiceId: invoice._id },
   });
 
+  /*
+    KHARIDNE WALE KE YAHAN KAAM BANA DO (Part 17 step 3).
+
+    Agar ye bill kisi aisi party ka hai jiski apni dukaan hai (buy mode wala
+    wholesaler), to uske yahan "is maal ko apne stock me daal lijiye" wala kaam
+    apne aap ban jata hai — poora bhara hua, item, ginti, rate aur GST ke saath.
+    Aam retailer ka apna stock hota hi nahi, uske liye kuch nahi banta.
+
+    `catch` JAAN-BOOJH KAR hai. Ye kaam DOOSRI dukaan me banta hai, aur wahan
+    kuch bhi gadbad ho (wo dukaan band ho gayi, party na ban paye) to uski wajah
+    se YE bill rukna nahi chahiye — bill bechne wale ka apna kaam hai. Galti
+    chup nahi rehti, log me jati hai; wahan se dobara banane ka rasta khula hai.
+  */
+  try {
+    await createIntakeFromInvoice(businessId, invoice, party, business);
+  } catch (err) {
+    console.warn('[invoice] Kharidaar ke yahan stock ka kaam nahi ban paya:', err.message);
+  }
+
   const saved = await getInvoice(businessId, invoice._id);
   // Client ko batana hai ki jama paisa istemal hua — taaki wo toast me likh sake
   return { ...saved, usedAdvance, advanceLeft: round2(advanceBefore - usedAdvance) };
@@ -850,6 +870,23 @@ export async function cancelInvoice(businessId, id, { reason }, userId, viewer =
     link: `/my-bills/${invoice._id}`,
     data: { invoiceId: invoice._id },
   });
+
+  /*
+    Kharidne wale ke yahan ka kaam bhi rok do (Part 17 step 3).
+
+    Wo abhi baaki ho to CANCELLED ho jata hai — us maal ka ab koi bill hi nahi
+    hai, use stock me daalna jhooth hoga.
+
+    Ho chuka ho to apne aap ULTA NAHI karte, sirf khabar jati hai. Ulta karna
+    khatarnak hai: ho sakta hai wo maal bik bhi chuka ho, aur uski khep
+    zabardasti hatane se pichhle bill ka munafa hawa me latak jata. Faisla
+    dukaandaar ka — purchase delete karne ka poora rasta uske paas pehle se hai.
+  */
+  try {
+    await cancelIntakeForInvoice(businessId, invoice._id, reason);
+  } catch (err) {
+    console.warn('[invoice] Kharidaar ke yahan ka kaam rok nahi paye:', err.message);
+  }
 
   return {
     cancelled: true,

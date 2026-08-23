@@ -3,6 +3,7 @@ import { t } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import { FileText, ChevronRight, Store, ShoppingCart, IndianRupee, Clock } from 'lucide-react';
 import api from '@/lib/api';
+import ShopStrip from '@/components/buy/ShopStrip';
 import { useQuery, useListQuery } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
@@ -80,6 +81,9 @@ export default function MyOrders() {
         subtitle={t("Aapke bheje hue saare order")}
         action={<Button icon={Store} variant="secondary" onClick={() => navigate('/shop')}>{t("Catalog")}</Button>} />
       
+
+      {/* Kis dukaan ke order dikh rahe hain — ek se zyada dukaan ho tabhi */}
+      <ShopStrip />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard label={t("Kul orders")} value={summary.total} icon={FileText} tone="brand" />

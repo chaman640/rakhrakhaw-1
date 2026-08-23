@@ -132,6 +132,16 @@ export const NOTIFICATION_TYPES = {
   PAYMENT_RECEIVED: 'PAYMENT_RECEIVED',
   LOW_STOCK: 'LOW_STOCK',
   PAYMENT_REMINDER: 'PAYMENT_REMINDER',
+  /*
+    Part 17 step 3 — "jo maal aapne khareeda, use apne stock me daal lijiye".
+
+    Ise ORDER_STATUS me ghusane ki koshish ki thi. Wo galat tha: ORDER_STATUS
+    ek khabar hai ("bill ban gaya") jise padh kar aadmi bhool sakta hai. Ye ek
+    KAAM hai jo baaki hai — jab tak wo na ho, uska stock jhooth bolta rehta
+    hai. Alag type hone se uski apni chhalni banti hai aur wo list me dab kar
+    kho nahi jata.
+  */
+  STOCK_INTAKE: 'STOCK_INTAKE',
 };
 
 export const UNITS = [

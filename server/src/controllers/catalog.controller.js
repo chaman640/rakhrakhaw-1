@@ -3,6 +3,7 @@ import { ok, created } from '../utils/response.js';
 import * as catalog from '../services/catalog.service.js';
 import * as cart from '../services/cart.service.js';
 import * as orders from '../services/order.service.js';
+import * as shops from '../services/shop.service.js';
 
 /* ---------------------------------------------------------------- catalog */
 
@@ -14,8 +15,17 @@ export const list = asyncHandler(async (req, res) => {
 export const categories = asyncHandler(async (req, res) =>
   ok(res, await catalog.listCatalogCategories(req.businessId)));
 
+/**
+ * Shop page ka header — Instagram wali window ka upar wala hissa.
+ *
+ * Pehle ye sirf naam, logo aur address deta tha, kyunki catalog ke upar itna hi
+ * likha tha. Ab is page pe "kitna maal, kitni category, save hai ya nahi,
+ * kitna baaki hai" bhi dikhta hai — aur wo poora card banane wali jagah ek hi
+ * hai (`shop.service.js`), taaki search, saved list aur ye page — teenon ek hi
+ * dukaan ko ek jaisa dikhayein.
+ */
 export const shop = asyncHandler(async (req, res) =>
-  ok(res, await catalog.getShopInfo(req.businessId)));
+  ok(res, await shops.getCurrentShopCard(req.user, req.businessId, req.partyId)));
 
 export const detail = asyncHandler(async (req, res) =>
   ok(res, await catalog.getCatalogItem(req.businessId, req.partyId, req.params.id)));

@@ -5,6 +5,9 @@ import categoryRoutes from './category.routes.js';
 import itemRoutes from './item.routes.js';
 import partyRoutes from './party.routes.js';
 import purchaseRoutes from './purchase.routes.js';
+import intakeRoutes from './intake.routes.js';
+import shopRoutes from './shop.routes.js';
+import buyRoutes from './buy.routes.js';
 import catalogRoutes from './catalog.routes.js';
 import cartRoutes from './cart.routes.js';
 import myOrderRoutes from './myOrder.routes.js';
@@ -42,8 +45,17 @@ router.use('/parties', partyRoutes);
 
 // Part 5
 router.use('/purchases', purchaseRoutes);
+// Part 17 step 3 — doosri dukaan se kharida hua maal apne stock me daalna
+router.use('/stock-intake', intakeRoutes);
 
-// Part 6 — retailer ka side
+// Part 6 — kharidne ka side (retailer, aur wholesaler ka buy mode)
+//
+// Part 17: `/shops` — number se dukaan dhoondho aur judo. Yahi wo rasta hai
+// jisne "ek retailer, ek hi wholesaler" wali gaanth kholi hai.
+router.use('/shops', shopRoutes);
+// `/buy` — kai dukaanein ek saath: poora cart, aur ek confirm pe har dukaan ka
+// apna order (buy.routes.js me poori wajah)
+router.use('/buy', buyRoutes);
 router.use('/catalog', catalogRoutes);
 router.use('/cart', cartRoutes);
 router.use('/my-orders', myOrderRoutes);

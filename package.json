@@ -13,6 +13,8 @@
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "smoke": "npm run smoke --prefix server",
+    "selfcheck": "npm run selfcheck --prefix server",
+    "check": "npm run selfcheck --prefix server && npm run check --prefix client",
     "preview": "npm run build && npm start"
   }
 }

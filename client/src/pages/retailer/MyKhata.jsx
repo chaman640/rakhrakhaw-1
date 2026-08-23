@@ -6,6 +6,7 @@ import {
   CircleCheck, CircleX, RotateCcw } from
 'lucide-react';
 import api from '@/lib/api';
+import ShopStrip from '@/components/buy/ShopStrip';
 import { useQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDate } from '@/lib/format';
 import {
@@ -70,6 +71,9 @@ export default function MyKhata() {
         title={t("Mera Khata")}
         subtitle={`${data.shopName || 'Wholesaler'} ke saath poora hisaab`} />
       
+
+      {/* Kis dukaan ka khata dikh raha hai */}
+      <ShopStrip />
 
       {/* ---- Balance card ---- */}
       <Card className={`mb-5 ${due > 0 ? 'border-amber-200 bg-amber-50/50' : 'border-emerald-200 bg-emerald-50/40'}`}>

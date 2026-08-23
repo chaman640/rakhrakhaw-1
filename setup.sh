@@ -163,6 +163,19 @@ step "Client dependencies install"
 ( cd client && npm install --no-audit --no-fund --loglevel=error ) \
   && ok "Client packages ready" || { err "Client npm install fail"; exit 1; }
 
+# --------------------------------------------- 6b. Self check (bina database ke)
+#
+# Ye MongoDB se PEHLE chalta hai, jaan-boojh kar. Iske liye database chahiye hi
+# nahi, isliye ye HAR baar chalta hai — chahe MONGO_URI khali ho, chahe Atlas
+# band ho. Kisi ne kuch tod diya hai to wo yahin pakda jayega, aur pakda tab
+# jayega jab wajah saamne hai — na ki teen din baad dukaan me.
+step "Self check (database ke bina)"
+if ( cd server && npm run selfcheck --silent ); then
+  ok "Saare self check pass"
+else
+  warn "Kuch self check fail hue — upar dekho"
+fi
+
 # --------------------------------------------------------- 7. MongoDB test
 step "MongoDB connection test"
 MONGO_OK=0

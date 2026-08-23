@@ -110,11 +110,21 @@ export default function PartyFormModal({ open, onClose, party, type, onSaved }) 
             value={form.shopName} onChange={set('shopName')} error={fieldErrors.shopName} />
           <Input label={t('Vyakti ka naam')} required placeholder={t('Suresh Kumar')}
             value={form.name} onChange={set('name')} error={fieldErrors.name} />
+          {/*
+            EK hi `hint` — pehle DO likhe the.
+
+            JSX me ek hi naam do baar likho to chup-chaap AAKHRI wala jeetta
+            hai. Yahan aakhri wala aksar `undefined` hota tha (supplier ke liye,
+            aur edit karte waqt bhi) — matlab "Nahi hai to khali chhod dein"
+            wali sahaayta un sab jagah gayab thi jahan uski sabse zyada zarurat
+            thi. Build sirf ek chetavni deti thi, aur wo dikhti nahi.
+          */}
           <Input label={t('Phone (marzi se)')} type="tel" inputMode="numeric" prefix="+91"
-            hint={t('Nahi hai to khali chhod dein — naam se bhi bill ban jayega')}
             placeholder="98765 43210" value={form.phone} onChange={set('phone')}
             error={fieldErrors.phone}
-            hint={isRetailer && !isEdit ? 'Isi number se wo link kholkar login karega' : undefined} />
+            hint={isRetailer && !isEdit
+              ? t('Isi number se wo link kholkar login karega')
+              : t('Nahi hai to khali chhod dein — naam se bhi bill ban jayega')} />
           <Input label={t('Email')} type="email" value={form.email} onChange={set('email')} error={fieldErrors.email} />
         </div>
 
