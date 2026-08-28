@@ -61,7 +61,7 @@ const returnItemSchema = new mongoose.Schema(
 
 const returnNoteSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
 
     type: { type: String, enum: Object.values(RETURN_TYPES), required: true, index: true },

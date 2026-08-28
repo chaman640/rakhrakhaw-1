@@ -6,8 +6,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
 
 import Login from '@/pages/auth/Login';
+import Privacy from '@/pages/public/Privacy';
+import Terms from '@/pages/public/Terms';
+import Refund from '@/pages/public/Refund';
+import Delivery from '@/pages/public/Delivery';
+import Contact from '@/pages/public/Contact';
+import Pricing from '@/pages/public/Pricing';
 import Signup from '@/pages/auth/Signup';
 import Join from '@/pages/auth/Join';
+import ForgotPassword from '@/pages/auth/ForgotPassword';
 import JoinStaff from '@/pages/auth/JoinStaff';
 import PendingApproval from '@/pages/retailer/PendingApproval';
 import Settings from '@/pages/wholesaler/Settings';
@@ -143,9 +150,32 @@ export default function AppRoutes() {
       {/* ---- Public ---- */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      {/* Password bhool gaye — bina login ke khulna hi chahiye */}
+      <Route path="/forgot" element={<ForgotPassword />} />
       <Route path="/join/:inviteCode" element={<Join />} />
       {/* Staff invite link — login se pehle khulti hai, kyunki abhi account hai hi nahi */}
       <Route path="/join-staff/:token" element={<JoinStaff />} />
+
+      {/*
+        ─────────────── POLICY WALE KAGAZ — BINA LOGIN KE ───────────────
+
+        Ye pehre ke BAHAR hain, aur wahi in routes ki sabse zaroori baat hai.
+
+        Payment gateway (Razorpay) merchant account manzoor karne se pehle in
+        page ko KHUD kholta hai. Login maangne wala page unke liye maujood hi
+        nahi hai — aur wahi application ruk jane ki sabse aam wajah hoti hai,
+        jiski wajah bhi aksar nahi batayi jati.
+
+        `/pricing` bhi isi liye khula hai: naya aadmi account banane se pehle
+        daam dekhna chahta hai, aur jise pehle account banana pade wo aksar
+        banata hi nahi.
+      */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/refund" element={<Refund />} />
+      <Route path="/delivery" element={<Delivery />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/pricing" element={<Pricing />} />
 
       {/* ---- Retailer: approval screen (approve na hone par bhi khulti hai) ---- */}
       <Route

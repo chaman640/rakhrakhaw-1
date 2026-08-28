@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import PlanNeeded from '@/pages/wholesaler/PlanNeeded';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
@@ -37,6 +39,38 @@ export default function AppLayout() {
 
   const atRoot = isRootPage(pathname, allowedNav, buying);
 
+  /*
+    ─────────── PLAN KHATAM TO BECHNE KA HISSA BAND (Step 1) ───────────
+
+    `lib/api.js` server ka `subscription_required` pakad kar ek nishaan lagata
+    hai. Yahan wo nishaan dekh kar bechne wale hisse ki jagah plan wala parda
+    dikha dete hain.
+
+    KHARIDNE WALA HISSA CHHUA TAK NAHI JATA — `buying` me ye poora hissa aage
+    nikal jata hai. Wo hamesha free hai, aur wahi is poore dhande ki jaan hai.
+
+    Sirf ek nishaan (event) se kaam chal jata hai, har page pe alag jaanch
+    nahi lagani padti — aur nishaan lagta bhi tabhi hai jab server sach me
+    mana kare, isliye "shayad plan khatam hoga" wala andaza kabhi nahi lagta.
+  */
+  const [needsPlan, setNeedsPlan] = useState(() => {
+    try { return sessionStorage.getItem('rr_needs_plan') === '1'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    const on = () => setNeedsPlan(true);
+    window.addEventListener('rr:needs-plan', on);
+    return () => window.removeEventListener('rr:needs-plan', on);
+  }, []);
+
+  // Kharidne wale hisse me jate hi nishaan hata dete hain — warna wapas aane
+  // par purana parda phir se chipak jata hai jabki plan le liya gaya ho
+  useEffect(() => {
+    if (!buying) return;
+    try { sessionStorage.removeItem('rr_needs_plan'); } catch { /* koi baat nahi */ }
+    setNeedsPlan(false);
+  }, [buying]);
+
   /**
    * Back ka "plan B" — jab history khali ho (link se seedha khola ya refresh).
    *
@@ -65,7 +99,7 @@ export default function AppLayout() {
         />
 
         <main className="px-4 pb-20 pt-4 sm:px-5 lg:px-6 lg:pb-6">
-          <Outlet />
+          {!buying && needsPlan ? <PlanNeeded /> : <Outlet />}
         </main>
       </div>
 

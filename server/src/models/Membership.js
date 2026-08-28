@@ -42,11 +42,11 @@ import mongoose from 'mongoose';
 const membershipSchema = new mongoose.Schema(
   {
     // ---- kharidaar kaun (do me se ek) ----
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
-    buyerBusinessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', default: null, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    buyerBusinessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', default: null },
 
     // ---- kis dukaan se ----
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
 
     // Us dukaan ke andar kharidaar ki apni Party (type: retailer)
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true },

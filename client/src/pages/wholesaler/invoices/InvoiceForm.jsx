@@ -13,6 +13,9 @@ import { bust } from '@/hooks/useQuery';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
+// Wahi unit jo Items page pe hain — do jagah do list rakhne se ek din dono alag ho jati hain
+const NEW_ITEM_UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', 'LTR', 'ML', 'MTR', 'FT', 'BAG', 'BUNDLE'];
+
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const emptyRow = () => ({ key: Math.random().toString(36).slice(2), itemId: '', name: '', unit: 'PCS',
   stockQty: 0, qty: '', rate: '', discount: '', gstRate: 0, hsn: '' });
@@ -108,6 +111,62 @@ export default function InvoiceForm() {
     });
   }
 
+  /*
+    ─────────── BILL BANATE BANATE NAYA ITEM (item 23) ───────────
+
+    Counter pe aadha kaam OFFLINE retailer ka hota hai — wo saamne khada hai,
+    maal utha chuka hai, aur uska bill abhi banana hai. Usi waqt pata chalta
+    hai ki us item ki entry app me hai hi nahi.
+
+    Ab tak ka rasta: bill chhod do, Items page pe jao, item banao, wapas aao,
+    aur bill dobara shuru karo — kyunki adhoora bill kahin bachta hi nahi tha.
+    Nateeja ye ki dukaandaar us item ko kisi milte-julte item pe bill kar deta
+    tha, ya bill hi app se bahar kagaz pe bana leta tha. Dono se stock aur
+    hisaab, dono galat.
+
+    Ab item yahin ban jata hai aur banate hi usi row me chipak jata hai. Sirf
+    naam zaroori hai — baaki sab baad me bhara ja sakta hai; is pal me
+    dukaandaar ke paas utna waqt hai hi nahi.
+  */
+  const [newItemFor, setNewItemFor] = useState(null);   // { key, name }
+  const [newItem, setNewItem] = useState({ name: '', unit: 'PCS', rate: '', gstRate: '' });
+  const [savingItem, setSavingItem] = useState(false);
+
+  function openNewItem(key, query) {
+    setNewItemFor({ key });
+    setNewItem({ name: query || '', unit: 'PCS', rate: '', gstRate: gstEnabled ? '' : '' });
+  }
+
+  async function saveNewItem() {
+    if (!newItem.name.trim()) { toast.error(t('Item ka naam to likhna hoga')); return; }
+    setSavingItem(true);
+    try {
+      const res = await api.post('/items', {
+        name: newItem.name.trim(),
+        unit: newItem.unit,
+        salePrice: Number(newItem.rate) || 0,
+        ...(gstEnabled && newItem.gstRate !== '' ? { gstRate: Number(newItem.gstRate) } : {}),
+      });
+      const i = res.data;
+      /*
+        Stock 0 hi rehta hai — aur ye jaan-boojh kar.
+
+        Bill banate waqt "kitna pada hai" ka jhootha number daal dena stock ko
+        aur bigad deta. Item ban gaya, bill ban gaya; ginti baad me Items page
+        se ya kharid ki entry se aayegi. Bill stock kam hone pe bhi ruk nahi
+        raha — wo rok sirf un item pe hai jinka stock app me maujood hai.
+      */
+      setRow(newItemFor.key, {
+        itemId: i._id, name: i.name, unit: i.unit, stockQty: i.stockQty ?? 0,
+        rate: String(i.wholesalePrice || i.salePrice || 0),
+        gstRate: i.gstRate || 0, hsn: i.hsn || '',
+        qty: rows.find((r) => r.key === newItemFor.key)?.qty || '1',
+      });
+      setNewItemFor(null);
+      toast.success(t('{a} ban gaya — ab bill me lag gaya', { a: i.name }));
+    } catch (err) { toast.error(err.message); } finally { setSavingItem(false); }
+  }
+
   const addRow = () => setRows((rs) => [...rs, emptyRow()]);
   const removeRow = (key) => setRows((rs) => rs.length === 1 ? [emptyRow()] : rs.filter((r) => r.key !== key));
 
@@ -182,7 +241,9 @@ export default function InvoiceForm() {
         paidAmount: Number(paidAmount || 0),
         paymentMode,
         notes,
-        ...(useJama && jama > 0 ? { useAdvance: true } : {}),
+        // ULTA TICK: jama paisa ab APNE AAP lagta hai; ye us aadmi ke liye
+        // hai jo jaan-boojh kar use jama hi rakhna chahta hai
+        ...(!useJama && jama > 0 ? { keepAdvance: true } : {}),
         ...extra
       });
       toast.success(res.message);
@@ -360,7 +421,9 @@ export default function InvoiceForm() {
                     <Combobox
                       placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
                       onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
-                      emptyText={t('Koi item nahi mila')} />
+                      emptyText={t('Koi item nahi mila')}
+                      onCreateNew={(q) => openNewItem(r.key, q)}
+                      createNewLabel={t('Naya item banayein')} />
 
                     }
                     note={r.itemId &&
@@ -441,7 +504,7 @@ export default function InvoiceForm() {
 
               <div className={cn('flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
               dueAfterJama > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
-                <span>{dueAfterJama > 0 ? 'Udhaar jayega' : 'Poora mil gaya'}</span>
+                <span>{dueAfterJama > 0 ? t('Udhaar jayega') : t('Poora mil gaya')}</span>
                 <strong className="tabular">{formatMoney(dueAfterJama)}</strong>
               </div>
               {jamaCut > 0 &&
@@ -452,11 +515,16 @@ export default function InvoiceForm() {
             </div>
 
             {/*
-               Pehle se jama paisa — is bill me se kaat lein?
-                Ye poochhna zaroori hai. Chup-chaap kaat dena bhi galat lagta hai
-               (dukaandaar ko lagta hai bill kam ban gaya) aur na poochhna bhi
-               (paisa pada rehta hai aur bill udhaar chala jata hai). Isliye
-               saaf dikhta hai kitna hai aur ek switch se band ho jata hai.
+               Pehle se jama paisa — ab APNE AAP kat jata hai.
+
+               Pehle ye switch band rakhna hi asli bug tha: paisa hamare paas
+               pada rehta tha aur usi aadmi ka bill "udhaar" dikhta rehta tha.
+               Home kuch aur bolta, bill kuch aur — aur cash lene jao to app hi
+               rok deta ("inka koi udhaar baaki nahi hai").
+
+               Ab default HAAN hai, aur switch band karna ek soch-samajh kar
+               liya gaya faisla hai — dhyan chook jane wali cheez nahi. Dikhta
+               phir bhi hai, kyunki chup-chaap kaat dena bhi theek nahi lagta.
               */
             }
             {jama > 0 &&
@@ -467,7 +535,7 @@ export default function InvoiceForm() {
                 label={`${formatMoney(jama)} ${t('jama pada hai')}`}
                 description={useJama ?
                 `${formatMoney(Math.min(jama, due))} ${t('is bill me se kat jayega')}` :
-                t('is bill me nahi katega')} />
+                t('Jama hi rahega — bill poora udhaar jayega')} />
               
               </div>
             }
@@ -499,6 +567,62 @@ export default function InvoiceForm() {
          aur baaki kahin darj hi nahi hota. Ab rok kar poochha jata hai.
         */
       }
+      {/*
+        Naya item — bill chhode bina (item 23).
+
+        Sirf naam zaroori hai. Unit, rate aur GST bhare to achha, na bhare to
+        bhi item ban jata hai — counter pe khada aadmi intezaar nahi karta.
+        Baaki detail Items page se kabhi bhi poori ki ja sakti hai.
+      */}
+      <Modal
+        open={!!newItemFor}
+        onClose={() => setNewItemFor(null)}
+        title={t('Naya item banayein')}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setNewItemFor(null)}>{t('Rehne dein')}</Button>
+            <Button loading={savingItem} onClick={saveNewItem}>{t('Banayein aur bill me lagayein')}</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Input
+            label={t('Item ka naam')}
+            required
+            autoFocus
+            placeholder={t('Bearing 6203')}
+            value={newItem.name}
+            onChange={(e) => setNewItem((v) => ({ ...v, name: e.target.value }))}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              label={t('Unit')}
+              value={newItem.unit}
+              onChange={(e) => setNewItem((v) => ({ ...v, unit: e.target.value }))}
+              options={NEW_ITEM_UNITS.map((u) => ({ value: u, label: u }))}
+            />
+            <Input
+              label={t('Rate')}
+              type="number" inputMode="decimal" prefix="₹"
+              value={newItem.rate}
+              onChange={(e) => setNewItem((v) => ({ ...v, rate: e.target.value }))}
+            />
+          </div>
+          {gstEnabled && (
+            <Input
+              label={t('GST %')}
+              type="number" inputMode="decimal"
+              placeholder="18"
+              value={newItem.gstRate}
+              onChange={(e) => setNewItem((v) => ({ ...v, gstRate: e.target.value }))}
+            />
+          )}
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            {t('Stock 0 se shuru hoga — ginti baad me Items page se ya kharid ki entry se lag jayegi.')}
+          </p>
+        </div>
+      </Modal>
+
       <Modal
         open={!!ask}
         onClose={() => setAsk(null)}

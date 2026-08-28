@@ -163,8 +163,19 @@ html[data-text="xlarge"] { font-size: 20px; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
 
+/*
+  Sirf kagaz pe dikhne wali cheez.
+
+  CA wala khata (item 21) screen pe kabhi nahi dikhta — wo sirf chhapne ke
+  liye banta hai. `absolute` + `-left-[9999px]` ki jagah seedha `display:none`
+  rakha hai: chhupa hua DOM bhi screen reader padh leta hai, aur khali kagaz
+  do baar sunana kisi ke kaam ka nahi.
+*/
+.print-only { display: none; }
+
 @media print {
   .no-print { display: none !important; }
+  .print-only { display: block !important; }
 
   /* Bill A4 pe theek se chhape */
   @page { size: A4; margin: 12mm; }

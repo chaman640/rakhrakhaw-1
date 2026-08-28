@@ -26,7 +26,7 @@ const statusHistorySchema = new mongoose.Schema(
 
 const orderSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
     placedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
@@ -37,7 +37,7 @@ const orderSchema = new mongoose.Schema(
     itemsTotal: { type: Number, default: 0 },
     itemCount: { type: Number, default: 0 },
 
-    status: { type: String, enum: Object.values(ORDER_STATUS), default: ORDER_STATUS.PLACED, index: true },
+    status: { type: String, enum: Object.values(ORDER_STATUS), default: ORDER_STATUS.PLACED },
     statusHistory: { type: [statusHistorySchema], default: [] },
 
     // Stock order pe LOCK nahi hota — invoice banne pe ghatega (Part 8).

@@ -47,6 +47,17 @@ function listFiles(dir, out = []) {
 
 const files = listFiles('src');
 const used = new Set();
+
+/*
+  Har shabd kis kis file me mila — kanooni kagaz alag ginne ke liye chahiye.
+  (Neeche `LEGAL_DIRS` wala hissa isi se chalta hai.)
+*/
+const usedIn = new Map();
+let currentFile = '';
+const noteUse = (key) => {
+  if (!usedIn.has(key)) usedIn.set(key, new Set());
+  usedIn.get(key).add(currentFile);
+};
 const unwrapped = [];
 
 // User ko DIKHNE wale attribute. `className`, `id`, `type` jaise nahi.
@@ -123,6 +134,7 @@ let risky = 0;
   jaanch hogi.
 */
 for (const file of files) {
+  currentFile = file;
   const src = fs.readFileSync(file, 'utf8');
   if (!src.includes("from '@/lib/i18n'") && !/\bt\(/.test(src)) continue;
 
@@ -153,7 +165,7 @@ for (const file of files) {
       }
 
       const arg = p.node.arguments[0];
-      if (arg && arg.type === 'StringLiteral') { used.add(arg.value); return; }
+      if (arg && arg.type === 'StringLiteral') { used.add(arg.value); noteUse(arg.value); return; }
 
       /*
         `t(title)` — chaabi seedhe likhi nahi hai, ek variable me hai.
@@ -182,11 +194,11 @@ for (const file of files) {
         for (const pr of props) {
           if (pr.type !== 'ObjectProperty' || pr.key?.name !== arg.name) continue;
           const v = pr.value;
-          if (v?.type === 'AssignmentPattern' && v.right?.type === 'StringLiteral') used.add(v.right.value);
+          if (v?.type === 'AssignmentPattern' && v.right?.type === 'StringLiteral') { used.add(v.right.value); noteUse(v.right.value); }
         }
         // `function F(title = '...')` — seedha parameter
         if (node?.type === 'AssignmentPattern' && node.right?.type === 'StringLiteral') {
-          used.add(node.right.value);
+          used.add(node.right.value); noteUse(node.right.value);
         }
         /*
           `const greet = subah ? 'Subah bakhair' : 'Namaste'` — phir `t(greet)`.
@@ -260,7 +272,29 @@ for (const m of dictSrc.matchAll(/export const NO_TRANSLATE = new Set\(\[([\s\S]
   for (const q of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) skip.add(q[1].replace(/\\'/g, "'"));
 }
 
+/*
+  KANOONI KAGAZ ALAG GINE JATE HAIN — aur ye ek soch-samajh kar liya faisla hai.
+
+  Privacy, Terms, Refund, Delivery aur Contact — in paanch page ka text
+  kanooni hai. Uska anuvaad AADMI karta hai, andaze se nahi hota. Ek galat
+  anuvaad wali refund policy sirf ek adhoora feature nahi — wo seedha kanooni
+  zimmedari hai, aur wo galti us din pakdi jati hai jis din koi paisa maangta
+  hai.
+
+  Isliye ye page `t()` me lipte hue hain (taaki jis din asli anuvaad aaye, wo
+  bina code chhue lag jaye), par upar wali ginti me nahi aate. Ginti app ke
+  apne shabdon ki hai; kanooni kagaz ki halat NEECHE alag se chhapti hai,
+  chhupti nahi.
+*/
+const LEGAL_DIRS = ['src/pages/public/'];
+const legalUsed = new Set();
+for (const [key, files] of usedIn.entries()) {
+  if ([...files].every((f) => LEGAL_DIRS.some((d) => f.startsWith(d)))) legalUsed.add(key);
+}
+for (const k of legalUsed) used.delete(k);
+
 const missing = [...used].filter((k) => !known.has(k) && !skip.has(k));
+const legalMissing = [...legalUsed].filter((k) => !known.has(k) && !skip.has(k));
 const looseAllowed = new Set(
   (fs.existsSync('scripts/i18n-allow.txt')
     ? fs.readFileSync('scripts/i18n-allow.txt', 'utf8').split('\n')
@@ -284,6 +318,12 @@ console.log(`\ni18n: ${used.size} shabd istemal me, ${used.size - missing.length
 if (missing.length && process.argv.includes('--missing')) {
   console.log(missing.map((m) => `  - ${m}`).join('\n'));
   fs.writeFileSync('/tmp/i18n-missing.json', JSON.stringify(missing, null, 1));
+}
+if (legalMissing.length) {
+  console.log(
+    `kanooni kagaz: ${legalMissing.length} line abhi sirf Hinglish me hai `
+    + '(inka anuvaad aadmi se karwana hai — andaze se nahi)',
+  );
 }
 if (risky) console.log(`${risky} jagah \`t\` naam ka apna variable hai (abhi kaam kar raha hai)`);
 

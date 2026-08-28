@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes.js';
+import billingRoutes from './billing.routes.js';
 import businessRoutes from './business.routes.js';
 import categoryRoutes from './category.routes.js';
 import itemRoutes from './item.routes.js';
@@ -34,6 +35,13 @@ router.get('/health', (req, res) => {
 
 // Part 2
 router.use('/auth', authRoutes);
+
+/*
+  Billing — `/plans` bina login ke khulta hai (daam ka page sabke liye), aur
+  baaki hissa login ke peeche. Ismein `requirePaidSeller` JAAN-BOOJH KAR nahi
+  hai: jiska plan khatam hua hai use andar aakar plan hi lena hai.
+*/
+router.use('/billing', billingRoutes);
 router.use('/business', businessRoutes);
 
 // Part 3

@@ -33,7 +33,7 @@ const cartItemSchema = new mongoose.Schema(
 
 const cartSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
     items: { type: [cartItemSchema], default: [] },
     note: { type: String, default: '' },

@@ -44,7 +44,8 @@ export default function Returns() {
   );
 
   /** Kuch badla — jo bhi iss pe tika hai wo apne aap taaza ho jayega */
-  const refresh = () => bust('returns', 'khata', 'items', 'dashboard');
+  // `payments` bhi — wapasi ka paisa wapas karne se ek payment banti hai
+  const refresh = () => bust('returns', 'khata', 'items', 'dashboard', 'payments');
 
   useEffect(() => {
     api.get('/returns/stats').then((r) => setStats(r.data)).catch(() => {});

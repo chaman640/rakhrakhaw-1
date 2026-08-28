@@ -21,4 +21,11 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
 
+/*
+  90 din purani entry apne aap hat jati hai.
+  Bina iske ye collection kabhi ghatta nahi — ek lakh user pe yahi sabse tezi
+  se badhne wala data hai, aur uska poora kharch har mahine chukana padta hai.
+*/
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
+
 export default mongoose.model('Notification', notificationSchema);

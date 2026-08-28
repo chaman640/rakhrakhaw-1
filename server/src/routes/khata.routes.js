@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { protect, requireRole, requirePermission } from '../middleware/auth.js';
-import { withTenant } from '../middleware/tenant.js';
+import { withTenant, requirePaidSeller } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/khata.controller.js';
@@ -10,7 +10,7 @@ import {
 import { reminderSchema } from '../validators/report.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
 
 // NOTE: /summary aur /due ko /:partyId se PEHLE rakhna zaroori hai, warna
 // "summary" ko party id samajh liya jayega.

@@ -13,6 +13,10 @@ const router = Router();
 // isliye yahan bhi laga hai, taaki ye router us niyam se bahar na rahe.
 router.use(protect, withTenant);
 
+router.get('/push/key', ctrl.vapidKey);
+router.post('/push/subscribe', ctrl.subscribe);
+router.post('/push/unsubscribe', ctrl.unsubscribe);
+
 router.get('/', validate({ query: notificationQuerySchema }), ctrl.list);
 router.get('/counts', ctrl.counts);
 router.get('/unread-count', ctrl.unreadCount);

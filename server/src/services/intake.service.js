@@ -85,6 +85,54 @@ async function findOrCreateSupplier(buyerBusinessId, seller) {
 }
 
 /**
+ * BILL KI EK LINE → KAAM KI EK LINE.
+ *
+ * Alag function isliye hai ki ise bina database ke jaancha ja sake
+ * (`npm run selfcheck`). Ye poore feature ka sabse paise wala hissa hai, aur
+ * yahan ki galti screen pe dikhti nahi.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * DISCOUNT LINE KE APNE KHAANE SE NAHI, TAXABLE SE NIKALTA HAI.
+ *
+ * Bill pe do tarah ke discount ho sakte hain: line ka apna, aur poore bill ke
+ * neeche wala (`extraDiscount`). Doosra wala har line pe uske hisse ke barabar
+ * bat kar `taxableValue` me se ghat jata hai — par line ke `discount` khaane me
+ * kabhi likha nahi jata (invoice.service ka `computeInvoice` dekhein).
+ *
+ * Isliye seedha `l.discount` uthana ek chup-chaap paise wali galti thi: bill
+ * ₹9,000 ka banta aur kharidne wale ke yahan purchase ₹10,000 ki — kyunki
+ * neeche wala ₹1,000 ka discount raste me hi gir jata. Supplier ka khata bhi
+ * utna hi zyada chadh jata, aur wo farak mahino tak kisi ko na dikhta.
+ *
+ * `gross − taxableValue` hamesha wo POORA discount hai jo sach me laga — dono
+ * milakar. Isi se purchase ka jod bill se poora milta hai.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+export function lineFromInvoiceItem(l) {
+  const qty = Number(l.qty || 0);
+  const rate = round2(l.rate || 0);
+  const taxable = round2(l.taxableValue || 0);
+  const tax = round2((l.cgst || 0) + (l.sgst || 0) + (l.igst || 0));
+  const total = round2(l.total || taxable + tax);
+
+  return {
+    sourceName: l.name,
+    hsn: l.hsn || '',
+    unit: l.unit || 'PCS',
+    qty,
+    rate,
+    discount: round2(Math.max(0, round2(qty * rate) - taxable)),
+    taxableValue: taxable,
+    gstRate: Number(l.gstRate || 0),
+    taxAmount: tax,
+    total,
+    unitCostExTax: qty > 0 ? round2(taxable / qty) : 0,
+    unitCostIncTax: qty > 0 ? round2(total / qty) : 0,
+    status: 'PENDING',
+  };
+}
+
+/**
  * Bill se kaam banao. Bechne wale ki taraf se bulaya jata hai.
  *
  * Ye kabhi bill banna nahi rokta. Kharidne wale ke yahan kuch bhi gadbad ho
@@ -103,27 +151,7 @@ export async function createIntakeFromInvoice(sellerBusinessId, invoice, party, 
 
   const supplier = await findOrCreateSupplier(buyerBusinessId, seller);
 
-  const lines = (invoice.items || []).map((l) => {
-    const qty = Number(l.qty || 0);
-    const taxable = round2(l.taxableValue || 0);
-    const tax = round2((l.cgst || 0) + (l.sgst || 0) + (l.igst || 0));
-    const total = round2(l.total || taxable + tax);
-    return {
-      sourceName: l.name,
-      hsn: l.hsn || '',
-      unit: l.unit || 'PCS',
-      qty,
-      rate: round2(l.rate || 0),
-      discount: round2(l.discount || 0),
-      taxableValue: taxable,
-      gstRate: Number(l.gstRate || 0),
-      taxAmount: tax,
-      total,
-      unitCostExTax: qty > 0 ? round2(taxable / qty) : 0,
-      unitCostIncTax: qty > 0 ? round2(total / qty) : 0,
-      status: 'PENDING',
-    };
-  });
+  const lines = (invoice.items || []).map(lineFromInvoiceItem);
 
   if (!lines.length) return null;
 
@@ -138,7 +166,16 @@ export async function createIntakeFromInvoice(sellerBusinessId, invoice, party, 
       sourceInvoiceNo: invoice.invoiceNo,
       invoiceDate: invoice.invoiceDate || new Date(),
       taxableTotal: round2(invoice.taxableTotal || 0),
-      taxTotal: round2(invoice.taxTotal || 0),
+      /*
+        Invoice pe `taxTotal` naam ka koi khaana hai hi NAHI — wahan teen alag
+        khaane hain (cgstTotal, sgstTotal, igstTotal), kyunki bill pe teenon
+        alag alag chhapte hain.
+
+        Pehle yahan seedha `invoice.taxTotal` likha tha, jo hamesha `undefined`
+        aata tha aur chup-chaap 0 ban jata tha. Screen pe "GST aapki lagat me
+        jud gaya" wali baat kabhi dikhti hi nahi thi — bina kisi error ke.
+      */
+      taxTotal: round2((invoice.cgstTotal || 0) + (invoice.sgstTotal || 0) + (invoice.igstTotal || 0)),
       grandTotal: round2(invoice.grandTotal || 0),
       gstEnabled: Boolean(invoice.gstEnabled),
       lines,
@@ -384,6 +421,18 @@ export async function decideLine(businessId, id, index, payload, userId) {
       hsn: payload.newItem?.hsn ?? line.hsn,
       gstRate: payload.newItem?.gstRate ?? line.gstRate,
       categoryId: payload.newItem?.categoryId || null,
+      /*
+        Photo, MRP, code, category aur warranty — sab yahin se (item 9).
+
+        `??` aur `||` ka fark jaan-boojh kar hai: `mrp` me 0 ek asli jawab hai
+        ("MRP hai hi nahi"), isliye `??`. Naam aur brand me khali text ka
+        matlab "nahi bhara" hi hai, isliye `||`.
+      */
+      mrp: payload.newItem?.mrp ?? 0,
+      brand: payload.newItem?.brand || '',
+      imageUrl: payload.newItem?.imageUrl || '',
+      warrantyMonths: payload.newItem?.warrantyMonths ?? 0,
+      warrantyNote: payload.newItem?.warrantyNote || '',
       purchasePrice: cost,
       salePrice: sellingPrice,
       openingStock: 0,
@@ -392,9 +441,30 @@ export async function decideLine(businessId, id, index, payload, userId) {
     createdNew = true;
   }
 
-  // Purane item ka bechne ka rate bhi abhi hi badal do — wahi to abhi tay hua hai
+  /*
+    Purane item ka bechne ka rate abhi hi badal do — wahi to abhi tay hua hai.
+
+    Aur uski adhoori pehchan bhi bhar dete hain (item 9) — par SIRF WAHI KHAANE
+    JO KHALI HAIN. Ye rok zaroori hai: purana MRP ya warranty upar se likh dena
+    seedha nuksan hai, kyunki wo shayad soch-samajh kar bhara gaya tha aur ye
+    supplier ki parchi se aaya andaza hai. Khali khaana bharna faayda hai,
+    bhare hue ko badalna khatra.
+  */
   if (!createdNew) {
-    await Item.updateOne({ _id: itemId, businessId }, { salePrice: sellingPrice });
+    const patch = { salePrice: sellingPrice };
+    const old = await Item.findOne({ _id: itemId, businessId })
+      .select('mrp brand imageUrl warrantyMonths warrantyNote sku hsn').lean();
+
+    const n = payload.newItem || {};
+    if (!old?.mrp && n.mrp) patch.mrp = n.mrp;
+    if (!old?.brand && n.brand) patch.brand = n.brand;
+    if (!old?.imageUrl && n.imageUrl) patch.imageUrl = n.imageUrl;
+    if (!old?.warrantyMonths && n.warrantyMonths) patch.warrantyMonths = n.warrantyMonths;
+    if (!old?.warrantyNote && n.warrantyNote) patch.warrantyNote = n.warrantyNote;
+    if (!old?.sku && n.sku) patch.sku = n.sku;
+    if (!old?.hsn && n.hsn) patch.hsn = n.hsn;
+
+    await Item.updateOne({ _id: itemId, businessId }, patch);
   }
 
   line.itemId = itemId;
@@ -495,6 +565,11 @@ export async function finishIntake(businessId, id, payload, userId) {
     purchase = await createPurchase(businessId, {
       supplierId: found.supplierPartyId ? String(found.supplierPartyId) : '',
       supplierBillNo: found.sourceInvoiceNo || '',
+      // Dono taraf ka taar — kharidaar ki purchase se bechne wale ka bill
+      // seedha khul jata hai, aur bechne wale ko dikh jata hai ki uska maal
+      // saamne wale ke stock me chala gaya (item 11)
+      sourceInvoiceId: found.sourceInvoiceId || null,
+      sourceBusinessId: found.sellerBusinessId || null,
       // Tareekh BILL ki, aaj ki nahi — FIFO me is khep ka number usi hisaab se aana chahiye
       purchaseDate: found.invoiceDate || new Date(),
       items,

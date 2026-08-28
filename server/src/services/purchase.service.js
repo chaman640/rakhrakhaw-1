@@ -5,7 +5,9 @@ import {
 } from '../config/constants.js';
 import { round2, splitRoundOff } from '../utils/money.js';
 import { getFinancialYear } from '../utils/financialYear.js';
-import { Purchase, Party, Item, Business, Counter, StockMovement, StockLot } from '../models/index.js';
+import {
+  Purchase, Party, Item, Business, Counter, StockMovement, StockLot, Payment,
+} from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
 import { khepBanao, khepHatao } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
@@ -184,10 +186,35 @@ export async function getPurchase(businessId, id) {
 
   const movements = await StockMovement.find({ businessId, refType: 'Purchase', refId: id }).lean();
 
+  /*
+    YE MAAL AAYA KAHAN SE (item 11).
+
+    App ke andar se aayi kharid pe ab bechne wali dukaan ka naam jata hai. Ab
+    tak sirf `supplierBillNo` hota tha — ek khali text, jisse ye pata hi nahi
+    chalta tha ki wo bill isi app me kahin maujood hai.
+
+    Bill KHOLNE ka rasta yahan se nahi milta, aur wo jaan-boojh kar hai: wo
+    bill doosri dukaan ka hai, uska poora kagaz dekhne ka haq is dukaan ko
+    nahi. Naam kaafi hai — "ye maal Sharma Traders ke bill INV/2026/41 se
+    aaya" — aur usse aage baat phone pe hoti hai, app me nahi.
+  */
+  let source = null;
+  if (purchase.sourceBusinessId) {
+    const seller = await Business.findById(purchase.sourceBusinessId).select('name phone').lean();
+    if (seller) {
+      source = {
+        shopName: seller.name,
+        phone: seller.phone || '',
+        invoiceNo: purchase.supplierBillNo || '',
+      };
+    }
+  }
+
   return {
     ...purchase,
     supplier: purchase.supplierId,
     supplierId: purchase.supplierId?._id || purchase.supplierId,
+    source,
     movements,
   };
 }
@@ -283,6 +310,15 @@ export async function createPurchase(businessId, payload, userId) {
     paidAmount,
     dueAmount,
     paymentStatus: paymentStatusOf(paidAmount, totals.grandTotal),
+    /*
+      Bechne wale ke bill se taar (item 11).
+
+      Ye sirf tab bharte hain jab kharid kisi DOOSRI dukaan ke bill se bani ho
+      (stock intake wala rasta). Haath se banayi gayi kharid me dono khali
+      rehte hain — aur wahi theek hai, uska koi doosra sira hai hi nahi.
+    */
+    sourceInvoiceId: payload.sourceInvoiceId || null,
+    sourceBusinessId: payload.sourceBusinessId || null,
     notes: payload.notes,
     createdBy: userId,
   });
@@ -347,7 +383,22 @@ export async function createPurchase(businessId, payload, userId) {
       userId,
     });
 
-    // ---- Turant kuch paisa diya to wo bhi khate me ----
+    /*
+      ---- Turant kuch paisa diya to uski POORI entry ----
+
+      Pehle yahan sirf khate me ek line jati thi, Payment ka record banta hi
+      nahi tha. Nateeja: supplier ko diya hua paisa Payment page pe kahin
+      dikhta hi nahi tha. Dukaandaar "aaj kitna paisa gaya" dekhne jata to
+      wahan aadha sach milta — jo bill ke saath gaya wo gayab.
+
+      Ab wahi Payment banti hai jo haath se banai jati hai — bas uspe
+      `sourcePurchaseId` ka nishaan hai, taaki purchase mitane par yahi
+      payment bhi hate aur koi anaath entry na bache.
+
+      Khata entry ab bhi `refType: 'Purchase'` hai — jaan-boojh kar. Purane
+      data ki entriyan bhi wahi hain, aur `deletePurchase` unhi ko ulta karta
+      hai. Naya refType daalne se purana data ka reversal toot jata.
+    */
     if (paidAmount > 0) {
       await postEntry({
         businessId, partyId: supplier._id, type: LEDGER_TYPES.PAYMENT_OUT,
@@ -357,7 +408,40 @@ export async function createPurchase(businessId, payload, userId) {
         note: 'Purchase ke saath diya',
         userId,
       });
+
+      const { number: paymentNo } = await Counter.nextNumber({
+        businessId, key: COUNTER_KEYS.PAYMENT, prefix: 'PAY',
+        date: purchase.purchaseDate,
+      });
+
+      await Payment.create({
+        businessId, partyId: supplier._id, paymentNo,
+        date: purchase.purchaseDate,
+        direction: 'OUT',
+        amount: paidAmount,
+        mode: payload.paymentMode || 'CASH',
+        status: 'confirmed',
+        confirmedAt: new Date(),
+        confirmedBy: userId,
+        // Is kharid pe hi laga — allocation likhi hui, taaki hisaab saaf rahe
+        allocations: [{ invoiceId: purchase._id, amount: paidAmount }],
+        againstInvoiceIds: [purchase._id],
+        sourcePurchaseId: purchase._id,
+        note: `${purchaseNo} ke saath`,
+        recordedBy: userId,
+      });
     }
+
+    /*
+      SUPPLIER KE PAAS HAMARA PAISA JAMA HO TO WO ISI KHARID PE LAG JAYE.
+
+      Bill wali taraf jo bug tha (jama paisa pada rehta tha aur bill "udhaar"
+      dikhta rehta tha), bilkul wahi is taraf bhi tha — bas yahan to koi tick
+      bhi nahi tha, rasta hi nahi tha. Advance de kar maal mangwana normal
+      dhanda hai: paisa pehle jata hai, maal baad me aata hai. Us maal ka bill
+      aaye to "dena hai" me nahi baithna chahiye, wo to pehle hi diya ja chuka.
+    */
+    await sweepAdvance(businessId, supplier._id, { preferId: purchase._id });
   }
 
   return getPurchase(businessId, purchase._id);
@@ -438,6 +522,15 @@ export async function deletePurchase(businessId, id, userId) {
 
   // Khata ulta karo
   await reverseEntriesFor({ businessId, refType: 'Purchase', refId: purchase._id, userId });
+
+  /*
+    Kharid ke saath bani payment bhi hategi.
+
+    Uski khata entry `refType: 'Purchase'` wali hai, jo upar wali line pehle
+    hi ulta chuki hai — isliye yahan sirf Payment ka record hatana hai. Dobara
+    ledger chhedne se ek hi credit do baar ulta ho jata.
+  */
+  await Payment.deleteMany({ businessId, sourcePurchaseId: purchase._id });
 
   const no = purchase.purchaseNo;
   await purchase.deleteOne();

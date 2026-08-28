@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import ApiError from '../utils/ApiError.js';
+import { assertSeat } from './billing.service.js';
 import { normalizePhone } from '../utils/phone.js';
 import { ROLES } from '../config/constants.js';
 import {
@@ -130,6 +131,16 @@ function applyLimits(target, limits, role) {
 /* ─────────────────────────── jodo / badlo / hatao ─────────────────────────── */
 
 export async function addStaff(businessId, payload, actor) {
+  /*
+    SEAT KI JAANCH SABSE PEHLE (Step 1).
+
+    Yahan pehle karte hain — invite bhejne, user banane aur password hash
+    karne se PEHLE. Baad me karte to aadha kaam ho chuka hota aur use ulta
+    karna padta; aur `BILLING_MODE=free` me ye line ek `if` se aage badh jati
+    hai, isliye aaj iski koi keemat nahi hai.
+  */
+  await assertSeat(businessId);
+
   assertCanManageRole(actor, payload.staffRole);
 
   const phone = normalizePhone(payload.phone);

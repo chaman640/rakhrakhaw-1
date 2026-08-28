@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { protect, requireRole, requirePermission } from '../middleware/auth.js';
-import { withTenant } from '../middleware/tenant.js';
+import { withTenant, requirePaidSeller } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/invoice.controller.js';
@@ -10,7 +10,7 @@ import {
 } from '../validators/invoice.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
 
 router.get('/stats', requirePermission('invoices:view'), ctrl.stats);
 router.get('/next-number', requirePermission('invoices:view'), ctrl.nextNumber);

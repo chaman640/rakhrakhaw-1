@@ -11,7 +11,15 @@ import {
   PageHeader, Card, Button, Chips, Input, Select, Spinner, EmptyState, Badge, useToast } from
 '@/components/ui';
 import ProfitLoss from './reports/ProfitLoss';
+import { useAuth } from '@/context/AuthContext';
 import { t } from '@/lib/i18n';
+
+/*
+  Ye do report LAGAT dikhati hain — "pl" seedha munafa, aur "stock" har item
+  ki lagat (jisse munafa ghata kar nikal aata hai). Ek band karke doosri khuli
+  chhod dena band karne ka natak hai, isliye dono ek saath.
+*/
+const PROFIT_TABS = new Set(['pl', 'stock']);
 
 const TABS = [
 /*
@@ -65,9 +73,26 @@ const isNum = (col, i) => i !== 0 && !col.text && col.key !== 'status';
 
 export default function Reports() {
   const toast = useToast();
+  const { can } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState(searchParams.get('tab') || 'pl');
+  /*
+    MUNAFA AUR LAGAT WALI REPORT SABKE LIYE NAHI (item 22).
+
+    Server ab in dono ko `reports:profit` ke peeche rokta hai. Yahan bhi hata
+    dete hain — warna counter wale ko tab dikhta hai, wo dabata hai, aur ek
+    laal error milta hai. "Dikha kar mana karna" sabse buri shakal hai: aadmi
+    ko lagta hai app kharab hai, aur usse ye bhi pata chal jata hai ki wo
+    report hai kahin.
+
+    Server wali rok hi asli rok hai — ye sirf shakal theek karti hai.
+  */
+  const tabs = TABS.filter((r) => !PROFIT_TABS.has(r.value) || can('reports:profit'));
+
+  const [tab, setTab] = useState(() => {
+    const want = searchParams.get('tab') || 'pl';
+    return tabs.some((r) => r.value === want) ? want : (tabs[0]?.value || 'sale');
+  });
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(todayStr());
   const [groupBy, setGroupBy] = useState('day');
@@ -159,7 +184,7 @@ export default function Reports() {
 
       {/* ---- Tabs ---- */}
       <div className="no-print mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
-        {TABS.map((tb) =>
+        {tabs.map((tb) =>
         <button key={tb.value} onClick={() => setTab(tb.value)}
         className={`relative flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors focus-ring ${
         tab === tb.value ? 'text-brand-700' : 'text-slate-500 hover:text-slate-800'}`}>

@@ -2,8 +2,18 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
+import OtpStep from '@/components/auth/OtpStep';
 import { Button, Input } from '@/components/ui';
 import { t } from '@/lib/i18n';
+
+/**
+ * DO KADAM: pehle detail, phir OTP.
+ *
+ * Ulta karne ki koshish ki thi (pehle number verify, phir baaki form). Wo bura
+ * tha: aadmi ek SMS ka intezaar karta, phir teen aur khaane bharta, aur beech
+ * me OTP ki mohlat khatam ho jati. Ab jab poora form bhara ja chuka hota hai
+ * tabhi SMS jata hai — aur verify hote hi account ban jata hai.
+ */
 
 export default function Signup() {
   const { signupWholesaler } = useAuth();
@@ -13,22 +23,47 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState('form');          // 'form' ya 'otp'
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const cleanPhone = form.phone.replace(/\D/g, '').slice(-10);
 
-  async function handleSubmit(e) {
+  /** Pehla kadam — form theek hai to OTP wale kadam pe */
+  function goToOtp(e) {
     e.preventDefault();
     setError('');
     setFieldErrors({});
+
+    if (cleanPhone.length !== 10) {
+      setFieldErrors({ phone: t('Poora 10 digit ka number daalein') });
+      return;
+    }
+    if (form.password.length < 6) {
+      setFieldErrors({ password: t('Password kam se kam 6 character ka rakhein') });
+      return;
+    }
+    setStep('otp');
+  }
+
+  /** OTP verify ho gaya — ab account ban sakta hai */
+  async function finish(otpToken) {
+    setError('');
     setLoading(true);
     try {
-      await signupWholesaler(form);
+      await signupWholesaler({ ...form, phone: cleanPhone, otpToken });
       navigate('/settings?welcome=1', { replace: true });
     } catch (err) {
+      /*
+        Yahan tak aakar fail hona kam hota hai (number pehle hi jaancha ja chuka
+        hai), par ho sakta hai — jaise usi pal kisi aur ne wahi number le liya.
+        Us halat me form pe wapas bhej dete hain, warna aadmi OTP wale kadam pe
+        phansa rehta hai jahan wo kuch theek kar hi nahi sakta.
+      */
       setError(err.message);
       if (err.details) {
         setFieldErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
       }
+      setStep('form');
     } finally {
       setLoading(false);
     }
@@ -47,7 +82,16 @@ export default function Signup() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {step === 'otp' ? (
+        <OtpStep
+          phone={cleanPhone}
+          purpose="SIGNUP"
+          onVerified={finish}
+          onBack={() => setStep('form')}
+          note={loading ? t('Account ban raha hai...') : null}
+        />
+      ) : (
+      <form onSubmit={goToOtp} className="space-y-4">
         <Input
           label={t('Dukaan ka naam')}
           required
@@ -94,9 +138,14 @@ export default function Signup() {
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
-          {t('Account banayein')}
+          {t('Aage badhein')}
         </Button>
+
+        <p className="text-center text-xs text-slate-500">
+          {t('Agle kadam me is number pe OTP bhejenge')}
+        </p>
       </form>
+      )}
     </AuthShell>
   );
 }

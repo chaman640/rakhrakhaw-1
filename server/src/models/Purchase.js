@@ -19,7 +19,7 @@ const purchaseItemSchema = new mongoose.Schema(
 
 const purchaseSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     /*
       Supplier KHALI ho sakta hai — nakad kharid.
       Poori wajah purchase.service.js me likhi hai. Yahan sirf itna: khali
@@ -32,6 +32,25 @@ const purchaseSchema = new mongoose.Schema(
 
     purchaseNo: { type: String, required: true },
     supplierBillNo: { type: String, default: '' },  // supplier ka apna bill number
+
+    /**
+     * YE MAAL AAYA KAHAN SE — dono taraf ka rishta (item 11).
+     *
+     * Jab bechne wale ne app me bill banaya aur kharidne wale ne wahi maal
+     * apne stock me daala, to ye do entry ek hi lena-den ki hain. Par ab tak
+     * unke beech koi taar tha hi nahi: kharidne wale ki purchase pe bas
+     * supplier ka bill number likha hota tha, ek khali text ki tarah.
+     *
+     * Isliye do sawal ka jawab kahin nahi milta tha:
+     *   kharidaar  -> "ye maal kis bill se aaya, aur us bill me kya kya tha?"
+     *   bechne wala -> "usne mera bhejа maal apne stock me daal liya ya nahi?"
+     *
+     * Ab taar dono taraf jata hai. `sourceBusinessId` isliye bhi zaroori hai
+     * ki id doosri dukaan ki hai — bina uske hum galti se apni hi dukaan me
+     * wo bill dhoondhte rehte.
+     */
+    sourceInvoiceId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    sourceBusinessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', default: null },
     purchaseDate: { type: Date, default: Date.now },
 
     items: { type: [purchaseItemSchema], default: [] },
@@ -56,6 +75,8 @@ const purchaseSchema = new mongoose.Schema(
 );
 
 purchaseSchema.index({ businessId: 1, purchaseNo: 1 }, { unique: true });
+purchaseSchema.index({ businessId: 1, sourceInvoiceId: 1 });
 purchaseSchema.index({ businessId: 1, purchaseDate: -1 });
+purchaseSchema.index({ businessId: 1, supplierId: 1, dueAmount: 1, purchaseDate: 1 });
 
 export default mongoose.model('Purchase', purchaseSchema);

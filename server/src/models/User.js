@@ -72,6 +72,27 @@ const userSchema = new mongoose.Schema(
 
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
+
+    /**
+     * EK NUMBER, EK JAGAH LOGIN (item 24).
+     *
+     * Ek hi login teen-chaar phone pe chalta rehta tha. Dukaandaar ko lagta
+     * tha wo apne hi phone se kaam kar raha hai, jabki purana salesman apne
+     * phone se bill dekh raha hota tha — aur usse nikalne ka koi rasta hi
+     * nahi tha. Password badalna bhi kaam nahi aata tha: purane phone ka
+     * token phir bhi chalta rehta, kyunki JWT ek baar ban kar apni mohlat
+     * tak zinda rehta hai.
+     *
+     * Ilaaj ek ginti hai. Har naya login ise badhata hai aur naye token me
+     * yahi ginti likhi jati hai. Purane token me purani ginti hai — aur
+     * `protect` dono milata hai. Na milne par wo token us pal se bekaar.
+     *
+     * Bina database me kuch dhoondhe kaam ho jata hai (user to waise bhi
+     * padha jata hai), aur "sab jagah se logout" bhi isi ek ginti ko badha
+     * dene se ho jata hai.
+     */
+    sessionSeq: { type: Number, default: 0 },
+    lastDevice: { type: String, default: '' },
   },
   { timestamps: true }
 );

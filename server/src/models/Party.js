@@ -19,7 +19,7 @@ const addressSchema = new mongoose.Schema(
  */
 const partySchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     type: { type: String, enum: Object.values(PARTY_TYPES), required: true },
 
     name: { type: String, required: true, trim: true },
@@ -64,10 +64,10 @@ const partySchema = new mongoose.Schema(
      * Khali chhod dein to retailer "sabka" hai — sirf hadd wale staff ko wo
      * nahi dikhega, baaki sabko dikhega.
      */
-    assignedToUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    assignedToUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     // Kisne jodha — jab tak kisi ke naam na ho, isi se maalikana tay hota hai
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     notes: { type: String, default: '' },
     isActive: { type: Boolean, default: true },

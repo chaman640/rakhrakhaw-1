@@ -197,12 +197,24 @@ export default function Payments() {
       )}
 
       <Tabs
+        /*
+          TAB KE NAAM AB ANUVAAD HOTE HAIN.
+
+          Ye teeno seedhe likhe the — `t()` ke bina. Isliye app English pe
+          daal do to poora app badal jata tha par yahi teen tab Hinglish me
+          hi khade rehte the. User ki seedhi shikayat yahi thi: "'dena hai'
+          wala option English me bhi chahiye".
+
+          "Dena hai" naam bhi wahi hai jo dukaandaar bolta hai — "Jama" ek
+          hisaab-kitaab wala shabd hai, aur us tab me baat wahi hoti hai ki
+          KISKA paisa hamare paas pada hai, yaani kisko dena hai.
+        */
         tabs={[
-          { value: 'history', label: 'History' },
-          { value: 'due', label: 'Lena hai' },
-          // Jama paisa tabhi dikhega jab kisi ka hai — warna khali tab
-          // sirf uljhata hai
-          ...(stats.totalAdvance > 0 ? [{ value: 'jama', label: 'Jama' }] : []),
+          { value: 'history', label: t('History') },
+          { value: 'due', label: t('Lena hai') },
+          // Tab tabhi dikhega jab sach me kisi ka paisa pada ho — warna
+          // khali tab sirf uljhata hai
+          ...(stats.totalAdvance > 0 ? [{ value: 'jama', label: t('Dena hai') }] : []),
         ]}
         value={tab}
         onChange={(k) => { setTab(k); setSearchParams(k === 'history' ? {} : { tab: k }); }}
@@ -442,6 +454,21 @@ function JamaList({ onRefund, onOpen }) {
     { onError: (err) => toast.error(err.message) },
   );
 
+  /*
+    PAISA AAYA KAHAN SE — user ki seedhi shikayat.
+
+    "advance jama hai" to dikhta tha, par KISKA aur KAHAN SE — kuch nahi.
+    Mahine baad khata milane baithe to ye number sabse zyada uljhata tha.
+    Ab har naam ke neeche uska source likha jata hai (kaunsi wapasi, kaunsi
+    payment). Ek hi request me sabka — list ke saath aa jata hai.
+  */
+  const { data: owe } = useQuery(
+    ['payments', 'we-owe'], () => api.get('/payments/we-owe').then((r) => r.data),
+  );
+  const sourceOf = useMemo(() => Object.fromEntries(
+    (owe?.rows || []).map((r) => [String(r._id), r.from || []]),
+  ), [owe]);
+
   useEffect(() => { setPage(1); }, [debouncedQ]);
 
   return (
@@ -482,6 +509,13 @@ function JamaList({ onRefund, onOpen }) {
                       <p className="truncate text-xs text-slate-500">
                         {p.phone ? formatPhone(p.phone) : t('number nahi hai')}
                       </p>
+                      {sourceOf[String(p._id)]?.length > 0 && (
+                        <p className="mt-0.5 truncate text-xs text-emerald-700">
+                          {sourceOf[String(p._id)]
+                            .map((a) => `${a.refNo || a.note || t('Entry')} ${formatMoney(a.amount)}`)
+                            .join(' · ')}
+                        </p>
+                      )}
                     </button>
                     <div className="shrink-0 text-right">
                       {/* `amount` — hamesha plus me. `balance` khate ka sach hai

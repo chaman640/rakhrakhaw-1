@@ -33,6 +33,19 @@ export const decideLineSchema = z.object({
   itemId: objectId.or(z.literal('')).optional(),
 
   // Ya naya banao — jo na bhejo wo bill se hi utha liya jayega
+  /*
+    ITEM KI POORI PEHCHAN — YAHIN, MAAL AATE WAQT (item 9).
+
+    Ye wahi ek pal hai jab ye sab saamne hota hai: dabba haath me hai, uspe
+    MRP chhapa hai, code likha hai, warranty ka card andar pada hai. Baad me
+    Items page pe jaakar ye bharna kisi ne kabhi nahi kiya — aur us se do
+    cheezein hoti thin: MRP ke bina retailer ko bechte waqt "kitne me dena
+    hai" ka koi sahara nahi rehta, aur warranty ka jhagda mahine baad hota
+    hai jab kuch likha hi nahi hota.
+
+    Sab MARZI KA hai. Maal aane par dukaandaar jaldi me hota hai; ek bhi
+    zaroori khaana lagane ka matlab hai ki wo poora kaam hi rok dega.
+  */
   newItem: z.object({
     name: z.string().trim().min(1).max(120).optional(),
     sku: z.string().trim().max(40).optional(),
@@ -40,6 +53,12 @@ export const decideLineSchema = z.object({
     hsn: z.string().trim().max(10).optional(),
     gstRate: z.coerce.number().min(0).max(28).optional(),
     categoryId: objectId.or(z.literal('')).nullable().optional(),
+    // Maal aate waqt hi bhar dene wali baaki cheezein
+    mrp: z.coerce.number().min(0).max(10000000).optional(),
+    brand: z.string().trim().max(60).optional(),
+    imageUrl: z.string().trim().max(500).optional(),
+    warrantyMonths: z.coerce.number().int().min(0).max(240).optional(),
+    warrantyNote: z.string().trim().max(200).optional(),
   }).optional(),
 
   sellingPrice: money.optional().default(0),

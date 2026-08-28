@@ -69,25 +69,26 @@ export default function Cart() {
   const [confirmClear, setConfirmClear] = useState(null);   // { shopId, name }
   const [result, setResult] = useState(null);               // checkout ke baad
 
+  /*
+    CHETAVNI TOAST ME NAHI, SCREEN PE.
+
+    Pehle yahan har chetavni `toast.info` se dikhayi jati thi. Wo ek asli
+    dikkat ban gayi: ye page har 20 second me apne aap taaza hota hai, aur har
+    baar wahi teen toast dobara upar aa jate the. Aadmi cart bharta rehta aur
+    har bees second me screen pe wahi baat dobara — kaam karna hi mushkil.
+
+    Ab wo ek dabbe me neeche likhi rehti hai: hamesha dikhti hai, par apni jagah
+    par baithi rehti hai. Toast us cheez ke liye hai jo ABHI HUI ho; ye us cheez
+    ke liye hai jo ABHI SACH hai.
+  */
   const { data, loading, refetch } = useQuery(
     ['buy-cart'],
-    () => api.get('/buy/cart').then((r) => {
-      /*
-        Chetavni ke saath DUKAAN ka naam bhi.
-
-        Ek dukaan wale cart me "Bearing ka rate badal gaya" kaafi tha. Ab paanch
-        dukaanon ka maal ek screen pe hai — bina naam ke pata hi nahi chalta ki
-        kiski baat ho rahi hai.
-      */
-      r.data.warnings?.forEach((w) => toast.info(
-        w.shopName ? `${w.shopName}: ${w.message}` : w.message,
-      ));
-      return r.data;
-    }),
+    () => api.get('/buy/cart').then((r) => r.data),
     { onError: (err) => toast.error(err.message) },
   );
 
   const shops = data?.shops || [];
+  const warnings = data?.warnings || [];
 
   // Server pe pada note pehli baar dabbe me bhar do
   useEffect(() => {
@@ -281,6 +282,28 @@ export default function Cart() {
         title={t('Cart')}
         subtitle={`${t('{n} dukaan', { n: data.shopCount })} · ${t('{n} item', { n: data.itemCount })}`}
       />
+
+      {/*
+        Dhyan dene layak baatein — rate badla, stock kam pada, item hat gaya.
+        Har chetavni ke saath DUKAAN ka naam: paanch dukaanon ka maal ek screen
+        pe hai, bina naam ke pata hi nahi chalta ki kiski baat ho rahi hai.
+      */}
+      {warnings.length > 0 && (
+        <Card className="mb-5 border-amber-200 bg-amber-50/60">
+          <p className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-900">
+            <TriangleAlert size={15} />
+            {t('Ye dekh lijiye')}
+          </p>
+          <ul className="space-y-1">
+            {warnings.map((w, i) => (
+              <li key={`${w.shopId || ''}-${i}`} className="text-xs text-amber-900">
+                {w.shopName && <span className="font-medium">{w.shopName}: </span>}
+                {w.message}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">

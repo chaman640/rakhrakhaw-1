@@ -118,7 +118,7 @@ const partySnapshotSchema = new mongoose.Schema(
 
 const invoiceSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
 
@@ -151,7 +151,7 @@ const invoiceSchema = new mongoose.Schema(
 
     paidAmount: { type: Number, default: 0 },
     dueAmount: { type: Number, default: 0 },
-    paymentStatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid', index: true },
+    paymentStatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid' },
 
     businessSnapshot: { type: businessSnapshotSchema, default: () => ({}) },
     partySnapshot: { type: partySnapshotSchema, default: () => ({}) },
@@ -167,5 +167,7 @@ const invoiceSchema = new mongoose.Schema(
 invoiceSchema.index({ businessId: 1, invoiceNo: 1 }, { unique: true });
 invoiceSchema.index({ businessId: 1, invoiceDate: -1 });
 invoiceSchema.index({ businessId: 1, partyId: 1, paymentStatus: 1 });
+invoiceSchema.index({ businessId: 1, partyId: 1, dueAmount: 1, invoiceDate: 1 });
+invoiceSchema.index({ businessId: 1, isCancelled: 1, dueAmount: 1 });
 
 export default mongoose.model('Invoice', invoiceSchema);

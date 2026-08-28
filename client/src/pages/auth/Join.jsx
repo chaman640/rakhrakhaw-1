@@ -4,6 +4,7 @@ import { AlertCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
+import OtpStep from '@/components/auth/OtpStep';
 import { Button, Input, Spinner } from '@/components/ui';
 import { t } from '@/lib/i18n';
 
@@ -24,8 +25,11 @@ export default function Join() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  // Do kadam: pehle detail, phir OTP (Signup.jsx me poori wajah)
+  const [step, setStep] = useState('form');
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const cleanPhone = form.phone.replace(/\D/g, '').slice(-10);
 
   useEffect(() => {
     let alive = true;
@@ -36,19 +40,33 @@ export default function Join() {
     return () => {alive = false;};
   }, [inviteCode]);
 
-  async function handleSubmit(e) {
+  function goToOtp(e) {
     e.preventDefault();
     setError('');
     setFieldErrors({});
+    if (cleanPhone.length !== 10) {
+      setFieldErrors({ phone: t('Poora 10 digit ka number daalein') });
+      return;
+    }
+    if (form.password.length < 6) {
+      setFieldErrors({ password: t('Password kam se kam 6 character ka rakhein') });
+      return;
+    }
+    setStep('otp');
+  }
+
+  async function finish(otpToken) {
+    setError('');
     setLoading(true);
     try {
-      await signupRetailer({ ...form, inviteCode });
+      await signupRetailer({ ...form, phone: cleanPhone, inviteCode, otpToken });
       navigate('/pending', { replace: true });
     } catch (err) {
       setError(err.message);
       if (err.details) {
         setFieldErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
       }
+      setStep('form');
     } finally {
       setLoading(false);
     }
@@ -98,7 +116,16 @@ export default function Join() {
         </>
       }>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {step === 'otp' ? (
+        <OtpStep
+          phone={cleanPhone}
+          purpose="SIGNUP"
+          onVerified={finish}
+          onBack={() => setStep('form')}
+          note={loading ? t('Account ban raha hai...') : null}
+        />
+      ) : (
+      <form onSubmit={goToOtp} className="space-y-4">
         <Input
           label={t('Aapki dukaan ka naam')}
           required
@@ -144,13 +171,14 @@ export default function Join() {
         }
 
         <Button type="submit" className="w-full" loading={loading}>
-          {t('Register karein')}
+          {t('Aage badhein')}
         </Button>
 
         <p className="text-center text-xs text-slate-500">{t("Register karne ke baad {a0} approve karenge, phir catalog khul jayega.", { a0:
             invite.businessName })}
         </p>
       </form>
+      )}
     </AuthShell>);
 
 }

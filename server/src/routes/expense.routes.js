@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { protect, requireRole, requirePermission } from '../middleware/auth.js';
-import { withTenant } from '../middleware/tenant.js';
+import { withTenant, requirePaidSeller } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/expense.controller.js';
@@ -9,7 +9,7 @@ import {
 } from '../validators/expense.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
 
 // Ye dono "/:id" se PEHLE — warna "stats" aur "categories" ko id samajh liya jayega
 router.get('/stats', requirePermission('expenses:view'), ctrl.stats);

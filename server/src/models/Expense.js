@@ -25,15 +25,15 @@ import { EXPENSE_MODES } from '../config/expenseCategories.js';
 
 const expenseSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
 
     // EXP/26-27/0001 — record ke liye, taaki baat karte waqt ek pakka naam ho
     expenseNo: { type: String, required: true },
 
-    date: { type: Date, default: Date.now, index: true },
+    date: { type: Date, default: Date.now },
 
     // Slug ki shakal me — `config/expenseCategories.js` me wajah likhi hai
-    category: { type: String, required: true, trim: true, lowercase: true, index: true },
+    category: { type: String, required: true, trim: true, lowercase: true },
 
     amount: { type: Number, required: true, min: 0 },
 

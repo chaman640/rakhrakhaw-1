@@ -7,13 +7,15 @@
  * Aapke asli data ko haath nahi lagata (sab kuch "smoke-" prefix wale phone numbers pe hota hai).
  */
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import app from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { connectDB } from '../src/config/db.js';
 import { round2 } from '../src/utils/money.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
-  Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense, Membership, StockIntake,
+  Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense, Membership, StockIntake, Otp,
+  PushSubscription, Subscription, BillingOrder,
 } from '../src/models/index.js';
 /*
   Ijazat ki ginti YAHAN SE aati hai, haath se likhi hui nahi.
@@ -34,6 +36,20 @@ function check(name, condition, extra = '') {
   if (condition) { passed++; results.push(`${G}  ✔${N} ${name}`); }
   else { failed++; results.push(`${R}  ✖${N} ${name} ${D}${extra}${N}`); }
 }
+
+/*
+  OTP KA SABOOT — test yahin bana leta hai.
+
+  Signup ab OTP ke bina hota hi nahi. Test me asli OTP mangwana do wajah se
+  galat hota: har run pe asli SMS jata (paisa lagta), aur code hash me pada
+  hota — test use padh hi nahi sakta.
+
+  Isliye test wahi token khud bana leta hai jo verify ke baad milta hai. Isse
+  signup ka poora rasta jaancha jata hai, aur OTP ka apna kanoon neeche alag se
+  jaancha jata hai (galat code, galat kaam, anjaan number).
+*/
+const otpTokenFor = (phone, purpose = 'SIGNUP') =>
+  jwt.sign({ phone, purpose, otp: true }, env.jwtSecret, { expiresIn: '15m' });
 
 const PORT = 5987;
 const BASE = `http://localhost:${PORT}/api`;
@@ -73,7 +89,7 @@ async function call(method, path, { body, token, raw, shop } = {}) {
 async function cleanup() {
   // Part 11 ke staff numbers bhi saaf karo
   const phones = [WHOLESALER_PHONE, RETAILER_PHONE, '9000000011', '9000000012',
-    BIG_PHONE, STORE_PHONE, SALES_PHONE];
+    BIG_PHONE, STORE_PHONE, SALES_PHONE, '9000000031', '9000000032'];
   const users = await User.find({ phone: { $in: phones } }).lean();
   const businessIds = users.map((u) => u.businessId).filter(Boolean);
   await Promise.all([
@@ -97,6 +113,8 @@ async function cleanup() {
     // kharidne wali se bhi), warna agle run me "pehle se juda hai" mil jata hai
     // Part 17 step 3 — dono taraf se (kharidne wali dukaan me pada hai,
     // par dhoondha bechne wali se bhi jata hai)
+    Otp.deleteMany({ phone: { $in: phones } }),
+    PushSubscription.deleteMany({ endpoint: /rr-smoke|fcm\.test/ }),
     StockIntake.deleteMany({
       $or: [
         { businessId: { $in: businessIds } },
@@ -130,15 +148,21 @@ async function run() {
     console.log(`${Y}Wholesaler${N}`);
 
     let r = await call('POST', '/auth/wholesaler/signup', {
-      body: { name: 'Ramesh Bhai', phone: WHOLESALER_PHONE, password: 'test1234', businessName: 'Ramesh Auto Parts' },
+      body: {
+        name: 'Ramesh Bhai', phone: WHOLESALER_PHONE, password: 'test1234',
+        businessName: 'Ramesh Auto Parts', otpToken: otpTokenFor(WHOLESALER_PHONE),
+      },
     });
     check('signup se account bana', r.status === 201 && r.data?.token, `status ${r.status}: ${r.message}`);
-    const wToken = r.data?.token;
+    let wToken = r.data?.token;
     check('signup pe invite code mila', Boolean(r.data?.business?.inviteCode));
     const inviteCode = r.data?.business?.inviteCode;
 
     r = await call('POST', '/auth/wholesaler/signup', {
-      body: { name: 'Koi Aur', phone: WHOLESALER_PHONE, password: 'test1234', businessName: 'Dusri Dukaan' },
+      body: {
+        name: 'Koi Aur', phone: WHOLESALER_PHONE, password: 'test1234',
+        businessName: 'Dusri Dukaan', otpToken: otpTokenFor(WHOLESALER_PHONE),
+      },
     });
     check('same number se dobara signup block hua', r.status === 409, `status ${r.status}`);
 
@@ -198,11 +222,14 @@ async function run() {
     check('galat invite code reject hua', r.status === 404, `status ${r.status}`);
 
     r = await call('POST', '/auth/retailer/signup', {
-      body: { inviteCode, name: 'Suresh Kumar', shopName: 'Suresh Auto', phone: RETAILER_PHONE, password: 'test1234' },
+      body: {
+        inviteCode, name: 'Suresh Kumar', shopName: 'Suresh Auto',
+        phone: RETAILER_PHONE, password: 'test1234', otpToken: otpTokenFor(RETAILER_PHONE),
+      },
     });
     check('retailer ka account bana', r.status === 201 && r.data?.token, `${r.message}`);
     check('retailer pending me gaya', r.data?.party?.status === 'pending', `status: ${r.data?.party?.status}`);
-    const rToken = r.data?.token;
+    let rToken = r.data?.token;
     const partyId = r.data?.party?._id;
 
     r = await call('GET', '/auth/me', { token: rToken });
@@ -255,6 +282,23 @@ async function run() {
 
     r = await call('POST', '/auth/login', { body: { phone: WHOLESALER_PHONE, password: 'naya1234' } });
     check('naye password se login chala', r.status === 200);
+
+    /*
+      NAYA TOKEN LENA AB ZAROORI HAI (item 24).
+
+      "Ek number, ek jagah" lagne ke baad har naya login purana token bekaar
+      kar deta hai. Upar wali line ek NAYA login hai (sirf ye jaanchne ke liye
+      ki naya password chalta hai), isliye peeche wala token ab mar chuka hai.
+
+      Asli app me bhi bilkul yahi hota hai: login karte hi client naya token
+      rakh leta hai. Isliye test bhi wahi karta hai — purana pakad kar rakhna
+      us cheez ko test karna hota jo app kabhi karti hi nahi.
+    */
+    wToken = r.data?.token;
+    check('login ke baad naya token mil gaya', Boolean(wToken));
+
+    r = await call('GET', '/auth/me', { token: wToken });
+    check('naye token se kaam chal raha hai', r.status === 200, `status ${r.status}`);
 
 
     // ============================================================ PART 3
@@ -520,6 +564,17 @@ async function run() {
 
     r = await call('POST', '/auth/login', { body: { phone: RETAILER_PHONE, password: 'test1234' } });
     check('active hote hi retailer ka login wapas chal gaya', r.status === 200, `status ${r.status}`);
+
+    /*
+      Naya login = naya token (item 24).
+
+      Ye ek asli login hai, isliye "ek number ek jagah" wala niyam purane token
+      ko yahin khatam kar deta hai. App bhi bilkul yahi karta hai — login ke
+      jawab me aaya token rakh leta hai. Purana pakad kar rakhna us halat ko
+      test karna hota jo app me kabhi hoti hi nahi.
+    */
+    rToken = r.data?.token;
+    check('retailer ko naya token mil gaya', Boolean(rToken));
 
     console.log(`\n${Y}Party-wise rate${N}`);
 
@@ -3049,7 +3104,10 @@ async function run() {
 
     // "Wholesaler ka wholesaler" — hamara wholesaler isse maal lega
     r = await call('POST', '/auth/wholesaler/signup', {
-      body: { name: 'Bada Bhai', phone: BIG_PHONE, password: 'bada1234', businessName: 'Bada Traders' },
+      body: {
+        name: 'Bada Bhai', phone: BIG_PHONE, password: 'bada1234',
+        businessName: 'Bada Traders', otpToken: otpTokenFor(BIG_PHONE),
+      },
     });
     const bigToken = r.data?.token;
     const bigBizId = r.data?.business?._id;
@@ -3401,11 +3459,25 @@ async function run() {
 
     const intakesBefore = (await call('GET', '/stock-intake?status=all&limit=1', { token: wToken })).meta?.total || 0;
 
+    /*
+      BILL KE NEECHE WALA DISCOUNT bhi daal rahe hain (`extraDiscount`).
+
+      Ye jaan-boojh kar hai. Wo discount line ke apne `discount` khaane me nahi
+      likha jata — wo har line ke `taxableValue` me se ghat jata hai. Isliye
+      pehle wo kharidne wale ke yahan raste me hi gir jata tha: bill kam ka aur
+      purchase zyada ki. Neeche "purchase ka jod bill se milta hai" wali jaanch
+      isi ko pakadti hai.
+    */
     r = await call('POST', '/invoices', {
       token: bigToken,
-      body: { partyId: w1PartyInBig, items: [{ itemId: bigItem, qty: 4, rate: 1000 }], paidAmount: 0 },
+      body: {
+        partyId: w1PartyInBig,
+        items: [{ itemId: bigItem, qty: 4, rate: 1000 }],
+        extraDiscount: 200,
+        paidAmount: 0,
+      },
     });
-    check('bade wholesaler ne bill bana diya', r.status === 201, `${r.message}`);
+    check('bade wholesaler ne bill bana diya (neeche 200 ka discount bhi)', r.status === 201, `${r.message}`);
     const bigInvNo = r.data?.invoiceNo;
     const bigInvTotal = r.data?.grandTotal;
     check('bill pe GST laga', (r.data?.taxTotal || 0) > 0, `tax ${r.data?.taxTotal}`);
@@ -3432,10 +3504,12 @@ async function run() {
     // ---- ek ek item ----
     r = await call('GET', `/stock-intake/${intake._id}/lines/0/matches`, { token: wToken });
     check('line ki poori detail mili', r.data?.line?.sourceName === 'Tyre 90/90', `${r.data?.line?.sourceName}`);
+    check('BILL KE NEECHE WALA DISCOUNT bhi lagat me utar gaya',
+      r.data?.line?.discount === 200, `discount ${r.data?.line?.discount}`);
     check('lagat GST ke BINA nikali (GST wale ke liye)',
-      r.data?.line?.unitCostExTax === 1000, `${r.data?.line?.unitCostExTax}`);
+      r.data?.line?.unitCostExTax === 950, `${r.data?.line?.unitCostExTax}`);
     check('lagat GST ke SAATH bhi rakhi (bina GST wale ke liye)',
-      r.data?.line?.unitCostIncTax > 1000, `${r.data?.line?.unitCostIncTax}`);
+      r.data?.line?.unitCostIncTax > 950, `${r.data?.line?.unitCostIncTax}`);
 
     r = await call('POST', `/stock-intake/${intake._id}/lines/0`, { token: wToken, body: {} });
     check('bina bechne ka rate diye item add nahi hua', r.status === 400, `status ${r.status}`);
@@ -3464,8 +3538,8 @@ async function run() {
 
     r = await call('GET', `/items/${madeItem._id}`, { token: wToken });
     check('AB stock badh gaya', r.data?.stockQty === 4, `stock ${r.data?.stockQty}`);
-    check('lagat bhi item pe chadh gayi (GST ke bina)',
-      r.data?.purchasePrice === 1000, `${r.data?.purchasePrice}`);
+    check('lagat bhi item pe chadh gayi (GST ke bina, discount ke baad)',
+      r.data?.purchasePrice === 950, `${r.data?.purchasePrice}`);
     check('bechne ka rate waise ka waisa raha', r.data?.salePrice === 1300, `${r.data?.salePrice}`);
 
     const purchasesAfter = (await call('GET', '/purchases?limit=1', { token: wToken })).meta?.total || 0;
@@ -3534,6 +3608,393 @@ async function run() {
     check('...aur dono usi bade wholesaler ke hain',
       (r.data || []).every((x) => x.sellerName === 'Bada Traders'),
       JSON.stringify((r.data || []).map((x) => x.sellerName)));
+
+    /* ═══════════ OTP — signup aur "password bhool gaye" ═══════════
+
+       Asli OTP yahan nahi mangwate: har run pe asli SMS jata (paisa lagta) aur
+       code hash me pada hota hai, padha hi nahi ja sakta. Isliye do taraf se
+       jaanchte hain — wo raste jo SMS tak pahunchte hi nahi (galat number,
+       registered number), aur token ka apna kanoon (kis number ka, kis kaam ka).
+       ═══════════════════════════════════════════════════════════════════ */
+    console.log(`\n${Y}OTP${N}`);
+
+    r = await call('POST', '/auth/otp/send', {
+      body: { phone: WHOLESALER_PHONE, purpose: 'SIGNUP' },
+    });
+    check('registered number pe SIGNUP ka OTP nahi gaya', r.status === 409, `status ${r.status}`);
+
+    r = await call('POST', '/auth/otp/send', { body: { phone: '9111111119', purpose: 'RESET' } });
+    check('anjaan number pe RESET ka OTP nahi gaya', r.status === 404, `status ${r.status}`);
+
+    r = await call('POST', '/auth/otp/send', { body: { phone: '12345', purpose: 'SIGNUP' } });
+    check('aadha number reject hua', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/auth/otp/send', { body: { phone: WHOLESALER_PHONE, purpose: 'KUCHBHI' } });
+    check('anjaan kaam reject hua', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/auth/otp/verify', {
+      body: { phone: WHOLESALER_PHONE, purpose: 'RESET', code: '123456' },
+    });
+    check('bina mangwaye verify nahi hua', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/auth/otp/verify', {
+      body: { phone: WHOLESALER_PHONE, purpose: 'RESET', code: '12' },
+    });
+    check('aadha OTP reject hua', r.status === 400, `status ${r.status}`);
+
+    /* ---- signup bina saboot ke nahi hota ---- */
+    r = await call('POST', '/auth/wholesaler/signup', {
+      body: { name: 'Bina OTP', phone: '9000000031', password: 'test1234', businessName: 'Bina OTP Dukaan' },
+    });
+    check('BINA OTP ke signup nahi hua', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/auth/wholesaler/signup', {
+      body: {
+        name: 'Galat OTP', phone: '9000000031', password: 'test1234',
+        businessName: 'Galat OTP Dukaan', otpToken: 'kuch-bhi-likh-diya',
+      },
+    });
+    check('naqli saboot bhi nahi chala', r.status === 400, `status ${r.status}`);
+
+    /*
+      SABSE ZAROORI: ek number pe verify karke DOOSRE number pe account nahi.
+
+      Bina is jaanch ke koi apna number verify karta aur kisi aur ke number pe
+      account bana leta — us aadmi ko pata bhi na chalta.
+    */
+    r = await call('POST', '/auth/wholesaler/signup', {
+      body: {
+        name: 'Doosra Number', phone: '9000000032', password: 'test1234',
+        businessName: 'Doosri Dukaan', otpToken: otpTokenFor('9000000031'),
+      },
+    });
+    check('ek number ka OTP doosre number pe nahi chala', r.status === 400, `${r.message}`);
+
+    r = await call('POST', '/auth/wholesaler/signup', {
+      body: {
+        name: 'Galat Kaam', phone: '9000000031', password: 'test1234',
+        businessName: 'Galat Kaam Dukaan', otpToken: otpTokenFor('9000000031', 'RESET'),
+      },
+    });
+    check('password wale OTP se signup nahi hua', r.status === 400, `${r.message}`);
+
+    /* ---- password bhool gaye ---- */
+    r = await call('POST', '/auth/reset-password', {
+      body: { phone: RETAILER_PHONE, otpToken: otpTokenFor(RETAILER_PHONE, 'SIGNUP'), newPassword: 'naya12345' },
+    });
+    check('signup wale OTP se password nahi badla', r.status === 400, `${r.message}`);
+
+    r = await call('POST', '/auth/reset-password', {
+      body: { phone: RETAILER_PHONE, otpToken: otpTokenFor(RETAILER_PHONE, 'RESET'), newPassword: 'naya12345' },
+    });
+    check('OTP ke saboot se password badal gaya', r.status === 200, `${r.message}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: RETAILER_PHONE, password: 'naya12345' } });
+    check('naye password se login ho gaya', r.status === 200 && Boolean(r.data?.token), `${r.message}`);
+
+    r = await call('POST', '/auth/login', { body: { phone: RETAILER_PHONE, password: 'test1234' } });
+    check('purana password ab nahi chala', r.status === 401, `status ${r.status}`);
+
+    r = await call('POST', '/auth/reset-password', {
+      body: { phone: '9111111119', otpToken: otpTokenFor('9111111119', 'RESET'), newPassword: 'naya12345' },
+    });
+    check('anjaan number ka password nahi badla', r.status === 404, `status ${r.status}`);
+
+    /* ══════════════════════════════════════════════════════════════════════
+       PAISE KA SACH — Batch A
+
+       Ye wo poora natak hai jo user ne apne shabdon me bataya tha: "payment ho
+       gaya phir bhi udhaar dikh raha hai", "dono taraf ka hisaab alag alag hai",
+       "pending hat hi nahi raha". Teeno ek hi jad se aate the.
+
+       Kram wahi rakha hai jo dukaan me hota hai — pehle wapasi, phir naya bill.
+       ══════════════════════════════════════════════════════════════════════ */
+    console.log(`\n${Y}Paise ka sach (Batch A)${N}`);
+
+    // Ek alag graahak, taaki upar ke test ka hisaab beech me na aaye
+    r = await call('POST', '/parties', {
+      token: wToken,
+      body: { name: 'Jama Test Traders', type: 'retailer', phone: '9333300011' },
+    });
+    const jParty = r.data?._id;
+    check('naya graahak ban gaya', r.status === 201 && Boolean(jParty), `${r.message}`);
+
+    // Uska maal, taaki bill aur wapasi dono ban sakein
+    r = await call('POST', '/items', {
+      token: wToken,
+      body: { name: 'Jama Test Item', purchasePrice: 50, salePrice: 100, openingStock: 200 },
+    });
+    const jItem = r.data?._id;
+    check('test ka maal ban gaya', r.status === 201 && Boolean(jItem), `${r.message}`);
+
+    /* ---- 1. pehla bill, aur poora paisa mil gaya ---- */
+    r = await call('POST', '/invoices', {
+      token: wToken,
+      body: {
+        partyId: jParty, paidAmount: 6000,
+        items: [{ itemId: jItem, qty: 60, rate: 100 }],
+      },
+    });
+    const jInv1 = r.data?._id;
+    check('₹6,000 ka bill bana aur poora chukta hua',
+      r.status === 201 && r.data?.dueAmount === 0, `due ${r.data?.dueAmount}`);
+
+    /* ---- 2. poora maal wapas — ab ₹6,000 uska paisa hamare paas jama hai ---- */
+    r = await call('POST', '/returns', {
+      token: wToken,
+      body: {
+        type: 'SALE_RETURN', partyId: jParty, invoiceId: jInv1,
+        items: [{ itemId: jItem, qty: 60, rate: 100 }],
+      },
+    });
+    check('poora maal wapas aa gaya', r.status === 201, `${r.message}`);
+
+    r = await call('GET', `/khata/${jParty}`, { token: wToken });
+    check('₹6,000 jama dikh raha hai',
+      Math.round(r.data?.hisaab?.advance) === 6000, `advance ${r.data?.hisaab?.advance}`);
+
+    check('jama paisa AAYA KAHAN SE — ye ab likha hota hai (item 13)',
+      (r.data?.hisaab?.advanceFrom || []).length > 0,
+      JSON.stringify(r.data?.hisaab?.advanceFrom));
+
+    /* ---- 3. ASLI BUG: naya bill. Pehle ye "udhaar" dikhta tha ---- */
+    r = await call('POST', '/invoices', {
+      token: wToken,
+      body: { partyId: jParty, items: [{ itemId: jItem, qty: 50, rate: 100 }] },
+    });
+    const jInv2 = r.data?._id;
+    check('ASLI BUG THEEK: jama paisa naye bill pe APNE AAP lag gaya',
+      r.status === 201 && r.data?.dueAmount === 0 && r.data?.paymentStatus === 'paid',
+      `due ${r.data?.dueAmount} · status ${r.data?.paymentStatus}`);
+
+    r = await call('GET', `/khata/${jParty}`, { token: wToken });
+    check('khata aur bill DONO ek hi baat kehte hain',
+      r.data?.hisaab?.billsDue === 0 && Math.round(r.data?.hisaab?.advance) === 1000,
+      `billsDue ${r.data?.hisaab?.billsDue} · advance ${r.data?.hisaab?.advance}`);
+
+    /* ---- 4. bacha hua ₹1,000 ka paisa wapas (item 18) ---- */
+    r = await call('GET', '/payments/we-owe', { token: wToken });
+    const oweRow = (r.data?.rows || []).find((x) => String(x._id) === String(jParty));
+    check('"Dena hai" wali list me ye graahak dikh raha hai (item 14)',
+      r.status === 200 && Math.round(oweRow?.amount) === 1000, `${JSON.stringify(oweRow?.amount)}`);
+    check('list me ye bhi likha hai ki paisa aaya kahan se',
+      (oweRow?.from || []).length > 0, JSON.stringify(oweRow?.from));
+
+    /* ---- 5. jama se ZYADA paisa lena — rok lagni chahiye ---- */
+    r = await call('POST', '/payments', {
+      token: wToken, body: { partyId: jParty, amount: 500, direction: 'IN' },
+    });
+    check('jispe kuch baaki hi nahi, uska paisa bina kahe nahi liya jata',
+      r.status === 400 && r.details?.needsAdvance === true, `status ${r.status} · ${r.message}`);
+
+    /* ---- 6. aur ab bill cancel — jama paisa wapas mil jana chahiye ---- */
+    r = await call('POST', `/invoices/${jInv2}/cancel`, {
+      token: wToken, body: { reason: 'test' },
+    });
+    check('bill cancel ho gaya', r.status === 200, `${r.message}`);
+
+    r = await call('GET', `/khata/${jParty}`, { token: wToken });
+    check('cancel ke baad poora ₹6,000 wapas jama ho gaya (paisa kahin gaya nahi)',
+      Math.round(r.data?.hisaab?.advance) === 6000 && r.data?.hisaab?.billsDue === 0,
+      `advance ${r.data?.hisaab?.advance} · billsDue ${r.data?.hisaab?.billsDue}`);
+
+    /* ---- 7. har page ka jawab ek hi hona chahiye ---- */
+    const [dash, payStats, khataOne] = await Promise.all([
+      call('GET', '/dashboard', { token: wToken }),
+      call('GET', '/payments/stats', { token: wToken }),
+      call('GET', `/khata/${jParty}`, { token: wToken }),
+    ]);
+    check('Home aur Payments page ka "kul lena hai" ek hi number hai',
+      Math.round(dash.data?.khata?.receivable) === Math.round(payStats.data?.totalReceivable),
+      `${dash.data?.khata?.receivable} vs ${payStats.data?.totalReceivable}`);
+    check('Home ka "khule bill ka" Payments page se milta hai',
+      dash.data?.khata?.billsDue === payStats.data?.billsDue,
+      `${dash.data?.khata?.billsDue} vs ${payStats.data?.billsDue}`);
+    check('khule bill ka jod kabhi kul udhaar se zyada nahi hota',
+      (dash.data?.khata?.billsDue || 0) <= (dash.data?.khata?.receivable || 0) + 0.01,
+      `${dash.data?.khata?.billsDue} > ${dash.data?.khata?.receivable}`);
+    check('ek graahak ka khata bhi wahi tod-phod deta hai',
+      khataOne.data?.hisaab?.billsDue !== undefined);
+
+    /* ═════════════ Dono taraf ka rishta — Batch B ═════════════ */
+    console.log(`\n${Y}Dono taraf ka rishta (Batch B)${N}`);
+
+    // Item 7 — bill pe kharidaar ki adhoori detail
+    r = await call('POST', '/invoices', {
+      token: wToken,
+      body: { partyId: jParty, items: [{ itemId: jItem, qty: 1, rate: 100 }] },
+    });
+    const bInv = r.data?._id;
+    r = await call('GET', `/invoices/${bInv}`, { token: wToken });
+    check('bill ke saath bata dete hain ki kharidaar ki kya detail chhoot rahi (item 7)',
+      Array.isArray(r.data?.partyMissing) && r.data.partyMissing.includes('address'),
+      JSON.stringify(r.data?.partyMissing));
+
+    // Item 16 — dashboard pe "is mahine kitna kharida"
+    r = await call('GET', '/dashboard', { token: wToken });
+    check('dashboard pe kharid ka jod aata hai (item 16)',
+      r.data?.purchase && typeof r.data.purchase.month === 'number',
+      JSON.stringify(r.data?.purchase));
+
+    // Item 11 — haath se banayi kharid pe koi jhootha rishta nahi dikhna chahiye
+    r = await call('POST', '/purchases', {
+      token: wToken,
+      body: { items: [{ itemId: jItem, qty: 5, rate: 40 }] },
+    });
+    const bPur = r.data?._id;
+    check('bina supplier ki nakad kharid ban gayi', r.status === 201, `${r.message}`);
+
+    r = await call('GET', `/purchases/${bPur}`, { token: wToken });
+    check('haath se banayi kharid pe "kahan se aaya" khali rehta hai (jhootha rishta nahi)',
+      r.data?.source === null || r.data?.source === undefined, JSON.stringify(r.data?.source));
+
+    r = await call('GET', '/dashboard', { token: wToken });
+    check('kharid ka jod nayi entry ke baad badh gaya (item 16)',
+      r.data?.purchase?.monthCount >= 1, JSON.stringify(r.data?.purchase));
+
+    /* ═════════════ Staff ki hadd aur login — Batch C ═════════════ */
+    console.log(`\n${Y}Staff ki hadd aur login (Batch C)${N}`);
+
+    // Item 24 — naya login purane phone ko bahar kar deta hai
+    const oldToken = wToken;
+    r = await call('POST', '/auth/login', {
+      body: { phone: WHOLESALER_PHONE, password: 'naya1234' },
+    });
+    const newToken = r.data?.token;
+    check('dobara login ho gaya aur naya token mila',
+      r.status === 200 && Boolean(newToken) && newToken !== oldToken, `${r.message}`);
+
+    r = await call('GET', '/auth/me', { token: newToken });
+    check('naya phone chal raha hai', r.status === 200, `status ${r.status}`);
+
+    r = await call('GET', '/auth/me', { token: oldToken });
+    check('ASLI FIX: purana phone apne aap bahar ho gaya (item 24)',
+      r.status === 401, `status ${r.status} · ${r.message}`);
+
+    // Item 22 — munafa wali report ab alag chaabi maangti hai
+    r = await call('GET', '/reports/pl', { token: newToken });
+    check('malik ko munafa wali report ab bhi milti hai', r.status === 200, `status ${r.status}`);
+
+    r = await call('GET', '/reports/sale', { token: newToken });
+    check('baaki report waise ki waise chal rahi hain', r.status === 200, `status ${r.status}`);
+
+    // Item 21 — CA wale kagaz ke liye khate ke saath shabd bhi jate hain
+    r = await call('GET', `/khata/${jParty}`, { token: newToken });
+    check('khate ke saath baaki rakam SHABDON me bhi aati hai (item 21)',
+      typeof r.data?.closingInWords === 'string' && r.data.closingInWords.length > 0,
+      String(r.data?.closingInWords));
+
+    // Batch A ka bacha hua — kharid ke saath diya hua paisa Payment list me
+    r = await call('POST', '/parties', {
+      token: newToken,
+      body: { name: 'Batch C Supplier', type: 'supplier', phone: '9333300022' },
+    });
+    const cSup = r.data?._id;
+
+    r = await call('POST', '/purchases', {
+      token: newToken,
+      body: {
+        supplierId: cSup, paidAmount: 400,
+        items: [{ itemId: jItem, qty: 10, rate: 40 }],
+      },
+    });
+    const cPur = r.data?._id;
+    check('kharid ban gayi (₹400 turant diya)', r.status === 201, `${r.message}`);
+
+    r = await call('GET', `/payments?partyId=${cSup}&direction=OUT`, { token: newToken });
+    check('wo ₹400 ab Payment list me DIKHTA hai (pehle gayab tha)',
+      (r.data || []).some((p) => Math.round(p.amount) === 400), JSON.stringify((r.data || []).length));
+
+    r = await call('DELETE', `/purchases/${cPur}`, { token: newToken });
+    check('kharid mit gayi', r.status === 200, `${r.message}`);
+
+    r = await call('GET', `/payments?partyId=${cSup}&direction=OUT`, { token: newToken });
+    check('uske saath wali payment bhi hat gayi (koi anaath entry nahi bachi)',
+      !(r.data || []).some((p) => Math.round(p.amount) === 400), JSON.stringify(r.data?.length));
+
+    r = await call('GET', `/khata/${cSup}`, { token: newToken });
+    check('supplier ka khata bhi saaf ho gaya',
+      Math.abs(Number(r.data?.hisaab?.balance || 0)) < 0.01, String(r.data?.hisaab?.balance));
+
+    /* ═════════════ Billing — Step 1 aur 2 ═════════════ */
+    console.log(`\n${Y}Billing (Step 1-2)${N}`);
+
+    r = await call('GET', '/billing/plans');
+    check('daam ki list BINA LOGIN ke khulti hai', r.status === 200, `status ${r.status}`);
+
+    const codes = (r.data?.plans || []).map((p) => p.code);
+    check('chaaron paid plan maujood hain',
+      ['CHOTI', 'BADHTI', 'BADI', 'ASEEM'].every((c) => codes.includes(c)), codes.join(','));
+
+    const choti = (r.data?.plans || []).find((p) => p.code === 'CHOTI');
+    check('CHOTI ₹50 ka aur 3 account ka hai',
+      choti?.priceRupees === 50 && choti?.seats === 3, JSON.stringify(choti?.priceRupees));
+
+    check('abhi free mode hai, isliye paisa liya nahi ja raha',
+      r.data?.chargingNow === false, String(r.data?.chargingNow));
+
+    r = await call('GET', '/billing/me', { token: newToken });
+    check('apni dukaan ka plan dikh raha hai',
+      r.status === 200 && typeof r.data?.seatsUsed === 'number', `${r.message}`);
+    check('free mode me sab chalu hai', r.data?.usable === true, String(r.data?.usable));
+
+    r = await call('POST', '/billing/checkout', { token: newToken, body: { planCode: 'CHOTI' } });
+    check('free mode me checkout saaf mana karta hai (chup-chaap fail nahi hota)',
+      r.status === 400, `status ${r.status} · ${r.message}`);
+
+    r = await call('POST', '/billing/checkout', { token: newToken, body: { planCode: 'FREE' } });
+    check('FREE plan kharida nahi ja sakta', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/billing/checkout', { token: newToken, body: { planCode: 'CHOTI', months: 99 } });
+    check('99 mahine ek saath nahi (ek galti se saal bhar ka paisa na kat jaye)',
+      r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/billing/verify', {
+      token: newToken,
+      body: { orderId: 'order_nakli', paymentId: 'pay_nakli', signature: 'x'.repeat(40) },
+    });
+    check('naqli payment ka saboot reject hota hai', r.status === 400, `status ${r.status}`);
+
+    r = await call('POST', '/billing/webhook', { body: { event: 'payment.captured' } });
+    check('bina saboot wala webhook reject hota hai', r.status === 401, `status ${r.status}`);
+
+    r = await call('GET', '/billing/history', { token: newToken });
+    check('payment ka record khulta hai', r.status === 200, `status ${r.status}`);
+
+    /* ═════════════ Phone pe notification — Step 3 ═════════════ */
+    console.log(`\n${Y}Phone pe notification (Step 3)${N}`);
+
+    r = await call('GET', '/notifications/push/key', { token: newToken });
+    check('VAPID key ka rasta khulta hai',
+      r.status === 200 && 'ready' in (r.data || {}), `${r.message}`);
+
+    r = await call('POST', '/notifications/push/subscribe', {
+      token: newToken,
+      body: { endpoint: 'https://fcm.test/rr-smoke-1', keys: { p256dh: 'p'.repeat(20), auth: 'a'.repeat(16) } },
+    });
+    check('device jud gaya', r.status === 200, `${r.message}`);
+
+    r = await call('POST', '/notifications/push/subscribe', {
+      token: newToken,
+      body: { endpoint: 'https://fcm.test/rr-smoke-1', keys: { p256dh: 'p'.repeat(20), auth: 'b'.repeat(16) } },
+    });
+    check('wahi device dobara jodne pe DO entry nahi banti', r.status === 200, `${r.message}`);
+
+    const subCount = await PushSubscription.countDocuments({ endpoint: 'https://fcm.test/rr-smoke-1' });
+    check('ek device = ek hi entry', subCount === 1, `${subCount} entry`);
+
+    r = await call('POST', '/notifications/push/subscribe', {
+      token: newToken, body: { endpoint: 'https://fcm.test/adhoora' },
+    });
+    check('adhoori subscription chup-chaap chhod di jati hai (crash nahi)',
+      r.status === 200, `status ${r.status}`);
+
+    r = await call('POST', '/notifications/push/unsubscribe', {
+      token: newToken, body: { endpoint: 'https://fcm.test/rr-smoke-1' },
+    });
+    check('device hata diya', r.status === 200, `${r.message}`);
+    check('hatane ke baad entry bachi nahi',
+      (await PushSubscription.countDocuments({ endpoint: 'https://fcm.test/rr-smoke-1' })) === 0);
 
     // ---------------------------------------------------------- Validation
     console.log(`\n${Y}Validation${N}`);

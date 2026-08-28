@@ -22,7 +22,12 @@ export const createInvoiceSchema = z.object({
   // Bill se zyada paisa — rok ke baad "haan, jama kar dein"
   allowAdvance: z.boolean().optional().default(false),
   // Party ka pehle se jama paisa isi bill me se kaat lein
-  useAdvance: z.boolean().optional().default(false),
+  /*
+    ULTA TICK. Pehle `useAdvance: true` bhejna padta tha, warna jama paisa
+    bill pe lagta hi nahi tha — aur koi kabhi nahi bhejta tha. Ab jama paisa
+    apne aap lagta hai; ye tick use ROKNE ke liye hai.
+  */
+  keepAdvance: z.boolean().optional().default(false),
   paymentMode: z.enum(Object.values(PAYMENT_MODES)).optional().default('CASH'),
   notes: z.string().trim().max(500).optional().default(''),
   termsAndConditions: z.string().trim().max(2000).optional(),

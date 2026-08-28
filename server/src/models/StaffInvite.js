@@ -23,7 +23,7 @@ import { STAFF_ROLES, SCOPES, DEFAULT_LIMITS } from '../config/permissions.js';
  */
 const staffInviteSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
 
     tokenHash: { type: String, required: true, unique: true, index: true },
 

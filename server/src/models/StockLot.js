@@ -35,7 +35,7 @@ import mongoose from 'mongoose';
  */
 const stockLotSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true, index: true },
 
     unitCost: { type: Number, required: true, min: 0 },

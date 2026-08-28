@@ -1,4 +1,4 @@
-import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
+import { formatMoney, formatQty, formatDate, formatDateTime, formatPhone } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import PayBox from './PayBox';
 import { t } from '@/lib/i18n';
@@ -59,7 +59,18 @@ export default function InvoicePrint({ invoice }) {
             {invoice.documentType === 'TAX_INVOICE' ? 'Tax Invoice' : 'Bill of Supply'}
           </p>
           <p className="mt-1 text-sm"><strong>{invoice.invoiceNo}</strong></p>
-          <p className="text-xs text-slate-600">{formatDate(invoice.invoiceDate)}</p>
+          {/*
+            TAREEKH KE SAATH TIME BHI (item 15).
+
+            Ek hi din ke chaar bill me se "wo wala" pehchanna nahi ho pata tha
+            — teeno pe bas "22 Aug 2026" likha hota tha. Jhagda hone pe ye
+            sabse pehle poochha jane wala sawal hai: "ye kab bana tha?"
+
+            `createdAt` NAHI, `invoiceDate` — kyunki dukaandaar kal ki tareekh
+            ka bill aaj bhi bana sakta hai, aur kagaz pe wahi tareekh chhapni
+            chahiye jo bill ki hai.
+          */}
+          <p className="text-xs text-slate-600">{formatDateTime(invoice.invoiceDate)}</p>
         </div>
       </div>
 

@@ -5,9 +5,22 @@ import * as ctrl from '../controllers/auth.controller.js';
 import {
   wholesalerSignupSchema, loginSchema, retailerSignupSchema,
   changePasswordSchema, inviteCodeParamSchema, updateProfileSchema,
+  sendOtpSchema, verifyOtpSchema, resetPasswordSchema,
 } from '../validators/auth.validator.js';
 
 const router = Router();
+
+/*
+  OTP — signup aur "password bhool gaye", dono ke liye.
+
+  Ye teeno raste bina login ke khulte hain (khulne hi chahiye — jo login nahi
+  kar pa raha wahi to yahan aata hai). Rok yahan role se nahi lagti, balki OTP
+  ki apni hadd se: ek minute me ek SMS, ghante me paanch, aur paanch galat
+  koshish ke baad code mar jata hai (otp.service.js me poora kanoon).
+*/
+router.post('/otp/send', validate({ body: sendOtpSchema }), ctrl.sendOtp);
+router.post('/otp/verify', validate({ body: verifyOtpSchema }), ctrl.verifyOtp);
+router.post('/reset-password', validate({ body: resetPasswordSchema }), ctrl.resetPassword);
 
 // Public
 router.post('/wholesaler/signup', validate({ body: wholesalerSignupSchema }), ctrl.signupWholesaler);

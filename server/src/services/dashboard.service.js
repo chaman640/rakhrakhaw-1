@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 import { round2 } from '../utils/money.js';
+import { partyHisaab, businessHisaab } from './balance.service.js';
 import { ORDER_STATUS, PARTY_TYPES } from '../config/constants.js';
 import { userCan } from '../middleware/auth.js';
 import { scopeMatch, scopeByParty, scopeParties } from '../utils/scope.js';
 import {
-  Invoice, Order, Party, Item, Payment, Purchase, Notification,
+  Invoice, Order, Party, Item, Payment, Purchase, Notification, Business,
 } from '../models/index.js';
 import { expenseDashboard } from './expense.service.js';
 
@@ -129,7 +130,7 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
     trendAgg, topItems, topRetailers,
     recentInvoices, recentOrders, recentPayments,
     pendingPayments, pendingRetailers,
-    expense,
+    expense, purchaseAgg,
   ] = await Promise.all([
     saleSum(todayStart, todayEnd),
     saleSum(yStart, yEnd),
@@ -241,11 +242,46 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
 
     // Kharch — aaj ka, mahine ka, aur roz ka (chart me sale ke saath dikhega)
     expenseDashboard(businessId, { todayStart, todayEnd, monthStart, trendStart }, user),
+
+    /*
+      "IS MAHINE MAINE KITNA KHAREEDA" (item 16).
+
+      Dashboard poori tarah BECHNE ki taraf jhuka hua tha — sale, munafa,
+      udhaar, stock. Kharid ka number kahin tha hi nahi, jabki dukaandaar ke
+      liye wo utna hi rozana ka sawal hai: "is mahine maal me kitna paisa
+      lagaya?" Uska jawab Purchases page ke andar chhupa tha, teen tap door.
+
+      Ye SALE KE SAAMNE rakhne wala number hai, munafa nahi — dono ek nahi
+      hain. Aaj ₹1 lakh ka maal kharida aur kuch nahi becha to nuksaan nahi
+      hua; paisa sirf maal me badal gaya. Isliye ye kabhi munafe me se nahi
+      ghatta (wo `profitLossReport` alag se, bikey hue maal ki lagat se
+      ginta hai).
+    */
+    Purchase.aggregate([
+      {
+        $match: {
+          businessId: bid,
+          purchaseDate: { $gte: monthStart, $lte: todayEnd },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          month: { $sum: '$grandTotal' },
+          monthCount: { $sum: 1 },
+          today: { $sum: { $cond: [{ $gte: ['$purchaseDate', todayStart] }, '$grandTotal', 0] } },
+          todayCount: { $sum: { $cond: [{ $gte: ['$purchaseDate', todayStart] }, 1, 0] } },
+        },
+      },
+    ]),
   ]);
 
   const statusMap = Object.fromEntries(orderCounts.map((o) => [o._id, o.n]));
   const b = balances[0] || {};
   const st = stockAgg[0] || {};
+
+  // Khule bill ka jod — WAHI ek jagah se jahan se baaki poora app leta hai
+  const hisaab = await businessHisaab(businessId);
 
   // Trend me khali din bhi chahiye, warna chart me gaddha dikhta hai
   const trendMap = Object.fromEntries(trendAgg.map((t) => [t._id, t]));
@@ -325,6 +361,13 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
       month: expense.month,
       monthCount: expense.monthCount,
     },
+    // Is mahine maal me kitna paisa lagaya (item 16)
+    purchase: {
+      today: round2(purchaseAgg[0]?.today || 0),
+      todayCount: purchaseAgg[0]?.todayCount || 0,
+      month: round2(purchaseAgg[0]?.month || 0),
+      monthCount: purchaseAgg[0]?.monthCount || 0,
+    },
     /*
       IS MAHINE KA ASLI FAYDA — dashboard pe hi.
 
@@ -346,6 +389,18 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
         + (statusMap[ORDER_STATUS.READY] || 0),
       delivered: statusMap[ORDER_STATUS.DELIVERED] || 0,
     },
+    /*
+      KHATA — ab TOD KAR bheja jata hai, sirf ek bada number nahi.
+
+      Pehle yahan sirf `receivable` jata tha (khate ka jod). Bills page apna
+      alag number dikhata tha (khule bill ka jod). Dono theek the, par ek
+      doosre se alag — aur dukaandaar ke liye "baaki" ek hi cheez hai. Wahi
+      "ek page kuch aur, doosra kuch aur" wali shikayat thi.
+
+      Ab dono ek saath jate hain, isliye screen khud dikha sakti hai ki bada
+      number kis-kis se bana hai. `billsDue` ab `receivable` se ZYADA kabhi
+      nahi hoga — jama paisa apne aap bill pe lag jata hai (balance.service).
+    */
     khata: {
       receivable: round2(b.receivable || 0),
       payable: round2(b.payable || 0),
@@ -354,6 +409,11 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
       net: round2((b.receivable || 0) - (b.payable || 0)),
       retailers: b.retailers || 0,
       activeRetailers: b.activeRetailers || 0,
+      // Us bade number ki tod-phod — kitna bill ka, kitna bill ke bahar ka
+      billsDue: hisaab.billsDue,
+      openBills: hisaab.openBills,
+      otherDue: round2(Math.max(0, round2((b.receivable || 0) - hisaab.billsDue))),
+      purchasesDue: hisaab.purchasesDue,
     },
     stock: {
       items: st.items || 0,
@@ -411,6 +471,14 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
     delete full.expense;
     full.trend = (full.trend || []).map(({ expense: _drop, ...rest }) => rest);
   }
+  /*
+    Kharid ka number bhi utni hi niji baat hai (item 16).
+
+    "Is mahine ₹4 lakh ka maal aaya" se dukaan ka poora paimana pata chal
+    jata hai. Salesman ko wo dikhne ki koi wajah nahi — wo kharid karta hi
+    nahi. Wahi hadd jo Purchases page pe lagti hai, yahan bhi.
+  */
+  if (!can('purchases:view')) delete full.purchase;
   // Mahine ka jod, 14 din ka trend aur top items — ye report wali baat hai.
   //
   // Pehle ye teeno `invoices` pe tike the. Matlab salesman, jise /reports pe
@@ -474,7 +542,7 @@ function buildActivity(invoices, orders, payments) {
 export async function getRetailerDashboard(businessId, partyId, userId = null) {
   const { monthStart } = boundaries();
 
-  const [party, orderCounts, monthSpend, openInvoices, recentOrders, unread] = await Promise.all([
+  const [party, orderCounts, monthSpend, openInvoices, recentOrders, unread, shop] = await Promise.all([
     Party.findById(partyId).select('name shopName balance creditLimit').lean(),
     Order.aggregate([
       { $match: { businessId: oid(businessId), partyId: oid(partyId) } },
@@ -497,12 +565,27 @@ export async function getRetailerDashboard(businessId, partyId, userId = null) {
     userId
       ? Notification.countDocuments({ businessId, userId, isRead: false })
       : Promise.resolve(0),
+    // Kis dukaan ka hisaab dikh raha hai — ab ek se zyada ho sakti hain
+    Business.findById(businessId).select('name').lean(),
   ]);
 
   const statusMap = Object.fromEntries(orderCounts.map((o) => [o._id, o.n]));
 
+  /*
+    HISAAB KI TOD-PHOD — aur JAMA PAISA KISKE PAAS HAI (item 13).
+
+    Buy-mode aane ke baad ek hi retailer kai dukaano se maal le sakta hai.
+    Uske Home pe "₹2,000 jama hai" likh dena ab bekaar hai — sawal to yahi
+    hai ki KISKE paas jama hai. Isliye dukaan ka naam saath jata hai, aur
+    `advanceFrom` me ye bhi ki wo paisa aaya kahan se (kaunsi wapasi, kaunsi
+    payment) — user ki seedhi shikayat yahi thi.
+  */
+  const hisaab = await partyHisaab(businessId, partyId, { withSources: true });
+
   return {
     balance: round2(party?.balance || 0),
+    hisaab,
+    shopName: shop?.name || '',
     creditLimit: party?.creditLimit || 0,
     overLimit: party?.creditLimit > 0 && party.balance > party.creditLimit,
     monthSpend: round2(monthSpend[0]?.amount || 0),

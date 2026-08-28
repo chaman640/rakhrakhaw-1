@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { NOTIFICATION_TYPES } from '../config/constants.js';
 import { Notification, User, Business, Party } from '../models/index.js';
+import { pushToUser } from './push.service.js';
 
 /**
  * Notification banane ka ek hi darwaza.
@@ -10,7 +11,16 @@ import { Notification, User, Business, Party } from '../models/index.js';
  */
 export async function notify({ businessId, userId, type, title, body = '', link = '', data = {} }) {
   if (!userId) return null;
-  return Notification.create({ businessId, userId, type, title, body, link, data });
+  const doc = await Notification.create({ businessId, userId, type, title, body, link, data });
+
+  /*
+    Phone pe bhi — app ke through, SMS se nahi.
+    `catch` zaroori: push fail hone se asli kaam (bill, payment) kabhi nahi rukna chahiye.
+  */
+  pushToUser(userId, { title, body, link, type, id: String(doc._id) })
+    .catch((err) => console.warn('[push]', err.message));
+
+  return doc;
 }
 
 /** Wholesaler (dukaan ka malik) ko alert */

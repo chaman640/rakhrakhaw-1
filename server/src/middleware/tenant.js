@@ -1,6 +1,7 @@
 import ApiError from '../utils/ApiError.js';
 import { ROLES } from '../config/constants.js';
 import { buyerFilter } from '../utils/buyer.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 /**
  * MULTI-TENANCY KA DIL.
@@ -161,3 +162,28 @@ export async function requireActiveParty(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * ═══════════════ BECHNE KA DARWAZA (Step 1) ═══════════════
+ *
+ * `withTenant` ke TURANT BAAD lagta hai — us waqt tak `req.businessId` pata
+ * chal chuka hota hai.
+ *
+ * Sirf BECHNE wale hisse pe. Kharidne wala hissa (`withBuyerTenant` wale
+ * router) isse guzarta hi nahi — wo hamesha free hai, aur wahi is poore
+ * dhande ki jaan hai: retailer free me maal dekhta hai, tabhi wholesaler ke
+ * liye app ka koi matlab hai.
+ *
+ * `BILLING_MODE=free` me ye ek `if` se aage nikal jata hai. Yaani aaj iska
+ * koi asar nahi — par jis din switch badlega, us din kuch "jodna" nahi
+ * padega.
+ *
+ * Profile, settings aur billing ke raste JAAN-BOOJH KAR khule rakhe hain.
+ * Jiska plan khatam ho gaya use andar aakar plan lena hai; use hi bahar rok
+ * dena sabse bewakoofi wali rok hogi.
+ */
+export const requirePaidSeller = asyncHandler(async (req, res, next) => {
+  const { assertCanSell } = await import('../services/billing.service.js');
+  await assertCanSell(req.businessId);
+  next();
+});

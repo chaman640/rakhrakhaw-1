@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Printer, Trash2, Undo2, FileText } from 'lucide-react';
+import { Printer, Trash2, Undo2, FileText, IndianRupee } from 'lucide-react';
 import api from '@/lib/api';
-import { formatMoney, formatDate, formatQty } from '@/lib/format';
-import { Card, Button, Badge, Spinner, ConfirmModal, useToast } from '@/components/ui';
+import { bust } from '@/hooks/useQuery';
+import { formatMoney, formatDate, formatDateTime, formatQty } from '@/lib/format';
+import {
+  Card, Button, Badge, Spinner, ConfirmModal, Modal, Input, Select, useToast,
+} from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -20,6 +23,23 @@ export default function ReturnDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  /*
+    PAISA WAPAS (item 18).
+
+    Ab tak wapasi sirf khate me credit daalti thi — "agli baar kaam aayega".
+    Par bahut baar graahak dobara kuch lega hi nahi; use apna paisa cash me
+    chahiye. Uska koi rasta hi nahi tha. Dukaandaar majboori me ek "payment"
+    bana deta tha, jo khate me ULTA lagta tha: uska jama paisa ghatne ki jagah
+    BADH jata tha, aur paisa haath se bhi ja chuka hota tha.
+
+    `refund` ka poora hisaab server pe hai — kitna wapas ho sakta hai, kitna
+    pehle ho chuka. Yahan sirf wahi number dikhta hai jo server bhejta hai.
+  */
+  const [refundInfo, setRefundInfo] = useState(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmt, setRefundAmt] = useState('');
+  const [refundMode, setRefundMode] = useState('CASH');
+
   const load = useCallback(async () => {
     try {
       const res = await api.get(`/returns/${id}`);
@@ -34,6 +54,34 @@ export default function ReturnDetail() {
   }, [id]);
 
   useEffect(() => {load();}, [load]);
+
+  // Kitna paisa wapas ho sakta hai — button dikhane se pehle server se poochte
+  // hain. Chup-chaap fail hone dete hain: ye jaankari hai, kaam nahi rukta.
+  useEffect(() => {
+    let alive = true;
+    api.get(`/payments/refund/${id}`)
+      .then((r) => { if (alive) setRefundInfo(r.data); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [id]);
+
+  async function doRefund() {
+    setBusy(true);
+    try {
+      const amt = Number(refundAmt);
+      const res = await api.post(`/payments/refund/${id}`, {
+        ...(amt > 0 ? { amount: amt } : {}),
+        mode: refundMode,
+      });
+      toast.success(res.message);
+      setRefundOpen(false);
+      setRefundAmt('');
+      // Paisa haath se nikla hai — khata, payment list aur Home, teeno badle
+      bust('payments', 'khata', 'dashboard', 'returns', 'parties');
+      const info = await api.get(`/payments/refund/${id}`);
+      setRefundInfo(info.data);
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
+  }
 
   async function remove() {
     setBusy(true);
@@ -62,10 +110,34 @@ export default function ReturnDetail() {
     <>
       <div className="no-print mb-4 flex flex-wrap items-center justify-end gap-3">
         <div className="flex gap-2">
+          {refundInfo?.refundable > 0 && (
+            <Button
+              variant="success"
+              icon={IndianRupee}
+              onClick={() => { setRefundAmt(String(refundInfo.refundable)); setRefundOpen(true); }}
+            >
+              {t('Paisa wapas karein')}
+            </Button>
+          )}
           <Button variant="secondary" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
           <Button variant="danger" icon={Trash2} onClick={() => setConfirmDelete(true)}>{t('Delete')}</Button>
         </div>
       </div>
+
+      {/*
+        Paisa pehle hi wapas ho chuka ho to button ki jagah ye line — warna
+        dukaandaar dobara wapas karne ki koshish karta rehta hai aur har baar
+        error dekhta hai, bina ye jane ki hua kya tha.
+      */}
+      {refundInfo?.alreadyRefunded > 0 && (
+        <p className="no-print mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {t('{a} is wapasi ka paisa wapas kiya ja chuka hai', {
+            a: formatMoney(refundInfo.alreadyRefunded),
+          })}
+          {refundInfo.refundable > 0
+            && ` · ${t('{a} aur wapas ho sakta hai', { a: formatMoney(refundInfo.refundable) })}`}
+        </p>
+      )}
 
       <div className="no-print mb-5 flex flex-wrap items-center gap-2">
         <Badge tone={isSale ? 'amber' : 'blue'}>{TYPE_LABEL[note.type]}</Badge>
@@ -95,7 +167,7 @@ export default function ReturnDetail() {
           <div className="text-right">
             <p className="text-sm font-bold tracking-wide text-slate-900">{NOTE_LABEL[note.type]}</p>
             <p className="mt-1 text-xs text-slate-600">No: <strong>{note.returnNo}</strong></p>
-            <p className="text-xs text-slate-600">{t("Date: {a0}", { a0: formatDate(note.returnDate) })}</p>
+            <p className="text-xs text-slate-600">{t("Date: {a0}", { a0: formatDateTime(note.returnDate) })}</p>
             {note.againstNo &&
             <p className="text-xs text-slate-600">{t("Against: {a0}", { a0: note.againstNo })}</p>
             }
@@ -208,6 +280,43 @@ export default function ReturnDetail() {
           </div>
         </div>
       </Card>
+
+      <Modal
+        open={refundOpen}
+        onClose={() => setRefundOpen(false)}
+        title={t('Paisa wapas karein')}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRefundOpen(false)}>{t('Rehne dein')}</Button>
+            <Button variant="success" loading={busy} onClick={doRefund}>{t('Wapas kar diya')}</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">
+            {t('{a} tak wapas ho sakta hai', { a: formatMoney(refundInfo?.refundable || 0) })}
+          </p>
+          <Input
+            label={t('Kitna wapas kiya')}
+            type="number"
+            inputMode="decimal"
+            prefix="₹"
+            value={refundAmt}
+            onChange={(e) => setRefundAmt(e.target.value)}
+            hint={t('Khali chhod dein to poora')}
+          />
+          <Select
+            label={t('Kaise diya')}
+            value={refundMode}
+            onChange={(e) => setRefundMode(e.target.value)}
+            options={[
+              { value: 'CASH', label: t('Cash') },
+              { value: 'UPI', label: t('UPI') },
+              { value: 'BANK', label: t('Bank') },
+            ]}
+          />
+        </div>
+      </Modal>
 
       <ConfirmModal
         open={confirmDelete}

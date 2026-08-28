@@ -91,7 +91,7 @@ const intakeLineSchema = new mongoose.Schema(
 const stockIntakeSchema = new mongoose.Schema(
   {
     // KHARIDNE WALI dukaan — ye poora record isi ke andar rehta hai
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
 
     // Bechne wali dukaan (doosre tenant me hai — isliye sirf pehchan rakhte hain)
     sellerBusinessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },

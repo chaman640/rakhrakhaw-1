@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Trash2, Truck, Package, Printer, Undo2 } from 'lucide-react';
+import { Trash2, Truck, Package, Printer, Undo2, FileText} from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { formatMoney, formatQty, formatDate, formatPhone } from '@/lib/format';
+import { formatMoney, formatQty, formatDate, formatDateTime, formatPhone } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Spinner, ConfirmModal,
   ReadLineItem, ReadField, useToast } from
@@ -68,9 +68,33 @@ export default function PurchaseDetail() {
               <Badge tone={payTone[p.paymentStatus]}>{payLabel[p.paymentStatus]}</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              {formatDate(p.purchaseDate)}
+              {/* Tareekh ke saath time bhi — ek hi din ki teen kharid me se
+                  "wo wali" pehchanne ke liye (item 15) */}
+              {formatDateTime(p.purchaseDate)}
               {p.supplierBillNo && ` · Supplier bill: ${p.supplierBillNo}`}
             </p>
+
+            {/*
+              YE MAAL AAYA KAHAN SE (item 11).
+
+              App ke andar se aayi kharid pe ab bechne wali dukaan ka naam
+              dikhta hai. Pehle sirf `supplierBillNo` hota tha — ek khali
+              text, jisse ye pata hi nahi chalta tha ki wo bill isi app me
+              maujood hai aur ye dono entry ek hi lena-den ki hain.
+
+              Bill kholne ka link JAAN-BOOJH KAR nahi hai — wo bill doosri
+              dukaan ka hai, uska poora kagaz dekhne ka haq is dukaan ko nahi.
+              Naam aur number kaafi hai; aage ki baat phone pe hoti hai.
+            */}
+            {p.source && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1.5 text-xs text-brand-800">
+                <FileText size={13} className="shrink-0" />
+                {t('{a} ke bill {b} se aaya', {
+                  a: p.source.shopName,
+                  b: p.source.invoiceNo || '—',
+                })}
+              </p>
+            )}
             {p.supplier &&
             <Link to={`/suppliers/${p.supplierId}`}
             className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100">

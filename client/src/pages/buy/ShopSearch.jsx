@@ -42,6 +42,18 @@ export default function ShopSearch() {
   const { isRetailer } = useAuth();
   const { shops, shopId, loadingShops, selectShop, refreshShops } = useShop();
 
+  /*
+    Search wali list me sirf SAVE ki hui dukaanein.
+
+    Context saari judi hui dukaanein rakhta hai (dukaan badalne aur "aap is
+    dukaan se jude hain ya nahi" jaanchne ke liye wo poori list chahiye). Par ye
+    list Instagram ki search history jaisi hai — usme wahi dikhna chahiye jise
+    aadmi ne khud save kiya ho. Save hatane ka matlab "yahan se hata do" hai,
+    "rishta tod do" nahi — khata, bill aur order sab apni jagah rehte hain.
+  */
+  const savedShops = shops.filter((s) => s.saved);
+  const unsavedCount = shops.length - savedShops.length;
+
   const [phone, setPhone] = useState('');
   const [searching, setSearching] = useState(false);
   const [found, setFound] = useState(null);
@@ -182,26 +194,28 @@ export default function ShopSearch() {
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           {t('Aapki dukaanein')}
         </p>
-        {shops.length > 0 && (
-          <span className="text-xs text-slate-400">{t('{n} dukaan', { n: shops.length })}</span>
+        {savedShops.length > 0 && (
+          <span className="text-xs text-slate-400">{t('{n} dukaan', { n: savedShops.length })}</span>
         )}
       </div>
 
-      {loadingShops && !shops.length ? (
+      {loadingShops && !savedShops.length ? (
         <div className="flex justify-center py-10 text-slate-400"><Spinner size={26} /></div>
-      ) : !shops.length ? (
+      ) : !savedShops.length ? (
         <Card>
           <EmptyState
             icon={Store}
-            title={t('Abhi koi dukaan judi nahi hai')}
-            message={isRetailer
-              ? t('Upar number daal kar dhundhein. Jud jane ke baad wo yahan hamesha dikhegi.')
-              : t('Jis wholesaler se aap maal lete hain uska number upar daalein. Jud jane ke baad wo yahan hamesha dikhegi.')}
+            title={unsavedCount > 0 ? t('Yahan koi dukaan save nahi hai') : t('Abhi koi dukaan judi nahi hai')}
+            message={unsavedCount > 0
+              ? t('{n} dukaan judi to hai, par save nahi — uska number daal kar save kar lijiye, phir wo yahan hamesha dikhegi.', { n: unsavedCount })
+              : (isRetailer
+                ? t('Upar number daal kar dhundhein. Jud jane ke baad wo yahan hamesha dikhegi.')
+                : t('Jis wholesaler se aap maal lete hain uska number upar daalein. Jud jane ke baad wo yahan hamesha dikhegi.'))}
           />
         </Card>
       ) : (
         <div className="space-y-3">
-          {shops.map((shop) => (
+          {savedShops.map((shop) => (
             <ShopCard
               key={shop._id}
               shop={shop}
@@ -212,6 +226,16 @@ export default function ShopSearch() {
             />
           ))}
         </div>
+      )}
+
+      {/*
+        Save hatane se rishta nahi tootta — par list se gayab hone par aadmi
+        ko lagta hai ki tut gaya. Isliye ye ek line saaf bata deti hai.
+      */}
+      {savedShops.length > 0 && unsavedCount > 0 && (
+        <p className="mt-3 px-1 text-xs text-slate-400">
+          {t('{n} aur dukaan judi hai jo save nahi hai — uska khata aur bill waise ke waise hain.', { n: unsavedCount })}
+        </p>
       )}
     </>
   );

@@ -14,6 +14,7 @@ import { applyStockChange } from './stock.service.js';
 import { khepNikalo, khepWapas } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { applyCredit, releaseCredit, tradedQty } from './settlement.service.js';
+import { sweepAdvance } from './balance.service.js';
 import { decideTaxType, computeInvoice, hsnSummary } from './gst.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -611,6 +612,8 @@ export async function createReturn(businessId, payload, userId) {
     await note.save();
   }
 
+  await sweepAdvance(businessId, party._id);
+
   return getReturn(businessId, note._id);
 }
 
@@ -676,6 +679,10 @@ export async function deleteReturn(businessId, id, userId, viewer = null) {
     businessId,
     note.allocations,
   );
+
+  // Credit wapas lene se bill dobara khul gaya — us party ka koi aur jama
+  // paisa pada ho to wo ab is bill pe laga do
+  await sweepAdvance(businessId, note.partyId);
 
   const no = note.returnNo;
   await note.deleteOne();

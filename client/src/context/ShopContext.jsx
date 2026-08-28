@@ -74,12 +74,25 @@ export function ShopProvider({ children }) {
   */
   setShopHeaderEnabled(buying);
 
-  /* ---- save ki hui dukaanein ---- */
+  /* ---- judi hui dukaanein ---- */
   const refreshShops = useCallback(async () => {
     if (!user || !canBuy || (isRetailer && !isApproved)) { setShops([]); return []; }
     setLoadingShops(true);
     try {
-      const res = await api.get('/shops/saved');
+      /*
+        `all=1` — SAARI judi hui dukaanein, sirf save ki hui nahi.
+
+        Ye farak zaroori hai. Pehle sirf save wali aati thin, aur usse ek gandi
+        baat hoti thi: dukaan ke page pe save ka button dabate hi wo dukaan is
+        list se gayab ho jati, neeche wali jaanch use "ab judi hi nahi" maan kar
+        chunaav chhod deti, aur aadmi us dukaan se BAHAR phenk diya jata —
+        sirf bookmark hatane par.
+
+        Save ka matlab sirf itna hai ki wo SEARCH wali list me dikhe ya nahi
+        (ShopSearch me wahi chhalni lagti hai). Judna aur save karna do alag
+        baatein hain, aur ab code me bhi alag hain.
+      */
+      const res = await api.get('/shops/saved', { params: { all: '1' } });
       const list = res.data || [];
       setShops(list);
       return list;

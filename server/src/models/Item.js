@@ -3,7 +3,7 @@ import { UNITS } from '../config/constants.js';
 
 const itemSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
 
     name: { type: String, required: true, trim: true },
     sku: { type: String, trim: true, default: '' },

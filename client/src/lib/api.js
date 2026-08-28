@@ -93,8 +93,44 @@ api.interceptors.response.use(
       error.message ||
       'Kuch gadbad ho gayi, dobara koshish karein';
 
+    /*
+      ─────────── PLAN KHATAM (Step 1) ───────────
+
+      Server bechne wale raste band karne par 403 ke saath
+      `reason: 'subscription_required'` bhejta hai. Har page pe alag alag
+      laal error dikhana sabse bura jawab hoga — aadmi ko lagta hai app
+      kharab hai, aur wo yahi sochta reh jata hai ki kiya kya jaye.
+
+      Isliye ek hi nishaan lagate hain, aur app use dekh kar seedha wahi
+      screen kholta hai jahan se plan liya ja sakta hai. 401 wale raste se
+      alag rakha hai, kyunki yahan LOGOUT nahi karna — aadmi andar hi rehna
+      chahiye, warna wo plan lega kaise.
+    */
+    if (status === 403 && error.response?.data?.details?.reason === 'subscription_required') {
+      try {
+        sessionStorage.setItem('rr_needs_plan', '1');
+      } catch { /* private window — koi baat nahi */ }
+      window.dispatchEvent(new CustomEvent('rr:needs-plan'));
+    }
+
     if (status === 401) {
       localStorage.removeItem('rr_token');
+      /*
+        BAHAR KYUN HUE — ye batana zaroori hai (item 24).
+
+        Ab ek naya login purane phone ko apne aap bahar kar deta hai. Bina
+        wajah bataye aadmi khud ko achanak login page pe khada paata hai aur
+        sochta hai app kharab hai — wo dobara login karta hai, aur DOOSRA
+        phone bahar ho jata hai. Do log ek doosre ko baari baari bahar karte
+        rehte hain aur kisi ko samajh nahi aata ki ho kya raha hai.
+
+        `sessionStorage` isliye ki ye khabar sirf is ek baar ke liye hai —
+        tab band karte hi chali jani chahiye.
+      */
+      try {
+        if (message) sessionStorage.setItem('rr_logout_reason', message);
+      } catch { /* private window me storage band ho sakta hai — koi baat nahi */ }
+
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
       }

@@ -12,7 +12,7 @@ import { LEDGER_TYPES } from '../config/constants.js';
  */
 const ledgerEntrySchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
 
     date: { type: Date, default: Date.now },
@@ -33,5 +33,6 @@ const ledgerEntrySchema = new mongoose.Schema(
 );
 
 ledgerEntrySchema.index({ businessId: 1, partyId: 1, date: -1, createdAt: -1 });
+ledgerEntrySchema.index({ businessId: 1, refType: 1, refId: 1 });
 
 export default mongoose.model('LedgerEntry', ledgerEntrySchema);

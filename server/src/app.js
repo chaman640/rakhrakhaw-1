@@ -1,11 +1,13 @@
 import express from 'express';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
-import { env } from './config/env.js';
+import { env, assertBillingReady } from './config/env.js';
 import { rememberOrigin, detectedOrigin } from './config/origin.js';
 import { CLIENT_DIST, UPLOAD_DIR } from './config/paths.js';
 import apiRoutes from './routes/index.js';
@@ -62,6 +64,22 @@ app.use(cors({
   credentials: true,
 }));
 
+/*
+  Razorpay ka webhook — RAW body chahiye, json parse kiya hua nahi.
+
+  Signature poore raw bytes pe banta hai. Ek baar `express.json()` ne use
+  padh liya to wo bytes wapas nahi milte (`JSON.stringify` se dobara banaya
+  hua text kabhi bilkul wahi nahi hota — space, key ka kram, sab badal jata
+  hai), aur HMAC kabhi match nahi karega.
+
+  Isliye SIRF is ek raste pe raw parser, aur wo `express.json()` se PEHLE.
+*/
+// `type: () => true` — har content-type. (Glob `*` `/` `*` likhne se bachte
+// hain: us do-akshar ke jode ko comment padhne wale auzaar galat samajh lete
+// hain, aur ye galti aaj hi hamare apne check me pakdi gayi.)
+app.use('/api/billing/webhook', express.raw({ type: () => true, limit: '1mb' }));
+
+app.use(compression());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -69,6 +87,43 @@ if (!env.isProd) app.use(morgan('dev'));
 
 // Local upload ki images (Cloudinary set nahi hai to yahi use hoti hain)
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+assertBillingReady();
+
+/*
+  Rate limit — do alag hadd.
+
+  OTP wala rasta sabse mehnga hai (har call ek SMS = paisa), isliye uspe alag
+  aur bahut sakht hadd. Baaki API pe dhili hadd, sirf bhaag-daud rokne ke liye.
+
+  Ginti IP se hoti hai. Ek hi dukaan ke kai log ek wifi pe ho sakte hain, isliye
+  aam API ki hadd udaar rakhi hai — 300/minute me koi asli aadmi nahi atakta.
+*/
+app.use('/api/auth/otp', rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Bahut baar koshish ho gayi — thodi der baad dobara try karein' },
+}));
+
+app.use('/api/auth', rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Bahut baar koshish ho gayi — thodi der baad dobara try karein' },
+}));
+
+app.use('/api', rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_PER_MIN || 300),
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Webhook ko chhod dein — wo Razorpay ke server se aata hai, aadmi se nahi
+  skip: (req) => req.path === '/billing/webhook',
+  message: { success: false, message: 'Thoda dheere — ek minute me itni request nahi' },
+}));
 
 app.use('/api', apiRoutes);
 
@@ -93,6 +148,14 @@ if (hasClientBuild) {
     setHeaders(res, filePath) {
       if (filePath.endsWith('index.html')) {
         res.setHeader('Cache-Control', 'no-cache');
+      } else if (filePath.endsWith('sw.js')) {
+        /*
+          Service worker kabhi cache nahi. Purana sw chipak jaye to notification
+          ka naya code kabhi pahunchta hi nahi, aur wo bug pakadna bahut mushkil
+          hai — sab kuch theek dikhta hai, bas alert nahi aate.
+        */
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Service-Worker-Allowed', '/');
       } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }

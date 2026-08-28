@@ -12,6 +12,7 @@ import {
   PageHeader, Card, Button, Chips, Pagination, EmptyState, Spinner, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import PushToggle from '@/components/PushToggle';
 import { t } from '@/lib/i18n';
 
 const TYPES = [
@@ -151,7 +152,9 @@ export default function Notifications() {
     <>
       <PageHeader
         title={t('Notifications')}
-        subtitle={counts.unread > 0 ? `${counts.unread} abhi tak padhi nahi` : 'Sab padh liya'}
+        subtitle={counts.unread > 0
+          ? t('{n} abhi tak padhi nahi', { n: counts.unread })
+          : t('Sab padh liya')}
         action={
           <>
             {counts.unread > 0 && (
@@ -167,6 +170,10 @@ export default function Notifications() {
           </>
         }
       />
+
+      <div className="mb-4">
+        <PushToggle />
+      </div>
 
       <Card className="mb-5" padding={false}>
         <div className="flex flex-wrap items-center gap-3 p-4">

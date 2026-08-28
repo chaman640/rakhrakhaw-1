@@ -11,6 +11,8 @@ import { validateGstin } from '../utils/gstin.js';
 import { generateInviteCode } from '../utils/generateCode.js';
 import { businessForUser } from '../utils/businessView.js';
 import { User, Business, Party, Membership } from '../models/index.js';
+import { assertOtpToken } from './otp.service.js';
+import { cacheBust } from '../utils/cache.js';
 
 /**
  * Token banane wala.
@@ -20,9 +22,13 @@ import { User, Business, Party, Membership } from '../models/index.js';
  * jagah apna alag jwt.sign na likh baithe aur do tarah ke token ban jayen.
  */
 function signToken(user) {
-  return jwt.sign({ sub: user._id.toString(), role: user.role }, env.jwtSecret, {
-    expiresIn: env.jwtExpiresIn,
-  });
+  return jwt.sign(
+    // `ss` = session seq. Chhota naam isliye ki ye har request ke saath jata
+    // hai — token jitna chhota, header utna halka.
+    { sub: user._id.toString(), role: user.role, ss: user.sessionSeq || 0 },
+    env.jwtSecret,
+    { expiresIn: env.jwtExpiresIn },
+  );
 }
 
 function publicUser(user) {
@@ -76,8 +82,21 @@ function publicUser(user) {
 }
 
 /** Wholesaler signup — User + Business dono ek saath bante hain */
-export async function signupWholesaler({ name, phone, password, businessName }) {
+export async function signupWholesaler({ name, phone, password, businessName, otpToken }) {
   const cleanPhone = normalizePhone(phone);
+
+  /*
+    OTP PEHLE, ACCOUNT BAAD ME.
+
+    Ye jaanch sabse pehli line pe hai, jaan-boojh kar. Baad me rakhne par
+    account bante bante ruk jata aur aadhi cheezein ban chuki hoti hain (user
+    ban gaya, business nahi) — us gandagi ko saaf karne ka koi rasta hi nahi
+    hota. Bina saboot ke yahan se aage kuch hota hi nahi.
+
+    Number bhi milaya jata hai: bina uske koi apne number pe OTP verify karta
+    aur account KISI AUR ke number pe bana leta.
+  */
+  assertOtpToken(otpToken, 'SIGNUP', cleanPhone);
 
   const exists = await User.findOne({ phone: cleanPhone });
   if (exists) throw ApiError.conflict('Ye number pehle se registered hai. Login karein.');
@@ -157,9 +176,12 @@ export async function getInviteInfo(code) {
 }
 
 /** Retailer signup — invite code se. User + Party dono bante hain. */
-export async function signupRetailer({ inviteCode, name, shopName, phone, password }) {
+export async function signupRetailer({ inviteCode, name, shopName, phone, password, otpToken }) {
   const cleanPhone = normalizePhone(phone);
   const code = inviteCode.toUpperCase();
+
+  // OTP pehle — upar wholesaler wale me poori wajah likhi hai
+  assertOtpToken(otpToken, 'SIGNUP', cleanPhone);
 
   const business = await Business.findOne({ inviteCode: code, isActive: true });
   if (!business) throw ApiError.notFound('Invite link galat hai ya expire ho gaya');
@@ -271,10 +293,28 @@ export async function login({ phone, password }) {
   const okPassword = await user.checkPassword(password);
   if (!okPassword) throw ApiError.unauthorized('Password galat hai');
 
-  user.lastLoginAt = new Date();
-  await user.save();
+  /*
+    NAYA LOGIN = PURANA PHONE BAHAR (item 24).
 
-  return { token: signToken(user), ...(await buildSession(user)) };
+    Ginti badhate hi purane phone ka token bekaar ho jata hai — uski agli
+    request pe hi. `$inc` isliye ki do login ek saath aa jayein to dono ek hi
+    purani ginti padh kar ek hi nayi na likh dein; aisa hone par ek phone
+    zinda reh jata, jo poore fix ka matlab hi khatam kar deta.
+
+    `new: true` se signToken ko wahi nayi ginti milti hai jo abhi database me
+    likhi gayi — apne aap ko hi bahar kar dene wali galti yahin rukti hai.
+  */
+  const fresh = await User.findOneAndUpdate(
+    { _id: user._id },
+    { $inc: { sessionSeq: 1 }, $set: { lastLoginAt: new Date() } },
+    { new: true },
+  );
+
+  // Naya login = purana phone bahar. Cache turant saaf, warna wo 15 second
+  // aur chalta rehta aur "ek number ek jagah" us pal jhooth lagta hai.
+  cacheBust(`u:${user._id}`);
+
+  return { token: signToken(fresh), ...(await buildSession(fresh)) };
 }
 
 /** /auth/me — user + business + (retailer ke liye) party status */
@@ -298,6 +338,34 @@ export async function buildSession(user) {
   // jata tha — matlab har salesman ke paas invite code (jisse koi bhi retailer
   // ban kar ghus sakta hai), malik ki UPI ID aur dukaan ka email pahunch jata tha.
   return { user: publicUser(user), business: businessForUser(business, user), party };
+}
+
+/**
+ * PASSWORD BHOOL GAYE — OTP se naya password.
+ *
+ * `changePassword` (neeche) purana password poochta hai — wo tab hai jab aadmi
+ * andar hai. Ye tab hai jab wo andar aa hi nahi pa raha. Isliye yahan purane
+ * password ki jagah OTP ka saboot lagta hai.
+ *
+ * Do baatein jaan-boojh kar:
+ *   1. `isActive` yahan bhi dekhte hain. Band kiye hue account ka password
+ *      badal dena use chupke se zinda kar dene jaisa hota.
+ *   2. Naya token yahan NAHI dete — aadmi ko ek baar naye password se login
+ *      karna padta hai. Isse wo password ek baar khud type karta hai, aur agli
+ *      baar bhoolne ka mauka kam ho jata hai.
+ */
+export async function resetPassword({ phone, otpToken, newPassword }) {
+  const cleanPhone = normalizePhone(phone);
+  assertOtpToken(otpToken, 'RESET', cleanPhone);
+
+  const user = await User.findOne({ phone: cleanPhone });
+  if (!user) throw ApiError.notFound('Ye number registered nahi hai');
+  if (!user.isActive) throw ApiError.forbidden('Aapka account band kar diya gaya hai');
+
+  await user.setPassword(newPassword);
+  await user.save();
+
+  return { phone: cleanPhone };
 }
 
 export async function changePassword(userId, { currentPassword, newPassword }) {

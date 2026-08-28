@@ -4,12 +4,17 @@ import {
   PARTY_TYPES, LEDGER_TYPES, PAYMENT_STATUS, COUNTER_KEYS, NOTIFICATION_TYPES,
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
-import { Payment, Party, Invoice, Counter, Business, LedgerEntry, Order } from '../models/index.js';
+import {
+  Payment, Party, Invoice, Counter, Business, LedgerEntry, Order, ReturnNote,
+} from '../models/index.js';
 import {
   scopeByParty, scopePartiesMatch, isScoped, canSeeDoc, ownPartyIds, toObjectIds,
 } from '../utils/scope.js';
 import { postEntry, reverseEntriesFor, recalcBalances } from './ledger.service.js';
 import { applyCredit, applyPaidAtomic as settleApply } from './settlement.service.js';
+import {
+  outstandingFor, sweepAdvance, listWeOwe, refundableForReturn, businessHisaab,
+} from './balance.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -118,6 +123,23 @@ export async function getStats(businessId, viewer = null) {
     ]),
   ]);
 
+  /*
+    Bade number ke neeche uski TOD-PHOD.
+
+    "Kul lena hai ₹4,20,000" ke saath ab ye bhi jata hai ki usme se kitna
+    khule bill ka hai. Pehle Payments page ye number dikhata tha aur Bills
+    page ek doosra — dono sahi, par dukaandaar ke liye do alag jawab. Ab wahi
+    hisaab dono jagah se aata hai (balance.service).
+  */
+  /*
+    Hadd wale staff ko bill ka jod NAHI bhejte.
+
+    Uski party ki list to chhanti hai, par khule bill ka jod poori dukaan ka
+    hota — yaani salesman ko chhupa hua total dikh jata. Aisi halat me ye
+    khaana hi nahi bhejte; screen bas bada number dikhati hai, tod-phod nahi.
+  */
+  const hisaab = isScoped(viewer) ? null : await businessHisaab(businessId);
+
   return {
     todayCount: today?.n || 0,
     todayAmount: round2(today?.amount || 0),
@@ -129,6 +151,7 @@ export async function getStats(businessId, viewer = null) {
     dueParties: receivable?.n || 0,
     totalAdvance: round2(receivable?.advance || 0),
     advanceParties: receivable?.advanceParties || 0,
+    ...(hisaab ? { billsDue: hisaab.billsDue, openBills: hisaab.openBills } : {}),
   };
 }
 
@@ -362,9 +385,23 @@ export async function createPayment(businessId, payload, userId) {
       credit bhi. Sirf khule bill jodne se ek aadmi jiska purana udhaar khate
       me pada hai, uska paisa "zyada" bata kar rok diya jata — jo galat hai.
     */
+    /*
+      HADD AB DONO ME SE JO BADA HO — khata ya khule bill.
+
+      Pehle sirf `party.balance` dekhta tha, aur wahi ek asli rukawat ban gaya
+      tha. Purane data me (jab jama paisa apne aap bill pe nahi lagta tha) aisi
+      halat ban jati thi: khata 0, aur bill ₹5,000 khula. Dukaandaar ₹5,000
+      cash haath me le kar khada rehta aur app mana kar deta —
+      "Inka koi udhaar baaki nahi hai". Paisa aa chuka tha, entry ho hi nahi
+      pati thi.
+
+      `outstandingFor` dono dekhta hai. Naye data me dono barabar hi hote hain
+      (`sweepAdvance` ki wajah se), aur purana data bhi bina kisi migration ke
+      apne aap chal jata hai.
+    */
     assertNotOverpaying({
       amount,
-      outstanding: round2(party.balance || 0),
+      outstanding: await outstandingFor(businessId, party),
       allowAdvance: payload.allowAdvance === true,
     });
     allocation = await allocateToInvoices(businessId, party._id, amount);
@@ -405,7 +442,7 @@ export async function createPayment(businessId, payload, userId) {
   if (!isRefund && direction === 'OUT' && party.type === PARTY_TYPES.SUPPLIER) {
     assertNotOverpaying({
       amount,
-      outstanding: round2(party.balance || 0),
+      outstanding: await outstandingFor(businessId, party),
       allowAdvance: payload.allowAdvance === true,
       kaunsa: 'dena',
     });
@@ -428,6 +465,8 @@ export async function createPayment(businessId, payload, userId) {
     confirmedBy: userId,
     allocations: allocation.allocations,
     againstInvoiceIds: allocation.allocatedTo,
+    // Kis wapasi ka paisa wapas kiya — taaki wahi paisa dobara na diya ja sake
+    returnNoteId: isRefund ? (payload.returnNoteId || null) : null,
     note: payload.note || '',
     recordedBy: userId,
   });
@@ -453,6 +492,16 @@ export async function createPayment(businessId, payload, userId) {
       data: { paymentId: payment._id },
     });
   }
+
+  /*
+    Bacha hua paisa kisi khule bill pe rah to nahi gaya — ek baar aur dekh lo.
+
+    Aam haalat me yahan kuch nahi hota (`allocateToInvoices` upar hi sab laga
+    chuka hota hai). Ye us PURANE data ke liye hai jo is fix se pehle bana tha:
+    jaise hi us party pe koi bhi paisa hilta hai, uska bigda hua hisaab apne
+    aap seedha ho jata hai. Bina kisi migration ke, bina kisi ko bataye.
+  */
+  await sweepAdvance(businessId, party._id);
 
   return { payment: await getPayment(businessId, payment._id), advance: allocation.advance };
 }
@@ -556,6 +605,8 @@ export async function confirmPayment(businessId, id, userId, viewer = null) {
     throw err;
   }
 
+  await sweepAdvance(businessId, payment.partyId);
+
   await notifyRetailer(businessId, payment.partyId, {
     type: NOTIFICATION_TYPES.PAYMENT_RECEIVED,
     title: `Payment confirm ho gaya — ${payment.paymentNo}`,
@@ -635,6 +686,14 @@ export async function deletePayment(businessId, id, userId, viewer = null) {
   */
   await Order.updateOne({ businessId, paymentId: payment._id }, { $set: { paymentId: null } });
 
+  /*
+    Payment hatne se bill dobara khul gaya hai. Agar us party ka koi aur paisa
+    hamare paas jama pada hai, to wo ab is khule bill pe lagna chahiye — warna
+    ek taraf bill udhaar dikhata aur doosri taraf uska hi paisa hamare paas
+    pada rehta.
+  */
+  await sweepAdvance(businessId, payment.partyId);
+
   return {
     deleted: true,
     message: `${payment.paymentNo} hata diya — bill aur khata dono wapas theek kar diye`,
@@ -645,4 +704,83 @@ export async function deletePayment(businessId, id, userId, viewer = null) {
 
 export async function listMyPayments(businessId, partyId, q) {
   return listPayments(businessId, { ...q, partyId: String(partyId) });
+}
+
+
+/* ═══════════════════════════════════════════════ "DENA HAI" — ulti taraf ki list */
+
+/**
+ * JINKA PAISA HAMARE PAAS PADA HAI.
+ *
+ * App abhi tak sirf ek hi taraf jaanta tha — "lena hai". Har list me
+ * `balance > 0` wali chhalni lagti thi, isliye jis party ka paisa HAMARE paas
+ * jama tha wo har jagah se chup-chaap gir jati thi. Dukaandaar ko pata hi nahi
+ * chalta tha ki kiska kitna dena hai, jab tak wo aadmi khud aakar na kahe.
+ *
+ * Ab payment history ke bagal me yahi list khulti hai — naam, rakam, aur paisa
+ * AAYA KAHAN SE (kaunsi wapasi, kaunsi payment). Wahin se seedha wapas bhi
+ * kiya ja sakta hai.
+ */
+export async function listWeOwePayments(businessId, viewer = null) {
+  // Hadd wale staff ko sirf apni party — wahi chhalni jo baaki har list pe hai
+  return listWeOwe(businessId, { partyMatch: scopePartiesMatch({}, viewer) });
+}
+
+/* ══════════════════════════════════════════════ WAPASI KA PAISA WAPAS (item 18) */
+
+/**
+ * Maal wapas aaya — ab uska PAISA bhi wapas.
+ *
+ * Ab tak wapasi sirf khate me credit daalti thi. Wo aadhi baat hai: bahut baar
+ * graahak dobara kuch lega hi nahi, use apna paisa cash me chahiye. Uska koi
+ * rasta hi nahi tha — dukaandaar galti se "payment" bana deta tha, jo khate me
+ * ULTA lagta tha aur uska jama paisa ghatne ki jagah BADH jata tha.
+ *
+ * Teen rok, teeno zaroori:
+ *   1. jitna is wapasi ka paisa bill pe lag chuka hai wo wapas nahi ho sakta
+ *      (wo to bill chukane me kharch ho gaya)
+ *   2. is wapasi ka paisa DOBARA wapas nahi ho sakta (`returnNoteId` se ginti)
+ *   3. party ke paas jitna jama hai us se zyada kabhi nahi
+ *
+ * Aage ka poora kaam `createPayment` hi karta hai — wahi ek darwaza. Ulti
+ * taraf ka paisa wo khud pehchan kar khate me DEBIT daalta hai.
+ */
+export async function refundReturn(businessId, returnNoteId, payload, userId) {
+  const note = await ReturnNote.findOne({ _id: returnNoteId, businessId }).lean();
+  if (!note) throw ApiError.notFound('Ye return nahi mila');
+
+  const { refundable, jama, alreadyRefunded } = await refundableForReturn(businessId, note);
+  const amount = round2(payload.amount || refundable);
+
+  if (amount <= 0) throw ApiError.badRequest('Wapas karne ko kuch bacha hi nahi');
+  if (amount > refundable) {
+    throw ApiError.badRequest(
+      alreadyRefunded > 0
+        ? `Is wapasi ka ₹${alreadyRefunded} pehle hi wapas ho chuka hai — ab sirf ₹${refundable} bacha hai`
+        : `Sirf ₹${refundable} wapas ho sakta hai (jama ₹${jama})`,
+      { refundable, jama, alreadyRefunded },
+    );
+  }
+
+  const party = await Party.findOne({ _id: note.partyId, businessId }).select('type').lean();
+  if (!party) throw ApiError.badRequest('Party nahi mili');
+
+  return createPayment(businessId, {
+    partyId: note.partyId,
+    amount,
+    // Retailer ko paisa DENA hai -> OUT. Supplier se paisa LENA hai -> IN.
+    direction: party.type === PARTY_TYPES.SUPPLIER ? 'IN' : 'OUT',
+    mode: payload.mode || 'CASH',
+    reference: payload.reference || '',
+    returnNoteId: note._id,
+    note: payload.note || `${note.returnNo} ka paisa wapas`,
+    date: payload.date,
+  }, userId);
+}
+
+/** Wapasi ke page pe "kitna wapas ho sakta hai" — button dikhane ke liye */
+export async function refundInfo(businessId, returnNoteId) {
+  const note = await ReturnNote.findOne({ _id: returnNoteId, businessId }).lean();
+  if (!note) throw ApiError.notFound('Ye return nahi mila');
+  return { returnNo: note.returnNo, ...(await refundableForReturn(businessId, note)) };
 }

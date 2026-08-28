@@ -9,6 +9,23 @@ seedha order karein. Vyapar + Thokmarket ka hybrid.
 
 ## Ab tak kya bana
 
+### OTP — signup aur password reset · [poori detail: OTP.md](OTP.md)
+- [x] **Signup pe OTP** — wholesaler aur retailer dono; pehle form, phir OTP
+- [x] **Password bhool gaye** — Login pe naya link: number → OTP → naya password
+- [x] SMS **Fast2SMS** se; key khali ho to dev me OTP log aur screen pe (live pe kabhi nahi)
+- [x] Code **hash me**, verify hote hi **mit** jata hai, aur token me number bhi likha hai
+- [x] Rok: 60 second, ghante me 5 SMS, 5 galat koshish, 10 minute ki mohlat
+- [x] `npm run check` — **83 jaanch**
+
+
+### Poora system check · [poori detail: AUDIT.md](AUDIT.md)
+- [x] **Bill ke neeche wala discount** ab kharidne wale ki purchase me bhi jata hai (pehle chup-chaap gir jata tha)
+- [x] Invoice ka tax teen khaanon se jod kar liya jata hai (`taxTotal` naam ka khaana hai hi nahi)
+- [x] **Save hatane se dukaan se bahar nahi phenkta** — judna aur save karna ab do alag baatein
+- [x] Cart ki chetavni ab dabbe me, toast me nahi (har 20 second dobara nahi aati)
+- [x] `npm run check` — **83 jaanch**, bina database ke
+
+
 ### Part 17 — Do darwaze (Step 3/3) · [poori detail: STEP-3.md](STEP-3.md)
 - [x] **Bill bante hi kaam apne aap ban jata hai** — kharidne wale ke yahan, poora bhara hua
 - [x] **"Maal aaya" wali khabar** apni alag chhalni ke saath, aur menu me badge
@@ -43,7 +60,7 @@ seedha order karein. Vyapar + Thokmarket ka hybrid.
 - [x] **Number se dukaan dhoondho, judo, save karo** — `/api/shops` (poora 10 ank; aadha number nahi chalta)
 - [x] Profile pe **Seller ⇄ Buyer** toggle; buy mode ka apna menu (Catalog ki jagah "Dukaan")
 - [x] Purane retailer apne aap naye system me — startup ka backfill
-- [x] `npm run selfcheck` — 61 jaanch, **bina database ke**
+- [x] `npm run selfcheck` — 68 jaanch, **bina database ke**
 
 
 ### Part 1 — Foundation

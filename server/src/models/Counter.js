@@ -8,7 +8,7 @@ import { padNumber } from '../utils/generateCode.js';
  */
 const counterSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     key: { type: String, required: true },  // 'invoice' | 'order' | 'purchase' | 'payment'
     fy: { type: String, required: true },   // '26-27'
     seq: { type: Number, default: 0 },

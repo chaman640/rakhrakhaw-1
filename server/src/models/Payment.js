@@ -3,8 +3,8 @@ import { PAYMENT_MODES, PAYMENT_STATUS } from '../config/constants.js';
 
 const paymentSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
-    partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
+    partyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true },
 
     paymentNo: { type: String, required: true },
     date: { type: Date, default: Date.now },
@@ -37,6 +37,28 @@ const paymentSchema = new mongoose.Schema(
     }],
     againstInvoiceIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }],
 
+    /**
+     * KIS WAPASI KA PAISA WAPAS KIYA.
+     *
+     * Wapasi (credit note) khate me credit daal deti hai, par paisa haath se
+     * nikla ya nahi — ye kahin likha hi nahi jata tha. Isliye dukaandaar ek hi
+     * wapasi ka paisa do baar wapas kar sakta tha, aur app rok bhi nahi sakta
+     * tha (uske paas ginne ko kuch tha hi nahi).
+     */
+    returnNoteId: { type: mongoose.Schema.Types.ObjectId, ref: 'ReturnNote', default: null },
+
+    /**
+     * Kharid ke SAATH diya hua paisa.
+     *
+     * Ab tak aise paise ki sirf khata entry banti thi, Payment ka record nahi
+     * — isliye supplier ko diya hua paisa Payment page pe kabhi dikhta hi
+     * nahi tha. "Aaj kitna paisa gaya" ka jawab aadha rehta tha.
+     *
+     * Ye nishaan isliye ki purchase mitne par yahi payment bhi hat jaye aur
+     * koi anaath entry na bache.
+     */
+    sourcePurchaseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Purchase', default: null },
+
     // Bill banate waqt "abhi itna mila" wali payment — bill cancel hoga to yahi hategi.
     // Baad me alag se aayi payments cancel pe delete NAHI hoti, sirf dusre bill pe lag jati hain.
     sourceInvoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', default: null },
@@ -50,5 +72,9 @@ const paymentSchema = new mongoose.Schema(
 paymentSchema.index({ businessId: 1, paymentNo: 1 }, { unique: true });
 paymentSchema.index({ businessId: 1, partyId: 1, date: -1 });
 paymentSchema.index({ businessId: 1, status: 1 });
+paymentSchema.index({ businessId: 1, returnNoteId: 1 });
+paymentSchema.index({ businessId: 1, sourcePurchaseId: 1 });
+paymentSchema.index({ businessId: 1, 'allocations.invoiceId': 1 });
+paymentSchema.index({ businessId: 1, againstInvoiceIds: 1 });
 
 export default mongoose.model('Payment', paymentSchema);

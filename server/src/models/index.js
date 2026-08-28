@@ -4,6 +4,8 @@ export { default as Business } from './Business.js';
 export { default as Party } from './Party.js';
 // Ek user ↔ kai dukaan (kharidne ka rishta). Wajah Membership.js me likhi hai.
 export { default as Membership } from './Membership.js';
+// OTP — number sach me uska hai ya nahi (Otp.js me wajah)
+export { default as Otp } from './Otp.js';
 // Kharida hua maal apni dukaan me daalne ka kaam. Wajah StockIntake.js me.
 export { default as StockIntake } from './StockIntake.js';
 export { default as Category } from './Category.js';
@@ -23,3 +25,6 @@ export { default as ReturnNote } from './ReturnNote.js';
 export { default as AuditLog } from './AuditLog.js';
 export { default as StaffInvite } from './StaffInvite.js';
 export { default as Expense } from './Expense.js';
+export { default as Subscription } from './Subscription.js';
+export { default as BillingOrder } from './BillingOrder.js';
+export { default as PushSubscription } from './PushSubscription.js';

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { t } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Smartphone, Receipt, ChevronRight, Copy, Check, Clock,
+  BookOpen, Smartphone, Receipt, ChevronRight, Copy, Check, Clock, Printer,
   CircleCheck, CircleX, RotateCcw } from
 'lucide-react';
 import api from '@/lib/api';
@@ -13,7 +13,9 @@ import {
   PageHeader, Card, CardHeader, Button, Input, Badge, Modal, Textarea,
   Spinner, EmptyState, useToast } from
 '@/components/ui';
+import HisaabCard from '@/components/HisaabCard';
 import LedgerTable from '@/pages/wholesaler/khata/LedgerTable';
+import LedgerPrint from '@/components/khata/LedgerPrint';
 
 const statusTone = { pending: 'amber', confirmed: 'green', failed: 'red' };
 const statusLabel = {
@@ -38,6 +40,8 @@ export default function MyKhata() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [payOpen, setPayOpen] = useState(false);
+  // CA wala kagaz sirf print ke pal me banta hai
+  const [sheet, setSheet] = useState(false);
 
   /*
     CACHE — khata dobara kholne par khali nahi hota.
@@ -63,47 +67,60 @@ export default function MyKhata() {
   }
   if (!data) return null;
 
-  const due = Number(data.party?.balance || 0);
+  const due = Number(data.hisaab?.netDue ?? data.party?.balance ?? 0);
 
   return (
     <>
       <PageHeader
-        title={t("Mera Khata")}
-        subtitle={`${data.shopName || 'Wholesaler'} ke saath poora hisaab`} />
+        title={t('Mera Khata')}
+        subtitle={t('{a} ke saath poora hisaab', { a: data.shopName || t('Wholesaler') })}
+        action={
+          /*
+            CA WALA KAGAZ RETAILER KE PAAS BHI (item 21).
+
+            Uska CA bhi wahi kagaz maangta hai. Ab tak wo wholesaler ko phone
+            karke "khata bhej do" kehta tha, aur wholesaler screenshot bhej
+            deta tha — jo CA ke paas nahi chalta.
+          */
+          <Button
+            variant="secondary"
+            icon={Printer}
+            onClick={() => {
+              setSheet(true);
+              setTimeout(() => { window.print(); setSheet(false); }, 250);
+            }}
+          >
+            {t('CA wala khata (PDF)')}
+          </Button>
+        } />
       
 
       {/* Kis dukaan ka khata dikh raha hai */}
       <ShopStrip />
 
-      {/* ---- Balance card ---- */}
-      <Card className={`mb-5 ${due > 0 ? 'border-amber-200 bg-amber-50/50' : 'border-emerald-200 bg-emerald-50/40'}`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-slate-600">
-              {due > 0.01 ? 'Aapko dena hai' : due < -0.01 ? 'Aapka advance jama hai' : 'Hisaab barabar hai'}
-            </p>
-            <p className={`tabular mt-1 text-3xl font-bold ${
-            due > 0.01 ? 'text-amber-700' : due < -0.01 ? 'text-emerald-700' : 'text-slate-500'}`}>
-              {formatMoney(Math.abs(due))}
-            </p>
-            {data.openInvoices?.length > 0 &&
-            <p className="mt-1 text-xs text-slate-500">{t("{a0} bill ke paise baaki hain", { a0:
-                data.openInvoices.length })}
-            </p>
-            }
-          </div>
+      {/*
+        ---- Hisaab ----
 
-          {due > 0.01 && (
-          data.upi ?
-          <Button size="lg" icon={Smartphone} onClick={() => setPayOpen(true)}>{t("Paisa bhejein")}</Button> :
-
-          <p className="max-w-56 rounded-lg bg-white px-3 py-2 text-xs text-slate-500">{t("Online paise bhejne ke liye wholesaler ko apni UPI ID app me daalni hogi.")}
-
-          </p>)
-
-          }
-        </div>
-      </Card>
+        Wahi dabba jo Home pe lagta hai, wahi jawab. Pehle Home `balance`
+        dikhata tha aur yahan khate ka `closing` — do alag number, dono "baaki"
+        kehlate the. Ab dono ek hi `hisaab` se aate hain, isliye alag ho hi
+        nahi sakte.
+      */}
+      <div className="mb-5">
+        <HisaabCard
+          hisaab={data.hisaab}
+          shopName={data.shopName}
+          footer={due > 0.01 ? (
+            data.upi
+              ? <Button size="lg" icon={Smartphone} onClick={() => setPayOpen(true)}>{t('Paisa bhejein')}</Button>
+              : (
+                <p className="rounded-lg bg-white px-3 py-2 text-xs text-slate-500">
+                  {t('Online paise bhejne ke liye wholesaler ko apni UPI ID app me daalni hogi.')}
+                </p>
+              )
+          ) : null}
+        />
+      </div>
 
       {/* ---- Bills jinke paise baaki hain ---- */}
       {data.openInvoices?.length > 0 &&
@@ -191,9 +208,23 @@ export default function MyKhata() {
         due={due}
         onSent={() => {
           // Paisa bhej diya — khata, bheji hui payment ki list, aur bill sab purane ho gaye
-          bust('my-khata', 'my-payments', 'my-bills');
+          /*
+            `my-dashboard` bhi — pehle chhoot gaya tha.
+
+            Paisa bhejne ke baad "Mera Khata" to turant naya ho jata tha, par
+            Home wahi purana number dikhata rehta tha jab tak 20 second wala
+            chakkar na aa jaye. Ek hi cheez do jagah do number — aur yahi
+            shikayat thi ki "payment ho gaya phir bhi udhaar dikh raha hai".
+          */
+          bust('my-khata', 'my-payments', 'my-bills', 'my-dashboard');
         }} />
-      
+
+      {/* CA wala kagaz — sirf chhapte waqt banta hai, screen pe kabhi nahi */}
+      {sheet && (
+        <div className="print-only">
+          <LedgerPrint data={data} business={{ name: data.shopName }} from={from} to={to} />
+        </div>
+      )}
     </>);
 
 }
@@ -275,7 +306,7 @@ function UpiPayModal({ open, onClose, upi, due, onSent }) {
       <>
           <Button variant="secondary" onClick={() => setStep(1)}>{t("Peeche")}</Button>
           <Button onClick={markSent} loading={saving}>{t("Haan, bhej diya")}</Button>
-        </>
+    </>
       }>
       
       {step === 1 ?

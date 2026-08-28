@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { protect, requireRole, requirePermission } from '../middleware/auth.js';
-import { withTenant } from '../middleware/tenant.js';
+import { withTenant, requirePaidSeller } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/audit.controller.js';
 import { auditQuerySchema, entityParamSchema } from '../validators/audit.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
 
 /**
  * "Kisne kya kiya" ka register.

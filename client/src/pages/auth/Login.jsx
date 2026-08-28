@@ -11,7 +11,22 @@ export default function Login() {
   const location = useLocation();
 
   const [form, setForm] = useState({ phone: '', password: '' });
-  const [error, setError] = useState('');
+
+  /*
+    BAHAR KYUN HUE — pehli hi baar me dikha do (item 24).
+
+    `useState` ke andar padha jata hai, `useEffect` me nahi: ek pal ke liye
+    bhi khali login page dikh jaye to aadmi ke man me sawal reh jata hai.
+    Padhte hi mita bhi dete hain, warna wahi purani baat har baar login page
+    pe chipki rehti.
+  */
+  const [error, setError] = useState(() => {
+    try {
+      const why = sessionStorage.getItem('rr_logout_reason') || '';
+      if (why) sessionStorage.removeItem('rr_logout_reason');
+      return why;
+    } catch { return ''; }
+  });
   const [loading, setLoading] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -79,6 +94,19 @@ export default function Login() {
         <Button type="submit" className="w-full" loading={loading}>
           {t('Login')}
         </Button>
+
+        {/*
+          "Password bhool gaye" — login button ke NEECHE, upar nahi.
+
+          Upar rakhne par wo password wale khaane ke bilkul paas aa jata hai aur
+          jaldi me galti se dab jata hai. Jise sach me zarurat hai wo do second
+          ruk kar dhoondh hi leta hai.
+        */}
+        <p className="text-center">
+          <Link to="/forgot" className="text-sm font-medium text-brand-700 hover:underline">
+            {t('Password bhool gaye?')}
+          </Link>
+        </p>
 
         <p className="text-center text-xs text-slate-500">
           {t('Retailer ho? Apne wholesaler ka bheja hua link kholo.')}

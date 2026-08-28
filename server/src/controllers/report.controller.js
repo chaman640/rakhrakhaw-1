@@ -4,12 +4,38 @@ import ApiError from '../utils/ApiError.js';
 import { toCsv } from '../utils/csv.js';
 import { REPORTS } from '../services/report.service.js';
 import * as dashboard from '../services/dashboard.service.js';
+import { userCan } from '../middleware/auth.js';
 
 /* ────────────────────────────────────────────────────────────────── reports */
+
+/**
+ * MUNAFE WALI REPORT ALAG HAI (item 22).
+ *
+ * `reports:view` ek hi chaabi thi jo SAARI report khol deti thi — "pl" wali
+ * bhi. Yaani counter wale ladke ko, jise sirf paisa lena-dena karna hai,
+ * dukaan ka poora munafa, har item ki LAGAT aur margin dikh jata tha. Wahi
+ * ek number hai jo koi bhi dukaandaar apne staff ko nahi dikhana chahta —
+ * aur wo apne aap khula pada tha.
+ *
+ * "Stock" report bhi isi list me hai, aur wajah wahi hai: usme har item ki
+ * lagat hoti hai, yaani munafa ghata kar nikala ja sakta hai. Ek darwaza
+ * band karke doosra khula chhod dena band karne ka natak hai.
+ *
+ * Baaki report (sale, payment, outstanding, gst) wahin ki wahin hain — unme
+ * bikri aur udhaar hai, lagat nahi.
+ */
+const PROFIT_REPORTS = new Set(['pl', 'stock']);
+
+function assertCanSeeProfit(req) {
+  if (!PROFIT_REPORTS.has(req.params.name)) return;
+  if (userCan(req.user, 'reports:profit')) return;
+  throw ApiError.forbidden('Ye report dekhne ki ijazat aapke paas nahi hai');
+}
 
 export const run = asyncHandler(async (req, res) => {
   const fn = REPORTS[req.params.name];
   if (!fn) throw ApiError.notFound('Aisi koi report nahi hai');
+  assertCanSeeProfit(req);
   return ok(res, await fn(req.businessId, req.query, req.user));
 });
 
@@ -22,6 +48,9 @@ export const run = asyncHandler(async (req, res) => {
 export const download = asyncHandler(async (req, res) => {
   const fn = REPORTS[req.params.name];
   if (!fn) throw ApiError.notFound('Aisi koi report nahi hai');
+  // CSV bhi wahi hadd — warna download ka rasta khula reh jata, aur wahi
+  // sabse aasan rasta hota
+  assertCanSeeProfit(req);
 
   const report = await fn(req.businessId, req.query, req.user);
   const headers = report.columns.map((c) => c.header);

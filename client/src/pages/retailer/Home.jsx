@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
 import { formatMoney, formatDate } from '@/lib/format';
 import { Card, CardHeader, Button, Badge, EmptyState, Spinner, useToast } from '@/components/ui';
+import HisaabCard from '@/components/HisaabCard';
 
 const STATUS_LABEL = {
   PLACED: 'Bheja hai', PACKED: 'Pack ho raha', READY: 'Tayyar hai',
@@ -69,7 +70,6 @@ export default function RetailerHome() {
   }
   if (!d) return null;
 
-  const due = d.balance;
 
   return (
     <>
@@ -80,26 +80,32 @@ export default function RetailerHome() {
         <p className="mt-1 text-sm text-slate-500">{t("{a0} se juda hua", { a0: shopName })}</p>
       </div>
 
-      {/* ---- Udhaar ---- */}
-      <Card className={`mb-5 ${due > 0.01 ? 'border-amber-200 bg-amber-50/50' : 'border-emerald-200 bg-emerald-50/40'}`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-slate-600">
-              {due > 0.01 ? 'Aapko dena hai' : due < -0.01 ? 'Advance jama hai' : 'Hisaab barabar hai'}
-            </p>
-            <p className={`mt-1 text-3xl font-semibold ${
-            due > 0.01 ? 'text-amber-700' : due < -0.01 ? 'text-emerald-700' : 'text-slate-500'}`}>
-              {formatMoney(Math.abs(due))}
-            </p>
-            {d.overLimit &&
-            <p className="mt-1 text-xs font-medium text-red-600">{t("Credit limit {a0} paar ho gayi", { a0:
-                formatMoney(d.creditLimit) })}
-            </p>
-            }
-          </div>
-          <Button icon={BookOpen} onClick={() => navigate('/my-khata')}>{t("Khata dekhein")}</Button>
-        </div>
-      </Card>
+      {/*
+        ---- Hisaab ----
+
+        Pehle yahan sirf `balance` ka ek number tha, aur "Mera Khata" pe khule
+        bill ka doosra. Dono alag alag dikhte the aur dono "baaki" kehlate the.
+        Ab dono jagah WAHI dabba lagta hai jo WAHI ek jawab dikhata hai — aur
+        jama paisa ho to ye bhi ki wo kis dukaan ke paas hai aur aaya kahan se.
+      */}
+      <div className="mb-5">
+        <HisaabCard
+          hisaab={d.hisaab}
+          shopName={d.shopName || shopName}
+          footer={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" icon={BookOpen} onClick={() => navigate('/my-khata')}>
+                {t('Khata dekhein')}
+              </Button>
+              {d.overLimit && (
+                <span className="text-xs font-medium text-red-600">
+                  {t('Credit limit {a0} paar ho gayi', { a0: formatMoney(d.creditLimit) })}
+                </span>
+              )}
+            </div>
+          }
+        />
+      </div>
 
       {/* ---- Quick tiles ---- */}
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

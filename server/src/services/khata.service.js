@@ -2,11 +2,13 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { PARTY_TYPES, LEDGER_TYPES, NOTIFICATION_TYPES } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
+import { amountInWords } from '../utils/amountInWords.js';
 import { Party, LedgerEntry, Business, Invoice, Purchase } from '../models/index.js';
 import {
   scopeParties, scopePartiesMatch, isScoped, canSeeParty,
 } from '../utils/scope.js';
 import { notifyRetailer } from './notification.service.js';
+import { partyHisaab } from './balance.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -325,11 +327,24 @@ export async function getPartyLedger(businessId, partyId, { from, to, limit = 20
       type: party.type, balance: round2(party.balance), creditLimit: party.creditLimit,
       gstin: party.gstin, address: party.address,
     },
+    // Wahi tod-phod jo Home, Payments aur "Mera Khata" pe jati hai
+    hisaab: await partyHisaab(businessId, partyId, { withSources: true }),
     opening,
     entries: entries.map((e) => ({ ...e, typeLabel: TYPE_LABEL[e.type] || e.type })),
     totalDebit,
     totalCredit,
     closing: round2(entries.length ? entries[entries.length - 1].balanceAfter : opening),
+    /*
+      Baaki rakam SHABDON me (item 21).
+
+      CA wale kagaz pe ye lagbhag hamesha hota hai — number me ek ank badal
+      dena aasan hai, shabd badalna nahi. Hisaab yahan DOBARA nahi likha; wahi
+      `amountInWords` hai jo bill pe chalta hai. Do jagah likhte to ek din
+      bill kuch aur kehta aur khata kuch aur.
+    */
+    closingInWords: amountInWords(Math.abs(
+      round2(entries.length ? entries[entries.length - 1].balanceAfter : opening),
+    )),
     // UI ko batana hai ki kuch purani entries chhup gayi hain
     total,
     shown: entries.length,
@@ -349,8 +364,22 @@ export async function getMyKhata(businessId, partyId, opts) {
     businessId, partyId, isCancelled: false, dueAmount: { $gt: 0 },
   }).sort({ invoiceDate: 1 }).select('invoiceNo invoiceDate grandTotal paidAmount dueAmount').lean();
 
+  /*
+    EK HI JAWAB, DONO JAGAH.
+
+    Yahan pehle do alag number dikhte the: neeche khate ka `closing`, aur
+    upar khule bill ka jod. Retailer ke liye ye do alag "baaki" the — aur wo
+    theek hi sochta tha, dono kabhi barabar hote hi nahi the.
+
+    Ab wahi tod-phod jati hai jo Home pe jati hai (`partyHisaab`), isliye
+    dono page pe number ek hi rehta hai — aur uske neeche saaf likha hota hai
+    ki wo bana kis-kis se hai.
+  */
+  const hisaab = await partyHisaab(businessId, partyId, { withSources: true });
+
   return {
     ...data,
+    hisaab,
     openInvoices,
     upi: business?.upiId
       ? { id: business.upiId, name: business.upiName || business.name }

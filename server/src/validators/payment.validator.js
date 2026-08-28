@@ -22,6 +22,20 @@ export const createPaymentSchema = z.object({
   allowAdvance: z.boolean().optional().default(false),
 });
 
+/**
+ * Wapasi ka paisa wapas karna.
+ *
+ * `amount` na bheja to jitna wapas ho sakta hai POORA wapas — aksar wahi hota
+ * hai, aur aisi jagah number dobara likhwana sirf galti ka mauka dena hai.
+ */
+export const refundSchema = z.object({
+  amount: money.optional(),
+  mode: z.enum(Object.values(PAYMENT_MODES)).optional().default('CASH'),
+  reference: z.string().trim().max(60).optional().default(''),
+  note: z.string().trim().max(300).optional().default(''),
+  date: z.coerce.date().optional(),
+});
+
 export const claimPaymentSchema = z.object({
   amount: money,
   reference: z.string().trim().max(60).optional().default(''),

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   PackagePlus, ArrowRight, ArrowLeft, SkipForward, Check, CheckCircle2, Ban,
-  TriangleAlert, Receipt, Package, Sparkles,
+  TriangleAlert, Receipt, Package, Sparkles, Plus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useQuery, prime, bust } from '@/hooks/useQuery';
@@ -262,7 +262,11 @@ function LineStep({ intakeId, index, line, gstEnabled, saving, canGoBack, onBack
   const [newItem, setNewItem] = useState({
     name: line.sourceName, sku: '', unit: line.unit,
     hsn: line.hsn || '', gstRate: String(line.gstRate ?? 0),
+    // Maal aate waqt hi bhar dene wali cheezein (item 9)
+    mrp: '', brand: '', imageUrl: '', warrantyMonths: '', warrantyNote: '',
   });
+  // Ye khaane chhupe rehte hain — kholna ek soch-samajh kar liya faisla hai
+  const [moreOpen, setMoreOpen] = useState(false);
 
   /*
     Pehla andaza app khud lagati hai — par sirf tab jab wo PAKKA ho.
@@ -302,6 +306,20 @@ function LineStep({ intakeId, index, line, gstEnabled, saving, canGoBack, onBack
           unit: newItem.unit,
           hsn: newItem.hsn.trim(),
           gstRate: Number(newItem.gstRate || 0),
+          /*
+            Sirf wahi bhejte hain jo BHARA gaya ho (item 9).
+
+            Khali khaana bhi ek jawab ban jata hai agar bhej diya — "MRP 0
+            hai", "warranty 0 mahine hai". Purane item pe wo jhootha jawab
+            uske pehle se bhare hue sach ko dhak sakta tha. Isliye khali ko
+            bhejte hi nahi.
+          */
+          ...(newItem.mrp !== '' ? { mrp: Number(newItem.mrp) } : {}),
+          ...(newItem.brand.trim() ? { brand: newItem.brand.trim() } : {}),
+          ...(newItem.imageUrl.trim() ? { imageUrl: newItem.imageUrl.trim() } : {}),
+          ...(newItem.warrantyMonths !== ''
+            ? { warrantyMonths: Number(newItem.warrantyMonths) } : {}),
+          ...(newItem.warrantyNote.trim() ? { warrantyNote: newItem.warrantyNote.trim() } : {}),
         },
       });
     } else {
@@ -445,6 +463,71 @@ function LineStep({ intakeId, index, line, gstEnabled, saving, canGoBack, onBack
                     />
                   </>
                 )}
+
+                {/*
+                  ─────── ITEM KI POORI PEHCHAN — YAHIN, MAAL AATE WAQT (item 9) ───────
+
+                  Ye wahi ek pal hai jab ye sab saamne hota hai: dabba haath me
+                  hai, uspe MRP chhapa hai, uspe company ka naam hai, warranty
+                  ka card andar pada hai. Baad me Items page pe jaakar ye bharna
+                  kisi ne kabhi nahi kiya — aur us se do cheezein hoti thin:
+                  MRP ke bina bechte waqt "kitne me dena hai" ka koi sahara nahi
+                  rehta, aur warranty ka jhagda mahine baad hota hai jab kuch
+                  likha hi nahi hota.
+
+                  CHHUPE RAKHE HAIN, aur ye jaan-boojh kar hai. Maal aane par
+                  dukaandaar jaldi me hota hai; das khaane ek saath dikhna use
+                  poora kaam hi rok dene par majboor kar deta hai. Jise bharna
+                  hai wo ek tap me khol lega.
+                */}
+                <div className="sm:col-span-2">
+                  {!moreOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setMoreOpen(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:underline focus-ring"
+                    >
+                      <Plus size={13} /> {t('MRP, photo, company, warranty bhi bhar dein')}
+                    </button>
+                  ) : (
+                    <div className="grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2">
+                      <Input
+                        label={t('MRP')}
+                        type="number" inputMode="decimal" prefix="₹"
+                        value={newItem.mrp}
+                        onChange={(e) => setNewItem((s) => ({ ...s, mrp: e.target.value }))}
+                        hint={t('Dabbe pe jo chhapa hai')}
+                      />
+                      <Input
+                        label={t('Company')}
+                        placeholder={t('Bosch, TVS...')}
+                        value={newItem.brand}
+                        onChange={(e) => setNewItem((s) => ({ ...s, brand: e.target.value }))}
+                      />
+                      <Input
+                        label={t('Photo ka link')}
+                        placeholder={t('https://...')}
+                        value={newItem.imageUrl}
+                        onChange={(e) => setNewItem((s) => ({ ...s, imageUrl: e.target.value }))}
+                        containerClassName="sm:col-span-2"
+                        hint={t('Retailer ko catalog me yahi tasveer dikhegi')}
+                      />
+                      <Input
+                        label={t('Warranty (mahine)')}
+                        type="number" inputMode="numeric"
+                        placeholder="12"
+                        value={newItem.warrantyMonths}
+                        onChange={(e) => setNewItem((s) => ({ ...s, warrantyMonths: e.target.value }))}
+                      />
+                      <Input
+                        label={t('Warranty ki baat')}
+                        placeholder={t('Company warranty, bill zaroori')}
+                        value={newItem.warrantyNote}
+                        onChange={(e) => setNewItem((s) => ({ ...s, warrantyNote: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -492,6 +575,25 @@ function LineStep({ intakeId, index, line, gstEnabled, saving, canGoBack, onBack
               </button>
             ))}
           </div>
+        )}
+
+        {/*
+          IS ITEM KA APNA WHOLESALE RATE PEHLE SE LAGA HAI.
+
+          "Bechne ka rate" `salePrice` pe lagta hai. Par jis item pe alag se
+          wholesale rate laga ho, uske retailer ko WAHI dikhta hai (rate.service
+          dekhein) — yaani abhi jo number likha ja raha hai wo unhe dikhega hi
+          nahi. Us wholesale rate ko chup-chaap badal dena isse bhi bura hota:
+          wo dukaandaar ne soch kar lagaya tha.
+
+          Isliye na badalte hain, na chhupate hain — saaf bata dete hain.
+        */}
+        {picked?.wholesalePrice > 0 && (
+          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            {t('Is item pe wholesale rate {a} laga hai — aapke retailer ko wahi dikhega. Badalna ho to Items page se.', {
+              a: formatMoney(picked.wholesalePrice),
+            })}
+          </p>
         )}
 
         {priceNum > 0 && cost > 0 && (

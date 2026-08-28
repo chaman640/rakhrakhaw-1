@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import AppTab from './settings/AppTab';
 import RetailersTab from './settings/RetailersTab';
 import BackupTab from './settings/BackupTab';
+import PlanTab from './settings/PlanTab';
 import { t } from '@/lib/i18n';
 
 export default function Settings() {
@@ -91,6 +92,7 @@ export default function Settings() {
             // "Log aur login" ab apne Staff page pe chala gaya — wo mahine me
             // kai baar chalne wala kaam hai, Settings saal me do baar khulti hai
             { value: 'backup', label: t('Backup') },
+            { value: 'plan', label: t('Plan') },
           ] : []),
         ]}
       />
@@ -98,6 +100,7 @@ export default function Settings() {
       {tab === 'app' && <AppTab />}
       {tab === 'retailers' && isOwner && <RetailersTab />}
       {tab === 'backup' && isOwner && <BackupTab />}
+      {tab === 'plan' && isOwner && <PlanTab />}
     </>
   );
 }

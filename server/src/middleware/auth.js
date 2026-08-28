@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import ApiError from '../utils/ApiError.js';
+import { cacheGet, cacheSet, cacheBust } from '../utils/cache.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import User from '../models/User.js';
 import { ROLES } from '../config/constants.js';
@@ -21,10 +22,45 @@ export const protect = asyncHandler(async (req, res, next) => {
   if (!token) throw ApiError.unauthorized();
 
   const decoded = jwt.verify(token, env.jwtSecret);
-  const user = await User.findById(decoded.sub).lean();
+  /*
+    User har request pe padha jata hai — poore system ki sabse garam query.
+    15 second ka cache use lagbhag hata deta hai.
+
+    15 hi kyun: is beech me band kiya gaya staff ya doosre phone se nikala gaya
+    aadmi utni der aur chal sakta hai. 15 second me wo kuch aisa nahi kar sakta
+    jo wapas na ho, aur badle me har request ka ek database call bach jata hai.
+    Zyada rakhne se wo rok hi bemaani ho jati; kam rakhne se cache ka faayda hi
+    nahi bachta.
+  */
+  const ckey = `u:${decoded.sub}`;
+  let user = cacheGet(ckey);
+  if (user === undefined) {
+    user = await User.findById(decoded.sub).lean();
+    cacheSet(ckey, user, 15000);
+  }
 
   if (!user) throw ApiError.unauthorized('User nahi mila');
   if (!user.isActive) throw ApiError.forbidden('Aapka account band kar diya gaya hai');
+
+  /*
+    EK NUMBER, EK JAGAH (item 24).
+
+    Naya login `sessionSeq` badha deta hai. Purane phone ke token me purani
+    ginti likhi hai — wo yahin ruk jata hai.
+
+    `decoded.ss === undefined` ko JAANE DETE hain, aur ye jaan-boojh kar hai:
+    is fix se PEHLE bane token me ye khaana hai hi nahi. Use rokte to update
+    lagte hi har chalu login ek saath toot jata — sab ko bina wajah dobara
+    login karna padta. Wo token apni mohlat khatam hone par khud chale jayenge,
+    aur agla login naye niyam pe aa jayega.
+
+    Sandesh 401 ke saath saaf jata hai, warna aadmi ko lagta hai app kharab hai.
+  */
+  if (decoded.ss !== undefined && Number(decoded.ss) !== Number(user.sessionSeq || 0)) {
+    throw ApiError.unauthorized(
+      'Aapka ye number kisi aur phone pe login ho gaya hai. Ek number ek hi jagah chalta hai.',
+    );
+  }
 
   req.user = user;
   next();

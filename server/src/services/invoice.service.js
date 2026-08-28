@@ -9,6 +9,7 @@ import { getFinancialYear } from '../utils/financialYear.js';
 import { amountInWords } from '../utils/amountInWords.js';
 import {
   Invoice, Order, Party, Item, Business, Counter, StockMovement, Payment, ReturnNote,
+  StockIntake,
 } from '../models/index.js';
 import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
 import { assertInvoiceWithinLimits } from '../utils/limits.js';
@@ -18,6 +19,7 @@ import { khepNikalo, khepWapas } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { releaseInvoiceFromPayments, removeInlinePayments } from './payment.service.js';
 import { applyCredit } from './settlement.service.js';
+import { sweepAdvance } from './balance.service.js';
 import { resolveRates } from './rate.service.js';
 import { notifyRetailer } from './notification.service.js';
 import { createIntakeFromInvoice, cancelIntakeForInvoice } from './intake.service.js';
@@ -273,12 +275,56 @@ export async function getInvoice(businessId, id, { partyId = null, viewer = null
     throw ApiError.notFound('Bill nahi mila');
   }
 
+  /*
+    ───────────────────────────── DOOSRA SIRA (item 11) ─────────────────────────
+
+    "Maine jo maal bheja, usne apne stock me daala ya nahi?"
+
+    Ye sawal bechne wale ka rozana ka sawal hai, aur uska jawab app me tha —
+    par doosri dukaan ke andar, jahan wo dekh hi nahi sakta. Ab yahan se ek
+    seedha jawab jata hai: baaki hai, ho gaya, ya bill cancel hone se ruk gaya.
+
+    Sirf STATUS jata hai — uski purchase ka number, rate ya rakam nahi. Wo
+    uski dukaan ka andaruni hisaab hai; usme se hum sirf itna batate hain
+    jitna is bill se juda hai.
+  */
+  const intake = await StockIntake
+    .findOne({ sellerBusinessId: businessId, sourceInvoiceId: invoice._id })
+    .select('status completedAt').lean();
+
+  /*
+    ──────────────────── BILL PE KHARIDAAR KI DETAIL (item 7) ────────────────────
+
+    GST wale bill pe kharidaar ka pata kanoonan zaroori hai, aur uska GSTIN
+    tabhi jab wo bhi registered ho. Link se juda hua retailer sirf naam aur
+    number deta hai — pata kabhi nahi. Nateeja: bill ban jata tha, chhap bhi
+    jata tha, aur adhoora hi chala jata tha. Galti CA ke paas jaakar pakdi
+    jati thi, mahine baad.
+
+    Ab bill ke saath hi bata dete hain ki kya kya chhoot raha hai. Bill rokte
+    NAHI hain — bahut si dukaano ka kaam bina pate ke hi chalta hai, aur bill
+    rok dena us se bada nuksan hai.
+
+    Dhyan: ye `partySnapshot` se dekhte hain, party se nahi. Bill ek jamе hua
+    kagaz hai; baad me pata bhar dene se PURANA bill nahi badalta, aur usi
+    purane bill pe warning bhi nahi hatni chahiye — wo sach hai.
+  */
+  const snap = invoice.partySnapshot || {};
+  const missing = [];
+  if (!snap.name && !snap.shopName) missing.push('name');
+  if (!snap.phone) missing.push('phone');
+  if (!snap.address?.line1 && !snap.address?.city) missing.push('address');
+  if (invoice.gstEnabled && !snap.gstin) missing.push('gstin');
+
   return {
     ...invoice,
     party: invoice.partyId,
     partyId: invoice.partyId?._id || invoice.partyId,
     hsnSummary: invoice.gstEnabled ? hsnSummary(invoice.items, invoice.taxType) : [],
     amountInWords: amountInWords(invoice.grandTotal),
+    buyerIntake: intake ? { status: intake.status, completedAt: intake.completedAt } : null,
+    // `gstin` ki kami sirf GST wale bill pe ginti hai — isliye alag flag
+    partyMissing: missing,
   };
 }
 
@@ -735,13 +781,45 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     itna hota hai ki wo credit ab is bill se JUD jata hai, taaki bill "baaki"
     dikhana band kar de. Dobara credit daal dete to paisa do baar gina jata.
   */
+  /*
+    APNE AAP LAGTA HAI — ab ye ek TICK NAHI hai.
+
+    Pehle yahan `payload.useAdvance === true` ki shart thi. Wo tick bill wale
+    form me kahin neeche padta tha aur kisi ne kabhi nahi lagaya. Nateeja:
+    graahak ka ₹5,000 hamare paas jama pada rehta tha AUR usi aadmi ka ₹5,000
+    ka bill "udhaar" dikhta rehta tha. Home "kuch baaki nahi" bolta, bill
+    "₹5,000 baaki" bolta, aur cash lene jao to app hi rok deta —
+    "Inka koi udhaar baaki nahi hai".
+
+    Dukaan me aisa hota hi nahi. Aadmi ka paisa aapke paas ho aur uska bill
+    khula ho — dono ek saath nahi rehte. Isliye ab paisa apne aap is bill pe
+    lagta hai (aur pehle ISI bill pe — `preferId`).
+
+    Tick ab bhi hai, par ULTA: `keepAdvance: true` bhejo to paisa jama hi
+    rahega. Wo ek soch-samajh kar liya gaya faisla hai, aur wahi tick hone
+    layak cheez hai — dhyan chook jane wali nahi.
+
+    Khata yahan NAHI badalta — credit khate me pehle se pada hai; yahan wo bas
+    bill se jud jata hai. Dobara credit daalna ek hi paisa do baar ginna hota.
+  */
   let usedAdvance = 0;
-  if (payload.useAdvance === true && advanceBefore > 0 && dueAmount > 0) {
-    const useAmt = round2(Math.min(advanceBefore, dueAmount));
-    const { allocations } = await applyCredit(
-      'Invoice', businessId, party._id, useAmt, { preferId: invoice._id },
-    );
-    usedAdvance = round2(allocations.reduce((sum, a) => sum + a.amount, 0));
+  if (payload.keepAdvance !== true && advanceBefore > 0 && dueAmount > 0) {
+    /*
+      `catch` JAAN-BOOJH KAR — bill ban chuka hai.
+
+      Upar wala poora kaam (stock, khata, payment) ho chuka hai aur bill save
+      ho chuka hai. Ab yahan koi gadbad ho to bill ko fail bata dena sabse
+      bura jawab hoga: dukaandaar dobara bill banayega aur ek hi maal do baar
+      nikal jayega. Jama paisa na lagne se sirf itna hota hai ki bill "udhaar"
+      dikhta hai — aur agli baar us party pe koi bhi paisa hilte hi
+      `sweepAdvance` khud use theek kar deta hai.
+    */
+    try {
+      const { used } = await sweepAdvance(businessId, party._id, { preferId: invoice._id });
+      usedAdvance = used;
+    } catch (err) {
+      console.warn(`[invoice] ${invoiceNo}: jama paisa lag nahi paya —`, err.message);
+    }
   }
 
   await notifyRetailer(businessId, party._id, {
@@ -857,6 +935,10 @@ export async function cancelInvoice(businessId, id, { reason }, userId, viewer =
 
   // Bill ka apna khata entry ulta
   await reverseEntriesFor({ businessId, refType: 'Invoice', refId: invoice._id, userId });
+
+  // Cancel se is party ka hisaab hil gaya hai — jo paisa ab kisi bill pe nahi
+  // laga, wo uske baaki khule bill pe laga do
+  await sweepAdvance(businessId, invoice.partyId);
 
   // Order se link hata do taaki naya bill ban sake
   if (invoice.orderId) {

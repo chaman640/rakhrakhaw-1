@@ -9,7 +9,7 @@ import { STOCK_MOVEMENT_TYPES } from '../config/constants.js';
  */
 const stockMovementSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
     itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true, index: true },
 
     type: { type: String, enum: Object.values(STOCK_MOVEMENT_TYPES), required: true },
@@ -26,5 +26,6 @@ const stockMovementSchema = new mongoose.Schema(
 );
 
 stockMovementSchema.index({ businessId: 1, itemId: 1, createdAt: -1 });
+stockMovementSchema.index({ businessId: 1, refType: 1, refId: 1 });
 
 export default mongoose.model('StockMovement', stockMovementSchema);

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { protect, requireRole, requireBuyer } from '../middleware/auth.js';
-import { withTenant, withBuyerTenant, requireActiveParty } from '../middleware/tenant.js';
+import {
+  withTenant, withBuyerTenant, requireActiveParty, requirePaidSeller,
+} from '../middleware/tenant.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/report.controller.js';
 
@@ -53,7 +55,8 @@ router.get('/', (req, res, next) => {
   }
 
   return chain(
-    [requireRole(ROLES.WHOLESALER), withTenant],
+    // Bechne wale ka Home bhi bechne ka hi hissa hai (Step 1)
+    [requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller],
     req, res, next, ctrl.wholesalerHome,
   );
 });

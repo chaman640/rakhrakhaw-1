@@ -60,6 +60,24 @@ export const remove = asyncHandler(async (req, res) => {
   return ok(res, result, result.message);
 });
 
+/* ═════════════════════════════════════════════════ "dena hai" aur paisa wapas */
+
+/** Jinka paisa hamare paas jama pada hai — payment history ke bagal wali list */
+export const weOwe = asyncHandler(async (req, res) =>
+  ok(res, await service.listWeOwePayments(req.businessId, req.user)));
+
+/** Wapasi pe "kitna paisa wapas ho sakta hai" — button dikhane ke liye */
+export const refundInfo = asyncHandler(async (req, res) =>
+  ok(res, await service.refundInfo(req.businessId, req.params.id)));
+
+/** Wapasi ka paisa cash/UPI se wapas */
+export const refund = asyncHandler(async (req, res) => {
+  const result = await service.refundReturn(
+    req.businessId, req.params.id, req.body, req.user._id,
+  );
+  return created(res, result, `₹${result.payment.amount} wapas kar diya`);
+});
+
 /* ----------------------------------------------------------- retailer ka side */
 
 export const myList = asyncHandler(async (req, res) => {

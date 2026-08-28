@@ -5,6 +5,8 @@ import api from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { Card, CardHeader, Button, Input, useToast } from '@/components/ui';
 import LedgerTable, { BalanceLine } from '../khata/LedgerTable';
+import LedgerPrint from '@/components/khata/LedgerPrint';
+import { useAuth } from '@/context/AuthContext';
 import PaymentFormModal from '../payments/PaymentFormModal';
 import { t } from '@/lib/i18n';
 
@@ -22,6 +24,9 @@ export default function PartyKhataTab({ party, onChanged }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [payOpen, setPayOpen] = useState(false);
+  // CA wala kagaz sirf print ke pal me banta hai — warna har baar bekaar ka DOM
+  const [sheet, setSheet] = useState(false);
+  const { business } = useAuth();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,9 +66,30 @@ export default function PartyKhataTab({ party, onChanged }) {
 
           <div className="flex flex-wrap gap-2">
             <Button icon={Wallet} onClick={() => setPayOpen(true)}>
-              {isSupplier ? 'Paisa diya' : 'Paisa aaya'}
+              {isSupplier ? t('Paisa diya') : t('Paisa aaya')}
             </Button>
-            <Button variant="secondary" icon={Printer} onClick={() => window.print()}>{t('Print')}</Button>
+            {/*
+              CA WALA KAGAZ (item 21).
+
+              "Print" pehle bhi tha, par wo POORE PAGE ka print tha — filter ke
+              dabbe, button, menu, sab kagaz pe chale jate the. CA aisa kagaz
+              wapas kar deta hai.
+
+              Ab print se pehle asli statement ka kagaz screen pe rakh dete
+              hain aur baaki sab chhupa dete hain. Ek pal ka intezaar isliye ki
+              print ka parda kabhi kabhi aadhe bane page ka photo le leta hai —
+              wahi jaal bill wale page pe bhi laga hua hai.
+            */}
+            <Button
+              variant="secondary"
+              icon={Printer}
+              onClick={() => {
+                setSheet(true);
+                setTimeout(() => { window.print(); setSheet(false); }, 250);
+              }}
+            >
+              {t('CA wala khata (PDF)')}
+            </Button>
           </div>
         </div>
       </Card>
@@ -84,10 +110,21 @@ export default function PartyKhataTab({ party, onChanged }) {
           )}
         </div>
 
-        <div className="invoice-sheet">
+        <div>
           <LedgerTable data={data} loading={loading} onRowClick={(to2) => navigate(to2)} />
         </div>
       </Card>
+
+      {/*
+        Kagaz screen pe TABHI aata hai jab print dabaya jaye — aur tab poora
+        page chhup jata hai. `print-only` isse chhapte waqt hi dikhata hai;
+        screen pe ye ek pal ke liye hi rehta hai.
+      */}
+      {sheet && (
+        <div className="print-only">
+          <LedgerPrint data={data} business={business} from={from} to={to} />
+        </div>
+      )}
 
       <PaymentFormModal
         open={payOpen}

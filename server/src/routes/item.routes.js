@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { protect, requireRole, requirePermission } from '../middleware/auth.js';
-import { withTenant } from '../middleware/tenant.js';
+import { withTenant, requirePaidSeller } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
 import { uploadImage, handleUploadError } from '../middleware/uploadImage.js';
 import { ROLES } from '../config/constants.js';
@@ -11,7 +11,7 @@ import {
 } from '../validators/item.validator.js';
 
 const router = Router();
-router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
+router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
 
 // DHYAN: ye fixed paths /:id se PEHLE aane chahiye, warna "stats" ko id samajh lega
 router.get('/brands', requirePermission('items:view'), ctrl.brands);

@@ -63,7 +63,19 @@ export const MODULE_ACTIONS = {
   [MODULES.RETURNS]: ['view', 'create', 'edit', 'delete'],
   [MODULES.KHATA]: ['view', 'create', 'edit', 'delete', 'approve'],
   [MODULES.EXPENSES]: ['view', 'create', 'edit', 'delete'],
-  [MODULES.REPORTS]: ['view', 'export'],
+  /*
+    `profit` ek ALAG chaabi hai (item 22).
+
+    Pehle `reports:view` se saari report khul jati thin — "pl" (munafa) aur
+    "stock" (har item ki LAGAT) bhi. Yaani counter wale ladke ko dukaan ka
+    poora munafa aur har maal ki lagat dikh jati thi. Wo ek number koi bhi
+    dukaandaar apne staff ko nahi dikhana chahta, aur wo apne aap khula pada
+    tha.
+
+    Malik chahe to kisi ko bhi de sakta hai — bas ab wo ek SOCHA HUA faisla
+    hai, "reports dekhne do" ka side-effect nahi.
+  */
+  [MODULES.REPORTS]: ['view', 'export', 'profit'],
   [MODULES.STAFF]: ['view', 'create', 'edit', 'delete'],
   [MODULES.SETTINGS]: ['view', 'edit'],
 };

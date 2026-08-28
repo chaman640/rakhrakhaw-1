@@ -22,7 +22,7 @@ import mongoose from 'mongoose';
  */
 const auditLogSchema = new mongoose.Schema(
   {
-    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, index: true },
+    businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
 
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // Naam yahin likh dete hain: staff hata diya jaye to bhi register padha ja
@@ -65,5 +65,12 @@ const auditLogSchema = new mongoose.Schema(
 auditLogSchema.index({ businessId: 1, createdAt: -1 });
 auditLogSchema.index({ businessId: 1, userId: 1, createdAt: -1 });
 auditLogSchema.index({ businessId: 1, entityType: 1, entityId: 1, createdAt: -1 });
+
+/*
+  180 din purani entry apne aap hat jati hai.
+  Bina iske ye collection kabhi ghatta nahi — ek lakh user pe yahi sabse tezi
+  se badhne wala data hai, aur uska poora kharch har mahine chukana padta hai.
+*/
+auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 15552000 });
 
 export default mongoose.model('AuditLog', auditLogSchema);

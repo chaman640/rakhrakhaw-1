@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   IndianRupee, TrendingUp, TrendingDown, ShoppingCart, Package, Wallet,
   TriangleAlert, ArrowRight, Plus, FileText, UserCheck, Clock, BookOpen,
-  Receipt, Truck, CircleAlert, Boxes, Coins, PiggyBank,
+  Receipt, Truck, CircleAlert, Boxes, Coins, PiggyBank, PackagePlus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -160,16 +160,48 @@ export default function Dashboard() {
       "ye ₹24,500 KISKA hai?" Uska jawab "Lena hai" tab me hai, aur ab click
       seedha wahin le jata hai.
     */
+    /*
+      SUB-LINE AB "KITNE RETAILER" NAHI, "KITNA BILL KA" DIKHATI HAI.
+
+      Bada number khate se aata hai, aur Bills page apna alag number dikhata
+      tha (khule bill ka jod). Dono theek the par ek doosre se alag — aur
+      dukaandaar ke liye "baaki" ek hi cheez hai. Ab yahin likha hota hai ki
+      us bade number me se kitna khule bill ka hai, isliye do page ke do
+      number dekh kar uljhan nahi hoti.
+
+      `billsDue` hadd wale staff ko nahi jata (server bhejta hi nahi), tab
+      purani wali line hi rehti hai.
+    */
     d.khata && {
       key: 'khata', label: t('Udhaar baaki'), value: formatMoney(d.khata.receivable),
-      sub: `${d.khata.activeRetailers} ${t('retailer')}`, icon: BookOpen,
+      sub: d.khata.billsDue !== undefined && d.khata.receivable > 0
+        ? `${formatMoney(d.khata.billsDue)} ${t('khule bill ka')}`
+        : `${d.khata.activeRetailers} ${t('retailer')}`,
+      icon: BookOpen,
       tone: d.khata.receivable > 0 ? 'amber' : 'green', to: '/payments?tab=due',
     },
     // Jama paisa tabhi jab kisi ka ho — warna ek aur khali tile
     d.khata?.advance > 0 && {
       key: 'jama', label: t('Jama paisa'), value: formatMoney(d.khata.advance),
       sub: `${d.khata.advanceParties} ${t('graahak ka')}`, icon: PiggyBank,
+      // "Dena hai" tab — wahi jagah jahan ab paisa kahan se aaya wo bhi dikhta hai
       tone: 'brand', to: '/payments?tab=jama',
+    },
+    /*
+      IS MAHINE MAAL ME KITNA PAISA LAGA (item 16).
+
+      Dashboard poori tarah bechne ki taraf jhuka hua tha. Kharid ka number
+      kahin tha hi nahi, jabki "is mahine maal me kitna paisa lagaya" utna hi
+      rozana ka sawal hai — bas uska jawab Purchases page ke andar chhupa tha.
+
+      Ye SALE KE SAAMNE ka number hai, munafe me se ghatne wala nahi. Aaj ₹1
+      lakh ka maal kharida aur kuch nahi becha — nuksaan nahi hua, paisa maal
+      me badal gaya. Lagat tabhi ginti hai jab wo maal bikta hai.
+    */
+    d.purchase && {
+      key: 'purchase', label: t('Is mahine kharida'), value: formatMoney(d.purchase.month),
+      sub: `${d.purchase.monthCount} ${t('purchase')}`, icon: PackagePlus,
+      tone: 'slate', to: '/purchases',
     },
     d.profit && {
       key: 'profit', label: t('Is mahine bacha'), value: formatMoney(d.profit.month),
