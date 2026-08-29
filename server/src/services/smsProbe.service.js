@@ -258,8 +258,8 @@ async function sendWith(fields, transport) {
   hoti hai, aur uske baad jo maanga jaye wo joda jata hai.
 */
 export const SEEDS = [
+  ['authkey', 'apikey', 'mobile', 'otp'],   // Render pe yahi chala tha
   ['authkey', 'apikey', 'mobile'],
-  ['authkey', 'apikey', 'mobile', 'otp'],
   ['authkey', 'apikey', 'mobile', 'message'],
   ['authkey', 'apikey', 'mobile', 'otp', 'message'],
   ['authkey', 'apikey', 'mobile', 'otp', 'message', 'sender', 'template_id'],

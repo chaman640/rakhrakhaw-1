@@ -1201,6 +1201,21 @@ async function main() {
   check('"HTTP 200" ka matlab "SMS gaya" nahi maana jata',
     smsSrc3.includes('function judge'));
   check('chaabi kabhi poori log/jawab me nahi jati', smsSrc3.includes('hideKey'));
+  /* Bhejne wala rasta sach me HTTP call karta hai (TDZ wala bug dobara na aaye) */
+  const { SEEDS: SEEDS_CHK } = await import('../src/services/smsProbe.service.js');
+  const { trySendOtp: tso } = await import('../src/services/sms.service.js');
+  const asli = await tso('6391585289', '123456');
+  const pehli = (asli.tries || [])[0] || {};
+  check('asli SMS call chalti hai (crash nahi hoti)',
+    asli.reason !== 'network' || !/before initialization|is not defined/.test(String(asli.response)),
+    String(asli.response).slice(0, 60));
+  check('koshish me HTTP status aata hai (call sach me gayi)',
+    pehli.status !== undefined || asli.reason === 'setting_adhoori', JSON.stringify(pehli).slice(0, 80));
+  check('"json" ab parameter ka naam nahi hai',
+    !srcOf('services/sms.service.js').includes('form = null, json = null'));
+  check('jeetne wala combination sabse pehle aajmaya jata hai',
+    JSON.stringify(SEEDS_CHK[0]) === JSON.stringify(['authkey', 'apikey', 'mobile', 'otp']));
+
   /* Auth ka naam — jo Render ki jaanch se pakka hua */
   const { needsField: nf2, SEEDS: seeds } = await import('../src/services/smsProbe.service.js');
   check('"Authentication Key is required" ka matlab authkey nikalta hai',

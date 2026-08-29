@@ -21,15 +21,15 @@ export function smsReady() {
     : Boolean(env.sms.apitxtKey);
 }
 
-async function hit(url, { timeout = 12000, method = 'GET', form = null, json = null } = {}) {
+async function hit(url, { timeout = 12000, method = 'GET', form = null, jsonBody = null } = {}) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeout);
   try {
     const headers = browserHeaders();
     if (form) headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    if (json) headers['Content-Type'] = 'application/json';
+    if (jsonBody) headers['Content-Type'] = 'application/json';
     const res = await fetch(url, {
-      signal: ac.signal, method, headers, body: form || json,
+      signal: ac.signal, method, headers, body: form || jsonBody,
     });
     const text = (await res.text()).trim();
     let json = null;
@@ -125,7 +125,7 @@ async function otpHit(fields, transport) {
   const qs = new URLSearchParams(fields).toString();
   if (transport === 'GET') return hit(`${OTP_URL}?${qs}`);
   if (transport === 'POST-json') {
-    return hit(OTP_URL, { method: 'POST', json: JSON.stringify(fields) });
+    return hit(OTP_URL, { method: 'POST', jsonBody: JSON.stringify(fields) });
   }
   return hit(OTP_URL, { method: 'POST', form: qs });
 }
