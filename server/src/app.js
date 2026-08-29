@@ -209,15 +209,40 @@ if (hasClientBuild) {
     Baaki har route ko wahi purana index.html milta hai — warna har page pe
     pehle ghar ka page jhalakta.
   */
+  /*
+    GOOGLE SEARCH CONSOLE — SITE VERIFY.
+
+    Jab tak Google Search Console me site verify na ho, Google use dhundhta
+    hi nahi — aur jo site uske paas hai hi nahi, wo kisi khoj me kabhi nahi
+    aati. Verify karne ke do tareeke hain, aur Google kabhi ek, kabhi doosra
+    maangta hai. Isliye dono yahin bana diye — env bharte hi chalu.
+  */
+  if (env.googleVerifyFile) {
+    const naam = env.googleVerifyFile.replace(/[^a-zA-Z0-9._-]/g, '');
+    app.get(`/${naam}`, (req, res) => {
+      res.type('text/html').send(`google-site-verification: ${naam}`);
+    });
+  }
+
   const HOME_HTML = path.join(CLIENT_DIST, 'home.html');
   const hasHome = fs.existsSync(HOME_HTML);
 
+  // Meta tag wala verification — HTML me daal kar bhejna padta hai
+  const VERIFY_META = env.googleVerify
+    ? `<meta name="google-site-verification" content="${env.googleVerify.replace(/"/g, '')}" />`
+    : '';
+
+  const bhejo = (res, file) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    if (!VERIFY_META) return res.sendFile(file);
+    const html = fs.readFileSync(file, 'utf8').replace('</head>', `${VERIFY_META}</head>`);
+    return res.type('html').send(html);
+  };
+
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
-    // sendFile express.static ke setHeaders se nahi guzarti — header yahan lagana padta hai
-    res.setHeader('Cache-Control', 'no-cache');
-    if (req.path === '/' && hasHome) return res.sendFile(HOME_HTML);
-    return res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+    if (req.path === '/' && hasHome) return bhejo(res, HOME_HTML);
+    return bhejo(res, path.join(CLIENT_DIST, 'index.html'));
   });
 } else {
   app.get('/', (req, res) => {

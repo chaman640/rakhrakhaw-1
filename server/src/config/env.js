@@ -64,6 +64,19 @@ export const env = {
   otpLenientPhones: (process.env.OTP_LENIENT_PHONES || '')
     .split(',').map((x) => x.replace(/\D/g, '').slice(-10)).filter((x) => x.length === 10),
 
+  /*
+    Google Search Console ka verification.
+
+    Do me se koi ek tareeka:
+      GOOGLE_SITE_VERIFICATION=abc123...   (meta tag wala tareeka)
+      GOOGLE_VERIFY_FILE=google abc.html   (file wala tareeka — poora naam)
+
+    Site index karwane ka yahi ek darwaza hai, isliye dono rakhe hain —
+    jo bhi Google dikhaye, wahi bhar dijiye.
+  */
+  googleVerify: (process.env.GOOGLE_SITE_VERIFICATION || '').trim(),
+  googleVerifyFile: (process.env.GOOGLE_VERIFY_FILE || '').trim(),
+
   // SMS jaanch ka darwaza (/api/diag/sms). Khali = darwaza band.
   diagKey: (process.env.DIAG_KEY || '').trim(),
 
