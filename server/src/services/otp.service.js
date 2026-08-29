@@ -116,7 +116,14 @@ export async function sendOtp({ phone, purpose }) {
   row.expiresAt = minutesFromNow(CODE_TTL_MIN);
   await row.save();
 
-  const result = await sendOtpSms(clean, code);
+  let result;
+  try {
+    result = await sendOtpSms(clean, code);
+  } catch (err) {
+    // lenient me signup rukta nahi — code screen pe dikh jata hai
+    if (env.otpMode !== 'lenient') throw err;
+    result = { sent: false, dev: true, smsError: err.message };
+  }
 
   return {
     phone: clean,
@@ -130,7 +137,7 @@ export async function sendOtp({ phone, purpose }) {
       — dono shart. Production me `sms.service` khud hi mana kar deti hai, isliye
       yahan tak baat pahunchti hi nahi.
     */
-    ...(result.dev && !env.isProd ? { devCode: code } : {}),
+    ...(result.dev && (!env.isProd || env.otpMode === 'lenient') ? { devCode: code } : {}),
     smsConfigured: smsReady(),
   };
 }

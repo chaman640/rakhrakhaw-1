@@ -50,6 +50,16 @@ export const env = {
     saaf error aata hai — wahan chup-chaap log me code chhapna sabse bada
     surakhsa ka ched hoga.
   */
+  /*
+    strict = SMS na jaye to OTP fail (asli setting)
+    lenient = SMS na jaye to code screen pe dikha do, taaki DLT approve hone
+              tak signup band na ho
+  */
+  otpMode: (process.env.OTP_MODE || 'strict').trim().toLowerCase(),
+
+  // SMS jaanch ka darwaza (/api/diag/sms). Khali = darwaza band.
+  diagKey: (process.env.DIAG_KEY || '').trim(),
+
   fast2sms: {
     apiKey: process.env.FAST2SMS_API_KEY || '',
   },

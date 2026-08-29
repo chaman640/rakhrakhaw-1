@@ -26,12 +26,16 @@ import expenseRoutes from './expense.routes.js';
 import staffRoutes from './staff.routes.js';
 import backupRoutes from './backup.routes.js';
 import auditRoutes from './audit.routes.js';
+import diagRoutes from './diag.routes.js';
 
 const router = Router();
 
 router.get('/health', (req, res) => {
   res.json({ success: true, message: 'API zinda hai', data: { time: new Date().toISOString() } });
 });
+
+// SMS ki jaanch — DIAG_KEY set ho tabhi khulta hai
+router.use('/diag', diagRoutes);
 
 // Part 2
 router.use('/auth', authRoutes);
