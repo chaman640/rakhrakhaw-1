@@ -1201,6 +1201,19 @@ async function main() {
   check('"HTTP 200" ka matlab "SMS gaya" nahi maana jata',
     smsSrc3.includes('function judge'));
   check('chaabi kabhi poori log/jawab me nahi jati', smsSrc3.includes('hideKey'));
+  /* /api/sendOtp — asli endpoint jo jaanch se mila */
+  const smsSrc4 = srcOf('services/sms.service.js');
+  check('asli endpoint /api/sendOtp code me hai', smsSrc4.includes('/api/sendOtp'));
+  check('jo khaana maanga jaye wo apne aap jodta hai', smsSrc4.includes('needsField'));
+  check('teeno tareeke aajmaye jate hain (POST-form/json, GET)',
+    smsSrc4.includes("'POST-form', 'POST-json', 'GET'"));
+  check('sahi khaane ek baar seekh kar yaad rakhe jate hain', smsSrc4.includes('seekhaHua'));
+  const { guessValue, needsField: nf } = await import('../src/services/smsProbe.service.js');
+  check('"Missing mobile" se khaane ka naam nikal aata hai',
+    nf('{"status":"error","message":"Missing mobile"}') === 'mobile');
+  check('"mobile" me phone jata hai', guessValue('mobile', { phone: '9876543210' }) === '9876543210');
+  check('"otp" me code jata hai', guessValue('otp', { code: '123456' }) === '123456');
+
   /* Bot-shield — asli wajah jo Render pe pakdi gayi */
   const { verdict } = await import('../src/services/smsProbe.service.js');
   const shieldBody = '{"status":"error","message":"Access denied.","reason":"MISSING_BROWSER_HEADERS"}';

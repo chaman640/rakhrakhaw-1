@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import { browserHeaders } from '../utils/browserHeaders.js';
+import { guessValue, needsField } from './smsProbe.service.js';
 
 /* OTP SMS — APITxT (MSG91-shape). Doc: apitxt.com/apiDoc/sendSMS */
 
@@ -20,14 +21,15 @@ export function smsReady() {
     : Boolean(env.sms.apitxtKey);
 }
 
-async function hit(url, { timeout = 12000, method = 'GET', form = null } = {}) {
+async function hit(url, { timeout = 12000, method = 'GET', form = null, json = null } = {}) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeout);
   try {
     const headers = browserHeaders();
     if (form) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    if (json) headers['Content-Type'] = 'application/json';
     const res = await fetch(url, {
-      signal: ac.signal, method, headers, body: form,
+      signal: ac.signal, method, headers, body: form || json,
     });
     const text = (await res.text()).trim();
     let json = null;
@@ -104,6 +106,75 @@ async function viaApitxt(phone, code) {
   return { ...first, tries };
 }
 
+
+/* ── APITxT ka asli OTP darwaza: /api/sendOtp ─────────────────────────────
+
+   Jaanch se pata chala ki `/api/sendhttp.php` unke yahan hai hi nahi;
+   `/api/sendOtp` hai, aur wo ek-ek khaana maang kar batata hai
+   ("Missing mobile"). Isliye ye wahi karta hai jo aadmi karta: bhejo, jo
+   maange wo jodo, dobara bhejo.
+
+   Ek baar sahi khaane pata chal jayein to wo yaad rakh liye jate hain —
+   uske baad har OTP ek hi request me chala jata hai.
+*/
+
+const OTP_URL = 'https://www.apitxt.com/api/sendOtp';
+let seekhaHua = null;                    // { transport, khaane: [...] }
+
+async function otpHit(fields, transport) {
+  const qs = new URLSearchParams(fields).toString();
+  if (transport === 'GET') return hit(`${OTP_URL}?${qs}`);
+  if (transport === 'POST-json') {
+    return hit(OTP_URL, { method: 'POST', json: JSON.stringify(fields) });
+  }
+  return hit(OTP_URL, { method: 'POST', form: qs });
+}
+
+function bharo(naam, ctx) {
+  return guessValue(naam, ctx);
+}
+
+async function otpKoshish(transport, ctx, shuruKhaane = null) {
+  const fields = {};
+  if (shuruKhaane) for (const k of shuruKhaane) fields[k] = bharo(k, ctx);
+
+  for (let i = 0; i < 8; i += 1) {
+    const r = await otpHit(fields, transport);
+    const j = judge(r);
+    if (j.sent) return { ...j, transport, fields, status: r.status, response: r.json || r.text };
+
+    const chahiye = needsField(r.text);
+    if (!chahiye || fields[chahiye] !== undefined) {
+      return { sent: false, transport, fields, status: r.status, response: r.json || r.text };
+    }
+    fields[chahiye] = bharo(chahiye, ctx);
+  }
+  return { sent: false, transport, fields, response: 'khaane khatam nahi hue' };
+}
+
+async function viaApitxtOtp(phone, code) {
+  const ctx = { phone, code, message: env.sms.apitxtTemplate.replace(/\{otp\}/g, code) };
+  const tries = [];
+
+  // Pehle se seekha hua rasta — ek hi request
+  if (seekhaHua) {
+    const out = await otpKoshish(seekhaHua.transport, ctx, seekhaHua.khaane);
+    tries.push({ ...out, provider: 'apitxt', url: OTP_URL });
+    if (out.sent) return { ...out, provider: 'apitxt', url: OTP_URL, tries };
+    seekhaHua = null;                    // purana rasta band ho gaya, dobara seekho
+  }
+
+  for (const t of ['POST-form', 'POST-json', 'GET']) {
+    const out = await otpKoshish(t, ctx);
+    tries.push({ ...out, provider: 'apitxt', url: OTP_URL });
+    if (out.sent) {
+      seekhaHua = { transport: t, khaane: Object.keys(out.fields) };
+      return { ...out, provider: 'apitxt', url: OTP_URL, tries };
+    }
+  }
+  return { sent: false, provider: 'apitxt', url: OTP_URL, tries, response: tries.at(-1)?.response };
+}
+
 /* ──────────────────────────────── Fast2SMS — sirf fallback ke taur pe ──── */
 
 async function viaFast2sms(phone, code) {
@@ -142,9 +213,14 @@ export async function trySendOtp(phone, code) {
   }
 
   try {
-    return env.sms.provider === 'fast2sms'
-      ? await viaFast2sms(numbers, code)
-      : await viaApitxt(numbers, code);
+    if (env.sms.provider === 'fast2sms') return await viaFast2sms(numbers, code);
+
+    // /api/sendOtp asli darwaza hai; na chale to purana rasta bhi aajma lo
+    const otpWala = await viaApitxtOtp(numbers, code);
+    if (otpWala.sent) return otpWala;
+
+    const purana = await viaApitxt(numbers, code);
+    return purana.sent ? purana : { ...otpWala, tries: [...(otpWala.tries || []), ...(purana.tries || [])] };
   } catch (err) {
     return {
       sent: false,

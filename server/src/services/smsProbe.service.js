@@ -153,7 +153,11 @@ export async function probeFast2sms(phone, code) {
 
 export async function fullProbe(phone, message, opts = {}) {
   const code = (message.match(/\b(\d{6})\b/) || [, '000000'])[1];
-  const [send, f2s] = await Promise.all([probeSend(phone, message, opts), probeFast2sms(phone, code)]);
+  const [send, f2s, khoj] = await Promise.all([
+    probeSend(phone, message, opts),
+    probeFast2sms(phone, code),
+    discoverOtpApi(phone, code, message),
+  ]);
 
   const chala = send.mileHue.find((r) => r.natija.startsWith('★★')) || send.mileHue[0];
   const f2sChala = String(f2s.natija).startsWith('★★');
@@ -167,16 +171,112 @@ export async function fullProbe(phone, message, opts = {}) {
       route: env.sms.route,
       abhiKaUrl: env.sms.apitxtUrl,
     },
-    nateeja: chala
-      ? `MIL GAYA → ${chala.method} ${chala.url.split('?')[0]} — ${chala.natija}`
+    nateeja: khoj.jeeta
+      ? `★★ OTP CHALA GAYA → ${khoj.endpoint} · ${khoj.jeeta}`
+      : chala
+        ? `MIL GAYA → ${chala.method} ${chala.url.split('?')[0]} — ${chala.natija}`
       : `${send.kulKoshish} raste aajmaye, kisi pe bhi APITxT ka API nahi mila.`
-        + ' Unse seedha endpoint URL poochna padega.',
-    kyaKarein: chala
+          + ' Unse seedha endpoint URL poochna padega.',
+    kyaKarein: khoj.jeeta
+      ? `Bas! ${khoj.endpoint} chal gaya. Phone dekhein — OTP aa gaya hoga.`
+      : chala
       ? `Render me daalein: APITXT_URL=${chala.url.split('?')[0]}`
       : f2sChala
         ? 'Fast2SMS chal raha hai — Render me SMS_PROVIDER=fast2sms kar dein, OTP turant aane lagega.'
         : 'APITxT support se endpoint URL maangein. Tab tak OTP_MODE=lenient rakhein.',
+    otpApiKiKhoj: khoj,
     apitxt: send,
     fast2sms: f2s,
+  };
+}
+
+/* ═══════════════ /api/sendOtp ke khaane khud dhundo ═══════════════
+
+   Endpoint mil gaya: https://www.apitxt.com/api/sendOtp
+   Wo "Missing mobile" bolta hai — yaani ek-ek khaana maangta hai.
+
+   Ye function wahi karta hai jo aadmi karta: bhejo, jo maange wo jodo,
+   dobara bhejo. Jab tak wo maangna band na kar de.
+*/
+
+const OTP_PATH = '/api/sendOtp';
+
+/** Naam dekh kar us khaane me kya jayega, ye tay karo */
+export function guessValue(name, { phone, code, message }) {
+  const n = String(name).toLowerCase();
+  if (/mobile|phone|number|msisdn|^to$|recipient/.test(n)) return phone;
+  if (/otp|^code$|pin|password/.test(n)) return code;
+  if (/auth|api.?key|token|secret|^key$/.test(n)) return env.sms.apitxtKey;
+  if (/sender|from|header/.test(n)) return env.sms.senderId || 'RKHRKV';
+  if (/template|^tid$|dlt/.test(n)) return env.sms.templateId || '';
+  if (/message|msg|text|content|body/.test(n)) return message;
+  if (/route|channel/.test(n)) return String(env.sms.route || 4);
+  if (/country|^cc$/.test(n)) return '91';
+  if (/expir|valid|ttl|minute/.test(n)) return '10';
+  if (/type/.test(n)) return String(env.sms.route || 4);
+  return '1';
+}
+
+/** Jawab me se "kaunsa khaana chahiye" nikalo */
+export function needsField(body) {
+  const s = String(body || '');
+  const pats = [
+    /missing\s+["']?([a-z0-9_-]+)/i,
+    /["']?([a-z0-9_-]+)["']?\s+is\s+(?:required|missing)/i,
+    /required\s*(?:field)?\s*[:\-]?\s*["']?([a-z0-9_-]+)/i,
+    /(?:please\s+)?(?:provide|enter)\s+["']?([a-z0-9_-]+)/i,
+    /invalid\s+["']?([a-z0-9_-]+)/i,
+  ];
+  for (const p of pats) {
+    const m = s.match(p);
+    if (m && m[1] && !/error|status|message/i.test(m[1])) return m[1];
+  }
+  return null;
+}
+
+async function sendWith(fields, transport) {
+  const url = `${HOST}${OTP_PATH}`;
+  const qs = new URLSearchParams(fields).toString();
+  if (transport === 'GET') return hit(`${url}?${qs}`);
+  if (transport === 'POST-json') {
+    return hit(url, { method: 'POST', type: 'application/json', body: JSON.stringify(fields) });
+  }
+  return hit(url, { method: 'POST', type: 'application/x-www-form-urlencoded', body: qs });
+}
+
+async function discoverOne(transport, ctx) {
+  const fields = {};
+  const kadam = [];
+
+  for (let i = 0; i < 10; i += 1) {
+    const r = await sendWith(fields, transport);
+    const chahiye = needsField(r.body);
+    const nat = verdict(r);
+
+    kadam.push({
+      bhejeKhaane: Object.keys(fields), status: r.status, jawab: r.body, abChahiye: chahiye,
+    });
+
+    if (nat.startsWith('★★')) return { transport, natija: '★★ CHAL GAYA', khaane: fields, kadam };
+    if (!chahiye) return { transport, natija: 'aur kuch nahi maang raha', khaane: Object.keys(fields), kadam };
+    if (fields[chahiye] !== undefined) {
+      return { transport, natija: `"${chahiye}" ki value pasand nahi aayi`, khaane: fields, kadam };
+    }
+    fields[chahiye] = guessValue(chahiye, ctx);
+  }
+  return { transport, natija: '10 baar ke baad bhi maangta raha', khaane: Object.keys(fields), kadam };
+}
+
+/** Teeno tareeke se dhundo — GET, POST(json), POST(form) */
+export async function discoverOtpApi(phone, code, message) {
+  const ctx = { phone, code, message };
+  const sab = [];
+  for (const t of ['GET', 'POST-json', 'POST-form']) sab.push(await discoverOne(t, ctx));
+
+  const jeeta = sab.find((r) => r.natija.startsWith('★★'));
+  return {
+    endpoint: `${HOST}${OTP_PATH}`,
+    jeeta: jeeta ? `${jeeta.transport} — khaane: ${JSON.stringify(Object.keys(jeeta.khaane))}` : null,
+    koshishein: sab,
   };
 }
