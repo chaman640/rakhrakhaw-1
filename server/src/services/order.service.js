@@ -38,10 +38,24 @@ export async function placeOrder(businessId, partyId, userId, { note, paymentMod
   const priceMap = new Map(priced.map((p) => [String(p._id), p]));
 
   const lines = [];
+  /*
+    Jo item gir gaya wo CHUP-CHAAP nahi girta.
+
+    Pehle bas `continue` tha: retailer 12 item ka cart bhejta, 8 ka order
+    banta, aur use kabhi pata hi nahi chalta — wo maal ka intezaar karta rehta
+    jo order me hai hi nahi. Error sirf tab aata tha jab SAB khatam ho.
+  */
+  const dropped = [];
   for (const line of cart.items) {
     const item = priceMap.get(String(line.itemId));
-    if (!item) continue;                    // beech me hat gaya
-    if (item.stockQty <= 0) continue;       // khatam ho gaya
+    if (!item) {
+      dropped.push({ itemId: line.itemId, name: line.name || '', reason: 'hat_gaya' });
+      continue;
+    }
+    if (item.stockQty <= 0) {
+      dropped.push({ itemId: item._id, name: item.name, reason: 'stock_khatam' });
+      continue;
+    }
 
     const qty = round2(line.qty);
     lines.push({
@@ -91,7 +105,11 @@ export async function placeOrder(businessId, partyId, userId, { note, paymentMod
     data: { orderId: order._id, orderNo },
   });
 
-  return getOrder(businessId, order._id, { partyId });
+  /*
+    `dropped` jawab me jata hai taaki app saaf keh sake ki kaunsa item order me
+    aaya hi nahi. Ye khabar retailer ke liye order jitni hi zaroori hai.
+  */
+  return { ...(await getOrder(businessId, order._id, { partyId })), dropped };
 }
 
 export async function getOrder(businessId, id, { partyId = null } = {}) {
@@ -333,7 +351,17 @@ export async function markOrderPaid(businessId, id, { amount, mode, reference, n
   const amt = round2(amount ?? order.itemsTotal);
   if (!(amt > 0)) throw ApiError.badRequest('Amount 0 se zyada hona chahiye');
 
-  const payment = await createPayment(businessId, {
+  /*
+    `createPayment` `{ payment, advance }` deta hai — payment nahi.
+
+    Bina destructure ke `payment._id` undefined tha, isliye upar wala
+    "pehle se chadh chuki hai" wala pehra KABHI nahi lagta tha: ₹10,000 ka
+    order, "Payment mili" paanch baar dabao → paanch asli payment, khate me
+    ₹50,000 credit. Aur `deletePayment` ka `Order.updateOne({ paymentId })`
+    bhi kabhi match nahi karta tha, isliye order hamesha "paisa aa gaya"
+    dikhata rehta.
+  */
+  const { payment } = await createPayment(businessId, {
     partyId: order.partyId,
     amount: amt,
     // Retailer ne jo kaha tha wahi default — par malik badal sakta hai
@@ -398,6 +426,15 @@ export async function cancelOrder(businessId, id, { reason }, userId, viewer = n
   const order = await Order.findOne({ _id: id, businessId });
   if (!order) throw ApiError.notFound('Order nahi mila');
 
+  /*
+    Bill ban chuka to order ab kagaz pe pakka ho gaya — badlaav bill se hoga,
+    order se nahi. Warna retailer ko "cancel ho gaya" dikhta hai jabki bill
+    zinda hai aur uska udhaar khate me chadha pada hai.
+  */
+  if (order.invoiceId) {
+    throw ApiError.badRequest('Is order ka bill ban chuka hai — pehle bill cancel karein');
+  }
+
   if (order.status === ORDER_STATUS.DELIVERED) {
     throw ApiError.badRequest('Delivered order cancel nahi ho sakta');
   }
@@ -433,6 +470,15 @@ export async function updateOrderItems(businessId, id, { items, note }, userId, 
   await assertCanTouch(businessId, id, viewer);
   const order = await Order.findOne({ _id: id, businessId });
   if (!order) throw ApiError.notFound('Order nahi mila');
+
+  /*
+    Bill ban chuka to order ab kagaz pe pakka ho gaya — badlaav bill se hoga,
+    order se nahi. Warna retailer ko "cancel ho gaya" dikhta hai jabki bill
+    zinda hai aur uska udhaar khate me chadha pada hai.
+  */
+  if (order.invoiceId) {
+    throw ApiError.badRequest('Is order ka bill ban chuka hai — pehle bill cancel karein');
+  }
 
   if ([ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(order.status)) {
     throw ApiError.badRequest('Band ho chuke order me badlav nahi ho sakta');

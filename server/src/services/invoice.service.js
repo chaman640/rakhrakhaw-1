@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import {
   PARTY_TYPES, STOCK_MOVEMENT_TYPES, LEDGER_TYPES, COUNTER_KEYS,
-  ORDER_STATUS, NOTIFICATION_TYPES, PAYMENT_STATUS,
+  ORDER_STATUS, NOTIFICATION_TYPES, PAYMENT_STATUS, RETURN_TYPES,
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { getFinancialYear } from '../utils/financialYear.js';
@@ -878,8 +878,24 @@ export async function cancelInvoice(businessId, id, { reason }, userId, viewer =
    *
    * (Ulta case pehle se roka hua hai: cancel bill ka return nahi ban sakta.)
    */
-  const note = await ReturnNote.findOne({ businessId, invoiceId: invoice._id })
-    .select('returnNo').lean();
+  /*
+    Bina-bill wali wapasi ka `invoiceId` null hota hai, isliye wo is pehre me
+    dikhti hi nahi thi — bill cancel ho jata aur uska stock DOBARA wapas jud
+    jata. Ab us party ki wo bina-bill wapasi bhi dekhte hain jisme is bill ka
+    koi item ho.
+  */
+  const note = await ReturnNote.findOne({
+    businessId,
+    type: RETURN_TYPES.SALE_RETURN,
+    $or: [
+      { invoiceId: invoice._id },
+      {
+        partyId: invoice.partyId,
+        invoiceId: null,
+        'items.itemId': { $in: invoice.items.map((l) => l.itemId) },
+      },
+    ],
+  }).select('returnNo').lean();
   if (note) {
     throw ApiError.badRequest(
       `Is bill ka maal wapas aa chuka hai (${note.returnNo}) — pehle wo credit note hatayein, phir bill cancel hoga`

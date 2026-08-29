@@ -183,7 +183,14 @@ export async function checkoutMany(user, { orders = [] } = {}) {
         note: row.note || '',
         paymentMode: row.paymentMode || ORDER_PAYMENT_MODES.UDHAAR,
       });
-      placed.push({ shopId: membership.businessId, orderId: order._id, orderNo: order.orderNo });
+      placed.push({
+        shopId: membership.businessId,
+        orderId: order._id,
+        orderNo: order.orderNo,
+        // Jo item stock khatam hone se order me aaya hi nahi — retailer ko
+        // ye batana order jitna hi zaroori hai
+        dropped: order.dropped || [],
+      });
     } catch (err) {
       /*
         Yahan `throw` NAHI karte — upar wali wajah. Par galti nigalte bhi nahi:

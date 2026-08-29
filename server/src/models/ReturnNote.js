@@ -118,6 +118,12 @@ const returnNoteSchema = new mongoose.Schema(
     /** Jo credit kisi bill pe nahi laga — wo party ka jama paisa ban gaya */
     advance: { type: Number, default: 0 },
 
+    /*
+      Paisa wapas karte waqt ka jhanda — do request ek saath aayein to sirf ek
+      hi andar jaye. Bina iske double-tap par asli cash do baar bahar jata hai.
+    */
+    refundLockedAt: { type: Date, default: null },
+
     reason: { type: String, default: '' },
     notes: { type: String, default: '' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -765,17 +765,44 @@ export async function refundReturn(businessId, returnNoteId, payload, userId) {
   const party = await Party.findOne({ _id: note.partyId, businessId }).select('type').lean();
   if (!party) throw ApiError.badRequest('Party nahi mili');
 
-  return createPayment(businessId, {
-    partyId: note.partyId,
-    amount,
-    // Retailer ko paisa DENA hai -> OUT. Supplier se paisa LENA hai -> IN.
-    direction: party.type === PARTY_TYPES.SUPPLIER ? 'IN' : 'OUT',
-    mode: payload.mode || 'CASH',
-    reference: payload.reference || '',
-    returnNoteId: note._id,
-    note: payload.note || `${note.returnNo} ka paisa wapas`,
-    date: payload.date,
-  }, userId);
+  /*
+    JHANDA PEHLE — wahi pattern jo `confirmPayment` me hai.
+
+    Upar wali ginti (`refundableForReturn`) aur neeche wala `createPayment`
+    do alag pal hain. Beech me koi rok na ho to double-tap ya slow net par
+    dono request paas ho jati hain aur ASLI CASH DO BAAR bahar chala jata hai.
+
+    `refundLockedAt: null` filter ke andar hai, isliye MongoDB do me se ek hi
+    request ko doc deta hai. Doosri ko `null` milta hai aur wo saaf mana kar
+    deti hai.
+  */
+  const locked = await ReturnNote.findOneAndUpdate(
+    { _id: note._id, businessId, refundLockedAt: null },
+    { $set: { refundLockedAt: new Date() } },
+    { new: true },
+  );
+  if (!locked) {
+    throw ApiError.badRequest('Is wapasi ka paisa abhi abhi wapas kiya ja raha hai — ek baar page refresh karke dekh lijiye');
+  }
+
+  try {
+    return await createPayment(businessId, {
+      partyId: note.partyId,
+      amount,
+      // Retailer ko paisa DENA hai -> OUT. Supplier se paisa LENA hai -> IN.
+      direction: party.type === PARTY_TYPES.SUPPLIER ? 'IN' : 'OUT',
+      mode: payload.mode || 'CASH',
+      reference: payload.reference || '',
+      returnNoteId: note._id,
+      note: payload.note || `${note.returnNo} ka paisa wapas`,
+      date: payload.date,
+    }, userId);
+  } catch (err) {
+    // Paisa gaya hi nahi to jhanda bhi hata do, warna wapasi hamesha ke liye
+    // atak jati hai aur usko kholne ka koi rasta nahi bachta
+    await ReturnNote.updateOne({ _id: note._id, businessId }, { $set: { refundLockedAt: null } });
+    throw err;
+  }
 }
 
 /** Wapasi ke page pe "kitna wapas ho sakta hai" — button dikhane ke liye */

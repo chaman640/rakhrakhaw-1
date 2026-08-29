@@ -3,13 +3,33 @@ import { env } from '../config/env.js';
 import { PushSubscription } from '../models/index.js';
 
 let ready = false;
-if (env.push.publicKey && env.push.privateKey) {
-  webpush.setVapidDetails(env.push.subject, env.push.publicKey, env.push.privateKey);
-  ready = true;
+
+/*
+  Galat VAPID key se POORA SERVER nahi girna chahiye — push band ho, bas.
+
+  Sabse aam galti: Render/host ke "Value" box me poori line paste ho jati hai
+  (`VAPID_PRIVATE_KEY=abc...`), isliye value ke andar `=` chala jata hai aur
+  web-push mana kar deta hai. `trim()` aur `KEY=` wala hissa kaat dena us
+  galti ko chup-chaap sudhar deta hai.
+*/
+const clean = (v) => String(v || '').trim().replace(/^[A-Z_]+=/, '');
+
+const pubKey = clean(env.push.publicKey);
+const privKey = clean(env.push.privateKey);
+
+if (pubKey && privKey) {
+  try {
+    webpush.setVapidDetails(env.push.subject, pubKey, privKey);
+    ready = true;
+  } catch (err) {
+    console.error(`[push] VAPID key theek nahi hai — phone pe notification band rahenge. ${err.message}`);
+    console.error('[push] Nayi key: npm run vapid --prefix server');
+    console.error('[push] Dhyan: host ke Value box me SIRF key daalein, "VAPID_PRIVATE_KEY=" ke bina.');
+  }
 }
 
 export const pushReady = () => ready;
-export const publicKey = () => env.push.publicKey;
+export const publicKey = () => pubKey;
 
 export async function saveSubscription(userId, businessId, sub, ua = '') {
   if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) return null;

@@ -19,6 +19,7 @@
  *     hi nahi — unka anuvaad hota hi nahi.
  */
 const DICT = {
+  'Ye item order me nahi aaye (stock khatam tha): {a}': { hi: 'ये आइटम ऑर्डर में नहीं आए (स्टॉक खत्म था): {a}', en: "These items aren't in the order (out of stock): {a}" },
 
   /* ── Step 3: phone pe notification ── */
   'Is phone pe notification band': { hi: 'इस फ़ोन पे नोटिफिकेशन बंद', en: 'Notifications off on this phone' },

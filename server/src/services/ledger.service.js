@@ -34,12 +34,31 @@ export async function postEntry({
   );
   if (!party) throw ApiError.notFound('Party nahi mili');
 
-  const entry = await LedgerEntry.create({
-    businessId, partyId, type, date,
-    debit: d, credit: c,
-    balanceAfter: round2(party.balance),
-    refType, refId, refNo, note, createdBy: userId,
-  });
+  /*
+    `$inc` lag chuka hai. Ab entry na bani to `Party.balance` aur khata
+    HAMESHA ke liye alag ho jate — aur wo farak kabhi apne aap theek nahi
+    hota, kyunki `recalcBalances` tabhi chalta hai jab koi use bulaye.
+
+    Isliye yahan wahi compensating pattern hai jo `createInvoice` me hai:
+    fail hone par apna hi `$inc` ulta karo, phir asli error aage bhejo.
+  */
+  let entry;
+  try {
+    entry = await LedgerEntry.create({
+      businessId, partyId, type, date,
+      debit: d, credit: c,
+      balanceAfter: round2(party.balance),
+      refType, refId, refNo, note, createdBy: userId,
+    });
+  } catch (err) {
+    await Party.updateOne({ _id: partyId, businessId }, { $inc: { balance: c - d } })
+      .catch(() => {
+        // Ulta karna bhi fail — ab sirf poora khata dobara jodna hi bachta hai
+        console.error(`[ledger] ${partyId} ka balance ulta nahi ho paya — recalc chala rahe hain`);
+        return recalcBalances(businessId, partyId).catch(() => {});
+      });
+    throw err;
+  }
 
   // Purani date pe entry daali? To ye entry beech me ghus gayi hai aur uske
   // aage wali sab entries ka running balance khisak gaya — dobara jod do.

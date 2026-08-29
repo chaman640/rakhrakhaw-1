@@ -1019,7 +1019,84 @@ async function main() {
   check('naya login karte hi wo cache saaf hota hai (ek number ek jagah sach rahe)',
     srcOf('services/auth.service.js').includes('cacheBust('));
 
-  /* ════════════════════ 17. Membership ke index ════════════════════ */
+  /* ════════════ 17. Review me mile bugs — sab band ════════════ */
+  console.log(`\n${Y}Review ke bugs${N}`);
+
+  const ordSrc = srcOf('services/order.service.js');
+  const retSrc3 = srcOf('services/return.service.js');
+  const invSrc3 = srcOf('services/invoice.service.js');
+  const ledSrc = srcOf('services/ledger.service.js');
+  const paySrc3 = srcOf('services/payment.service.js');
+  const smsSrc2 = srcOf('services/sms.service.js');
+
+  /*
+    Bug 1 — `createPayment` object deta hai. Bina destructure ke `payment._id`
+    undefined tha, isliye "pehle se payment chadh chuki" wala pehra KABHI
+    nahi lagta tha: ek hi order pe jitni baar chaho payment chadh jati thi.
+  */
+  check('BUG1: order ki payment destructure hoti hai (warna ek order pe unlimited payment)',
+    ordSrc.includes('const { payment } = await createPayment'));
+
+  /*
+    Bug 2 — bina-bill wapasi ka `invoiceId` null hota hai, isliye bill wali
+    ginti use dekh hi nahi paati thi. 10 beche, 20 wapas ho jate the.
+  */
+  check('BUG2: bill wali wapasi party ki poori ginti bhi dekhti hai',
+    retSrc3.includes('const partyLeft = round2((taken[itemId]')
+    && retSrc3.includes('Math.min(billLeft, partyLeft)'));
+
+  // Bug 3 — wahi jad, cancel wale pehre me
+  check('BUG3: bill cancel ka pehra bina-bill wapasi bhi pakadta hai',
+    invSrc3.includes('invoiceId: null') && invSrc3.includes("'items.itemId': { $in:"));
+
+  /*
+    Bug 4 — bill ban chukne ke baad order cancel/edit ho jata tha: retailer ko
+    "cancel ho gaya" dikhta aur bill zinda rehta, udhaar khate me chadha hua.
+  */
+  check('BUG4: bill ban chuke order pe cancel aur edit dono band',
+    (ordSrc.match(/if \(order\.invoiceId\)/g) || []).length >= 2);
+
+  /*
+    Bug 5 — `$inc` lag chuka aur entry na bani to Party.balance aur khata
+    hamesha ke liye alag ho jate the.
+  */
+  check('BUG5: khata entry fail hone par balance ka $inc ulta ho jata hai',
+    ledSrc.includes('$inc: { balance: c - d }'));
+
+  // Bug 6 — refund pe do request ek saath = asli cash do baar bahar
+  check('BUG6: refund pe jhanda pehle gadta hai (double refund band)',
+    paySrc3.includes('refundLockedAt: null'));
+  check('BUG6: paisa na jaye to jhanda khul bhi jata hai',
+    paySrc3.includes('refundLockedAt: null }')
+    && paySrc3.includes('$set: { refundLockedAt: null }'));
+
+  // Bug 7 — gira hua item chup-chaap girta tha
+  check('BUG7: order me na aaya item jawab me batata hai',
+    ordSrc.includes('dropped.push') && ordSrc.includes('dropped }'));
+
+  // Bug 8 — refund ho chuki wapasi mit jati thi, payment anaath reh jati
+  check('BUG8: jiska paisa wapas ho chuka wo wapasi mitayi nahi ja sakti',
+    retSrc3.includes('returnNoteId: note._id'));
+
+  /* ── sender id ke bina SMS ── */
+  check('SMS: sender id khali ho to wo khaana URL se hat jata hai',
+    smsSrc2.includes('!env.sms.senderId'));
+
+  const dropSender = (u) => {
+    let url = u.replace('{key}', 'K').replace('{phone}', '9').replace('{sender}', '')
+      .replace('{otp}', '1').replace('{message}', 'M');
+    return url
+      .replace(/([?&])(sender|senderid|from|sender_id)=(&|$)/gi, '$1')
+      .replace(/[?&]$/, '').replace(/\?&/, '?').replace(/&&+/g, '&');
+  };
+  check('sender khaana beech me ho to bhi URL saaf rehta hai',
+    dropSender('https://x/s?a={key}&senderid={sender}&m={phone}') === 'https://x/s?a=K&m=9',
+    dropSender('https://x/s?a={key}&senderid={sender}&m={phone}'));
+  check('sender khaana AAKHIR me ho to bhi',
+    dropSender('https://x/s?a={key}&senderid={sender}') === 'https://x/s?a=K',
+    dropSender('https://x/s?a={key}&senderid={sender}'));
+
+  /* ════════════════════ 18. Membership ke index ════════════════════ */
   console.log(`\n${Y}Membership ke index${N}`);
 
   const indexes = Membership.schema.indexes();

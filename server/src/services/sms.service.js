@@ -31,12 +31,32 @@ export const smsReady = () => Boolean(
 /** APITxT — URL .env se aata hai, taaki dashboard wala exact URL paste kiya ja sake */
 async function sendViaApitxt(numbers, code) {
   const message = env.sms.apitxtTemplate.replace(/\{otp\}/g, code);
-  const url = env.sms.apitxtUrl
+  let url = env.sms.apitxtUrl
     .replace('{key}', encodeURIComponent(env.sms.apitxtKey))
     .replace('{phone}', encodeURIComponent(numbers))
     .replace('{sender}', encodeURIComponent(env.sms.senderId))
     .replace('{otp}', encodeURIComponent(code))
     .replace('{message}', encodeURIComponent(message));
+
+  /*
+    SENDER ID NA HO TO US KHAANE KO URL SE HATA DETE HAIN.
+
+    Sender ID (6 akshar wala naam) TRAI/DLT se approve hota hai aur usme din
+    lagte hain. Uske intezaar me OTP band rakhna theek nahi — zyadatar company
+    ka OTP wala rasta bina sender id ke bhi chalta hai, unka apna default naam
+    lag jata hai.
+
+    Khali `senderid=` chhod dena sabse bura hota: bahut se gateway use "galat
+    sender" maan kar mana kar dete hain. Isliye poora khaana hi nikal dete
+    hain — aur URL me `?` `&` ka jod bhi theek kar dete hain.
+  */
+  if (!env.sms.senderId) {
+    url = url
+      .replace(/([?&])(sender|senderid|from|sender_id)=(&|$)/gi, '$1')
+      .replace(/[?&]$/, '')
+      .replace(/\?&/, '?')
+      .replace(/&&+/g, '&');
+  }
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 10000);

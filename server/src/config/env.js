@@ -118,7 +118,9 @@ export const env = {
   sms: {
     // 'apitxt' | 'fast2sms' | 'none'
     provider: (process.env.SMS_PROVIDER || (process.env.APITXT_API_KEY ? 'apitxt' : 'fast2sms')).trim().toLowerCase(),
-    senderId: process.env.SMS_SENDER_ID || '',
+    // Khali chhod sakte hain — OTP wale raste pe zyadatar gateway bina iske
+    // bhi bhej dete hain (DLT approval me din lagte hain).
+    senderId: (process.env.SMS_SENDER_ID || '').trim(),
     // APITxT ka exact URL dashboard se copy karke yahan daalein.
     // {key} {phone} {otp} {sender} apne aap bhar jate hain.
     apitxtUrl: process.env.APITXT_URL

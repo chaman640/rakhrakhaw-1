@@ -2,13 +2,11 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import {
   RETURN_TYPES, PARTY_TYPES, LEDGER_TYPES, STOCK_MOVEMENT_TYPES,
-  COUNTER_KEYS, TAX_TYPES,
-} from '../config/constants.js';
+  COUNTER_KEYS, TAX_TYPES, PAYMENT_STATUS} from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { amountInWords } from '../utils/amountInWords.js';
 import {
-  ReturnNote, Invoice, Purchase, Party, Item, Business, Counter,
-} from '../models/index.js';
+  ReturnNote, Invoice, Purchase, Party, Item, Business, Counter, Payment} from '../models/index.js';
 import { scopeByParty, isScoped, canSeeDoc } from '../utils/scope.js';
 import { applyStockChange } from './stock.service.js';
 import { khepNikalo, khepWapas } from './lot.service.js';
@@ -349,13 +347,43 @@ export async function createReturn(businessId, payload, userId) {
     already = await returnedSoFar(businessId, isSale
       ? { invoiceId: original._id } : { purchaseId: original._id });
 
+    /*
+      BILL WALI HADD AKELE KAAFI NAHI HAI.
+
+      `returnedSoFar` sirf `invoiceId` pe match karta hai, aur bina-bill wali
+      wapasi `invoiceId: null` se save hoti hai — yaani wo is ginti me dikhti
+      hi nahi. Us chhoot se ye rasta khula tha:
+
+        1. INV-1 pe retailer ne 10 piece liye
+        2. BINA BILL ka return, 10 piece  -> party wali ginti se paas
+        3. INV-1 ke SAATH return, 10 piece -> bill wali ginti ko #2 dikha hi
+           nahi, isliye ye bhi paas
+
+      Nateeja: 10 beche, 20 wapas. Stock me 10 ka phantom aur khate me dohra
+      credit. (Ulta kram pehle se safe tha — us halat me party wali ginti #1
+      ko pakad leti hai.)
+
+      Ab dono ginti chalti hain aur JO CHHOTI ho wahi asli hadd hai.
+    */
+    const itemIdList = [...wantedByItem.keys()];
+    const [taken, returnedAll] = await Promise.all([
+      tradedQty(isSale ? 'Invoice' : 'Purchase', businessId, party._id, itemIdList),
+      returnedByParty(businessId, party._id, payload.type, itemIdList),
+    ]);
+
     for (const [itemId, wantQty] of wantedByItem) {
       const src = original.items.find((i) => String(i.itemId) === itemId);
       if (!src) throw ApiError.badRequest(`${itemId} is bill me tha hi nahi`);
-      const left = round2(src.qty - (already[itemId] || 0));
+
+      const billLeft = round2(src.qty - (already[itemId] || 0));
+      const partyLeft = round2((taken[itemId] || 0) - (returnedAll[itemId] || 0));
+      const left = round2(Math.min(billLeft, partyLeft));
+
       if (wantQty > left) {
         throw ApiError.badRequest(
-          `${src.name}: sirf ${left} ${src.unit} wapas ho sakta hai (${src.qty} me se ${round2(src.qty - left)} pehle hi wapas ho chuka)`
+          partyLeft < billLeft
+            ? `${src.name}: sirf ${left} ${src.unit} wapas ho sakta hai — is party ka bina-bill wala return pehle hi ho chuka hai`
+            : `${src.name}: sirf ${left} ${src.unit} wapas ho sakta hai (${src.qty} me se ${round2(src.qty - left)} pehle hi wapas ho chuka)`
         );
       }
     }
@@ -626,6 +654,20 @@ export async function deleteReturn(businessId, id, userId, viewer = null) {
   // Mitane se pehle bhi wahi hadd — dekh na sakne wali cheez mitani to bilkul nahi
   if (isScoped(viewer) && !(await canSeeDoc(note, businessId, viewer))) {
     throw ApiError.notFound('Ye return nahi mila');
+  }
+
+  /*
+    Jis wapasi ka paisa cash me wapas kiya ja chuka hai, wo mitayi nahi ja
+    sakti. Warna Payment pe `returnNoteId` ek aise note ko takta reh jata hai
+    jo hai hi nahi, aur khate me wo refund bina kisi wajah ke pada rehta hai.
+  */
+  const refunded = await Payment.countDocuments({
+    businessId, returnNoteId: note._id, status: PAYMENT_STATUS.CONFIRMED,
+  });
+  if (refunded > 0) {
+    throw ApiError.badRequest(
+      `${note.returnNo} ka paisa wapas kiya ja chuka hai — pehle wo payment hatayein, phir ye wapasi hategi`,
+    );
   }
 
   const cfg = CONFIG[note.type];

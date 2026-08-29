@@ -226,6 +226,21 @@ export default function Cart() {
                   </span>
                   <ChevronRight size={16} className="shrink-0 text-slate-300" />
                 </button>
+
+                {/*
+                  Jo item order me AAYA HI NAHI.
+
+                  Pehle wo chup-chaap gir jata tha — 12 item bheje, 8 ka order
+                  bana, aur retailer us maal ka intezaar karta rehta jo order
+                  me tha hi nahi. Ab saaf likha jata hai.
+                */}
+                {row.dropped?.length > 0 && (
+                  <p className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+                    {t('Ye item order me nahi aaye (stock khatam tha): {a}', {
+                      a: row.dropped.map((d) => d.name).filter(Boolean).join(', '),
+                    })}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
