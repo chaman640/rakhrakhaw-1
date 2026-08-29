@@ -2,110 +2,165 @@ import { env } from '../config/env.js';
 import { browserHeaders } from '../utils/browserHeaders.js';
 
 /*
-  APITxT ka asli endpoint unke doc page pe likha nahi hai. Isliye andaze ki
-  jagah ye file gateway se KHUD poochti hai: har mumkin rasta aajmati hai aur
-  unka poora jawab jaisa ka waisa wapas deti hai.
+  APITxT ka asli endpoint unke doc me likha nahi hai.
 
-  Jo rasta chal jaye, use APITXT_URL me daal dena — code badalne ki zarurat
-  nahi.
+  Jo pata chala:
+    · Bina browser headers ke unka shield rok deta tha (ab headers jate hain)
+    · `/api/...` pe "Cannot GET" aata hai — ye Express ka 404 hai, yaani API
+      wahan hai par rasta doosra hai
+    · "Cannot GET" ka ek aur matlab bhi ho sakta hai: rasta hai, par sirf POST
+      leta hai. Isliye har rasta GET aur POST dono se aajmaya jata hai.
+
+  Jo rasta chal jaye, use APITXT_URL me daal dena.
 */
 
-const HOSTS = ['https://www.apitxt.com', 'https://api.apitxt.com', 'http://www.apitxt.com'];
-const SEND_PATHS = ['/api/sendhttp.php', '/api/v2/sendsms', '/sendhttp.php', '/api/sendmsg.php', '/api/mt/SendSMS'];
-const BAL_PATHS = ['/api/balance.php', '/api/v2/balance'];
+const HOST = 'https://www.apitxt.com';
+
+/* Doc ka pata `/apiDoc/sendSMS` hai — panel aksar API ka naam wahi rakhte hain */
+const PATHS = [
+  '/api/sendSMS', '/api/sendsms', '/api/send-sms', '/api/send_sms',
+  '/api/sms/send', '/api/sms/sendSMS', '/api/sms',
+  '/api/send', '/api/sendMessage', '/api/message/send', '/api/messages',
+  '/api/v1/sendSMS', '/api/v1/sendsms', '/api/v1/sms/send', '/api/v1/sms', '/api/v1/send',
+  '/api/v2/sendSMS', '/api/v2/sms/send', '/api/v2/send',
+  '/api/mt/SendSMS', '/api/mt/sendsms',
+  '/api/http/sendSMS', '/api/http/send',
+  '/api/sendhttp', '/api/bulkSMS', '/api/bulksms',
+  '/api/user/sendSMS', '/api/campaign/send', '/api/quick/send', '/api/otp/send', '/api/sendOtp',
+  '/sendSMS', '/sendsms', '/sms/send', '/send',
+  '/v1/sendSMS', '/v2/sendSMS',
+];
 
 const mask = (u) => String(u).replace(
   /(authkey|authorization|apikey|api_key|APIKey|token)=([^&]{0,4})[^&]*/gi, '$1=$2••••',
 );
 
-async function hit(url, timeout = 9000, headers = browserHeaders()) {
+/* Express ka apna 404 — iska matlab "rasta nahi hai", aur kuch nahi */
+const express404 = (b) => /cannot (get|post) /i.test(b || '');
+const spaPage = (b) => /<!doctype html/i.test(b || '') && !express404(b);
+
+async function hit(url, { method = 'GET', body = null, type = null, timeout = 8000 } = {}) {
   const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), timeout);
-  const started = Date.now();
+  const timer = setTimeout(() => ac.abort(), timeout);
   try {
-    const res = await fetch(url, { signal: ac.signal, redirect: 'follow', headers });
+    const headers = browserHeaders();
+    if (type) headers['Content-Type'] = type;
+    const res = await fetch(url, {
+      method, headers, body, signal: ac.signal, redirect: 'follow',
+    });
     const text = (await res.text()).trim();
-    return { url: mask(url), status: res.status, ms: Date.now() - started, body: text.slice(0, 400) };
+    return { url: mask(url), method, status: res.status, body: text.slice(0, 300) };
   } catch (err) {
-    return { url: mask(url), status: 0, ms: Date.now() - started, error: err.name === 'AbortError' ? 'timeout' : err.message };
+    return {
+      url: mask(url), method, status: 0,
+      error: err.name === 'AbortError' ? 'timeout' : err.message,
+    };
   } finally {
-    clearTimeout(t);
+    clearTimeout(timer);
   }
 }
 
-/* Ek jawab dekh kar batao ki wo "asli gateway" jaisa lagta hai ya nahi */
 export function verdict(r) {
   if (r.status === 0) return r.error === 'timeout' ? 'jawab hi nahi aaya' : `nahi juda (${r.error})`;
-  if (r.status === 404) return 'ye rasta hai hi nahi';
 
   const b = (r.body || '').toLowerCase();
 
-  // Ye sabse pehle — warna "MISSING_BROWSER_HEADERS" me "header" dikh kar
-  // galti se "DLT ki dikkat" pad jata tha
   if (/missing_browser_headers/.test(b)) return 'BOT-SHIELD ne roka (browser headers nahi the)';
   if (/access denied|forbidden|cloudflare|captcha|just a moment/.test(b)) return 'BOT-SHIELD ne roka';
+  if (express404(b) || r.status === 404) return 'ye rasta hai hi nahi';
+  if (spaPage(b)) return 'API nahi, website ka page mila';
 
-  if (/<!doctype|<html/.test(b)) return 'API nahi, website ka page mila';
-  if (/invalid.*(authkey|api|key)|authentication fail|unauthori/.test(b)) return 'RASTA SAHI — par chaabi (key) galat';
-  if (/sender\s*id|senderid|\bdlt\b|template.*(not|invalid|missing)|invalid.*template|\bheader\b.*(not|invalid|approv)/.test(b)) {
-    return 'RASTA SAHI — sender ID / DLT template ki dikkat';
-  }
-  if (/balance|credit|insufficient/.test(b)) return 'RASTA SAHI — balance ki dikkat';
-  if (/^[a-f0-9]{20,}$/i.test(r.body || '') || /"?(type|status)"?\s*[:=]\s*"?(success|ok)/.test(b)) return 'CHAL GAYA';
-  if (r.status >= 200 && r.status < 300) return 'RASTA SAHI — jawab neeche padhein';
+  if (/invalid.*(authkey|api.?key|token)|authentication fail|unauthori/.test(b)) return '★ RASTA MIL GAYA — chaabi galat';
+  if (/sender\s*id|senderid|\bdlt\b|template.*(not|invalid|missing|match)|invalid.*template/.test(b)) return '★ RASTA MIL GAYA — sender ID / DLT template chahiye';
+  if (/balance|credit|insufficient/.test(b)) return '★ RASTA MIL GAYA — balance ki dikkat';
+  if (/missing|required|param/.test(b)) return '★ RASTA MIL GAYA — koi khaana chhoot raha hai';
+  if (/^[a-f0-9]{20,}$/i.test(r.body || '') || /"?(type|status)"?\s*[:=]\s*"?(success|ok)/.test(b)) return '★★ CHAL GAYA';
+  if (r.status === 405) return '★ RASTA MIL GAYA — par doosra method chahiye';
+  if (r.status === 401 || r.status === 403) return '★ RASTA MIL GAYA — chaabi/ijazat ki dikkat';
+  if (r.status >= 200 && r.status < 300) return '★ RASTA MIL GAYA — jawab padhein';
   return `HTTP ${r.status}`;
 }
 
-const withVerdict = (r) => ({ ...r, natija: verdict(r) });
+const dilchasp = (v) => v.startsWith('★');
 
-/** Balance poochna — isme SMS nahi jata, sirf chaabi sahi hai ya nahi pata chalta */
-export async function probeBalance() {
-  const key = env.sms.apitxtKey;
-  const urls = [];
-  for (const h of HOSTS.slice(0, 2)) {
-    for (const p of BAL_PATHS) {
-      urls.push(`${h}${p}?authkey=${encodeURIComponent(key)}&type=${env.sms.route || 4}`);
-    }
-  }
-  return (await Promise.all(urls.map((u) => hit(u)))).map(withVerdict);
-}
-
-/** Har rasta aajma kar dekho — kaunsa gateway jaisa jawab deta hai */
-export async function probeSend(phone, message, opts = {}) {
-  const sender = opts.sender === undefined ? env.sms.senderId : opts.sender;
-  const templateId = opts.templateId === undefined ? env.sms.templateId : opts.templateId;
-  const key = env.sms.apitxtKey;
+/* Ek saath 8 — unke server pe bojh na pade, aur jaanch bhi jaldi khatam ho */
+async function batches(jobs, size = 8) {
   const out = [];
-
-  for (const h of HOSTS) {
-    for (const p of SEND_PATHS) {
-      const q = new URLSearchParams({
-        authkey: key,
-        mobiles: phone,
-        message,
-        route: String(env.sms.route || 4),
-        country: '91',
-        flash: '0',
-      });
-      if (sender) q.set('sender', sender);
-      if (templateId) q.set('DLT_TE_ID', templateId);
-      out.push(withVerdict(await hit(`${h}${p}?${q}`)));
-    }
+  for (let i = 0; i < jobs.length; i += size) {
+    out.push(...await Promise.all(jobs.slice(i, i + size).map((j) => j())));
   }
   return out;
 }
 
-/** Poori jaanch ek jagah */
+export async function probeSend(phone, message, opts = {}) {
+  const sender = opts.sender === undefined ? env.sms.senderId : opts.sender;
+  const templateId = opts.templateId === undefined ? env.sms.templateId : opts.templateId;
+
+  const fields = {
+    authkey: env.sms.apitxtKey,
+    apikey: env.sms.apitxtKey,
+    mobiles: phone,
+    message,
+    route: String(env.sms.route || 4),
+    country: '91',
+    flash: '0',
+  };
+  if (sender) fields.sender = sender;
+  if (templateId) { fields.template_id = templateId; fields.DLT_TE_ID = templateId; }
+
+  const qs = new URLSearchParams(fields).toString();
+  const jobs = [];
+  for (const p of PATHS) {
+    jobs.push(() => hit(`${HOST}${p}?${qs}`));
+    jobs.push(() => hit(`${HOST}${p}`, { method: 'POST', type: 'application/json', body: JSON.stringify(fields) }));
+    jobs.push(() => hit(`${HOST}${p}`, { method: 'POST', type: 'application/x-www-form-urlencoded', body: qs }));
+  }
+
+  const all = (await batches(jobs)).map((r) => ({ ...r, natija: verdict(r) }));
+
+  // Sirf kaam ke jawab wapas — warna 100+ line ka JSON padhna namumkin ho jata
+  const mile = all.filter((r) => dilchasp(r.natija));
+  return {
+    kulKoshish: all.length,
+    mileHue: mile.slice(0, 12),
+    ...(mile.length > 12 ? { aurBhiMile: mile.length - 12 } : {}),
+    baaki: {
+      rastaNahi: all.filter((r) => r.natija === 'ye rasta hai hi nahi').length,
+      shield: all.filter((r) => r.natija.startsWith('BOT-SHIELD')).length,
+      juraNahi: all.filter((r) => /^(nahi juda|jawab hi)/.test(r.natija)).length,
+      aur: all.filter((r) => /^(HTTP|API nahi)/.test(r.natija)).length,
+    },
+  };
+}
+
+/** Fast2SMS — sirf jaanch. Uska `otp` route DLT sender ID ke bina bhi chalta hai. */
+export async function probeFast2sms(phone, code) {
+  if (!env.fast2sms.apiKey) return { natija: 'FAST2SMS_API_KEY nahi hai — jaanch nahi ho payi' };
+
+  const url = 'https://www.fast2sms.com/dev/bulkV2'
+    + `?authorization=${encodeURIComponent(env.fast2sms.apiKey)}`
+    + `&route=otp&variables_values=${encodeURIComponent(code)}&flash=0&numbers=${phone}`;
+
+  const r = await hit(url);
+  const b = (r.body || '').toLowerCase();
+  return {
+    ...r,
+    natija: /"return"\s*:\s*true/.test(b) ? '★★ CHAL GAYA — SMS chala gaya'
+      : /invalid|unauthor/.test(b) ? 'chaabi galat'
+        : r.status === 0 ? `nahi juda (${r.error})` : `HTTP ${r.status} — jawab padhein`,
+  };
+}
+
 export async function fullProbe(phone, message, opts = {}) {
-  const [balance, send] = await Promise.all([probeBalance(), probeSend(phone, message, opts)]);
-  const chala = send.find((r) => r.natija === 'CHAL GAYA')
-    || send.find((r) => String(r.natija).startsWith('RASTA SAHI'));
-  const sabShield = send.every((r) => String(r.natija).startsWith('BOT-SHIELD') || r.status === 0 || r.status === 404);
+  const code = (message.match(/\b(\d{6})\b/) || [, '000000'])[1];
+  const [send, f2s] = await Promise.all([probeSend(phone, message, opts), probeFast2sms(phone, code)]);
+
+  const chala = send.mileHue.find((r) => r.natija.startsWith('★★')) || send.mileHue[0];
+  const f2sChala = String(f2s.natija).startsWith('★★');
 
   return {
     setting: {
       provider: env.sms.provider,
-      keyMili: Boolean(env.sms.apitxtKey),
       keyKaShuru: env.sms.apitxtKey ? `${env.sms.apitxtKey.slice(0, 4)}••••` : '(khali)',
       senderId: (opts.sender === undefined ? env.sms.senderId : opts.sender) || '(khali)',
       dltTemplateId: (opts.templateId === undefined ? env.sms.templateId : opts.templateId) || '(khali)',
@@ -113,11 +168,15 @@ export async function fullProbe(phone, message, opts = {}) {
       abhiKaUrl: env.sms.apitxtUrl,
     },
     nateeja: chala
-      ? `Sabse sahi rasta: ${chala.url.split('?')[0]} — ${chala.natija}`
-      : sabShield
-        ? 'APITxT ka bot-shield har request rok raha hai. Unse kahein ki aapke Render server ka IP allow karein (ya API ke liye shield hata dein).'
-        : 'Koi bhi rasta gateway jaisa jawab nahi de raha. Neeche har koshish ka jawab dekhein.',
-    balanceKiJaanch: balance,
-    bhejneKiKoshish: send,
+      ? `MIL GAYA → ${chala.method} ${chala.url.split('?')[0]} — ${chala.natija}`
+      : `${send.kulKoshish} raste aajmaye, kisi pe bhi APITxT ka API nahi mila.`
+        + ' Unse seedha endpoint URL poochna padega.',
+    kyaKarein: chala
+      ? `Render me daalein: APITXT_URL=${chala.url.split('?')[0]}`
+      : f2sChala
+        ? 'Fast2SMS chal raha hai — Render me SMS_PROVIDER=fast2sms kar dein, OTP turant aane lagega.'
+        : 'APITxT support se endpoint URL maangein. Tab tak OTP_MODE=lenient rakhein.',
+    apitxt: send,
+    fast2sms: f2s,
   };
 }

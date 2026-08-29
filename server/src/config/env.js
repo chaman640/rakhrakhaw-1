@@ -155,6 +155,8 @@ export const env = {
       console.warn(`[sms] APITXT_URL galat lag raha hai (${diya}) — usko chhod kar ${pakka} use kar rahe hain`);
       return pakka;
     })(),
+    // GET ya POST — endpoint pata chalne ke baad zarurat pad sakti hai
+    method: (process.env.APITXT_METHOD || 'GET').trim().toUpperCase() === 'POST' ? 'POST' : 'GET',
     // 4 = transactional (OTP isi se jata hai), 1 = promotional
     route: Number(process.env.SMS_ROUTE || 4),
     // DLT template id — mile to bhar dein, warna khali

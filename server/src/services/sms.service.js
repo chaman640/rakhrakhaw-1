@@ -20,13 +20,14 @@ export function smsReady() {
     : Boolean(env.sms.apitxtKey);
 }
 
-async function hit(url, { timeout = 12000 } = {}) {
+async function hit(url, { timeout = 12000, method = 'GET', form = null } = {}) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeout);
   try {
+    const headers = browserHeaders();
+    if (form) headers['Content-Type'] = 'application/x-www-form-urlencoded';
     const res = await fetch(url, {
-      signal: ac.signal,
-      headers: browserHeaders(),
+      signal: ac.signal, method, headers, body: form,
     });
     const text = (await res.text()).trim();
     let json = null;
@@ -68,8 +69,10 @@ async function apitxtOnce(phone, message, sender) {
   if (sender) q.set('sender', sender);
   if (env.sms.templateId) q.set('DLT_TE_ID', env.sms.templateId);
 
-  const url = `${env.sms.apitxtUrl || APITXT_URL}?${q.toString()}`;
-  const r = await hit(url);
+  const base = env.sms.apitxtUrl || APITXT_URL;
+  const post = env.sms.method === 'POST';
+  const url = post ? base : `${base}?${q.toString()}`;
+  const r = await hit(url, post ? { method: 'POST', form: q.toString() } : {});
 
   return {
     ...judge(r),
