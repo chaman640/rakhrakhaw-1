@@ -19,7 +19,12 @@ export default defineConfig({
     // isliye browser me cache pada rehta hai aur agli baar turant khulta hai.
     rollupOptions: {
       output: {
-        manualChunks: {
+        /*
+          SSR (prerender) wali build me react bahar ka module hota hai, isliye
+          use chunk me daalne ki koshish build hi tod deti hai. Wo build sirf
+          HTML nikalne ke liye hai — usme chunk ka koi matlab bhi nahi.
+        */
+        manualChunks: process.env.SSR_BUILD ? undefined : {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           icons: ['lucide-react'],
           qr: ['qrcode'],

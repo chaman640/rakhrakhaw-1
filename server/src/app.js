@@ -198,12 +198,25 @@ if (hasClientBuild) {
     },
   }));
 
-  // React Router ke saare route (/dashboard, /join/ABC...) index.html pe jate hain.
-  // /api aur /uploads ko chhod dena zaroori hai — warna 404 ki jagah HTML milta.
+  /*
+    Ghar ka page pehle se bana hua HTML hai (dist/home.html) — usme asli
+    likhawat hai, sirf khali dabba nahi. Ye SIRF `/` pe jata hai.
+
+    Wajah: Google pehli baari me saada HTML padhta hai; JavaScript wala kaam
+    baad ki katar me jata hai, aur nayi site pe wo katar hafton lambi hoti
+    hai. Khali dabbe wale page pe uske paas ek bhi shabd nahi hota.
+
+    Baaki har route ko wahi purana index.html milta hai — warna har page pe
+    pehle ghar ka page jhalakta.
+  */
+  const HOME_HTML = path.join(CLIENT_DIST, 'home.html');
+  const hasHome = fs.existsSync(HOME_HTML);
+
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
     // sendFile express.static ke setHeaders se nahi guzarti — header yahan lagana padta hai
     res.setHeader('Cache-Control', 'no-cache');
+    if (req.path === '/' && hasHome) return res.sendFile(HOME_HTML);
     return res.sendFile(path.join(CLIENT_DIST, 'index.html'));
   });
 } else {

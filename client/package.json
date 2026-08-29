@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && SSR_BUILD=1 vite build --ssr src/entry-prerender.jsx --outDir dist-ssr && node scripts/prerender.mjs",
     "preview": "vite preview",
     "check": "node scripts/check-imports.mjs && node scripts/check-i18n.mjs"
   },
