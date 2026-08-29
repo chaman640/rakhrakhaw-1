@@ -142,7 +142,19 @@ export const env = {
 
     apitxtKey: (process.env.APITXT_API_KEY || '').trim(),
     // APITxT ka apna endpoint. Badalne ki zarurat aam taur pe nahi padti.
-    apitxtUrl: (process.env.APITXT_URL || 'https://www.apitxt.com/api/sendhttp.php').trim(),
+    /*
+      APITXT_URL sirf tab mano jab wo apitxt ka apna rasta lage. Panel se
+      copy kiya hua chhota link (jaise a-t.cc/xxxx) yahan daal dene se OTP
+      chup-chaap band ho jata tha — ab wo apne aap nazarandaz ho jayega.
+    */
+    apitxtUrl: (() => {
+      const diya = (process.env.APITXT_URL || '').trim();
+      const pakka = 'https://www.apitxt.com/api/sendhttp.php';
+      if (!diya) return pakka;
+      if (/apitxt\.com/i.test(diya) && /\/(api|send)/i.test(diya)) return diya;
+      console.warn(`[sms] APITXT_URL galat lag raha hai (${diya}) — usko chhod kar ${pakka} use kar rahe hain`);
+      return pakka;
+    })(),
     // 4 = transactional (OTP isi se jata hai), 1 = promotional
     route: Number(process.env.SMS_ROUTE || 4),
     // DLT template id — mile to bhar dein, warna khali

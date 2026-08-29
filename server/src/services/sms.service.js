@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { browserHeaders } from '../utils/browserHeaders.js';
 
 /* OTP SMS — APITxT (MSG91-shape). Doc: apitxt.com/apiDoc/sendSMS */
 
@@ -25,7 +26,7 @@ async function hit(url, { timeout = 12000 } = {}) {
   try {
     const res = await fetch(url, {
       signal: ac.signal,
-      headers: { Accept: 'application/json, text/plain, */*' },
+      headers: browserHeaders(),
     });
     const text = (await res.text()).trim();
     let json = null;
@@ -39,6 +40,8 @@ async function hit(url, { timeout = 12000 } = {}) {
 /* Gateway galti bhi HTTP 200 ke saath deta hai — body padhni padti hai */
 function judge({ ok, text, json }) {
   const body = String(text || '').toLowerCase();
+
+  if (/missing_browser_headers|access denied/.test(body)) return { sent: false, shield: true };
 
   const bad = /"?(type|status)"?\s*[:=]\s*"?(error|failure|failed|err)/.test(body)
     || /\b(invalid|unauthori[sz]ed|not\s*allowed|insufficient|no\s*balance|blocked|missing|required)\b/.test(body);

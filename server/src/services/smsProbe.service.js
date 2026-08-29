@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { browserHeaders } from '../utils/browserHeaders.js';
 
 /*
   APITxT ka asli endpoint unke doc page pe likha nahi hai. Isliye andaze ki
@@ -17,12 +18,12 @@ const mask = (u) => String(u).replace(
   /(authkey|authorization|apikey|api_key|APIKey|token)=([^&]{0,4})[^&]*/gi, '$1=$2••••',
 );
 
-async function hit(url, timeout = 9000) {
+async function hit(url, timeout = 9000, headers = browserHeaders()) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeout);
   const started = Date.now();
   try {
-    const res = await fetch(url, { signal: ac.signal, redirect: 'follow', headers: { Accept: '*/*' } });
+    const res = await fetch(url, { signal: ac.signal, redirect: 'follow', headers });
     const text = (await res.text()).trim();
     return { url: mask(url), status: res.status, ms: Date.now() - started, body: text.slice(0, 400) };
   } catch (err) {
@@ -33,13 +34,22 @@ async function hit(url, timeout = 9000) {
 }
 
 /* Ek jawab dekh kar batao ki wo "asli gateway" jaisa lagta hai ya nahi */
-function verdict(r) {
+export function verdict(r) {
   if (r.status === 0) return r.error === 'timeout' ? 'jawab hi nahi aaya' : `nahi juda (${r.error})`;
   if (r.status === 404) return 'ye rasta hai hi nahi';
+
   const b = (r.body || '').toLowerCase();
+
+  // Ye sabse pehle — warna "MISSING_BROWSER_HEADERS" me "header" dikh kar
+  // galti se "DLT ki dikkat" pad jata tha
+  if (/missing_browser_headers/.test(b)) return 'BOT-SHIELD ne roka (browser headers nahi the)';
+  if (/access denied|forbidden|cloudflare|captcha|just a moment/.test(b)) return 'BOT-SHIELD ne roka';
+
   if (/<!doctype|<html/.test(b)) return 'API nahi, website ka page mila';
-  if (/invalid.*authkey|authentication|unauthori/.test(b)) return 'RASTA SAHI — par chaabi (key) galat';
-  if (/sender|dlt|template|header/.test(b)) return 'RASTA SAHI — sender ID / DLT template ki dikkat';
+  if (/invalid.*(authkey|api|key)|authentication fail|unauthori/.test(b)) return 'RASTA SAHI — par chaabi (key) galat';
+  if (/sender\s*id|senderid|\bdlt\b|template.*(not|invalid|missing)|invalid.*template|\bheader\b.*(not|invalid|approv)/.test(b)) {
+    return 'RASTA SAHI — sender ID / DLT template ki dikkat';
+  }
   if (/balance|credit|insufficient/.test(b)) return 'RASTA SAHI — balance ki dikkat';
   if (/^[a-f0-9]{20,}$/i.test(r.body || '') || /"?(type|status)"?\s*[:=]\s*"?(success|ok)/.test(b)) return 'CHAL GAYA';
   if (r.status >= 200 && r.status < 300) return 'RASTA SAHI — jawab neeche padhein';
@@ -90,6 +100,7 @@ export async function fullProbe(phone, message, opts = {}) {
   const [balance, send] = await Promise.all([probeBalance(), probeSend(phone, message, opts)]);
   const chala = send.find((r) => r.natija === 'CHAL GAYA')
     || send.find((r) => String(r.natija).startsWith('RASTA SAHI'));
+  const sabShield = send.every((r) => String(r.natija).startsWith('BOT-SHIELD') || r.status === 0 || r.status === 404);
 
   return {
     setting: {
@@ -103,7 +114,9 @@ export async function fullProbe(phone, message, opts = {}) {
     },
     nateeja: chala
       ? `Sabse sahi rasta: ${chala.url.split('?')[0]} — ${chala.natija}`
-      : 'Koi bhi rasta gateway jaisa jawab nahi de raha. Neeche har koshish ka jawab dekhein.',
+      : sabShield
+        ? 'APITxT ka bot-shield har request rok raha hai. Unse kahein ki aapke Render server ka IP allow karein (ya API ke liye shield hata dein).'
+        : 'Koi bhi rasta gateway jaisa jawab nahi de raha. Neeche har koshish ka jawab dekhein.',
     balanceKiJaanch: balance,
     bhejneKiKoshish: send,
   };

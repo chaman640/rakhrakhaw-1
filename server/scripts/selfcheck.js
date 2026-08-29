@@ -1201,6 +1201,21 @@ async function main() {
   check('"HTTP 200" ka matlab "SMS gaya" nahi maana jata',
     smsSrc3.includes('function judge'));
   check('chaabi kabhi poori log/jawab me nahi jati', smsSrc3.includes('hideKey'));
+  /* Bot-shield — asli wajah jo Render pe pakdi gayi */
+  const { verdict } = await import('../src/services/smsProbe.service.js');
+  const shieldBody = '{"status":"error","message":"Access denied.","reason":"MISSING_BROWSER_HEADERS"}';
+  check('bot-shield ka jawab "DLT ki dikkat" nahi samjha jata',
+    verdict({ status: 403, body: shieldBody }).startsWith('BOT-SHIELD'),
+    verdict({ status: 403, body: shieldBody }));
+  check('asli DLT wala jawab abhi bhi pehchana jata hai',
+    verdict({ status: 200, body: 'Invalid Sender Id' }).includes('DLT'));
+  check('galat chaabi ka jawab alag se pehchana jata hai',
+    verdict({ status: 200, body: 'Invalid authkey' }).includes('chaabi'));
+  check('har SMS request browser headers ke saath jati hai',
+    srcOf('services/sms.service.js').includes('browserHeaders()'));
+  check('galat APITXT_URL (chhota link) apne aap nazarandaz hota hai',
+    srcOf('config/env.js').includes('apitxt\\.com'));
+
   check('jaanchne ka auzaar maujood hai (npm run sms:test)',
     fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'sms-test.js')));
 
