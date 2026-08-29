@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="hi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -22,7 +22,101 @@
     <meta property="og:title" content="Rakh Rakhav — thok dukaan ka poora hisaab" />
     <meta property="og:description" content="Stock, bill, khata aur udhaar — sab ek jagah. Retailer ke liye hamesha free." />
     <meta property="og:url" content="https://rakhrakhav.in/" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:locale" content="hi_IN" />
+    <meta property="og:image" content="https://rakhrakhav.in/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://rakhrakhav.in/og.png" />
+
+    <!--
+      GOOGLE KO BRAND SAMJHANE KE LIYE.
+
+      Ye JSON-LD Google ko saaf-saaf batata hai ki "Rakh Rakhav" ek naam hai,
+      kis cheez ka naam hai, aur uska ghar kaun sa URL hai. Bina iske wo
+      andaza lagata hai — aur naye site ka andaza aksar galat lagta hai.
+
+      `alternateName` isliye ki log "rakhrakhav", "rakh rakhav", "रख रखाव" —
+      teeno tarah dhundhte hain.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://rakhrakhav.in/#org",
+          "name": "Rakh Rakhav",
+          "alternateName": ["RakhRakhav", "रख रखाव", "Rakh Rakhav App"],
+          "url": "https://rakhrakhav.in/",
+          "email": "support@rakhrakhav.in",
+          "description": "Rakh Rakhav thok dukaan ke liye bana app hai — stock, bill, khata, udhaar, order aur report ek jagah.",
+          "areaServed": { "@type": "Country", "name": "India" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://rakhrakhav.in/#site",
+          "url": "https://rakhrakhav.in/",
+          "name": "Rakh Rakhav",
+          "alternateName": "रख रखाव",
+          "inLanguage": ["hi-IN", "en-IN"],
+          "publisher": { "@id": "https://rakhrakhav.in/#org" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Rakh Rakhav",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web, Android, iOS",
+          "url": "https://rakhrakhav.in/",
+          "publisher": { "@id": "https://rakhrakhav.in/#org" },
+          "description": "Thok dukaan ka poora hisaab — stock, GST bill, khata, udhaar, retailer ke online order, wapasi, kharch aur report. Retailer ke liye hamesha free.",
+          "featureList": [
+            "GST bill aur Bill of Supply",
+            "Khata aur udhaar ka hisaab",
+            "Stock aur FIFO lagat",
+            "Retailer ke online order",
+            "Har retailer ka apna rate",
+            "Credit Note aur Debit Note",
+            "Fayde-nuksan ki report",
+            "Staff aur unki ijazat"
+          ],
+          "offers": [
+            { "@type": "Offer", "name": "Retailer", "price": "0", "priceCurrency": "INR",
+              "description": "Kharidna hamesha free" },
+            { "@type": "Offer", "name": "3 khate", "price": "50", "priceCurrency": "INR" },
+            { "@type": "Offer", "name": "10 khate", "price": "100", "priceCurrency": "INR" },
+            { "@type": "Offer", "name": "20 khate", "price": "500", "priceCurrency": "INR" },
+            { "@type": "Offer", "name": "Anginat khate", "price": "2000", "priceCurrency": "INR" }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Rakh Rakhav kya hai?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Rakh Rakhav thok dukaan ke liye bana app hai. Isme stock, bill, khata, udhaar, order, kharch aur report sab ek jagah rehta hai, aur aapke retailer apne phone se seedha order bhej sakte hain." }
+            },
+            {
+              "@type": "Question",
+              "name": "Kya retailer ko paisa dena padta hai?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Nahi. Kharidna hamesha free hai — dukaan dhundhna, maal dekhna, order karna, aur apne bill aur khata dekhna. Paisa sirf bechne wali dukaan deti hai." }
+            },
+            {
+              "@type": "Question",
+              "name": "Kya GST ke bina bhi chalta hai?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Haan. GST band rakhein to bill Bill of Supply banta hai. Baad me GST chalu karna ho to ek switch se ho jata hai." }
+            },
+            {
+              "@type": "Question",
+              "name": "Rakh Rakhav ka daam kya hai?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Retailer ke liye free. Bechne ke liye plan ₹50 mahine se shuru hote hain — 3 khate ₹50, 10 khate ₹100, 20 khate ₹500, anginat ₹2000 mahina." }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

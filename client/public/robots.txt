@@ -1,0 +1,52 @@
+# Rakh Rakhav — rakhrakhav.in
+
+# Jo page sabke liye hain, wo saare khule hain.
+User-agent: *
+Allow: /$
+Allow: /pricing
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /delivery
+Allow: /contact
+Allow: /login
+Allow: /signup
+
+# Login ke peeche ka kaam Google ko dikhana bhi nahi chahiye aur wo dekh bhi
+# nahi sakta. Yahan rok isliye lagayi hai taaki crawler apna waqt in par
+# barbaad na kare — jitna waqt wo yahan lagata hai, utna asli page pe nahi.
+Disallow: /home
+Disallow: /dashboard
+Disallow: /orders
+Disallow: /items
+Disallow: /retailers
+Disallow: /suppliers
+Disallow: /purchases
+Disallow: /stock-intake
+Disallow: /invoices
+Disallow: /sale
+Disallow: /sales
+Disallow: /khata
+Disallow: /payments
+Disallow: /returns
+Disallow: /expenses
+Disallow: /reports
+Disallow: /staff
+Disallow: /activity
+Disallow: /settings
+Disallow: /profile
+Disallow: /menu
+Disallow: /notifications
+Disallow: /cart
+Disallow: /shop
+Disallow: /buy
+Disallow: /my-orders
+Disallow: /my-bills
+Disallow: /my-khata
+Disallow: /pending
+Disallow: /join/
+Disallow: /join-staff/
+Disallow: /api/
+Disallow: /uploads/
+
+Sitemap: https://rakhrakhav.in/sitemap.xml

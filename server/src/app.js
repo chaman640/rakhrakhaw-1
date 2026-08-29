@@ -140,6 +140,37 @@ app.use('/api', apiRoutes);
    Build na ho (dev me) to ye poora block skip ho jata hai aur client
    apne 5173 wale vite server se chalta rehta hai.
    ───────────────────────────────────────────────────────────────────────── */
+/* ────────────────────── EK HI ASLI GHAR (SEO) ──────────────────────────
+
+   Site do pate pe khulti hai: rakhrakhav.in aur rakhrakhaw-1.onrender.com.
+   Google ke liye ye do alag site hain jinpe bilkul ek jaisa maal hai — aur
+   tab wo dono me se kisi ek ko bhi poora bharosa nahi deta. Naam se dhundhne
+   pe hamari hi site peeche rah jati hai, apne hi doosre pate ki wajah se.
+
+   Isliye asli pata ek hi rakha hai. Baaki har pata 301 (hamesha ke liye)
+   usi pe bhej diya jata hai, aur Google poori sakh ek jagah jod deta hai.
+
+   Ye sirf tab chalta hai jab CANONICAL_HOST bhara ho — dev aur preview pe
+   apne aap band rehta hai.
+   ───────────────────────────────────────────────────────────────────────── */
+const CANONICAL_HOST = (process.env.CANONICAL_HOST || '').trim().toLowerCase();
+
+if (CANONICAL_HOST) {
+  app.use((req, res, next) => {
+    const host = String(req.headers.host || '').toLowerCase();
+    // Render ke aage proxy hai, isliye asli scheme x-forwarded-proto me aata hai
+    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0];
+
+    if (!host || host === CANONICAL_HOST) {
+      if (proto === 'https') return next();
+    }
+    // Webhook aur API ko kabhi mat mod — redirect POST ka body gira deta hai
+    if (req.path.startsWith('/api')) return next();
+
+    return res.redirect(301, `https://${CANONICAL_HOST}${req.originalUrl}`);
+  });
+}
+
 if (hasClientBuild) {
   // Vite har build me assets/ ke andar naam me hash daalta hai (index-DCBGj1ut.js).
   // Matlab file ka naam badle bina content badal hi nahi sakta — isliye inhe
@@ -149,6 +180,10 @@ if (hasClientBuild) {
     setHeaders(res, filePath) {
       if (filePath.endsWith('index.html')) {
         res.setHeader('Cache-Control', 'no-cache');
+      } else if (filePath.endsWith('robots.txt') || filePath.endsWith('sitemap.xml')) {
+        // Google inhe baar baar padhta hai — purana chipak jaye to naye page
+        // uske paas pahunchte hi nahi
+        res.setHeader('Cache-Control', 'public, max-age=3600');
       } else if (filePath.endsWith('sw.js')) {
         /*
           Service worker kabhi cache nahi. Purana sw chipak jaye to notification

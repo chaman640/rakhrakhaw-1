@@ -12,6 +12,7 @@ import Refund from '@/pages/public/Refund';
 import Delivery from '@/pages/public/Delivery';
 import Contact from '@/pages/public/Contact';
 import Pricing from '@/pages/public/Pricing';
+import Landing from '@/pages/public/Landing';
 import Signup from '@/pages/auth/Signup';
 import Join from '@/pages/auth/Join';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
@@ -138,7 +139,12 @@ function RequireBuyer({ children }) {
 function HomeRedirect() {
   const { user, loading, isApproved } = useAuth();
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  /*
+    Pehle yahan se seedha /login bhej diya jata tha. Uska matlab tha ki jo
+    aadmi pehli baar aaya, use sirf ek khali login screen milti — na ye pata
+    chalta ki cheez kya hai, na daam. Google ko bhi wahi dikhta tha.
+  */
+  if (!user) return <Landing />;
   if (user.role === 'retailer') return <Navigate to={isApproved ? '/home' : '/pending'} replace />;
   // Wholesaler bhi ab Home pe — roz ka kaam wahi hai
   return <Navigate to="/home" replace />;
