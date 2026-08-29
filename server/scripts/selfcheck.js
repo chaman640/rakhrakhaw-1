@@ -1201,6 +1201,20 @@ async function main() {
   check('"HTTP 200" ka matlab "SMS gaya" nahi maana jata',
     smsSrc3.includes('function judge'));
   check('chaabi kabhi poori log/jawab me nahi jati', smsSrc3.includes('hideKey'));
+  /* Auth ka naam — jo Render ki jaanch se pakka hua */
+  const { needsField: nf2, SEEDS: seeds } = await import('../src/services/smsProbe.service.js');
+  check('"Authentication Key is required" ka matlab authkey nikalta hai',
+    nf2('{"status":"MISSING_AUTH","message":"Authentication Key is required"}') === 'authkey',
+    nf2('{"status":"MISSING_AUTH","message":"Authentication Key is required"}'));
+  check('"Missing mobile" se mobile nikalta hai',
+    nf2('{"status":"error","message":"Missing mobile"}') === 'mobile');
+  check('har seed me auth ke dono naam saath jate hain',
+    seeds.every((x) => x.includes('authkey') && x.includes('apikey')));
+  check('har seed me mobile (mobiles nahi) jata hai',
+    seeds.every((x) => x.includes('mobile') && !x.includes('mobiles')));
+  check('asli bhejne wala bhi wahi seeds use karta hai',
+    srcOf('services/sms.service.js').includes('for (const seed of SEEDS)'));
+
   /* lenient ka khatra — sirf chune hue numbers pe */
   const otpSrc = srcOf('services/otp.service.js');
   check('lenient sirf chune hue numbers pe lagu hota hai', otpSrc.includes('otpLenientPhones'));

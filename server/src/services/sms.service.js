@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { browserHeaders } from '../utils/browserHeaders.js';
-import { guessValue, needsField } from './smsProbe.service.js';
+import { guessValue, needsField, SEEDS } from './smsProbe.service.js';
 
 /* OTP SMS — APITxT (MSG91-shape). Doc: apitxt.com/apiDoc/sendSMS */
 
@@ -164,12 +164,14 @@ async function viaApitxtOtp(phone, code) {
     seekhaHua = null;                    // purana rasta band ho gaya, dobara seekho
   }
 
-  for (const t of ['POST-form', 'POST-json', 'GET']) {
-    const out = await otpKoshish(t, ctx);
-    tries.push({ ...out, provider: 'apitxt', url: OTP_URL });
-    if (out.sent) {
-      seekhaHua = { transport: t, khaane: Object.keys(out.fields) };
-      return { ...out, provider: 'apitxt', url: OTP_URL, tries };
+  for (const seed of SEEDS) {
+    for (const t of ['POST-form', 'POST-json', 'GET']) {
+      const out = await otpKoshish(t, ctx, seed);
+      tries.push({ ...out, provider: 'apitxt', url: OTP_URL, seed: seed.join('+') });
+      if (out.sent) {
+        seekhaHua = { transport: t, khaane: Object.keys(out.fields) };
+        return { ...out, provider: 'apitxt', url: OTP_URL, tries };
+      }
     }
   }
   return { sent: false, provider: 'apitxt', url: OTP_URL, tries, response: tries.at(-1)?.response };

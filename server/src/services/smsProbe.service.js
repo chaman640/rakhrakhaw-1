@@ -207,6 +207,7 @@ export function guessValue(name, { phone, code, message }) {
   if (/mobile|phone|number|msisdn|^to$|recipient/.test(n)) return phone;
   if (/otp|^code$|pin|password/.test(n)) return code;
   if (/auth|api.?key|token|secret|^key$/.test(n)) return env.sms.apitxtKey;
+  if (/otp|^code$/.test(n)) return code;
   if (/sender|from|header/.test(n)) return env.sms.senderId || 'RKHRKV';
   if (/template|^tid$|dlt/.test(n)) return env.sms.templateId || '';
   if (/message|msg|text|content|body/.test(n)) return message;
@@ -220,6 +221,13 @@ export function guessValue(name, { phone, code, message }) {
 /** Jawab me se "kaunsa khaana chahiye" nikalo */
 export function needsField(body) {
   const s = String(body || '');
+
+  /*
+    "Authentication Key is required" me se mera code "Key" nikal leta tha —
+    galat naam. Jaanch se pata chala ki asli naam `authkey`/`apikey` hai,
+    isliye auth wale har jawab ka ek hi matlab lagta hai.
+  */
+  if (/missing_auth|authentication\s+key|auth\s*key|api\s*key/i.test(s)) return 'authkey';
   const pats = [
     /missing\s+["']?([a-z0-9_-]+)/i,
     /["']?([a-z0-9_-]+)["']?\s+is\s+(?:required|missing)/i,
@@ -244,8 +252,22 @@ async function sendWith(fields, transport) {
   return hit(url, { method: 'POST', type: 'application/x-www-form-urlencoded', body: qs });
 }
 
-async function discoverOne(transport, ctx) {
+/*
+  Jaanch se pakka hua: `authkey` + `apikey` saath bhejne se auth pass ho jata
+  hai, aur phir wo `mobile` maangta hai. Isliye har koshish wahi se shuru
+  hoti hai, aur uske baad jo maanga jaye wo joda jata hai.
+*/
+export const SEEDS = [
+  ['authkey', 'apikey', 'mobile'],
+  ['authkey', 'apikey', 'mobile', 'otp'],
+  ['authkey', 'apikey', 'mobile', 'message'],
+  ['authkey', 'apikey', 'mobile', 'otp', 'message'],
+  ['authkey', 'apikey', 'mobile', 'otp', 'message', 'sender', 'template_id'],
+];
+
+async function discoverOne(transport, ctx, seed = null) {
   const fields = {};
+  if (seed) for (const k of seed) fields[k] = guessValue(k, ctx);
   const kadam = [];
 
   for (let i = 0; i < 10; i += 1) {
@@ -271,12 +293,26 @@ async function discoverOne(transport, ctx) {
 export async function discoverOtpApi(phone, code, message) {
   const ctx = { phone, code, message };
   const sab = [];
-  for (const t of ['GET', 'POST-json', 'POST-form']) sab.push(await discoverOne(t, ctx));
 
-  const jeeta = sab.find((r) => r.natija.startsWith('★★'));
+  for (const seed of SEEDS) {
+    for (const t of ['POST-form', 'POST-json', 'GET']) {
+      const r = await discoverOne(t, ctx, seed);
+      sab.push({ seed: seed.join('+'), ...r });
+      if (r.natija.startsWith('★★')) {
+        return {
+          endpoint: `${HOST}${OTP_PATH}`,
+          jeeta: `${t} — khaane: ${JSON.stringify(Object.keys(r.khaane))}`,
+          koshishein: [sab.at(-1)],
+        };
+      }
+    }
+  }
+
+  // Kuch nahi chala — sirf wo dikhao jo sabse aage tak pahunche
+  const dilchaspi = sab.filter((r) => !/MISSING_AUTH/i.test(JSON.stringify(r.kadam || '')));
   return {
     endpoint: `${HOST}${OTP_PATH}`,
-    jeeta: jeeta ? `${jeeta.transport} — khaane: ${JSON.stringify(Object.keys(jeeta.khaane))}` : null,
-    koshishein: sab,
+    jeeta: null,
+    koshishein: (dilchaspi.length ? dilchaspi : sab).slice(0, 6),
   };
 }
