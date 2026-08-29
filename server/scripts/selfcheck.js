@@ -919,8 +919,8 @@ async function main() {
     pushSrc.includes('if (!ready'));
 
   check('OTP ka provider .env se chunta hai (apitxt / fast2sms)',
-    smsSrc.includes("env.sms.provider === 'apitxt'"));
-  check('APITxT ka URL .env se aata hai (dashboard wala exact URL paste ho sake)',
+    smsSrc.includes("env.sms.provider === 'fast2sms'"));
+  check('APITxT ka URL .env se badla ja sakta hai',
     smsSrc.includes('env.sms.apitxtUrl'));
 
   const swPath = path.join(
@@ -1079,24 +1079,132 @@ async function main() {
     retSrc3.includes('returnNoteId: note._id'));
 
   /* ── sender id ke bina SMS ── */
-  check('SMS: sender id khali ho to wo khaana URL se hat jata hai',
-    smsSrc2.includes('!env.sms.senderId'));
+  check('SMS: sender khali ho to wo khaana bheja hi nahi jata',
+    smsSrc2.includes('if (sender) q.set('));
 
-  const dropSender = (u) => {
-    let url = u.replace('{key}', 'K').replace('{phone}', '9').replace('{sender}', '')
-      .replace('{otp}', '1').replace('{message}', 'M');
-    return url
-      .replace(/([?&])(sender|senderid|from|sender_id)=(&|$)/gi, '$1')
-      .replace(/[?&]$/, '').replace(/\?&/, '?').replace(/&&+/g, '&');
-  };
-  check('sender khaana beech me ho to bhi URL saaf rehta hai',
-    dropSender('https://x/s?a={key}&senderid={sender}&m={phone}') === 'https://x/s?a=K&m=9',
-    dropSender('https://x/s?a={key}&senderid={sender}&m={phone}'));
-  check('sender khaana AAKHIR me ho to bhi',
-    dropSender('https://x/s?a={key}&senderid={sender}') === 'https://x/s?a=K',
-    dropSender('https://x/s?a={key}&senderid={sender}'));
+  /* ════════════ 18. Doosre review ke bugs (9-17) ════════════ */
+  console.log(`\n${Y}Doosre review ke bugs${N}`);
 
-  /* ════════════════════ 18. Membership ke index ════════════════════ */
+  const paySrc4 = srcOf('services/payment.service.js');
+  const partySrc = srcOf('services/party.service.js');
+  const bizSrc = srcOf('services/business.service.js');
+  const staffSrc = srcOf('services/staff.service.js');
+  const repSrc = srcOf('services/report.service.js');
+  const purSrc4 = srcOf('services/purchase.service.js');
+  const intSrc2 = srcOf('services/intake.service.js');
+  const gstSrc = srcOf('services/gst.service.js');
+
+  /*
+    Bug 9 — supplier ki payment me allocations[].invoiceId me PURCHASE ki id
+    hoti hai. Reversal hamesha 'Invoice' me hota tha: kuch milta hi nahi, koi
+    error bhi nahi, aur purchase hamesha "chukta" dikhati rehti.
+  */
+  check('BUG9: supplier ki payment PURCHASE me hi reverse hoti hai',
+    paySrc4.includes("? 'Purchase' : 'Invoice'") && paySrc4.includes('settleApply(kind'));
+  check('BUG9: allocations ka `ref` hataya (wo do collection point karta tha)',
+    !srcOf('models/Payment.js').includes("invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice'"));
+
+  /*
+    Bug 10 — `User.isActive` global hai. Ek dukaan ke block se aadmi ka baaki
+    saare wholesaler ka login toot jata tha, aur deleteParty uska poora
+    account uda deta tha.
+  */
+  check('BUG10: block karne par User global band nahi hota',
+    !/User\.updateOne\([^)]*isActive/.test(partySrc)
+    && !/User\.updateOne\([^)]*isActive/.test(bizSrc));
+  check('BUG10: User tabhi mitta hai jab uski aur koi dukaan na bache',
+    partySrc.includes('Membership.countDocuments({ userId')
+    && partySrc.includes('if (baaki === 0)'));
+
+  check('BUG11: GST report credit note aur debit note dono ghatati hai',
+    repSrc.includes('creditNoteTax') && repSrc.includes('grossOutputTax - creditNoteTax')
+    && repSrc.includes('grossInputTax - debitNoteTax'));
+  check('BUG12: sale report wapasi alag se dikhati hai',
+    repSrc.includes('returnTotal') && repSrc.includes('netSale'));
+
+  check('BUG13: jiska maal wapas bheja ja chuka wo kharid delete nahi hoti',
+    purSrc4.includes('RETURN_TYPES.PURCHASE_RETURN'));
+  check('BUG13: us kharid pe lagi doosri payment doosri kharid pe laga di jati hai',
+    purSrc4.includes("applyCredit('Purchase'"));
+
+  check('BUG14: seat ki jaanch 4 jagah lagti hai (add, invite, accept, wapas chalu)',
+    (staffSrc.match(/assertSeat\(/g) || []).length >= 4,
+    `${(staffSrc.match(/assertSeat\(/g) || []).length} jagah`);
+  check('BUG14: band se chalu karte waqt hi jaanch lagti hai',
+    staffSrc.includes('payload.isActive && !user.isActive'));
+
+  check('BUG15: faisla ulta karne pe uske saath bana item bhi hat jata hai',
+    intSrc2.includes('Item.deleteOne({ _id: line.itemId, businessId, stockQty: 0 })'));
+
+  check('BUG16: bill-level discount me aakhri line ko bacha hua poora milta hai',
+    gstSrc.includes('round2(extra - bataHua)'));
+
+  const { computeInvoice } = await import('../src/services/gst.service.js');
+  const three = computeInvoice(
+    [
+      { itemId: id(1), name: 'A', qty: 1, rate: 100, gstRate: 0 },
+      { itemId: id(2), name: 'B', qty: 1, rate: 100, gstRate: 0 },
+      { itemId: id(3), name: 'C', qty: 1, rate: 100, gstRate: 0 },
+    ],
+    { gstEnabled: false, taxType: 'CGST_SGST', extraDiscount: 100 },
+  );
+  /*
+    Yahi wo jod hai jo CA sabse pehle dekhta hai. Har line alag round hone se
+    33.33 × 3 = 99.99 hota tha, jabki discountTotal me poora 100 likha jata.
+  */
+  check('BUG16: subTotal − discountTotal === taxableTotal (bill ka jod milta hai)',
+    round2(three.subTotal - three.discountTotal) === round2(three.taxableTotal),
+    `${three.subTotal} − ${three.discountTotal} vs ${three.taxableTotal}`);
+
+  check('BUG17: minus wale number sahi taraf round hote hain',
+    round2(-1.005) === -1.01 && round2(1.005) === 1.01,
+    `${round2(-1.005)} / ${round2(1.005)}`);
+  check('BUG17: -0 kabhi wapas nahi aata (bill pe "−₹0.00" na chhape)',
+    !Object.is(round2(-0.004), -0));
+
+  /* ════════════ APITxT — OTP ka rasta ════════════ */
+  console.log(`\n${Y}APITxT (OTP)${N}`);
+
+  const { smsProvider: prov } = await import('../src/services/sms.service.js');
+  const smsSrc3 = srcOf('services/sms.service.js');
+
+  check('default provider APITXT hai', prov() === 'apitxt', prov());
+  check('endpoint sendhttp.php hai', smsSrc3.includes('apitxt.com/api/sendhttp.php'));
+
+  /*
+    Khaane APITxT ke apne doc se pakke kiye hain (apitxt.com/apiDoc/sendSMS).
+    Galat naam bhejne par gateway chup-chaap mana kar deta hai, isliye har
+    khaane ka apna test.
+  */
+  const qBlock = smsSrc3.slice(
+    smsSrc3.indexOf('new URLSearchParams({'),
+    smsSrc3.indexOf('const url = `${env.sms.apitxtUrl'),
+  );
+  for (const f of ['authkey', 'mobiles', 'message', 'route']) {
+    check(`APITxT ka "${f}" khaana jata hai`,
+      new RegExp(`\\b${f}\\s*[,:]`).test(qBlock), qBlock ? '' : 'block nahi mila');
+  }
+  check('APITxT ka "sender" khaana jata hai', smsSrc3.includes("q.set('sender'"));
+  check('route 4 (transactional) default hai — OTP isi se jata hai',
+    srcOf('config/env.js').includes('SMS_ROUTE || 4'));
+
+  /*
+    Sender ke bina bhi koshish honi chahiye — DLT approve hone me din lagte
+    hain, aur tab tak OTP band rakhna theek nahi.
+  */
+  check('sender khali ho to wo khaana bheja hi nahi jata',
+    smsSrc3.includes('if (sender) q.set('));
+  check('sender se mana ho to BINA sender ke dobara koshish hoti hai',
+    smsSrc3.includes("apitxtOnce(phone, message, '')"));
+  check('dono koshish ka hisaab wapas aata hai (kaunsi chali, ye pata chale)',
+    smsSrc3.includes('tries'));
+  check('"HTTP 200" ka matlab "SMS gaya" nahi maana jata',
+    smsSrc3.includes('function judge'));
+  check('chaabi kabhi poori log/jawab me nahi jati', smsSrc3.includes('hideKey'));
+  check('jaanchne ka auzaar maujood hai (npm run sms:test)',
+    fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'sms-test.js')));
+
+  /* ════════════════════ 19. Membership ke index ════════════════════ */
   console.log(`\n${Y}Membership ke index${N}`);
 
   const indexes = Membership.schema.indexes();

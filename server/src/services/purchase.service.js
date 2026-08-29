@@ -2,15 +2,17 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import {
   PARTY_TYPES, STOCK_MOVEMENT_TYPES, LEDGER_TYPES, COUNTER_KEYS,
+  RETURN_TYPES, PAYMENT_STATUS,
 } from '../config/constants.js';
 import { round2, splitRoundOff } from '../utils/money.js';
 import { getFinancialYear } from '../utils/financialYear.js';
 import {
-  Purchase, Party, Item, Business, Counter, StockMovement, StockLot, Payment,
+  Purchase, Party, Item, Business, Counter, StockMovement, StockLot, Payment, ReturnNote,
 } from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
 import { khepBanao, khepHatao } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
+import { applyCredit } from './settlement.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const PREFIX = 'PUR';
@@ -457,6 +459,23 @@ export async function deletePurchase(businessId, id, userId) {
   const purchase = await Purchase.findOne({ _id: id, businessId });
   if (!purchase) throw ApiError.notFound('Purchase nahi mili');
 
+  /*
+    Is kharid ka maal wapas bheja ja chuka ho to delete nahi.
+
+    `soldLots` wali jaanch ise nahi pakadti: purchase return `khepNikalo` se
+    FIFO pe chalta hai, yaani purani khep pehle katti hai aur ISI purchase ki
+    khep chhuti reh jati hai. Wahi pehra `cancelInvoice` me pehle se hai —
+    yahan chhoot gaya tha.
+  */
+  const pNote = await ReturnNote.findOne({
+    businessId, type: RETURN_TYPES.PURCHASE_RETURN, purchaseId: purchase._id,
+  }).select('returnNo').lean();
+  if (pNote) {
+    throw ApiError.badRequest(
+      `Is kharid ka maal wapas bheja ja chuka hai (${pNote.returnNo}) — pehle wo debit note hatayein`,
+    );
+  }
+
   // Pehle check: kya sabka stock wapas nikala ja sakta hai?
   const itemIds = purchase.items.map((i) => i.itemId);
   const items = await Item.find({ _id: { $in: itemIds }, businessId }).select('name stockQty unit').lean();
@@ -531,6 +550,40 @@ export async function deletePurchase(businessId, id, userId) {
     ledger chhedne se ek hi credit do baar ulta ho jata.
   */
   await Payment.deleteMany({ businessId, sourcePurchaseId: purchase._id });
+
+  /*
+    Jo payment ALAG SE banayi gayi thi aur is purchase pe lagi thi — wo delete
+    nahi hoti (paisa to sach me gaya tha). Bas is purchase ka hissa hata kar
+    wo paisa doosri khuli purchase pe laga diya jata hai, aur bacha to jama
+    ban jata hai. Bilkul wahi jo `releaseInvoiceFromPayments` bill wali taraf
+    karta hai — yahan wo jodidar tha hi nahi, aur wo paisa kahin lagta hi nahi
+    tha.
+  */
+  const stuck = await Payment.find({
+    businessId,
+    status: PAYMENT_STATUS.CONFIRMED,
+    sourcePurchaseId: { $ne: purchase._id },
+    'allocations.invoiceId': purchase._id,
+  });
+
+  for (const pay of stuck) {
+    const rows = (pay.allocations || []).filter((a) => a.invoiceId);
+    const freed = round2(rows
+      .filter((a) => String(a.invoiceId) === String(purchase._id))
+      .reduce((sum, a) => sum + (a.amount || 0), 0));
+
+    pay.allocations = rows.filter((a) => String(a.invoiceId) !== String(purchase._id));
+
+    if (freed > 0) {
+      const spread = await applyCredit('Purchase', businessId, pay.partyId, freed);
+      pay.allocations = [
+        ...pay.allocations,
+        ...spread.allocations.map((a) => ({ invoiceId: a.docId, amount: a.amount })),
+      ];
+    }
+    pay.againstInvoiceIds = pay.allocations.map((a) => a.invoiceId);
+    await pay.save();
+  }
 
   const no = purchase.purchaseNo;
   await purchase.deleteOne();

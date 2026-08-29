@@ -116,17 +116,29 @@ export const env = {
   },
 
   sms: {
-    // 'apitxt' | 'fast2sms' | 'none'
-    provider: (process.env.SMS_PROVIDER || (process.env.APITXT_API_KEY ? 'apitxt' : 'fast2sms')).trim().toLowerCase(),
-    // Khali chhod sakte hain — OTP wale raste pe zyadatar gateway bina iske
-    // bhi bhej dete hain (DLT approval me din lagte hain).
+    /*
+      Default APITXT — aap wahi use kar rahe hain.
+      'fast2sms' sirf tab jab APITxT ki taraf se koi dikkat aaye.
+    */
+    provider: (process.env.SMS_PROVIDER || 'apitxt').trim().toLowerCase(),
+
+    /*
+      Sender ID — khali chhod sakte hain.
+      DLT approve hone me din lagte hain. Khali hone par bhi OTP ki koshish
+      hoti hai; aur bhara hua ho par gateway mana kare, to bina sender ke
+      dobara koshish hoti hai (sms.service.js me poori wajah).
+    */
     senderId: (process.env.SMS_SENDER_ID || '').trim(),
-    // APITxT ka exact URL dashboard se copy karke yahan daalein.
-    // {key} {phone} {otp} {sender} apne aap bhar jate hain.
-    apitxtUrl: process.env.APITXT_URL
-      || 'https://api.apitxt.com/api/v2/sms/send?apikey={key}&mobile={phone}&senderid={sender}&message={message}&type=otp',
-    apitxtKey: process.env.APITXT_API_KEY || '',
-    apitxtTemplate: process.env.APITXT_OTP_TEMPLATE || 'Your Rakh Rakhav OTP is {otp}. Valid for 10 minutes. Do not share it with anyone.',
+
+    apitxtKey: (process.env.APITXT_API_KEY || '').trim(),
+    // APITxT ka apna endpoint. Badalne ki zarurat aam taur pe nahi padti.
+    apitxtUrl: (process.env.APITXT_URL || 'https://www.apitxt.com/api/sendhttp.php').trim(),
+    // 4 = transactional (OTP isi se jata hai), 1 = promotional
+    route: Number(process.env.SMS_ROUTE || 4),
+    // DLT template id — mile to bhar dein, warna khali
+    templateId: (process.env.DLT_TEMPLATE_ID || '').trim(),
+    apitxtTemplate: process.env.APITXT_OTP_TEMPLATE
+      || 'Your Rakh Rakhav OTP is {otp}. Valid for 10 minutes. Do not share it with anyone.',
   },
 
   push: {

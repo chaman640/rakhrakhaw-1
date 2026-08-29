@@ -488,6 +488,25 @@ export async function resetLine(businessId, id, index) {
 
   line.status = 'PENDING';
   line.decidedAt = null;
+
+  /*
+    Faisla ULTA ho raha hai to uske saath bana item bhi hatna chahiye.
+
+    Pehle sirf status reset hota tha. Flow ye tha: naya item banao
+    ("Parle-G 100g") → "peeche" dabao → wahi naam se dobara decide karo →
+    `createItem` "ye naam pehle se hai" bol kar rok deta — aur aadmi hamesha
+    ke liye atak jata, catalog me wo item 0 stock ke saath pada rehta.
+
+    `stockQty: 0` filter ke andar hai: agar beech me kisi ne us item me maal
+    daal diya to wo item ab kisi kaam ka hai, use nahi mitate.
+    (`skip` wala rasta ye pehle se karta tha — yahan chhoot gaya tha.)
+  */
+  if (line.createdNewItem && line.itemId) {
+    await Item.deleteOne({ _id: line.itemId, businessId, stockQty: 0 });
+  }
+  line.itemId = null;
+  line.createdNewItem = false;
+
   await intake.save();
   return shape(intake.toObject());
 }

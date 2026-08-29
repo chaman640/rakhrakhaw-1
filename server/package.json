@@ -12,7 +12,8 @@
     "smoke": "node scripts/smoke.js",
     "selfcheck": "node scripts/selfcheck.js",
     "vapid": "node scripts/vapid.js",
-    "dbcheck": "node scripts/dbcheck.js"
+    "dbcheck": "node scripts/dbcheck.js",
+    "sms:test": "node scripts/sms-test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

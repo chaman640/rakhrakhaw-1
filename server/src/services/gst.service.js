@@ -54,10 +54,25 @@ export function computeInvoice(lines, { gstEnabled, taxType, extraDiscount = 0 }
 
   let taxableTotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0;
 
-  const items = base.map((l) => {
-    // Bill-level discount har line pe uske hisse ke barabar bantta hai —
-    // warna GST galat ban jayega
-    const share = beforeExtra > 0 ? round2((l.taxable / beforeExtra) * extra) : 0;
+  /*
+    Bill-level discount har line pe uske hisse ke barabar bantta hai — warna
+    GST galat ban jayega.
+
+    AAKHRI LINE KO BACHA HUA POORA DIYA JATA HAI. Har hissa alag round hone se
+    jod `extra` se kam pad jata tha: ₹100 ka discount, 3 barabar line → 33.33
+    × 3 = 99.99. `discountTotal` me poora 100 likha jata, isliye
+    `subTotal − discountTotal ≠ taxableTotal` — ek paise ka fark, par GST audit
+    me bill ka arithmetic match nahi karta, aur CA sabse pehle wahi dekhta hai.
+
+    (Yahi ilaaj neeche CGST/SGST me pehle se laga hua hai — `sgst = tax − cgst`.)
+  */
+  let bataHua = 0;
+  const items = base.map((l, i) => {
+    const aakhri = i === base.length - 1;
+    const share = beforeExtra <= 0
+      ? 0
+      : aakhri ? round2(extra - bataHua) : round2((l.taxable / beforeExtra) * extra);
+    bataHua = round2(bataHua + share);
     const taxableValue = round2(l.taxable - share);
 
     const gstRate = gstEnabled ? Number(l.gstRate || 0) : 0;

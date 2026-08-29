@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { round2 } from '../utils/money.js';
-import { PARTY_TYPES } from '../config/constants.js';
+import { PARTY_TYPES, RETURN_TYPES} from '../config/constants.js';
 import { Invoice, Purchase, Item, Party, StockMovement, Payment, ReturnNote } from '../models/index.js';
 import { expenseTotals } from './expense.service.js';
 import {
@@ -219,11 +219,38 @@ export async function saleReport(businessId, q = {}, viewer = null) {
 
   const totals = sumRows(rows, SALE_COLUMNS[groupBy]);
 
+  /*
+    WAPASI ALAG SE, GHATAYI HUI NAHI.
+
+    Sale register me sirf bill rehte hain — wo jaan-boojh kar hai, kyunki
+    kagaz pe bikri aur wapasi do alag cheezein hain. Par number alag se
+    DIKHNA chahiye: bina iske dukaandaar Home ka jod aur is report ka jod
+    milata hai, wo alag milte hain, aur dono pe bharosa khatam ho jata hai.
+  */
+  const [ret] = await ReturnNote.aggregate([
+    {
+      $match: {
+        businessId: oid(businessId),
+        type: RETURN_TYPES.SALE_RETURN,
+        returnDate: { $gte: start, $lte: end },
+      },
+    },
+    { $group: { _id: null, notes: { $sum: 1 }, total: { $sum: '$grandTotal' } } },
+  ]);
+
+  const returnTotal = round2(ret?.total || 0);
+
   return {
     columns: SALE_COLUMNS[groupBy],
     rows,
     totals,
-    meta: { from: start, to: end, groupBy, title: 'Sale report' },
+    meta: {
+      from: start, to: end, groupBy, title: 'Sale report',
+      returnNotes: ret?.notes || 0,
+      returnTotal,
+      // "Wapasi ke baad kitni bikri bachi" — Home isi number se milta hai
+      netSale: round2((totals.total || 0) - returnTotal),
+    },
   };
 }
 
@@ -564,9 +591,46 @@ export async function gstReport(businessId, q = {}, viewer = null) {
     { $group: { _id: null, taxable: { $sum: '$taxableTotal' }, tax: { $sum: '$taxTotal' }, bills: { $sum: 1 } } },
   ]);
 
+  /*
+    CREDIT NOTE aur DEBIT NOTE — ye pehle ginte hi nahi the.
+
+    GSTR-1 me credit note (table 9B) output tax ki zimmedari GHATATA hai. Bina
+    iske: ₹1,00,000 ki bikri, ₹20,000 ka maal wapas, 18% — report ₹18,000
+    maangti thi jabki asli zimmedari ₹14,400 hai. Har mahine ₹3,600 zyada GST,
+    saal me ₹43,000.
+
+    Ulta bhi utna hi bura: purchase return (debit note) input credit se nahi
+    ghatta tha, yaani zyada credit claim ho jata — aur wahi notice ka kaaran
+    banta hai.
+
+    `profitLossReport` returns pehle se theek ginta tha; sirf ye do report
+    peeche reh gayi thin.
+  */
+  const noteAgg = await ReturnNote.aggregate([
+    { $match: { businessId: oid(businessId), returnDate: { $gte: start, $lte: end } } },
+    {
+      $group: {
+        _id: '$type',
+        taxable: { $sum: '$taxableTotal' },
+        tax: { $sum: { $add: ['$cgstTotal', '$sgstTotal', '$igstTotal'] } },
+        total: { $sum: '$grandTotal' },
+        notes: { $sum: 1 },
+      },
+    },
+  ]);
+  const noteBy = Object.fromEntries(noteAgg.map((r) => [r._id, r]));
+  const creditNote = noteBy[RETURN_TYPES.SALE_RETURN] || {};
+  const debitNote = noteBy[RETURN_TYPES.PURCHASE_RETURN] || {};
+
   const totals = sumRows(rows, GST_COLUMNS);
-  const outputTax = round2(totals.cgst + totals.sgst + totals.igst);
-  const inputTax = round2(purchases[0]?.tax || 0);
+  const grossOutputTax = round2(totals.cgst + totals.sgst + totals.igst);
+  const grossInputTax = round2(purchases[0]?.tax || 0);
+
+  const creditNoteTax = round2(creditNote.tax || 0);
+  const debitNoteTax = round2(debitNote.tax || 0);
+
+  const outputTax = round2(grossOutputTax - creditNoteTax);
+  const inputTax = round2(grossInputTax - debitNoteTax);
 
   return {
     columns: GST_COLUMNS,
@@ -577,6 +641,21 @@ export async function gstReport(businessId, q = {}, viewer = null) {
       from: start, to: end,
       invoiceCount: invoices.length,
       split,
+      // Wapasi se PEHLE ka jod — kagaz pe dono dikhne chahiye
+      grossOutputTax,
+      grossInputTax,
+      creditNote: {
+        notes: creditNote.notes || 0,
+        taxable: round2(creditNote.taxable || 0),
+        tax: creditNoteTax,
+        total: round2(creditNote.total || 0),
+      },
+      debitNote: {
+        notes: debitNote.notes || 0,
+        taxable: round2(debitNote.taxable || 0),
+        tax: debitNoteTax,
+        total: round2(debitNote.total || 0),
+      },
       outputTax,
       inputTax,
       netPayable: round2(outputTax - inputTax),

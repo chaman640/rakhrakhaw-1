@@ -1,140 +1,181 @@
 import { env } from '../config/env.js';
 
-/**
- * SMS BHEJNE KA EK HI DARWAZA — Fast2SMS.
- *
- * Poore app me SMS sirf yahin se jata hai. Kal koi doosri company leni ho to
- * sirf ye ek file badalni padegi.
- *
- * ─────────────────────────────────────────────────────────────────────────
- * DEV ME BINA KEY KE BHI CHALTA HAI.
- *
- * Key na ho to code SERVER KE LOG me chhap jata hai aur kaam aage badh jata
- * hai. Ye jaan-boojh kar hai: nahi to app banane wale ko har baar asli SMS
- * bhejna padta — har login pe paisa, aur bina internet ke to kaam hi ruk jata.
- *
- * Production me ye rasta BAND hai. Wahan key na ho to saaf error aata hai,
- * kyunki wahan chup-chaap log me code chhapna sabse bada surakhsa ka ched
- * hoga — log to bahut logon ko dikhte hain.
- * ─────────────────────────────────────────────────────────────────────────
- */
+/* OTP SMS — APITxT (MSG91-shape). Doc: apitxt.com/apiDoc/sendSMS */
 
-const FAST2SMS_URL = 'https://www.fast2sms.com/dev/bulkV2';
 
-/** 10 ank ka saaf number — Fast2SMS +91 ya spaces nahi leta */
+const APITXT_URL = 'https://www.apitxt.com/api/sendhttp.php';
+
 const tenDigits = (phone) => String(phone || '').replace(/\D/g, '').slice(-10);
 
-export const smsReady = () => Boolean(
-  env.sms.provider === 'apitxt' ? env.sms.apitxtKey : env.fast2sms.apiKey,
-);
+/** Chaabi kabhi poori log ya jawab me nahi jati */
+const hideKey = (url) => String(url)
+  .replace(/(authkey|authorization|apikey|api_key|token)=([^&]{0,4})[^&]*/gi, '$1=$2••••');
 
-/** APITxT — URL .env se aata hai, taaki dashboard wala exact URL paste kiya ja sake */
-async function sendViaApitxt(numbers, code) {
-  const message = env.sms.apitxtTemplate.replace(/\{otp\}/g, code);
-  let url = env.sms.apitxtUrl
-    .replace('{key}', encodeURIComponent(env.sms.apitxtKey))
-    .replace('{phone}', encodeURIComponent(numbers))
-    .replace('{sender}', encodeURIComponent(env.sms.senderId))
-    .replace('{otp}', encodeURIComponent(code))
-    .replace('{message}', encodeURIComponent(message));
+export const smsProvider = () => env.sms.provider;
 
-  /*
-    SENDER ID NA HO TO US KHAANE KO URL SE HATA DETE HAIN.
+export function smsReady() {
+  return env.sms.provider === 'fast2sms'
+    ? Boolean(env.fast2sms.apiKey)
+    : Boolean(env.sms.apitxtKey);
+}
 
-    Sender ID (6 akshar wala naam) TRAI/DLT se approve hota hai aur usme din
-    lagte hain. Uske intezaar me OTP band rakhna theek nahi — zyadatar company
-    ka OTP wala rasta bina sender id ke bhi chalta hai, unka apna default naam
-    lag jata hai.
-
-    Khali `senderid=` chhod dena sabse bura hota: bahut se gateway use "galat
-    sender" maan kar mana kar dete hain. Isliye poora khaana hi nikal dete
-    hain — aur URL me `?` `&` ka jod bhi theek kar dete hain.
-  */
-  if (!env.sms.senderId) {
-    url = url
-      .replace(/([?&])(sender|senderid|from|sender_id)=(&|$)/gi, '$1')
-      .replace(/[?&]$/, '')
-      .replace(/\?&/, '?')
-      .replace(/&&+/g, '&');
-  }
-
+async function hit(url, { timeout = 12000 } = {}) {
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 10000);
+  const timer = setTimeout(() => ac.abort(), timeout);
   try {
-    const res = await fetch(url, { signal: ac.signal });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`APITxT: ${text.slice(0, 120)}`);
-    return { sent: true, provider: 'apitxt' };
+    const res = await fetch(url, {
+      signal: ac.signal,
+      headers: { Accept: 'application/json, text/plain, */*' },
+    });
+    const text = (await res.text()).trim();
+    let json = null;
+    try { json = JSON.parse(text); } catch { /* ye gateway aksar saada text deta hai */ }
+    return { ok: res.ok, status: res.status, text: text.slice(0, 500), json };
   } finally {
     clearTimeout(timer);
   }
 }
 
-/**
- * OTP bhejo.
- *
- * Jawab: `{ sent: true }` — sach me SMS gaya
- *        `{ sent: false, dev: true }` — dev me log pe chhapa
- *
- * `route=otp` Fast2SMS ka wahi rasta hai jispe DLT template ki zarurat nahi
- * padti — message wahi banata hai ("Your OTP: 123456"). Isliye yahan sirf
- * chhah ank bhejte hain, poora message nahi.
- */
-export async function sendOtpSms(phone, code) {
+/* Gateway galti bhi HTTP 200 ke saath deta hai — body padhni padti hai */
+function judge({ ok, text, json }) {
+  const body = String(text || '').toLowerCase();
+
+  const bad = /"?(type|status)"?\s*[:=]\s*"?(error|failure|failed|err)/.test(body)
+    || /\b(invalid|unauthori[sz]ed|not\s*allowed|insufficient|no\s*balance|blocked|missing|required)\b/.test(body);
+
+  if (!ok || bad) return { sent: false };
+
+  const looksLikeId = /^[a-f0-9]{20,}$/i.test(String(text || '').trim());
+  const saysSuccess = /"?(type|status)"?\s*[:=]\s*"?(success|ok)/.test(body)
+    || (json && (json.type === 'success' || json.status === 'success'));
+
+  return { sent: looksLikeId || saysSuccess || (ok && !bad) };
+}
+
+/** Ek koshish — diye hue sender ke saath (khali ho to wo khaana jaata hi nahi) */
+async function apitxtOnce(phone, message, sender) {
+  const q = new URLSearchParams({
+    authkey: env.sms.apitxtKey,
+    mobiles: phone,
+    message,
+    route: String(env.sms.route || 4),
+    country: '91',
+    flash: '0',
+  });
+  if (sender) q.set('sender', sender);
+  if (env.sms.templateId) q.set('DLT_TE_ID', env.sms.templateId);
+
+  const url = `${env.sms.apitxtUrl || APITXT_URL}?${q.toString()}`;
+  const r = await hit(url);
+
+  return {
+    ...judge(r),
+    provider: 'apitxt',
+    sender: sender || '(bina sender)',
+    url: hideKey(url),
+    status: r.status,
+    response: r.json || r.text,
+  };
+}
+
+/* Pehle sender ke saath, mana kare to bina sender ke (rejected try me SMS jata hi nahi) */
+async function viaApitxt(phone, code) {
+  const message = env.sms.apitxtTemplate.replace(/\{otp\}/g, code);
+  const tries = [];
+
+  const first = await apitxtOnce(phone, message, env.sms.senderId);
+  tries.push(first);
+  if (first.sent) return { ...first, tries };
+
+  // Sender diya hua tha aur wahi rukawat lagi — ab bina sender ke
+  if (env.sms.senderId) {
+    const second = await apitxtOnce(phone, message, '');
+    tries.push(second);
+    if (second.sent) return { ...second, tries };
+    return { ...second, tries };
+  }
+
+  return { ...first, tries };
+}
+
+/* ──────────────────────────────── Fast2SMS — sirf fallback ke taur pe ──── */
+
+async function viaFast2sms(phone, code) {
+  const url = 'https://www.fast2sms.com/dev/bulkV2'
+    + `?authorization=${encodeURIComponent(env.fast2sms.apiKey)}`
+    + `&route=otp&variables_values=${encodeURIComponent(code)}&flash=0&numbers=${phone}`;
+
+  const r = await hit(url);
+  return {
+    sent: r.ok && r.json?.return === true,
+    provider: 'fast2sms',
+    url: hideKey(url),
+    status: r.status,
+    response: r.json || r.text,
+  };
+}
+
+/* ──────────────────────────────────────────────────────────── ek darwaza */
+
+/* Kabhi throw nahi karta — poora hisaab wapas deta hai */
+export async function trySendOtp(phone, code) {
   const numbers = tenDigits(phone);
+  if (numbers.length !== 10) {
+    return { sent: false, provider: 'none', reason: 'phone_galat', response: 'Poora 10 ank ka number chahiye' };
+  }
 
   if (!smsReady()) {
-    if (env.isProd) {
-      throw new Error('SMS bhejne ki setting adhoori hai — FAST2SMS_API_KEY bharein');
-    }
-    console.log(`\n[sms] (dev) ${numbers} ka OTP: ${code}\n`);
+    return {
+      sent: false,
+      provider: env.sms.provider,
+      reason: 'setting_adhoori',
+      response: env.sms.provider === 'fast2sms'
+        ? 'FAST2SMS_API_KEY nahi hai'
+        : 'APITXT_API_KEY nahi hai',
+    };
+  }
+
+  try {
+    return env.sms.provider === 'fast2sms'
+      ? await viaFast2sms(numbers, code)
+      : await viaApitxt(numbers, code);
+  } catch (err) {
+    return {
+      sent: false,
+      provider: env.sms.provider,
+      reason: err.name === 'AbortError' ? 'der_ho_gayi' : 'network',
+      response: err.message,
+    };
+  }
+}
+
+/* Purana naam — poore app me yahi bulaya jata hai */
+export async function sendOtpSms(phone, code) {
+  const out = await trySendOtp(phone, code);
+
+  if (out.sent) return { sent: true, provider: out.provider, sender: out.sender };
+
+  if (!env.isProd && (out.reason === 'setting_adhoori' || out.reason === 'network')) {
+    console.log(`\n[sms] (dev) ${tenDigits(phone)} ka OTP: ${code}\n`);
     return { sent: false, dev: true };
   }
 
-  if (env.sms.provider === 'apitxt') {
-    try {
-      return await sendViaApitxt(numbers, code);
-    } catch (err) {
-      if (err.name === 'AbortError') throw new Error('OTP bhejne me der ho rahi hai. Dobara koshish karein.');
-      console.warn('[sms]', err.message);
-      throw new Error('OTP bhej nahi paye. Thodi der baad dobara koshish karein.');
-    }
+  for (const t of out.tries || [out]) {
+    console.warn(
+      `[sms] ${t.provider || env.sms.provider} ne mana kiya`
+      + `${t.sender ? ` · sender: ${t.sender}` : ''}`
+      + `${t.status ? ` · HTTP ${t.status}` : ''}`
+      + `${t.url ? `\n[sms] url: ${t.url}` : ''}`
+      + `\n[sms] jawab: ${typeof t.response === 'string' ? t.response : JSON.stringify(t.response)}`,
+    );
   }
+  console.warn('[sms] jaanchne ke liye:  npm run sms:test <number> --prefix server');
 
-  const url = `${FAST2SMS_URL}?authorization=${encodeURIComponent(env.fast2sms.apiKey)}`
-    + `&route=otp&variables_values=${encodeURIComponent(code)}&flash=0&numbers=${numbers}`;
-
-  /*
-    Intezaar ki hadd.
-
-    Bina iske ek dheema jawab poori request ko latka deta hai, aur screen pe
-    ghumta hua pahiya minaton chalta rehta hai. Das second me jawab na aaye to
-    maan lete hain ki nahi aane wala.
-  */
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const res = await fetch(url, { signal: controller.signal });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || data?.return !== true) {
-      /*
-        Unki galti ka message aksar taknik ki bhasha me hota hai
-        ("Invalid Authentication"). Use seedha screen pe daalna aadmi ko kuch
-        nahi batata, isliye log me poora sach aur screen pe seedhi baat.
-      */
-      console.warn('[sms] Fast2SMS ne mana kiya:', JSON.stringify(data).slice(0, 300));
-      throw new Error('OTP bhej nahi paye. Thodi der baad dobara koshish karein.');
-    }
-
-    return { sent: true };
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error('OTP bhejne me der ho rahi hai. Dobara koshish karein.');
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
+  if (out.reason === 'setting_adhoori') {
+    throw new Error('SMS bhejne ki setting adhoori hai — server ki setting dekhein');
   }
+  if (out.reason === 'der_ho_gayi') {
+    throw new Error('OTP bhejne me der ho rahi hai. Dobara koshish karein.');
+  }
+  throw new Error('OTP bhej nahi paye. Thodi der baad dobara koshish karein.');
 }

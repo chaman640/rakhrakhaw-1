@@ -207,7 +207,11 @@ export async function updateStaff(businessId, id, payload, actor) {
   }
   if (payload.scope !== undefined) user.scope = payload.scope;
   if (payload.limits !== undefined) applyLimits(user, payload.limits, user.staffRole);
-  if (payload.isActive !== undefined) user.isActive = payload.isActive;
+  if (payload.isActive !== undefined) {
+    // Band se chalu karna ek seat khaata hai — band aadmi ginti me hai hi nahi
+    if (payload.isActive && !user.isActive) await assertSeat(businessId);
+    user.isActive = payload.isActive;
+  }
   if (payload.password) await user.setPassword(payload.password);
 
   await user.save();
@@ -287,6 +291,10 @@ const inviteShape = (inv, link = null) => ({
 });
 
 export async function createInvite(businessId, payload, actor, baseUrl) {
+  // Khuli invite bhi seat rokti hai — warna malik 20 link bana kar 2-seat
+  // plan pe 20 log andar le aata hai
+  await assertSeat(businessId);
+
   assertCanManageRole(actor, payload.staffRole);
 
   const token = makeToken();
@@ -410,6 +418,10 @@ export async function acceptInvite(token, payload) {
     { new: true }
   );
   if (!claimed) {
+
+  // Invite manzoor hote hi ek seat lagti hai — pehle ye jaanch yahan thi hi
+  // nahi, isliye 2-seat plan pe 20 log account bana sakte the
+  await assertSeat(claimed.businessId);
     throw ApiError.badRequest('Ye link abhi abhi istemal ho gayi. Malik se nayi link mangwayein.');
   }
 

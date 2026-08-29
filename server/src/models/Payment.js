@@ -32,7 +32,13 @@ const paymentSchema = new mongoose.Schema(
      */
     allocations: [{
       _id: false,
-      invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true },
+      /*
+        Naam `invoiceId` hai par supplier ki payment me isme PURCHASE ki id
+        hoti hai. `ref` isliye hata diya — wo do alag collection point karta
+        tha aur `populate` kabhi bhi chup-chaap galat cheez utha sakta tha.
+        Kis collection me dekhna hai, ye party ke type se tay hota hai.
+      */
+      invoiceId: { type: mongoose.Schema.Types.ObjectId, required: true },
       amount: { type: Number, required: true, min: 0 },
     }],
     againstInvoiceIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }],

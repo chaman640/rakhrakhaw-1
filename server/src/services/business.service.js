@@ -167,13 +167,12 @@ export async function setRetailerStatus(businessId, partyId, status, viewer = nu
   party.status = status;
   await party.save();
 
-  // Blocked retailer login hi na kar paye
-  if (party.linkedUserId) {
-    await User.updateOne(
-      { _id: party.linkedUserId },
-      { isActive: status !== PARTY_STATUS.BLOCKED }
-    );
-  }
+  /*
+    User ko yahan NAHI chhutte. `User.isActive` global hai — ek dukaan ke block
+    se us aadmi ka baaki saare wholesaler ka login bhi toot jata. Is dukaan ka
+    pehra `requireActiveParty` `party.status` se lagata hai. (Poori wajah
+    party.service.js ke `setStatus` me.)
+  */
 
   return party;
 }

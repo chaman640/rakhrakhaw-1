@@ -6,8 +6,7 @@ import { normalizePhone } from '../utils/phone.js';
 import { validateGstin } from '../utils/gstin.js';
 import { round2 } from '../utils/money.js';
 import {
-  Party, User, Item, PartyItemRate, Order, Invoice, Payment, LedgerEntry, Purchase, ReturnNote,
-} from '../models/index.js';
+  Party, User, Item, PartyItemRate, Order, Invoice, Payment, LedgerEntry, Purchase, ReturnNote, Membership} from '../models/index.js';
 import { scopeParties, isScoped, canSeeParty } from '../utils/scope.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -289,7 +288,17 @@ export async function setStatus(businessId, id, status, viewer = null) {
 
   // Blocked retailer ka login hi band ho jata hai
   if (party.linkedUserId) {
-    await User.updateOne({ _id: party.linkedUserId }, { isActive: status !== PARTY_STATUS.BLOCKED });
+    /*
+      USER KO YAHAN NAHI CHHUTE — ye cross-tenant nuksan tha.
+
+      Ek hi kharidaar kai dukaan se juda ho sakta hai (Membership.js ka poora
+      design wahi hai). `User.isActive` GLOBAL hai: ek dukaan ke block se us
+      aadmi ka BAAKI saare wholesaler ka login bhi toot jata tha — aur ulta,
+      A dobara "active" karke B ka lagaya hua block hata bhi sakta tha.
+
+      Is dukaan ke andar ka pehra `requireActiveParty` pehle se `party.status`
+      se lagata hai, aur wahi sahi jagah hai.
+    */
   }
 
   return getParty(businessId, id);
@@ -325,7 +334,7 @@ export async function deleteParty(businessId, id, viewer = null) {
     party.status = PARTY_STATUS.BLOCKED;
     party.isActive = false;
     await party.save();
-    if (party.linkedUserId) await User.updateOne({ _id: party.linkedUserId }, { isActive: false });
+    // User global hai — use yahan band nahi karte (upar wali wajah)
 
     // Kya kya mila, wahi naam le kar batao — "record hai" se user ko kuch pata nahi chalta
     const parts = [];
@@ -344,7 +353,18 @@ export async function deleteParty(businessId, id, viewer = null) {
 
   await PartyItemRate.deleteMany({ businessId, partyId: id });
   await LedgerEntry.deleteMany({ businessId, partyId: id });
-  if (party.linkedUserId) await User.deleteOne({ _id: party.linkedUserId });
+  /*
+    User TABHI jata hai jab uski aur koi dukaan na bachi ho.
+
+    Pehle ye seedha `deleteOne` tha: ek dukaan ki party mitane se aadmi ka
+    POORA account chala jata, uski baaki saari membership ke saath — aur unke
+    khate anaath ho jate.
+  */
+  if (party.linkedUserId) {
+    await Membership.deleteMany({ userId: party.linkedUserId, businessId });
+    const baaki = await Membership.countDocuments({ userId: party.linkedUserId });
+    if (baaki === 0) await User.deleteOne({ _id: party.linkedUserId });
+  }
   await party.deleteOne();
 
   return { deleted: true, blocked: false, message: `${party.name} delete ho gaya` };

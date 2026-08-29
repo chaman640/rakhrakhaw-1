@@ -189,14 +189,31 @@ export async function allocateToInvoices(businessId, partyId, amount) {
  * tarika chalta hai.
  */
 async function deallocate(businessId, payment) {
+  /*
+    Supplier ki payment me `allocations[].invoiceId` ke andar PURCHASE ki id
+    padi hoti hai — khaane ka naam purana hai, matlab nahi.
+
+    Isliye party ka type dekh kar tay karte hain ki kis collection me wapas
+    karna hai. Pehle yahan hamesha 'Invoice' jata tha: Purchase ki id Invoice
+    me dhoondhi jati, kuch milta hi nahi, aur reversal BINA KISI ERROR ke
+    gayab ho jata. Nateeja — supplier ki payment delete karo to khata theek ho
+    jata par purchase hamesha "chukta" dikhati rehti.
+  */
+  const party = await Party.findOne({ _id: payment.partyId, businessId })
+    .select('type').lean();
+  const kind = party?.type === PARTY_TYPES.SUPPLIER ? 'Purchase' : 'Invoice';
+
   const rows = (payment.allocations || []).filter((a) => a.invoiceId && a.amount > 0);
 
   if (rows.length) {
     for (const a of rows) {
-      await applyPaidAtomic(businessId, a.invoiceId, -a.amount);
+      await settleApply(kind, businessId, a.invoiceId, -a.amount);
     }
     return;
   }
+
+  // Purana data sirf Invoice wali taraf tha
+  if (kind !== 'Invoice') return;
 
   // ---- purana data ----
   if (!payment.againstInvoiceIds?.length) return;
