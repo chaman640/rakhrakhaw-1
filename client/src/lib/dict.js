@@ -1771,7 +1771,7 @@ const DICT = {
   'Number verify karein': { hi: 'नंबर वेरिफाई करें', en: 'Verify your number' },
   '6 ank ka OTP {a} pe bheja hai': { hi: '6 अंक का OTP {a} पर भेजा है', en: 'A 6-digit OTP was sent to {a}' },
   'Test ke liye OTP:': { hi: 'टेस्ट के लिए OTP:', en: 'OTP for testing:' },
-  'SMS ki setting nahi lagi hai, isliye yahan dikha diya. Live pe ye kabhi nahi dikhega.': { hi: 'SMS की सेटिंग नहीं लगी है, इसलिए यहां दिखा दिया। लाइव पर ये कभी नहीं दिखेगा।', en: 'SMS is not configured, so it is shown here. This never appears on the live site.' },
+  'SMS gateway abhi chalu nahi hua, isliye code yahan dikha diya hai.': { hi: 'SMS गेटवे अभी चालू नहीं हुआ, इसलिए कोड यहां दिखा दिया है।', en: 'The SMS gateway is not live yet, so the code is shown here.' },
   'Verify karein': { hi: 'वेरिफाई करें', en: 'Verify' },
   'Dobara bhejein ({n})': { hi: 'दोबारा भेजें ({n})', en: 'Resend ({n})' },
   'Dobara bhejein': { hi: 'दोबारा भेजें', en: 'Resend' },

@@ -1201,6 +1201,16 @@ async function main() {
   check('"HTTP 200" ka matlab "SMS gaya" nahi maana jata',
     smsSrc3.includes('function judge'));
   check('chaabi kabhi poori log/jawab me nahi jati', smsSrc3.includes('hideKey'));
+  /* lenient ka khatra — sirf chune hue numbers pe */
+  const otpSrc = srcOf('services/otp.service.js');
+  check('lenient sirf chune hue numbers pe lagu hota hai', otpSrc.includes('otpLenientPhones'));
+  check('list me na ho to OTP normal tarike se hi chalta hai (throw hota hai)',
+    otpSrc.includes('if (!dikhaSakteHain) throw err;'));
+  check('code sirf dikhaSakteHain hone par jawab me jata hai',
+    otpSrc.includes('!env.isProd || dikhaSakteHain'));
+  check('list khali ho to boot pe chetavni jati hai',
+    srcOf('config/env.js').includes('koi bhi kisi ka bhi password badal sakta hai'));
+
   /* /api/sendOtp — asli endpoint jo jaanch se mila */
   const smsSrc4 = srcOf('services/sms.service.js');
   check('asli endpoint /api/sendOtp code me hai', smsSrc4.includes('/api/sendOtp'));

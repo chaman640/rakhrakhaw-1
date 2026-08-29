@@ -57,6 +57,13 @@ export const env = {
   */
   otpMode: (process.env.OTP_MODE || 'strict').trim().toLowerCase(),
 
+  /*
+    lenient kis-kis number pe lagu ho. Khali = SABKE liye (khatarnak: koi bhi
+    kisi ka bhi password badal sakta hai). Isliye apna number daal dein.
+  */
+  otpLenientPhones: (process.env.OTP_LENIENT_PHONES || '')
+    .split(',').map((x) => x.replace(/\D/g, '').slice(-10)).filter((x) => x.length === 10),
+
   // SMS jaanch ka darwaza (/api/diag/sms). Khali = darwaza band.
   diagKey: (process.env.DIAG_KEY || '').trim(),
 
@@ -183,6 +190,16 @@ export const env = {
  * Baad me pata chalna sabse mehnga hota hai: graahak paisa dene aata hai aur
  * kuch hota hi nahi.
  */
+export function warnOtpMode() {
+  if (env.otpMode !== 'lenient') return;
+  if (env.otpLenientPhones.length) {
+    console.warn(`[otp] lenient — code sirf in numbers pe dikhega: ${env.otpLenientPhones.join(', ')}`);
+    return;
+  }
+  console.warn('[otp] ⚠ OTP_MODE=lenient aur OTP_LENIENT_PHONES khali hai —'
+    + ' koi bhi kisi ka bhi password badal sakta hai. Apna number OTP_LENIENT_PHONES me daalein.');
+}
+
 export function assertBillingReady() {
   if (env.billing.mode !== 'paid') return;
   const miss = [];

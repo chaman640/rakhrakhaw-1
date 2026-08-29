@@ -116,12 +116,19 @@ export async function sendOtp({ phone, purpose }) {
   row.expiresAt = minutesFromNow(CODE_TTL_MIN);
   await row.save();
 
+  /*
+    lenient sirf un numbers pe jo `OTP_LENIENT_PHONES` me hain. List khali ho
+    to sabke liye — us halat me koi bhi kisi ka password badal sakta hai,
+    isliye boot pe chetavni bhi jati hai.
+  */
+  const dikhaSakteHain = env.otpMode === 'lenient'
+    && (env.otpLenientPhones.length === 0 || env.otpLenientPhones.includes(clean.replace(/\D/g, '').slice(-10)));
+
   let result;
   try {
     result = await sendOtpSms(clean, code);
   } catch (err) {
-    // lenient me signup rukta nahi — code screen pe dikh jata hai
-    if (env.otpMode !== 'lenient') throw err;
+    if (!dikhaSakteHain) throw err;
     result = { sent: false, dev: true, smsError: err.message };
   }
 
@@ -137,7 +144,7 @@ export async function sendOtp({ phone, purpose }) {
       — dono shart. Production me `sms.service` khud hi mana kar deti hai, isliye
       yahan tak baat pahunchti hi nahi.
     */
-    ...(result.dev && (!env.isProd || env.otpMode === 'lenient') ? { devCode: code } : {}),
+    ...(result.dev && (!env.isProd || dikhaSakteHain) ? { devCode: code } : {}),
     smsConfigured: smsReady(),
   };
 }

@@ -7,7 +7,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
-import { env, assertBillingReady } from './config/env.js';
+import { env, assertBillingReady, warnOtpMode } from './config/env.js';
 import { rememberOrigin, detectedOrigin } from './config/origin.js';
 import { CLIENT_DIST, UPLOAD_DIR } from './config/paths.js';
 import apiRoutes from './routes/index.js';
@@ -89,6 +89,7 @@ if (!env.isProd) app.use(morgan('dev'));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 assertBillingReady();
+warnOtpMode();
 
 /*
   Rate limit — do alag hadd.

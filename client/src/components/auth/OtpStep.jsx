@@ -114,7 +114,7 @@ export default function OtpStep({ phone, purpose, onVerified, onBack, title, not
           <span className="font-medium">{t('Test ke liye OTP:')}</span>{' '}
           <span className="tabular text-base font-semibold tracking-widest">{devCode}</span>
           <p className="mt-0.5 text-xs text-amber-700">
-            {t('SMS ki setting nahi lagi hai, isliye yahan dikha diya. Live pe ye kabhi nahi dikhega.')}
+            {t('SMS gateway abhi chalu nahi hua, isliye code yahan dikha diya hai.')}
           </p>
         </div>
       )}
