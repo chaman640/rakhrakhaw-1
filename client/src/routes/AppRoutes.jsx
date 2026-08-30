@@ -13,6 +13,8 @@ import Delivery from '@/pages/public/Delivery';
 import Contact from '@/pages/public/Contact';
 import Pricing from '@/pages/public/Pricing';
 import Landing from '@/pages/public/Landing';
+import PartnerHome from '@/pages/partner/PartnerHome';
+import PartnerAdmin from '@/pages/partner/PartnerAdmin';
 import Signup from '@/pages/auth/Signup';
 import Join from '@/pages/auth/Join';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
@@ -176,6 +178,16 @@ export default function AppRoutes() {
         daam dekhna chahta hai, aur jise pehle account banana pade wo aksar
         banata hi nahi.
       */}
+      {/*
+        SALESMAN WALA HISSA — app ke pehre se bilkul bahar.
+
+        Salesman dukaan ka aadmi hai hi nahi. Uska apna login, apna token aur
+        apna layout hai. Ise `RequireAuth` ke andar daalne ka matlab hota ki
+        dukaan ka login maanga jaye — jo uske paas hai hi nahi.
+      */}
+      <Route path="/partner" element={<PartnerHome />} />
+      <Route path="/partner/admin" element={<PartnerAdmin />} />
+
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/refund" element={<Refund />} />

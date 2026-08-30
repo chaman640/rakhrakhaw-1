@@ -46,6 +46,7 @@ Disallow: /my-khata
 Disallow: /pending
 Disallow: /join/
 Disallow: /join-staff/
+Disallow: /partner
 Disallow: /api/
 Disallow: /uploads/
 

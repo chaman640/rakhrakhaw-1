@@ -27,6 +27,7 @@ import staffRoutes from './staff.routes.js';
 import backupRoutes from './backup.routes.js';
 import auditRoutes from './audit.routes.js';
 import diagRoutes from './diag.routes.js';
+import partnerRoutes from './partner.routes.js';
 
 const router = Router();
 
@@ -36,6 +37,15 @@ router.get('/health', (req, res) => {
 
 // SMS ki jaanch — DIAG_KEY set ho tabhi khulta hai
 router.use('/diag', diagRoutes);
+
+/*
+  Salesman wala hissa — dukaan ke pehre se BAHAR.
+
+  Salesman koi dukaan ka aadmi hai hi nahi, isliye `protect`/`withTenant` yahan
+  lagte hi nahi. Uska apna pehra `middleware/partnerAuth.js` me hai, aur uska
+  token dukaan wale raste pe chalta nahi (aud alag hai).
+*/
+router.use('/partner', partnerRoutes);
 
 // Part 2
 router.use('/auth', authRoutes);

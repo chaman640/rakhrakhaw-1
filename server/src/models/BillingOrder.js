@@ -20,7 +20,17 @@ const billingOrderSchema = new mongoose.Schema(
     amountPaise: { type: Number, required: true },
 
     provider: { type: String, default: 'razorpay' },
-    providerOrderId: { type: String, default: '' },
+    /*
+      DEFAULT KHALI STRING NAHI — `undefined`.
+
+      Neeche is khaane pe `unique + sparse` index hai. Sparse SIRF un doc ko
+      chhodta hai jinme khaana HAI HI NAHI; khali string to maujood hai, yaani
+      wo bhi index me jati hai. Matlab do adhoore order ek saath bane to
+      dusra E11000 se gir jata — aur ek baar koi order Razorpay ki gadbad se
+      '' pe atak gaya, to us ke baad HAR dukaan ka checkout hamesha ke liye
+      fail hone lagta.
+    */
+    providerOrderId: { type: String, default: undefined },
     providerPaymentId: { type: String, default: '' },
 
     status: {

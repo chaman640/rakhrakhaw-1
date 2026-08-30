@@ -13,6 +13,7 @@ import { businessForUser } from '../utils/businessView.js';
 import { User, Business, Party, Membership } from '../models/index.js';
 import { assertOtpToken } from './otp.service.js';
 import { cacheBust } from '../utils/cache.js';
+import { bindReferral } from './partner.service.js';
 
 /**
  * Token banane wala.
@@ -82,7 +83,7 @@ function publicUser(user) {
 }
 
 /** Wholesaler signup — User + Business dono ek saath bante hain */
-export async function signupWholesaler({ name, phone, password, businessName, otpToken }) {
+export async function signupWholesaler({ name, phone, password, businessName, otpToken, refCode }) {
   const cleanPhone = normalizePhone(phone);
 
   /*
@@ -152,6 +153,25 @@ export async function signupWholesaler({ name, phone, password, businessName, ot
     }
   } finally {
     await session.endSession();
+  }
+
+  /*
+    Salesman ke link se aaya hai to dukaan uske naam chadh jayegi.
+
+    Ye SIGNUP KE PAL hi hota hai aur uske baad kabhi nahi badalta — warna
+    salesman un dukaano pe daawa kar lete jo pehle se aa chuki thin.
+
+    `await` hai par error kabhi bahar nahi jata (bindReferral khud sambhalta
+    hai). Salesman ka hisaab uski apni cheez hai; uski koi gadbad is aadmi ka
+    account banna nahi rok sakti.
+  */
+  if (refCode) {
+    await bindReferral({
+      refCode,
+      businessId: business._id,
+      shopName: business.name,
+      ownerPhone: cleanPhone,
+    });
   }
 
   // Abhi abhi signup kiya hai to ye khud malik hai — poora profile milega

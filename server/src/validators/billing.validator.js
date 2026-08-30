@@ -14,3 +14,20 @@ export const verifySchema = z.object({
   paymentId: z.string().trim().min(4).max(80),
   signature: z.string().trim().min(16).max(200),
 });
+
+/* ── Autopay ── */
+
+export const planOnlySchema = z.object({
+  planCode: z.enum(codes, { errorMap: () => ({ message: 'Aisa koi plan nahi hai' }) }),
+});
+
+/*
+  Mandate ke jawab me `subscriptionId` aata hai, `orderId` nahi — aur signature
+  bhi doosre kram se banta hai. Isliye alag schema, purane wale me ek aur
+  khaana thoos dene se nahi.
+*/
+export const subVerifySchema = z.object({
+  subscriptionId: z.string().trim().min(4).max(80),
+  paymentId: z.string().trim().min(4).max(80),
+  signature: z.string().trim().min(16).max(200),
+});

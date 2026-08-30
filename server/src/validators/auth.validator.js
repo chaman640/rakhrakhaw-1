@@ -18,6 +18,13 @@ export const wholesalerSignupSchema = z.object({
   password,
   otpToken,
   businessName: z.string().trim().min(2, 'Dukaan ka naam daalein').max(120),
+
+  /*
+    Salesman ka code — marzi se. Galat ya khali ho to signup phir bhi hota
+    hai, bas kisi ke naam nahi chadhta. Signup ko is ek cheez pe rokna sabse
+    bada nuksan hota.
+  */
+  refCode: z.string().trim().max(12).optional(),
 });
 
 export const loginSchema = z.object({

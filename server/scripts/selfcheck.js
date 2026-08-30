@@ -1271,6 +1271,319 @@ async function main() {
   check('jaanchne ka auzaar maujood hai (npm run sms:test)',
     fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'sms-test.js')));
 
+  /* ════════════ Autopay aur plan badalna ════════════ */
+  console.log(`\n${Y}Autopay${N}`);
+
+  const rzpSrc = srcOf('services/razorpay.service.js');
+  const apSrc = srcOf('services/billing.service.js');
+  const subSrc = srcOf('models/Subscription.js');
+
+  check('mandate banane ka rasta hai', rzpSrc.includes('/subscriptions'));
+  check('plan badalne me schedule_change_at jata hai', rzpSrc.includes('schedule_change_at'));
+  check('mandate band karte waqt cycle_end tak chalta hai',
+    rzpSrc.includes('cancel_at_cycle_end'));
+
+  /*
+    Subscription ka signature ULTA hai — paymentId|subscriptionId. Order wala
+    kram likh dena har payment ko "galat saboot" bana deta hai, aur wo bug
+    tabhi dikhta hai jab pehla grahak paisa de raha hota hai.
+  */
+  check('mandate ka signature paymentId|subscriptionId ke kram me banta hai',
+    rzpSrc.includes('${paymentId}|${subscriptionId}'));
+  check('order ka signature apne purane kram me hi hai',
+    rzpSrc.includes('${orderId}|${paymentId}'));
+
+  check('Subscription me mandate ka id rakha jata hai', subSrc.includes('providerSubId'));
+  check('mandate ki halat plan ki halat se alag hai', subSrc.includes('mandateStatus'));
+  check('aage lagne wala plan yaad rakha jata hai', subSrc.includes('pendingPlanCode'));
+
+  check('bada plan turant lagta hai, chhota cycle_end pe',
+    apSrc.includes("when: bada ? 'now' : 'cycle_end'"));
+  check('chhota plan lene par pendingPlanCode likha jata hai',
+    apSrc.includes('pendingPlanCode: plan.code'));
+  check('paisa katne ki khabar (subscription.charged) paidTill badhati hai',
+    apSrc.includes("kind === 'subscription.charged'"));
+  check('kaunsa plan chala — Razorpay ke plan_id se tay hota hai',
+    apSrc.includes('RazorpayPlan.findOne({ planId: ent.plan_id })'));
+  check('paisa atakne par plan turant band NAHI hota',
+    apSrc.includes("subscription.halted") && !apSrc.includes("paidTill: null"));
+  check('plan band karne par mandate bhi band hota hai',
+    apSrc.includes('cancelSubscriptionAt(sub.providerSubId'));
+
+  /*
+    Sabse bada khatra: 10 wale plan pe 8 log, aur wo 3 wala plan le lete hain.
+    Chup-chaap 5 logon ka login band kar dena sabse bura jawab hai.
+  */
+  check('chhota plan lene se pehle seat ki jaanch hoti hai',
+    apSrc.includes('assertSeatsFitPlan'));
+  check('seat kam padne par saaf batata hai kitne log hatane hain',
+    apSrc.includes('logon ka login band kar dein'));
+
+  const { PLAN_BY_CODE: PBC } = await import('../src/config/billing.js');
+  check('daam ka kram sahi hai (chhota -> bada)',
+    PBC.CHOTI.pricePaise < PBC.BADHTI.pricePaise
+    && PBC.BADHTI.pricePaise < PBC.BADI.pricePaise
+    && PBC.BADI.pricePaise < PBC.ASEEM.pricePaise);
+
+  /* ════════════ Salesman ka commission — PAISE KA HISAAB ════════════ */
+  console.log(`\n${Y}Salesman ka commission${N}`);
+
+  const { Referral, Salesman, Commission } = await import('../src/models/index.js');
+  const { creditReferral, bindReferral } = await import('../src/services/partner.service.js');
+  const { RATE_PAISE, MAX_MONTHS, baakiPaise } = await import('../src/config/partner.js');
+
+  check('rate ₹30 hai', RATE_PAISE === 3000, String(RATE_PAISE));
+  check('hadd 12 mahine hai', MAX_MONTHS === 12, String(MAX_MONTHS));
+  check('baaki = kamai − diya', baakiPaise({ earnedPaise: 9000, paidPaise: 3000 }) === 6000);
+  check('diya hua kamai se zyada ho to baaki 0 (minus me nahi jata)',
+    baakiPaise({ earnedPaise: 3000, paidPaise: 9000 }) === 0);
+
+  /*
+    Ab asli jaanch — nakli database pe. Yahi wo teen halat hain jinme paisa
+    galat chadh sakta hai, aur teeno ka bug mahine baad hisaab milate waqt
+    pakda jata: tab tak paisa ja chuka hota hai.
+  */
+  const nakliRef = (over = {}) => ({
+    _id: 'r1', salesmanId: 's1', shopName: 'Test', monthsCredited: 0,
+    earnedPaise: 0, creditedSources: [], firstPaidAt: null, ...over,
+  });
+
+  const withFakes = async (ref, fn) => {
+    const oldFind = Referral.findOne;
+    const oldUpd = Referral.findOneAndUpdate;
+    const oldSm = Salesman.updateOne;
+    const oldCr = Commission.create;
+    const calls = { smInc: 0, upd: null };
+    Referral.findOne = async () => ref;
+    Referral.findOneAndUpdate = async (filter, update) => {
+      // Filter ko SACH ME lagate hain — nakli test ka matlab tabhi hai
+      const src = filter.creditedSources?.$ne;
+      if (src && ref.creditedSources.includes(src)) return null;
+      const cap = filter.monthsCredited?.$lte;
+      if (cap !== undefined && ref.monthsCredited > cap) return null;
+      calls.upd = update;
+      return { ...ref, monthsCredited: ref.monthsCredited + (update.$inc?.monthsCredited || 0) };
+    };
+    // Asli mongoose `{ matchedCount: 1 }` deta hai — code usi se jaanchta hai
+    // ki salesman mila ya nahi (updateOne miss hone par throw nahi karta)
+    Salesman.updateOne = async (q, u) => {
+      calls.smInc += u.$inc?.earnedPaise || 0;
+      return { acknowledged: true, matchedCount: 1, modifiedCount: 1 };
+    };
+    Commission.create = async () => ({});
+    try { return { out: await fn(), calls }; } finally {
+      Referral.findOne = oldFind; Referral.findOneAndUpdate = oldUpd;
+      Salesman.updateOne = oldSm; Commission.create = oldCr;
+    }
+  };
+
+  {
+    const { out, calls } = await withFakes(nakliRef(), () =>
+      creditReferral({ businessId: 'b1', months: 1, sourceId: 'pay_1' }));
+    check('ek mahine ka payment = ₹30', out.credited && out.amountPaise === 3000, JSON.stringify(out));
+    check('salesman ke khaate me bhi ₹30 chadha', calls.smInc === 3000, String(calls.smInc));
+  }
+
+  {
+    const { out } = await withFakes(nakliRef(), () =>
+      creditReferral({ businessId: 'b1', months: 3, sourceId: 'pay_2' }));
+    check('3 mahine ka paisa ek saath = ₹90', out.credited && out.amountPaise === 9000, JSON.stringify(out));
+    check('aur 12 ki ginti me 3 hi gine gaye', out.months === 3, String(out.months));
+  }
+
+  {
+    // WAHI payment dobara — Razorpay ye har baar karta hai
+    const ref = nakliRef({ monthsCredited: 1, creditedSources: ['pay_1'] });
+    const { out, calls } = await withFakes(ref, () =>
+      creditReferral({ businessId: 'b1', months: 1, sourceId: 'pay_1' }));
+    check('EK PAYMENT KA PAISA DO BAAR NAHI CHADHTA', !out.credited, JSON.stringify(out));
+    check('dobara aane par salesman ko kuch nahi mila', calls.smInc === 0, String(calls.smInc));
+  }
+
+  {
+    const ref = nakliRef({ monthsCredited: 12 });
+    const { out, calls } = await withFakes(ref, () =>
+      creditReferral({ businessId: 'b1', months: 1, sourceId: 'pay_9' }));
+    check('12 mahine poore hone ke baad aur paisa nahi', !out.credited, JSON.stringify(out));
+    check('hadd ke baad salesman ko kuch nahi mila', calls.smInc === 0, String(calls.smInc));
+  }
+
+  {
+    // 11 chadhe hain aur 3 mahine ka paisa aaya — sirf 1 milna chahiye
+    const ref = nakliRef({ monthsCredited: 11 });
+    const { out } = await withFakes(ref, () =>
+      creditReferral({ businessId: 'b1', months: 3, sourceId: 'pay_x' }));
+    check('hadd paar karta payment sirf bache hue mahine ka deta hai',
+      out.credited && out.months === 1 && out.amountPaise === 3000, JSON.stringify(out));
+  }
+
+  {
+    const oldFind = Referral.findOne;
+    Referral.findOne = async () => null;
+    const out = await creditReferral({ businessId: 'b9', months: 1, sourceId: 'p' });
+    Referral.findOne = oldFind;
+    check('jiska koi salesman nahi, uspe kuch nahi chadhta', !out.credited);
+  }
+
+  {
+    // Purani dukaan dobara jodne ki koshish — paisa nahi milna chahiye
+    const oldEx = Referral.exists;
+    const oldSm = Salesman.findOne;
+    Salesman.findOne = () => ({ lean: async () => ({ _id: 's1', phone: '9999999999', refCode: 'ABC123' }) });
+    Referral.exists = async () => true;
+    const out = await bindReferral({ refCode: 'ABC123', businessId: 'b1', ownerPhone: '8888888888' });
+    Referral.exists = oldEx; Salesman.findOne = oldSm;
+    check('PEHLE SE JUDI DUKAAN DOBARA NAHI JUDTI', !out.linked && out.reason === 'pehle se juda hai',
+      JSON.stringify(out));
+  }
+
+  {
+    // Apne hi link se apni dukaan — mehnat kuch nahi, paisa bhi nahi
+    const oldSm = Salesman.findOne;
+    Salesman.findOne = () => ({ lean: async () => ({ _id: 's1', phone: '9999999999', refCode: 'ABC123' }) });
+    const out = await bindReferral({ refCode: 'ABC123', businessId: 'b2', ownerPhone: '9999999999' });
+    Salesman.findOne = oldSm;
+    check('apni hi dukaan apne link se nahi judti', !out.linked && out.reason === 'apni hi dukaan',
+      JSON.stringify(out));
+  }
+
+  {
+    const out = await bindReferral({ refCode: '', businessId: 'b3' });
+    check('bina code ke signup chalta hai (rukta nahi)', !out.linked);
+  }
+
+  const pSrc = srcOf('services/partner.service.js');
+  check('salesman ka token dukaan wale token se alag hai (aud)',
+    pSrc.includes("const AUD = 'partner'") && pSrc.includes("d.aud !== AUD"));
+  check('commission chadhne me grahak ka payment kabhi fail nahi hota',
+    srcOf('services/billing.service.js').includes('creditReferral({')
+    && srcOf('services/billing.service.js').includes('.catch(() => {})'));
+  check('admin paisa BHEJTA nahi — sirf "de diya" mark karta hai',
+    !srcOf('services/partnerAdmin.service.js').includes('payout/'), 'koi payout API nahi');
+  check('baaki se zyada "de diya" mark nahi ho sakta',
+    srcOf('services/partnerAdmin.service.js').includes('isse zyada mark nahi kar sakte'));
+  check('referral ek dukaan pe ek hi (database ki rok)',
+    srcOf('models/Referral.js').includes('unique: true'));
+
+  /* ════════ Review me pakde gaye bug — dobara na aayein ════════ */
+  console.log(`\n${Y}Pakde gaye bug${N}`);
+
+  const bSrc = srcOf('services/billing.service.js');
+  const paSrc = srcOf('services/partnerAdmin.service.js');
+  const prSrc = srcOf('services/partner.service.js');
+
+  /*
+    Sabse bura wala: aadmi Razorpay ka parda band kar de (jo sabse aam hai) to
+    DB me adhoora mandate chadh jata tha, aur uske baad wo dukaan KABHI plan
+    nahi le paati thi.
+  */
+  check('adhoora mandate ("created") chalu nahi mana jata',
+    !bSrc.includes("['active', 'authenticated', 'created']")
+    && bSrc.includes("['active', 'authenticated']"));
+
+  /*
+    Pehle main yahan `planCode` likh raha tha, aur wo apne aap me bug tha:
+    aadmi ASEEM ka mandate banata, Razorpay ka parda band kar deta (paisa ek
+    rupaya nahi jata) aur use poore mahine unlimited seat mil jati.
+  */
+  check('mandate banate waqt plan MILTA nahi — sirf "manga gaya" likha jata hai',
+    bSrc.includes('mandatePlanCode: plan.code'));
+  check('mandate banate waqt planCode/seats nahi badalte (bina paise ke haq nahi)',
+    !bSrc.includes('mandatePlanCode: plan.code,\n        pricePaise:'));
+  check('paisa katne par hi mandatePlanCode saaf hota hai',
+    bSrc.includes("mandatePlanCode: '',"));
+  check('purana adhoora mandate naya banane se pehle band hota hai',
+    bSrc.includes('cancelSubscriptionAt(sub.providerSubId, false)'));
+  check('dedup poore itihaas se milta hai, sirf aakhri payment se nahi',
+    bSrc.includes('BillingOrder.exists({ providerPaymentId: payId })'));
+  check('plan badhane se PEHLE order pe dawa lagti hai (teen guna mahina na mile)',
+    bSrc.indexOf("{ _id: orderDoc._id, status: 'created' }")
+    < bSrc.indexOf('await extendSubscription(claimed.businessId'));
+  check('plan na badh paye to dawa wapas ho jati hai',
+    bSrc.includes("$set: { status: 'created', paidAt: null, receiptNo: '' }"));
+  check('mandate band na ho paye to app jhooth nahi bolti',
+    bSrc.includes('Autopay abhi band nahi ho paya'));
+  check('salesman na mile to bhi mahina wapas ho jata hai',
+    srcOf('services/partner.service.js').includes('if (!hit?.matchedCount)'));
+
+  /*
+    Razorpay ek hi khabar do-teen baar bhejta hai. Bina rok ke ek payment do
+    mahine chadha deta tha.
+  */
+  check('wahi payment dobara aaye to mahina dobara nahi chadhta',
+    bSrc.includes("'lastPayment.paymentId': { $ne: payId }"));
+  check('commission ka sourceId payment ka hai, subscription ka nahi',
+    bSrc.includes('sourceId: payId ||') && !bSrc.includes('sourceId: payment.id || ent.id'));
+
+  check('webhook ka galat signature 401 deta hai (statusCode, status nahi)',
+    srcOf('controllers/billing.controller.js').includes('err.statusCode === 401'));
+
+  check('31 tareekh pe mahina jodne se din nahi phislte',
+    bSrc.includes('function mahinaAage'));
+  check('paidTill jodne me mahinaAage hi lagta hai',
+    !bSrc.includes('paidTill.setMonth(') && bSrc.includes('mahinaAage(from'));
+
+  check('paisa kata ho to plan kabhi FREE nahi hota',
+    bSrc.includes('plan pehchana nahi gaya'));
+
+  check('plan band karne pe mandate ki halat bhi likhi jati hai',
+    bSrc.includes("mandateStatus: 'cancelling'"));
+
+  check('rukka hua badlav sahi API se rad hota hai',
+    srcOf('services/razorpay.service.js').includes('cancel_scheduled_changes')
+    && bSrc.includes('cancelScheduledChange(sub.providerSubId)'));
+
+  check('upgrade ka faisla grahak ke apne daam se hota hai',
+    bSrc.includes('Number(sub.pricePaise || 0)'));
+
+  check('order pehle plan badhata hai, rasid baad me banata hai',
+    bSrc.indexOf('await extendSubscription(orderDoc.businessId')
+    < bSrc.indexOf("{ _id: orderDoc._id, status: 'created' }"));
+
+  check('har mahine ki rasid banti hai (payment record khali nahi rehta)',
+    bSrc.includes('rasid nahi bani'));
+
+  check('paisa wapas ho to commission bhi wapas',
+    bSrc.includes('reverseReferral') && prSrc.includes('export async function reverseReferral'));
+
+  const { reverseReferral } = await import('../src/services/partner.service.js');
+  check('reverseReferral bina sourceId ke kuch nahi karta',
+    !(await reverseReferral({ businessId: 'b1' })).reversed);
+
+  /* Admin ke paise wale bug */
+  check('"de diya" ki jaanch aur badlav ek hi kadam me hain ($expr filter)',
+    paSrc.includes('$expr: { $lte: [paise'));
+  check('galti se zyada mark ho jaye to minus se sudhaar ho sakta hai',
+    paSrc.includes('paise < 0') && srcOf('validators/partner.validator.js').includes('n !== 0'));
+  check('naam se dhundhne pe poori list nahi lautti',
+    paSrc.includes('ank.length >= 3'));
+  check('aadmi ka likha regex seedha mongo me nahi jata',
+    paSrc.includes("needle.replace(/[.*+?^${}()|[\\]\\\\]/g"));
+
+  /* Token — password badalne pe purani chaabi band */
+  check('password badalte hi purane token band ho jate hain (salesman)',
+    prSrc.includes('sm.tokenSeq = (sm.tokenSeq || 0) + 1')
+    && srcOf('middleware/partnerAuth.js').includes('sm.tokenSeq'));
+  check('password badalte hi purane token band ho jate hain (admin)',
+    paSrc.includes('admin.tokenSeq = (admin.tokenSeq || 0) + 1')
+    && srcOf('middleware/partnerAuth.js').includes('admin.tokenSeq'));
+
+  check('salesman band karne ke liye body me active bhejna zaroori hai',
+    srcOf('routes/partner.routes.js').includes('validate({ body: toggleSchema })'));
+
+  check('salesman ka khaata na chadhe to mahina wapas ho jata hai',
+    prSrc.includes('$pull: { creditedSources: src }') && prSrc.includes('wapas kar diya'));
+
+  check('BillingOrder ka providerOrderId khali string default nahi hai',
+    srcOf('models/BillingOrder.js').includes('default: undefined'));
+
+  check('client checkout ka faisla needsCheckout se hota hai (autopay object se nahi)',
+    fs.readFileSync(path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '..', '..', 'client', 'src', 'components', 'billing', 'PlanPicker.jsx',
+    ), 'utf8')
+      .includes('if (!sub.needsCheckout)'));
+
   /* ════════════════════ 19. Membership ke index ════════════════════ */
   console.log(`\n${Y}Membership ke index${N}`);
 

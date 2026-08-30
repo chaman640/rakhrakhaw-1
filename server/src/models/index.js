@@ -26,5 +26,13 @@ export { default as AuditLog } from './AuditLog.js';
 export { default as StaffInvite } from './StaffInvite.js';
 export { default as Expense } from './Expense.js';
 export { default as Subscription } from './Subscription.js';
+export { default as RazorpayPlan } from './RazorpayPlan.js';
+
+/* ── Salesman wala hissa (/partner) ── */
+export { default as Salesman } from './Salesman.js';
+export { default as Referral } from './Referral.js';
+export { default as Commission } from './Commission.js';
+export { default as Payout } from './Payout.js';
+export { default as PartnerAdmin } from './PartnerAdmin.js';
 export { default as BillingOrder } from './BillingOrder.js';
 export { default as PushSubscription } from './PushSubscription.js';

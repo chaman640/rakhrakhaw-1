@@ -38,6 +38,21 @@ export const verify = asyncHandler(async (req, res) =>
 export const history = asyncHandler(async (req, res) =>
   ok(res, await service.paymentHistory(req.businessId)));
 
+
+/* ── Autopay ── */
+
+export const subscribe = asyncHandler(async (req, res) =>
+  ok(res, await service.startAutopay(req.businessId, req.body)));
+
+export const confirmSub = asyncHandler(async (req, res) =>
+  ok(res, await service.confirmAutopay(req.businessId, req.body)));
+
+export const changePlan = asyncHandler(async (req, res) =>
+  ok(res, await service.changePlan(req.businessId, req.body)));
+
+export const undoChange = asyncHandler(async (req, res) =>
+  ok(res, await service.undoPendingChange(req.businessId)));
+
 /**
  * Razorpay ka webhook.
  *
@@ -55,7 +70,10 @@ export const webhook = asyncHandler(async (req, res) => {
   } catch (err) {
     // Signature galat = 401. Ye dobara bhejne layak hai hi nahi, par 401
     // bhejna Razorpay ko saaf batata hai ki setting kahin galat hai.
-    if (err.status === 401) return res.status(401).json({ ok: false });
+    // ApiError me `statusCode` hota hai, `status` nahi — pehle ye branch
+    // kabhi chalta hi nahi tha, aur galat webhook secret par sab kuch
+    // chup-chaap 200 lautata tha (yaani Razorpay ko sab theek dikhta tha)
+    if (err.statusCode === 401) return res.status(401).json({ ok: false });
     console.error('[billing] webhook:', err.message);
     return res.status(200).json({ ok: false });
   }

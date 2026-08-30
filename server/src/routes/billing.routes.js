@@ -3,7 +3,9 @@ import { protect, requireRole, requirePermission } from '../middleware/auth.js';
 import { withTenant } from '../middleware/tenant.js';
 import { ROLES } from '../config/constants.js';
 import { validate } from '../middleware/validate.js';
-import { checkoutSchema, verifySchema } from '../validators/billing.validator.js';
+import {
+  checkoutSchema, verifySchema, planOnlySchema, subVerifySchema,
+} from '../validators/billing.validator.js';
 import * as ctrl from '../controllers/billing.controller.js';
 
 const router = Router();
@@ -38,5 +40,21 @@ router.get('/history', ctrl.history);
 router.post('/checkout', requirePermission('settings:edit'), validate({ body: checkoutSchema }), ctrl.checkout);
 router.post('/verify', requirePermission('settings:edit'), validate({ body: verifySchema }), ctrl.verify);
 router.post('/cancel', requirePermission('settings:edit'), ctrl.cancel);
+
+/*
+  ─────────────────────────── AUTOPAY ───────────────────────────
+
+  `/subscribe`   mandate banao (grahak ek baar manzoori deta hai)
+  `/sub-verify`  mandate manzoor hone ke baad browser ka jawab
+  `/change-plan` plan badlo — bada abhi, chhota mahine ke aakhir me
+  `/undo-change` ruka hua badlav wapas lo
+
+  Paisa in me se kisi raste se nahi katta. Wo Razorpay khud kaatta hai aur
+  khabar webhook se aati hai — asli sach wahi hai.
+*/
+router.post('/subscribe', requirePermission('settings:edit'), validate({ body: planOnlySchema }), ctrl.subscribe);
+router.post('/sub-verify', requirePermission('settings:edit'), validate({ body: subVerifySchema }), ctrl.confirmSub);
+router.post('/change-plan', requirePermission('settings:edit'), validate({ body: planOnlySchema }), ctrl.changePlan);
+router.post('/undo-change', requirePermission('settings:edit'), ctrl.undoChange);
 
 export default router;

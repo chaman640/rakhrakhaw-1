@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
 import OtpStep from '@/components/auth/OtpStep';
@@ -17,6 +17,16 @@ import { t } from '@/lib/i18n';
 
 export default function Signup() {
   const { signupWholesaler } = useAuth();
+
+  /*
+    Salesman ka code — link se aata hai (/signup?ref=ABC123).
+
+    Ye sirf aage bhej diya jata hai; iski jaanch server karta hai. Galat ya
+    khali code se signup RUKTA NAHI — bas dukaan kisi ke naam nahi chadhti.
+    Signup ko is ek cheez pe rokna sabse bada nuksan hota.
+  */
+  const [sp] = useSearchParams();
+  const refCode = (sp.get('ref') || '').trim().toUpperCase();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ businessName: '', name: '', phone: '', password: '' });
@@ -50,7 +60,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      await signupWholesaler({ ...form, phone: cleanPhone, otpToken });
+      await signupWholesaler({ ...form, phone: cleanPhone, otpToken, ...(refCode ? { refCode } : {}) });
       navigate('/settings?welcome=1', { replace: true });
     } catch (err) {
       /*

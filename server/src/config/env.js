@@ -77,6 +77,17 @@ export const env = {
   googleVerify: (process.env.GOOGLE_SITE_VERIFICATION || '').trim(),
   googleVerifyFile: (process.env.GOOGLE_VERIFY_FILE || '').trim(),
 
+  /*
+    Salesman wale panel ka admin (/partner/admin).
+
+    Password sirf PEHLI BAAR se lagta hai — uske baad panel se badla ja sakta
+    hai, aur badalne ke baad yahan likha hua purana password chalta nahi.
+  */
+  partnerAdmin: {
+    email: (process.env.PARTNER_ADMIN_EMAIL || '').trim().toLowerCase(),
+    password: process.env.PARTNER_ADMIN_PASSWORD || '',
+  },
+
   // SMS jaanch ka darwaza (/api/diag/sms). Khali = darwaza band.
   diagKey: (process.env.DIAG_KEY || '').trim(),
 

@@ -1856,6 +1856,27 @@ const DICT = {
   'Aaj hi shuru kar lijiye': { hi: 'आज ही शुरू कर लीजिए', en: 'Get started today' },
   'Account banane me do minute lagte hain. Retailer ke liye ye hamesha free hai.': { hi: 'अकाउंट बनाने में दो मिनट लगते हैं। रिटेलर के लिए ये हमेशा मुफ़्त है।', en: 'Creating an account takes two minutes. It is always free for retailers.' },
   'Delivery': { hi: 'डिलीवरी', en: 'Delivery' },
+
+  /* ── autopay aur plan badalna ── */
+  'Plan badal diya gaya': { hi: 'प्लान बदल दिया गया', en: 'Plan changed' },
+  'Manzoori poori nahi hui': { hi: 'मंज़ूरी पूरी नहीं हुई', en: 'The mandate was not completed' },
+  'Manzoori mil gayi hai. Plan chalu hone me thoda waqt lag raha hai — ek minute me page dobara kholein.': { hi: 'मंज़ूरी मिल गई है। प्लान चालू होने में थोड़ा वक़्त लग रहा है — एक मिनट में पेज दोबारा खोलें।', en: 'The mandate went through. The plan is taking a moment to activate — reopen this page in a minute.' },
+  'Autopay atak gaya hai': { hi: 'ऑटोपे अटक गया है', en: 'Autopay has stalled' },
+  'Aapke bank se paisa nahi kat paya. Neeche apna plan dobara chunkar manzoori de dein, warna mohlat khatam hone par kaam ruk jayega.': { hi: 'आपके बैंक से पैसा नहीं कट पाया। नीचे अपना प्लान दोबारा चुनकर मंज़ूरी दे दें, वरना मोहलत खत्म होने पर काम रुक जाएगा।', en: 'Your bank could not be charged. Pick your plan below and authorise again, or work will stop when the grace period ends.' },
+  '{date} se {plan} chalu ho jayega (₹{amt}/mahina)': { hi: '{date} से {plan} चालू हो जाएगा (₹{amt}/महीना)', en: '{plan} starts on {date} (₹{amt}/month)' },
+  'Autopay chalu hai — har mahine paisa apne aap kat jayega.': { hi: 'ऑटोपे चालू है — हर महीने पैसा अपने आप कट जाएगा।', en: 'Autopay is on — you will be charged automatically each month.' },
+  'Abhi yahi': { hi: 'अभी यही', en: 'Current' },
+  'Abhi yahi chalu hai': { hi: 'अभी यही चालू है', en: 'This is your current plan' },
+  'Mahine ke aakhir me lagega': { hi: 'महीने के आख़िर में लगेगा', en: 'Starts at the end of the month' },
+  'Autopay chalu karein': { hi: 'ऑटोपे चालू करें', en: 'Turn on autopay' },
+  'Abhi is plan pe jayein': { hi: 'अभी इस प्लान पर जाएँ', en: 'Switch to this plan now' },
+  'Mahine ke aakhir se is plan pe': { hi: 'महीने के आख़िर से इस प्लान पर', en: 'Switch at the end of the month' },
+  'Abhi ₹{amt} katega aur mahina aaj se shuru': { hi: 'अभी ₹{amt} कटेगा और महीना आज से शुरू', en: '₹{amt} is charged now and the month restarts today' },
+  'Abhi kuch nahi katega — bade plan ka fayda mahine ke aakhir tak': { hi: 'अभी कुछ नहीं कटेगा — बड़े प्लान का फ़ायदा महीने के आख़िर तक', en: 'Nothing is charged now — you keep the bigger plan until month end' },
+  'Autopay jab chahein band kar sakte hain — Settings me Plan wale hisse se. Band karne par mahine ke aakhir tak sab chalta rahega.': { hi: 'ऑटोपे जब चाहें बंद कर सकते हैं — सेटिंग में प्लान वाले हिस्से से। बंद करने पर महीने के आख़िर तक सब चलता रहेगा।', en: 'You can stop autopay any time from Plan in Settings. Everything keeps working until the end of the month.' },
+
+  'Manzoori baaki hai': { hi: 'मंज़ूरी बाकी है', en: 'Waiting for approval' },
+  'Manzoori adhoori rah gayi thi — Autopay dobara chalu karne ke liye koi doosra plan chunein ya page refresh karein': { hi: 'मंज़ूरी अधूरी रह गई थी — ऑटोपे दोबारा चालू करने के लिए कोई दूसरा प्लान चुनें या पेज रिफ़्रेश करें', en: 'The mandate was left incomplete — pick another plan or refresh the page to set autopay up again' },
 };
 
 export default DICT;

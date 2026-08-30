@@ -55,3 +55,40 @@ export function openCheckout({ order, business, user, onSuccess, onDismiss, onFa
   rzp.on('payment.failed', (res) => onFail?.(res?.error?.description || ''));
   rzp.open();
 }
+
+/**
+ * AUTOPAY KA CHECKOUT — mandate ke liye.
+ *
+ * Ek baar ke payment se do farq hain, aur dono zaroori hain:
+ *
+ *   1. `subscription_id` jata hai, `order_id` nahi.
+ *   2. Jawab me `razorpay_subscription_id` aata hai, aur signature bhi
+ *      doosre kram se banta hai — server usi hisaab se jaanchta hai.
+ *
+ * Grahak ko yahan ek "manzoori" (mandate) deni hoti hai — yaani wo apne bank
+ * ko kehta hai ki har mahine itna paisa katne dena. Isliye niche saaf likha
+ * jata hai ki kitna aur kab katega.
+ */
+export function openAutopay({ sub, business, user, onSuccess, onDismiss, onFail }) {
+  const rzp = new window.Razorpay({
+    key: sub.keyId,
+    subscription_id: sub.subscriptionId,
+    name: 'Rakh Rakhav',
+    description: `${sub.planName} — har mahine ₹${sub.amountRupees}`,
+    prefill: {
+      name: user?.name || '',
+      contact: user?.phone || '',
+      email: business?.email || '',
+    },
+    theme: { color: '#0f766e' },
+    modal: { ondismiss: () => onDismiss?.() },
+    handler: (res) => onSuccess?.({
+      subscriptionId: res.razorpay_subscription_id,
+      paymentId: res.razorpay_payment_id,
+      signature: res.razorpay_signature,
+    }),
+  });
+
+  rzp.on('payment.failed', (res) => onFail?.(res?.error?.description || ''));
+  rzp.open();
+}

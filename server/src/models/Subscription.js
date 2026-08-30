@@ -68,6 +68,56 @@ const subscriptionSchema = new mongoose.Schema(
     // Malik ne khud band kiya to aage renew nahi hoga
     autoRenew: { type: Boolean, default: true },
 
+    /*
+      ─────────────────────── AUTOPAY (mandate) ───────────────────────
+
+      `providerSubId` Razorpay ka subscription id hai. Yahi ek dhaaga hai jo
+      hamari dukaan ko us mandate se jodta hai jisse har mahine paisa katta
+      hai. Ye kho gaya to plan badalna ya band karna dono namumkin ho jayenge.
+    */
+    providerSubId: { type: String, default: '', index: true },
+    providerPlanId: { type: String, default: '' },
+
+    /*
+      Mandate KIS plan ke liye banaya gaya — abhi tak MILA nahi hai.
+
+      Ye `planCode` se alag hona bahut zaroori hai. `planCode` ka matlab hai
+      "ye plan chal raha hai" — usse seat aur bechne ka haq milta hai. Agar
+      mandate banate hi wahi likh dein, to aadmi Razorpay ka parda band karke
+      bhi bina paise ke bada plan pa jata: unlimited seat, poore mahine.
+
+      Isliye chuna hua plan yahan rakha jata hai. `planCode` sirf tab badalta
+      hai jab paisa SACH ME kat jaye.
+    */
+    mandatePlanCode: { type: String, default: '' },
+
+    /*
+      Mandate ki apni halat — hamare plan ki halat se ALAG hai.
+
+      Ek grahak ka plan chalu ho sakta hai (paisa diya hua hai) par uska
+      mandate toota hua ho (agla paisa nahi katega). Dono ko ek hi khaane me
+      milane se ye halat chhup jati hai, aur agle mahine achanak sab band ho
+      jata hai — bina kisi chetavni ke.
+
+        created   — bana hai, grahak ne abhi mandate diya nahi
+        active    — chalu, har mahine paisa katega
+        halted    — paisa kai baar fail hua, Razorpay ne rok diya
+        cancelled — band ho gaya
+    */
+    mandateStatus: { type: String, default: '' },
+
+    /*
+      AAGE LAGNE WALA PLAN — chhota plan lene par.
+
+      Chhota plan turant lagana galat hai: grahak ne poore mahine ka paisa de
+      diya hai, to poore mahine ka fayda bhi milna chahiye. Isliye faisla
+      yahan likha jata hai aur mahine ke aakhir me apne aap lag jata hai.
+
+      Ye khaana khali hone ka matlab — koi badlav rukka hua nahi hai.
+    */
+    pendingPlanCode: { type: String, default: '' },
+    pendingFrom: { type: Date, default: null },
+
     note: { type: String, default: '' },
   },
   { timestamps: true },
