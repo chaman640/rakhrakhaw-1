@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js';
 import { uploadImage, handleUploadError } from '../middleware/uploadImage.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/item.controller.js';
+import { uploadFile } from '../middleware/uploadFile.js';
 import {
   createItemSchema, updateItemSchema, listItemsQuerySchema,
   adjustStockSchema, bulkActionSchema, importSchema, idParamSchema,
@@ -21,6 +22,16 @@ router.get('/units', requirePermission('items:view'), ctrl.units);
 router.get('/export', requirePermission('items:view'), ctrl.exportCsv);
 router.get('/import/sample', requirePermission('items:view'), ctrl.sampleCsv);
 router.post('/import', requirePermission('items:create'), validate({ body: importSchema }), ctrl.importCsv);
+
+/*
+  Excel / PDF / photo se bulk add.
+
+  Do kadam: pehle `parse` (kuch save nahi hota, sirf padh kar dikhata hai),
+  phir aadmi har line dekh kar tay karta hai, phir `commit`. Ek hi kadam me
+  karna sabse bura hota: OCR ek galti kare aur 200 item galat chadh jayein.
+*/
+router.post('/bulk/parse', requirePermission('items:create'), uploadFile, ctrl.bulkParse);
+router.post('/bulk/commit', requirePermission('items:create'), ctrl.bulkCommit);
 router.post('/bulk', requirePermission('items:edit'), validate({ body: bulkActionSchema }), ctrl.bulk);
 
 // `/gst-ready` ko `/:id` se PEHLE rakhna hai, warna "gst-ready" ek id samajh

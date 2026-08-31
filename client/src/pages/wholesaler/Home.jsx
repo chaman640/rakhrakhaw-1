@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, Printer, Share2, ChevronRight, Search, IndianRupee, Receipt,
 } from 'lucide-react';
@@ -120,12 +120,14 @@ export default function Home() {
           value={formatMoney(stats?.todayAmount || 0)}
           sub={`${stats?.todayCount || 0} bill`}
           tone="brand"
+          to="/sales"
         />
         <MiniStat
           label={t('Udhaar baaki')}
           value={formatMoney(stats?.totalDue || 0)}
-          sub={t('sab milakar')}
+          sub={t('kisse kitna lena hai — dekhein')}
           tone={stats?.totalDue > 0 ? 'amber' : 'green'}
+          to="/payments?tab=due"
         />
       </div>
 
@@ -211,19 +213,30 @@ export default function Home() {
   );
 }
 
-function MiniStat({ label, value, sub, tone }) {
+function MiniStat({ label, value, sub, tone, to }) {
   const tones = {
     brand: 'text-brand-700',
     amber: 'text-amber-700',
     green: 'text-emerald-700',
   };
-  return (
-    <Card className="p-3 sm:p-4">
+  const inner = (
+    <>
       <p className="truncate text-xs text-slate-500">{label}</p>
       <p className={cn('tabular mt-0.5 truncate text-lg font-semibold sm:text-xl', tones[tone])}>{value}</p>
       <p className="mt-0.5 truncate text-[11px] text-slate-400">{sub}</p>
-    </Card>
+    </>
   );
+
+  // Udhaar pe dabane wala aksar wahi aadmi hota hai jise ab paisa maangna hai —
+  // isliye seedha "lena hai" wali list pe le jate hain, jahan entry bhi hoti hai
+  if (to) {
+    return (
+      <Link to={to} className="focus-ring block rounded-xl">
+        <Card className="p-3 transition hover:border-slate-300 sm:p-4">{inner}</Card>
+      </Link>
+    );
+  }
+  return <Card className="p-3 sm:p-4">{inner}</Card>;
 }
 
 function TabButton({ active, onClick, children }) {

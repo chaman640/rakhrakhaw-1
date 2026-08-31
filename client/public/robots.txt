@@ -11,6 +11,7 @@ Allow: /delivery
 Allow: /contact
 Allow: /login
 Allow: /signup
+Allow: /s/
 
 # Login ke peeche ka kaam Google ko dikhana bhi nahi chahiye aur wo dekh bhi
 # nahi sakta. Yahan rok isliye lagayi hai taaki crawler apna waqt in par

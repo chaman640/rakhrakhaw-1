@@ -98,7 +98,7 @@ Uska `route=otp` **bina sender id aur bina DLT template** ke chalta hai. Aapke p
 pehle se hai:
 ```
 SMS_PROVIDER=fast2sms
-FAST2SMS_API_KEY=f1534ea6-8f06-11f1-908b-0200cd936042
+FAST2SMS_API_KEY=apna-fast2sms-key-yahan
 SMS_SENDER_ID=          ← khali hi rehne dein
 ```
 
@@ -125,7 +125,7 @@ likha hota hai. Ab body bhi dekhi jati hai.
 ## APITxT chalu karna ho to
 ```
 SMS_PROVIDER=apitxt
-APITXT_API_KEY=Qjca7D1Q8pMKxgQnU9FJMh79LBtcGbQ9v2lU3Jkq7_4
+APITXT_API_KEY=apna-apitxt-key-yahan
 APITXT_URL=<apne panel ka EXACT url>
 ```
 `{key}` `{phone}` `{sender}` `{otp}` `{message}` apne aap bhar jate hain. Daalne ke baad

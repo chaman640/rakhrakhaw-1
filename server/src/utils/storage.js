@@ -35,7 +35,35 @@ async function getCloudinary() {
  * Cloudinary keys .env me hain -> wahan jayegi. Warna local uploads/ folder me.
  * Dono case me { url, publicId } wapas milta hai — baaki code ko farak nahi padta.
  */
-export async function saveImage(file, folder = 'misc') {
+/*
+  Bhejne se PEHLE chhota karo.
+
+  Phone ka camera 4-6 MB ki photo deta hai. Wahi seedha Cloudinary pe chadhane
+  ka matlab hai storage aur bandwidth dono ka bill, aur retailer ke phone pe wo
+  photo khulne me der. 1200px aur webp me wahi photo aksar 60-120 KB ki reh
+  jati hai — dikhne me koi farak nahi padta.
+
+  Fail ho jaye to asli file hi chali jayegi — photo na chadhna isse bura hai.
+*/
+async function chhotaKaro(file) {
+  try {
+    const { default: sharp } = await import('sharp');
+    const buf = await sharp(file.buffer)
+      .rotate()
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 78 })
+      .toBuffer();
+    if (buf.length < file.buffer.length) {
+      return { ...file, buffer: buf, originalname: 'img.webp', mimetype: 'image/webp' };
+    }
+  } catch (e) {
+    console.warn('[storage] photo chhoti nahi hui:', e.message);
+  }
+  return file;
+}
+
+export async function saveImage(raw, folder = 'misc') {
+  const file = await chhotaKaro(raw);
   const cld = await getCloudinary();
 
   if (cld) {

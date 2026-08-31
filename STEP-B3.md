@@ -33,7 +33,7 @@ VAPID_PRIVATE_KEY=...
 **2. OTP ke liye APITxT:**
 ```
 SMS_PROVIDER=apitxt
-APITXT_API_KEY=Qjca7D1Q8pMKxgQnU9FJMh79LBtcGbQ9v2lU3Jkq7_4
+APITXT_API_KEY=apna-apitxt-key-yahan
 SMS_SENDER_ID=<aapka approved sender id>
 ```
 

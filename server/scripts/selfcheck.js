@@ -556,6 +556,9 @@ async function main() {
     path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', f), 'utf8',
   ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
+  const rootOf = (f) => path.join(path.dirname(fileURLToPath(import.meta.url)), '..', f);
+  const fsSize = (f) => { try { return fs.statSync(rootOf(f)).size; } catch { return 0; } };
+
   const invSrc = srcOf('services/invoice.service.js');
   check('bill banate waqt jama paisa APNE AAP lagta hai (opt-in tick hataya)',
     !invSrc.includes('useAdvance === true') && invSrc.includes('sweepAdvance'));
@@ -1583,6 +1586,68 @@ async function main() {
       '..', '..', 'client', 'src', 'components', 'billing', 'PlanPicker.jsx',
     ), 'utf8')
       .includes('if (!sub.needsCheckout)'));
+
+  /* ════════ Naye update ════════ */
+  console.log(`\n${Y}Naye update${N}`);
+  check('bina login ke dukaan dekhne ka rasta hai',
+    srcOf('routes/index.js').includes("router.use('/public'"));
+  check('public catalog pe koi pehra nahi lagta',
+    !srcOf('routes/public.routes.js').includes('protect'));
+  check('guest ko sirf dikhne layak maal milta hai',
+    srcOf('routes/public.routes.js').includes('visibleToRetailers: true'));
+  check('invite link ab dukaan dikhata hai, seedha signup nahi',
+    srcOf('utils/businessView.js').includes('/s/${code}'));
+  check('photo bhejne se pehle chhoti hoti hai (bill bachta hai)',
+    srcOf('utils/storage.js').includes('sharp') && srcOf('utils/storage.js').includes('webp'));
+  check('purani photo dobara nahi bhejti (cache)',
+    srcOf('app.js').includes("maxAge: '365d'"));
+
+  /* ════════ Bill se bulk add ════════ */
+  console.log(`\n${Y}Bill se bulk add${N}`);
+  const biSrc = srcOf('services/bulkImport.service.js');
+  const { parseFile } = await import('../src/services/bulkImport.service.js');
+
+  check('Excel, PDF aur photo teeno ka rasta hai',
+    biSrc.includes('fromSheet') && biSrc.includes('fromPdf') && biSrc.includes('fromImage'));
+  check('scan kiya hua PDF (jisme text nahi) OCR pe chala jata hai',
+    biSrc.includes("kaise = 'pdf-photo'"));
+  check('mashin khud kuch add nahi karti — do kadam hain (parse, phir commit)',
+    biSrc.includes('export async function parseFile') && biSrc.includes('export async function commitRows'));
+  check('pehle se maujood naam par faisla aadmi ka hota hai',
+    biSrc.includes("d.kya === 'stock'") && biSrc.includes("d.kya === 'chhodo'"));
+  check('naya item banate waqt wahi naam dobara nahi ban sakta',
+    biSrc.includes('is naam ka item pehle se hai'));
+  check('ek line ki gadbad baaki lines ko nahi rokti',
+    biSrc.includes('nateeja.gadbad.push'));
+  check('ek baar me 500 se zyada nahi', biSrc.includes('500 se zyada nahi'));
+
+  const khali = await parseFile({ buffer: Buffer.from('x'), originalname: 'a.txt', mimetype: 'text/plain' })
+    .then(() => 'chala gaya').catch((e) => e.message);
+  check('anjaan file mana ki jati hai', /Excel, CSV, PDF ya photo/.test(khali), khali);
+
+  check('bulk wala rasta items:create ke pehre me hai',
+    srcOf('routes/item.routes.js').includes("router.post('/bulk/parse', requirePermission('items:create')"));
+  check('file ki hadd 10 MB hai', srcOf('middleware/uploadFile.js').includes('10 * 1024 * 1024'));
+
+  /*
+    OCR ki teen shartein — teeno paise/uptime se judi hain:
+
+    1. Wo ALAG PROCESS me chale. Tesseract ka worker thread girta hai to
+       try/catch nahi pakadta aur POORA SERVER chala jata hai. Ek dukaandaar
+       ki dhundhli photo se saari dukaanein band nahi ho sakti.
+    2. Bhasha-data repo me ho, internet se na aaye.
+    3. Photo par time ki hadd ho — ek photo server ko bandhak na bana le.
+  */
+  check('OCR alag process me chalta hai (worker gire to server na gire)',
+    biSrc.includes('spawn(process.execPath') && biSrc.includes('OCR_SCRIPT'));
+  check('OCR ka bhasha-data repo me hai, internet se nahi aata',
+    fsSize('ocr-data/eng.traineddata.gz') > 1_000_000
+    && fs.readFileSync(rootOf('scripts/ocr-run.js'), 'utf8').includes("cacheMethod: 'none'"));
+  check('OCR par time ki hadd hai', /kill\('SIGKILL'\)/.test(biSrc) && biSrc.includes('90_000'));
+  check('OCR na chale to saaf mana, aadha-adhoora data nahi',
+    biSrc.includes('OCR_NA') && biSrc.includes('if (!text.trim()) throw'));
+  check('qty aur rate dashamlav se pehchane jate hain, ginti se nahi',
+    biSrc.includes("qs.includes('.') && !rs.includes('.')"));
 
   /* ════════════════════ 19. Membership ke index ════════════════════ */
   console.log(`\n${Y}Membership ke index${N}`);

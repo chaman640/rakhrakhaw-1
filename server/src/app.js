@@ -86,7 +86,12 @@ app.use(cookieParser());
 if (!env.isProd) app.use(morgan('dev'));
 
 // Local upload ki images (Cloudinary set nahi hai to yahi use hoti hain)
-app.use('/uploads', express.static(UPLOAD_DIR));
+// Photo ka naam kabhi badalta nahi — saal bhar cache karna safe hai aur
+// isse har baar wahi photo dobara bhejne ka bandwidth bachta hai
+app.use('/uploads', express.static(UPLOAD_DIR, {
+  maxAge: '365d',
+  immutable: true,
+}));
 
 assertBillingReady();
 warnOtpMode();

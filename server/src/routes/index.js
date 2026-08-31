@@ -28,6 +28,7 @@ import backupRoutes from './backup.routes.js';
 import auditRoutes from './audit.routes.js';
 import diagRoutes from './diag.routes.js';
 import partnerRoutes from './partner.routes.js';
+import publicRoutes from './public.routes.js';
 
 const router = Router();
 
@@ -46,6 +47,9 @@ router.use('/diag', diagRoutes);
   token dukaan wale raste pe chalta nahi (aud alag hai).
 */
 router.use('/partner', partnerRoutes);
+
+// Bina login ke dukaan dekhna — koi pehra nahi
+router.use('/public', publicRoutes);
 
 // Part 2
 router.use('/auth', authRoutes);

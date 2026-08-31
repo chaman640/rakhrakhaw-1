@@ -2,7 +2,17 @@ import { clientOrigin } from '../config/origin.js';
 import { ROLES, STAFF_ROLES } from '../config/constants.js';
 
 /** Invite link — ek hi URL wale deploy me app khud pata laga leta hai ki wo kis URL pe chal raha hai */
-export const buildInviteLink = (code) => (code ? `${clientOrigin()}/join/${code}` : '');
+/*
+  Link ab `/s/<code>` pe jata hai, `/join/<code>` pe nahi.
+
+  Pehle retailer ko seedha signup form milta tha — bina ye jaane ki dukaan me
+  hai kya. Wo sabse badi rukawat thi: bina maal dekhe koi account nahi banata.
+
+  Ab wahi link pehle dukaan ka maal aur daam dikhata hai, aur account tab
+  maangta hai jab wo sach me order karna chahe. Purane `/join/<code>` wale
+  link abhi bhi chalte hain.
+*/
+export const buildInviteLink = (code) => (code ? `${clientOrigin()}/s/${code}` : '');
 
 /**
  * BUSINESS KA EK HI DARWAZA.

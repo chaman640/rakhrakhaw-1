@@ -6,6 +6,7 @@ import {
 import { t } from '@/lib/i18n';
 import { COMPANY } from './PolicyShell';
 import useSeo from '@/lib/useSeo';
+import InstallPrompt from '@/components/InstallPrompt';
 
 /**
  * GHAR KA PAGE — BINA LOGIN KE.
@@ -70,6 +71,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
+      <InstallPrompt />
       {/* ── upar ka patti ── */}
       <header className="border-b border-slate-200 dark:border-slate-700">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">

@@ -13,6 +13,7 @@ import Delivery from '@/pages/public/Delivery';
 import Contact from '@/pages/public/Contact';
 import Pricing from '@/pages/public/Pricing';
 import Landing from '@/pages/public/Landing';
+import ShopPreview from '@/pages/public/ShopPreview';
 import PartnerHome from '@/pages/partner/PartnerHome';
 import PartnerAdmin from '@/pages/partner/PartnerAdmin';
 import Signup from '@/pages/auth/Signup';
@@ -185,6 +186,9 @@ export default function AppRoutes() {
         apna layout hai. Ise `RequireAuth` ke andar daalne ka matlab hota ki
         dukaan ka login maanga jaye — jo uske paas hai hi nahi.
       */}
+      {/* Dukaan bina login ke — order karte waqt hi account maanga jata hai */}
+      <Route path="/s/:code" element={<ShopPreview />} />
+
       <Route path="/partner" element={<PartnerHome />} />
       <Route path="/partner/admin" element={<PartnerAdmin />} />
 

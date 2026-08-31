@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus, Package, IndianRupee, TriangleAlert, XCircle, Tag,
-  Upload, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck } from
+  Upload, FileUp, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck } from
 'lucide-react';
 import api from '@/lib/api';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
@@ -18,6 +18,7 @@ import ItemFormModal from './items/ItemFormModal';
 import StockModal from './items/StockModal';
 import CategoryModal from './items/CategoryModal';
 import ImportModal from './items/ImportModal';
+import BulkImportModal from './items/BulkImportModal';
 import ItemCard from './items/ItemCard';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
@@ -55,6 +56,7 @@ export default function Items() {
   const [stockItem, setStockItem] = useState(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -275,6 +277,9 @@ export default function Items() {
             <Button variant="secondary" icon={Tag} onClick={() => setCategoryOpen(true)}>
               <span className="hidden sm:inline">{t('Categories')}</span>
             </Button>
+            <Button variant="secondary" icon={FileUp} onClick={() => setBulkOpen(true)}>
+              <span className="hidden sm:inline">{t('Bill se add')}</span>
+            </Button>
             <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>
               <span className="hidden sm:inline">{t('Import')}</span>
             </Button>
@@ -440,6 +445,7 @@ export default function Items() {
       <CategoryModal open={categoryOpen} onClose={() => setCategoryOpen(false)} onChanged={refreshAll} />
 
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshAll} />
+      <BulkImportModal open={bulkOpen} onClose={() => setBulkOpen(false)} onDone={refreshAll} />
 
       <ConfirmModal
         open={confirmBulk === 'delete'}

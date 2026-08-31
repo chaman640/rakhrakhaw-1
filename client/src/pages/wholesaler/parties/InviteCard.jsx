@@ -16,7 +16,7 @@ export default function InviteCard({ compact = false }) {
   const [busy, setBusy] = useState(false);
 
   const biz = local || business || {};
-  const inviteLink = biz.inviteLink || (biz.inviteCode ? `${window.location.origin}/join/${biz.inviteCode}` : '');
+  const inviteLink = biz.inviteLink || (biz.inviteCode ? `${window.location.origin}/s/${biz.inviteCode}` : '');
 
   async function copyLink() {
     try {
@@ -29,7 +29,7 @@ export default function InviteCard({ compact = false }) {
   }
 
   function shareOnWhatsapp() {
-    const text = `Namaste! ${biz.name} se order karne ke liye is link se apni dukaan register karein:\n${inviteLink}`;
+    const text = `Namaste! ${biz.name} ka poora maal aur daam yahan dekhein — order karne ke liye account bana lijiye:\n${inviteLink}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
 

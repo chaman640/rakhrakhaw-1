@@ -138,3 +138,17 @@ export const importCsv = asyncHandler(async (req, res) => {
       ? `${result.summary.willCreate} naye, ${result.summary.willUpdate} update honge`
       : `${result.summary.created} add hue, ${result.summary.updated} update hue`);
 });
+
+/* ── Excel / PDF / photo se bulk add ── */
+
+export const bulkParse = asyncHandler(async (req, res) => {
+  const { parseFile, matchRows } = await import('../services/bulkImport.service.js');
+  const { rows, kaise } = await parseFile(req.file);
+  return ok(res, { kaise, rows: await matchRows(req.businessId, rows) });
+});
+
+export const bulkCommit = asyncHandler(async (req, res) => {
+  const { commitRows } = await import('../services/bulkImport.service.js');
+  const out = await commitRows(req.businessId, req.body.rows, req.user?._id);
+  return ok(res, out, `${out.naye} naye, ${out.stockBadha} ka stock badha`);
+});
