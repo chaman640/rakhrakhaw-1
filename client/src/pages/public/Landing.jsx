@@ -93,6 +93,59 @@ function PriceCard({ n, unit, price, tagline, features, popular }) {
   );
 }
 
+/**
+ * DASHBOARD KI JHALAK — asli screenshot NAHI hai, jaan-boojh kar.
+ *
+ * Ek stylized jhalak jo batati hai "aisa kuchh dikhta hai" bina jhoothe
+ * daawe ke ki "yahi asli app hai" — asli app ka screen samay ke saath badal
+ * jata hai, ye chhota illustration kabhi purana nahi padega.
+ */
+function DashboardMockup() {
+  return (
+    <div className="relative mx-auto max-w-md pb-8 pr-8 lg:mx-0">
+      {/* laptop jaisa frame */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.06] p-2.5 shadow-2xl backdrop-blur-sm">
+        <div className="mb-2 flex items-center gap-1.5 px-1">
+          <span className="h-2 w-2 rounded-full bg-red-400/60" />
+          <span className="h-2 w-2 rounded-full bg-amber-400/60" />
+          <span className="h-2 w-2 rounded-full bg-emerald-400/60" />
+        </div>
+        <div className="grid grid-cols-3 gap-2 px-1">
+          <div className="rounded-lg bg-white/10 p-2.5">
+            <p className="text-[10px] text-brand-200">{t('Aaj ki sale')}</p>
+            <p className="text-base font-bold text-white">₹25,600</p>
+          </div>
+          <div className="rounded-lg bg-white/10 p-2.5">
+            <p className="text-[10px] text-brand-200">{t('Udhaar')}</p>
+            <p className="text-base font-bold text-white">₹8,300</p>
+          </div>
+          <div className="rounded-lg bg-white/10 p-2.5">
+            <p className="text-[10px] text-brand-200">{t('Order')}</p>
+            <p className="text-base font-bold text-white">12</p>
+          </div>
+        </div>
+        <div className="m-1 mt-2 h-16 rounded-lg bg-white/5 p-2">
+          <svg viewBox="0 0 200 50" className="h-full w-full" preserveAspectRatio="none">
+            <polyline points="0,40 30,26 60,34 90,16 120,28 150,10 180,20 200,8"
+              fill="none" stroke="var(--color-brand-300)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
+      <div className="mx-auto h-2.5 w-4/5 rounded-b-xl bg-white/10" />
+
+      {/* phone jaisa frame — laptop ke corner pe overlap */}
+      <div className="absolute -bottom-1 -right-1 w-28 rounded-2xl border border-white/10 bg-slate-900/70 p-1.5 shadow-xl">
+        <div className="space-y-1.5 rounded-xl bg-white/10 p-2">
+          <div className="h-1.5 w-2/3 rounded-full bg-white/30" />
+          <div className="h-8 rounded-lg bg-brand-300/30" />
+          <div className="h-5 rounded-lg bg-white/10" />
+          <div className="h-5 rounded-lg bg-white/10" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
   useSeo({
     title: t('Rakh Rakhav — thok dukaan ka poora hisaab'),
@@ -104,63 +157,70 @@ export default function Landing() {
     <div className="min-h-screen bg-white dark:bg-slate-900">
       <InstallPrompt />
 
-      {/* ── upar ka patti ── */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
+      {/* ── upar ka patti — hamesha gehra, reference jaisa ── */}
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-brand-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <Logo size={32} />
-            <span className="text-lg font-bold text-slate-900 dark:text-slate-100">Rakh Rakhav</span>
+            <div>
+              <span className="block text-base font-bold leading-tight text-white">Rakh Rakhav</span>
+              <span className="block text-[11px] leading-tight text-brand-200">{t('Thok dukaan ka hisaab')}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link to="/pricing" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:block">
+          <div className="flex items-center gap-1">
+            <Link to="/pricing" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-brand-100 hover:bg-white/10 sm:block">
               {t('Daam')}
             </Link>
-            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
+            <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-brand-100 hover:bg-white/10">
               {t('Login')}
             </Link>
-            <Link to="/signup" className="rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+            <Link to="/signup" className="rounded-lg bg-brand-400 px-3.5 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-300">
               {t('Shuru karein')}
             </Link>
           </div>
         </div>
       </header>
 
-      {/* ── hero — gradient backdrop, poori tarah original design ── */}
-      <section className="relative overflow-hidden border-b border-slate-200 dark:border-slate-700">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_-10%,var(--color-brand-100),transparent_55%),radial-gradient(circle_at_100%_0%,var(--color-brand-50),transparent_45%)] dark:bg-[radial-gradient(circle_at_20%_-10%,var(--color-brand-900),transparent_55%)]" />
+      {/* ── hero — gehra gradient + chhota "dashboard" ka jhalak (asli screenshot nahi, sirf jhalak) ── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-brand-900">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,var(--color-brand-700),transparent_50%)] opacity-60" />
 
-        <div className="relative mx-auto max-w-5xl px-4 py-14 sm:py-20">
-          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 py-1 text-xs font-semibold text-brand-700 dark:border-brand-800 dark:bg-slate-800 dark:text-brand-300">
-            <Boxes size={13} /> {t('Thok dukaandaron ke liye bana')}
-          </span>
+        <div className="relative mx-auto grid max-w-5xl gap-10 px-4 py-14 sm:py-20 lg:grid-cols-2 lg:items-center">
+          <div>
+            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-brand-400/40 bg-white/10 px-3 py-1 text-xs font-semibold text-brand-200">
+              <Boxes size={13} /> {t('Thok dukaandaron ke liye bana')}
+            </span>
 
-          <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">
-            {t('Rakh Rakhav — thok dukaan ka poora hisaab, ek jagah')}
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-400 sm:text-lg">
-            {t('Stock, bill, khata, udhaar, order, kharch aur report — sab ek app me. Aapke retailer apne phone se order bhejte hain, aur unka khata apne aap banta rehta hai.')}
-          </p>
+            <h1 className="max-w-xl text-3xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+              {t('Rakh Rakhav — thok dukaan ka poora hisaab, ek jagah')}
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-brand-100 sm:text-lg">
+              {t('Stock, bill, khata, udhaar, order, kharch aur report — sab ek app me. Aapke retailer apne phone se order bhejte hain, aur unka khata apne aap banta rehta hai.')}
+            </p>
 
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link to="/signup" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white shadow-sm hover:bg-brand-700">
-              {t('Free me shuru karein')} <ArrowRight size={17} />
-            </Link>
-            <Link to="/pricing" className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-              {t('Daam dekhein')}
-            </Link>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link to="/signup" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-400 px-5 py-2.5 font-semibold text-brand-900 shadow-sm hover:bg-brand-300">
+                {t('Free me shuru karein')} <ArrowRight size={17} />
+              </Link>
+              <Link to="/pricing" className="rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 font-semibold text-white hover:bg-white/10">
+                {t('Daam dekhein')}
+              </Link>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-brand-100">
+              <span className="flex items-center gap-1.5">
+                <Check size={15} className="text-brand-300" /> {t('Retailer ke liye hamesha free')}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check size={15} className="text-brand-300" /> {t('15 din ka free trial')}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check size={15} className="text-brand-300" /> {t('Card ki zarurat nahi')}
+              </span>
+            </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
-              <Check size={15} /> {t('Retailer ke liye hamesha free')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check size={15} className="text-emerald-600" /> {t('15 din ka free trial')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check size={15} className="text-emerald-600" /> {t('Card ki zarurat nahi')}
-            </span>
-          </div>
+          <DashboardMockup />
         </div>
       </section>
 
@@ -332,6 +392,23 @@ export default function Landing() {
           </Link>
         </section>
       </main>
+
+      {/* ── bharosa — asli baatein, ghadi hui ginti nahi ── */}
+      <section className="bg-brand-900 py-10">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-4 sm:grid-cols-4">
+          {[
+            [ShieldCheck, t('Data hamesha surakshit')],
+            [Users, t('Retailer ke liye free')],
+            [Percent, t('15 din free trial')],
+            [MessageCircle, t('Hindi + English support')],
+          ].map(([Icon, label]) => (
+            <div key={label} className="flex flex-col items-center gap-2 text-center">
+              <Icon size={22} className="text-brand-300" />
+              <span className="text-sm font-medium text-brand-50">{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <footer className="border-t border-slate-200 py-7 dark:border-slate-700">
         <div className="mx-auto max-w-5xl px-4">

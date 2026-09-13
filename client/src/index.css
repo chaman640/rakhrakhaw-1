@@ -5,24 +5,22 @@
  * Brand colour ek jagah. Badalna ho to sirf yahan badlo, poori app badal
  * jayegi.
  *
- * GAHRA "ईंट" LAAL (brick red) — jaan-boojh kar. Poori app me ERROR/DANGER
- * ke liye pehle se Tailwind ka chamakeela red-* (jaise stock khatam, delete
- * button) istemal hota hai. Agar brand bhi wahi chamakeela laal hota, to
- * "zaroori button" aur "chetavni" me farak karna mushkil ho jata. Isliye
- * brand-600 jaan-boojh kar GAHRA aur MADHAM hai — saaf laal dikhta hai,
- * par error wale red se alag aur premium lagta hai.
+ * GAHRA "SAMUDRI" TEAL (deep teal/mint) — reference photo (dark hero +
+ * chamakeela mint accent) se seedha liya gaya. Ye ERROR/DANGER wale
+ * Tailwind red-* se pehle se hi bilkul alag family ka rang hai, isliye koi
+ * uljhan nahi — "zaroori button" aur "chetavni" alag-alag hi dikhte hain.
  */
 @theme {
-  --color-brand-50:  #fdf2f2;
-  --color-brand-100: #fce4e4;
-  --color-brand-200: #f8cdcd;
-  --color-brand-300: #f2a5a5;
-  --color-brand-400: #e8716f;
-  --color-brand-500: #d6453f;
-  --color-brand-600: #b8302a;
-  --color-brand-700: #93251f;
-  --color-brand-800: #78221d;
-  --color-brand-900: #63201c;
+  --color-brand-50:  #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
@@ -99,18 +97,18 @@ html[data-text="xlarge"] { font-size: 20px; }
   --color-slate-800: #e9eef6;
   --color-slate-900: #f4f7fb;         /* mukhya likhawat */
 
-  --color-brand-50:  #2a1210;         /* laal chip ka background */
-  --color-brand-100: #3d1a17;
+  --color-brand-50:  #082220;         /* teal chip ka background */
+  --color-brand-100: #0c2e2b;
 }
 
 .dark .bg-white { background-color: #151d30; }        /* card, input, modal */
 
-.dark .text-brand-600 { color: #e8716f; }
-.dark .text-brand-700 { color: #f2a5a5; }
-.dark .text-brand-800 { color: #f8cdcd; }
-.dark .text-brand-900 { color: #fce4e4; }
-.dark .border-brand-200 { border-color: #63201c; }
-.dark .border-brand-300 { border-color: #78221d; }
+.dark .text-brand-600 { color: #2dd4bf; }
+.dark .text-brand-700 { color: #5eead4; }
+.dark .text-brand-800 { color: #99f6e4; }
+.dark .text-brand-900 { color: #ccfbf1; }
+.dark .border-brand-200 { border-color: #134e4a; }
+.dark .border-brand-300 { border-color: #115e59; }
 
 .dark .bg-amber-50 { background-color: #2e2206; }
 .dark .border-amber-200 { border-color: #78500a; }

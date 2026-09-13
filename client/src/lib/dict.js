@@ -2083,6 +2083,15 @@ const DICT = {
 
   /* ── Chat bugfix (Part 31) ── */
   'Photo load nahi hui': { hi: 'फ़ोटो लोड नहीं हुई', en: 'Photo failed to load' },
+
+  /* ── Landing page v2 — dark hero + trust bar (Part 33) ── */
+  'Thok dukaan ka hisaab': { hi: 'थोक दुकान का हिसाब', en: 'Wholesale shop accounting' },
+  'Aaj ki sale': { hi: 'आज की सेल', en: 'Today\u2019s sale' },
+  'Udhaar': { hi: 'उधार', en: 'Credit due' },
+  'Data hamesha surakshit': { hi: 'डेटा हमेशा सुरक्षित', en: 'Your data, always safe' },
+  'Retailer ke liye free': { hi: 'रिटेलर के लिए फ्री', en: 'Free for retailers' },
+  '15 din free trial': { hi: '15 दिन फ्री ट्रायल', en: '15-day free trial' },
+  'Hindi + English support': { hi: 'हिंदी + अंग्रेज़ी सपोर्ट', en: 'Hindi + English support' },
 };
 
 export default DICT;
