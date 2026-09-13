@@ -13,7 +13,6 @@ import {
 } from '../config/billing.js';
 import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
-import { isOwnerUser } from '../utils/businessView.js';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -199,19 +198,14 @@ export async function assertSeat(businessId, { extra = 1 } = {}) {
  * Kharidne wale hisse pe ye kabhi nahi lagta — wo hamesha free hai. Sirf
  * bechne wala hissa (apna stock, apna bill, apne retailer) isse guzarta hai.
  *
- * MALIK aur STAFF ka jawab ALAG hota hai (Part 28) — jaan-boojh kar:
+ * MALIK aur STAFF — dono ka jawab AB EK SA HAI (Part 36 se badla).
  *
- *   MALIK   — GRACE me bhi chalta rehta hai (purana rawaiya, nahi badla).
- *             Mohlat khatam hone ke baad bhi malik LOGIN kar sakta hai, sirf
- *             "bechne" wala kaam rukta hai — plan lene ke alawa kuch nahi.
- *             Use bahar hi rok dena sabse bewakoofi wali rok hogi: paisa
- *             dega kaise agar andar hi na aa paaye.
- *
- *   STAFF   — GRACE nahi milti. Mohlat wale din bhi agar ACTIVE nahi hai to
- *             turant ruk jata hai. Wajah seedhi hai: staff paisa de hi nahi
- *             sakta, sirf malik de sakta hai — to staff ko "kuch din aur
- *             chalne do" ka koi fayda nahi, ulta risk hai ki dukaandaar ko
- *             pata hi na chale ki paisa ruka hua hai jab tak staff bataye.
+ *   Pehle MALIK ko GRACE me bhi bechne diya jata tha. Ab nahi — mohlat khatam
+ *   hote hi malik ke liye bhi "bechna" ruk jata hai, bilkul STAFF jaisa. Chahe
+ *   plan khatam hone ke ek mahine baad hi malik login kare, tab bhi yahi hoga:
+ *   error milega aur seedha plan-lene wali screen khulegi. LOGIN abhi bhi
+ *   malik ke liye kabhi nahi rukta (`auth.service.js` me alag se) — use andar
+ *   aana zaroori hai taaki payment kar sake.
  *
  * Jawab me `reason` aur `plans` dono jate hain, taaki app ek adha-adhoora
  * error dikhane ki jagah seedha wahi screen khol sake jahan se aadmi plan le
@@ -221,7 +215,7 @@ export async function assertCanSell(businessId, user = null) {
   if (isFreeMode()) return;
 
   const state = await subscriptionOf(businessId);
-  const usable = isOwnerUser(user) ? state.usable : state.status === SUB_STATUS.ACTIVE;
+  const usable = state.status === SUB_STATUS.ACTIVE;
   if (usable) return;
 
   throw ApiError.forbidden(

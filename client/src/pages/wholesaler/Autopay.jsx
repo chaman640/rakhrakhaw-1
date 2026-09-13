@@ -127,7 +127,7 @@ export default function Autopay() {
         {me.status === 'grace' && (
           <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <TriangleAlert size={15} className="mt-0.5 shrink-0" />
-            {t('Mohlat khatam ho gayi hai. Aapke liye ({n} din) abhi sab chal raha hai — par jo STAFF hain unke liye turant ruk gaya hai. Payment kar dein taaki sabka kaam chalu ho jaye.', { n: me.graceDays })}
+            {t('Mohlat khatam ho gayi hai — bechne ka kaam sabke liye (aap samet) turant ruk gaya hai. Payment kar dein taaki sabka kaam chalu ho jaye.')}
           </p>
         )}
         {me.status === 'expired' && (

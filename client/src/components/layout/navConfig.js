@@ -61,6 +61,12 @@ export const wholesalerNav = [
     desc: 'Maal andar aaya, supplier, aur dukaan ka kharcha — teeno ek jagah',
     alt: 'purchase supplier kharch expense buying',
   },
+  // Kharch (Expense) ka poora page pehle se bana hua hai (Buying.jsx ka tab
+  // banke) — bas Menu me apni jagah nahi thi. Ab seedha yahin se khulta hai.
+  {
+    to: '/expenses', label: 'Kharch', icon: Receipt, part: 20, perm: 'expenses',
+    desc: 'Chai, petrol, kiraya, tankhwah — maal ke alawa ka kharcha',
+  },
   /*
     Kharid ke bilkul saath — kyunki ye uska hi doosra roop hai.
 
