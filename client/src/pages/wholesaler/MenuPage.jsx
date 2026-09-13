@@ -21,8 +21,31 @@ function savePins(pins) {
   try { localStorage.setItem(PINS_KEY, JSON.stringify(pins)); } catch { /* private window */ }
 }
 
+/*
+ * HAR APP KA APNA RANG — Odoo jaisa (Part 32).
+ *
+ * Pehle sabhi icon ek hi halke-grey dabbe me the — safe, par phiki. Odoo ke
+ * app-launcher me har app ka apna rang hai, isliye ek nazar me hi pehchana
+ * jata hai. Yahan bhi wahi kiya — bas rang HAMESHA isi kram me ghoomte hain
+ * (index se), isliye ek app ka rang kabhi random nahi badalta.
+ */
+const TILE_COLORS = [
+  { bg: 'bg-blue-100', text: 'text-blue-700' },
+  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  { bg: 'bg-amber-100', text: 'text-amber-700' },
+  { bg: 'bg-violet-100', text: 'text-violet-700' },
+  { bg: 'bg-rose-100', text: 'text-rose-700' },
+  { bg: 'bg-cyan-100', text: 'text-cyan-700' },
+  { bg: 'bg-orange-100', text: 'text-orange-700' },
+  { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  { bg: 'bg-teal-100', text: 'text-teal-700' },
+  { bg: 'bg-pink-100', text: 'text-pink-700' },
+  { bg: 'bg-lime-100', text: 'text-lime-700' },
+  { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700' },
+];
+
 /**
- * MENU — poore app ki soochi, A se Z tak.
+ * MENU — poore app ka launcher, Odoo jaisa (Part 32).
  *
  * Pehle ye ek daraz (drawer) thi jo side se aati thi. Do dikkat thin:
  *
@@ -33,18 +56,16 @@ function savePins(pins) {
  *     hai, link bhejna mumkin nahi, aur "wapas menu pe jao" jaisi koi cheez
  *     hoti hi nahi.
  *
- * Ab ye apna page hai (`/menu`) aur teen cheezein badli hain:
+ * Phir ye apna page bana (`/menu`), aur ab Odoo jaisa rangeen app-grid ban
+ * gaya hai — har app ka apna rang, ek nazar me pehchana jaye:
  *
  *  - **Khoj sabse upar.** "kharch" ya "udhaar" likhte hi seedha wahi page.
- *    Khoj naam me bhi dhoondhti hai aur uske MATLAB me bhi — "udhaar" likhne
- *    pe Khata milta hai, jabki us naam me "udhaar" hai hi nahi.
- *  - **A se Z.** Kram ab code ka nahi, akshar ka hai. Dukaandaar ko "P" pata
- *    hai to Payment, Purchase, Profile ek saath mil jate hain.
- *  - **Har naam ke saath ek line.** "Khata" aur "Payment" dono me paisa hai;
- *    naam padh kar naya banda galat page kholta tha.
+ *  - **Rangeen tile.** A-Z ki jagah ab seedha grid hai (jaisa Odoo me hota
+ *    hai) — har app ki apni jagah, apna rang. Kram wahi hai jo navConfig.js
+ *    me pehle se socha-samjha tay hai (roz ke kaam pehle).
+ *  - **Pin/Quick Links** waisi hi hai — tile ke corner me chhota button.
  *
- * Desktop pe baayein wali sidebar jaisi thi waisi hai — ye page wahan bhi
- * khulta hai par zarurat kam padti hai.
+ * Desktop pe bhi yahi page khulta hai, bas grid me zyada column aa jate hain.
  */
 export default function MenuPage() {
   const toast = useToast();
@@ -69,12 +90,15 @@ export default function MenuPage() {
 
   const badges = { cartCount, newOrders, intakeCount };
 
+  /*
+    Kram ab CODE me jo likha hai wahi hai — A-Z nahi. `navConfig.js` me kram
+    jaan-boojh kar tay kiya gaya hai (roz ka kaam sabse pehle), aur Odoo ka
+    apna app-launcher bhi kisi tarah "install order" jaisa kuch istemal karta
+    hai, alphabetically nahi — isi soch se milta hai.
+  */
   const all = useMemo(() => {
     const nav = buying ? buyerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
-    // Anuvaad ke BAAD chhantna zaroori hai — Hindi me "खाता" ka akshar alag hai
-    return [...nav]
-      .map((n) => ({ ...n, name: t(n.label), meaning: n.desc ? t(n.desc) : '' }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return nav.map((n) => ({ ...n, name: t(n.label), meaning: n.desc ? t(n.desc) : '' }));
   }, [buying, can]);
 
   const filtered = useMemo(() => {
@@ -92,18 +116,6 @@ export default function MenuPage() {
     const map = new Map(all.map((n) => [n.to, n]));
     return pinned.map((to) => map.get(to)).filter(Boolean);
   }, [all, pinned]);
-
-  // A–Z ke dabbe. Khoj chalu ho to kram todna bekaar hai — tab seedhi list.
-  const groups = useMemo(() => {
-    if (q.trim()) return [{ letter: '', rows: filtered }];
-    const map = new Map();
-    for (const row of filtered) {
-      const letter = (row.name[0] || '#').toUpperCase();
-      if (!map.has(letter)) map.set(letter, []);
-      map.get(letter).push(row);
-    }
-    return [...map.entries()].map(([letter, rows]) => ({ letter, rows }));
-  }, [filtered, q]);
 
   async function doLogout() {
     setLoggingOut(true);
@@ -126,21 +138,22 @@ export default function MenuPage() {
 
       {/* ---- Quick Links — jo pin kiye hain, sabse upar ---- */}
       {pinnedRows.length > 0 && (
-        <div className="mb-4">
-          <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div className="mb-5">
+          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
             {t('Quick Links')}
           </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {pinnedRows.map((row) => {
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {pinnedRows.map((row, i) => {
               const Icon = row.icon;
+              const color = TILE_COLORS[i % TILE_COLORS.length];
               return (
                 <Link
                   key={row.to}
                   to={row.to}
-                  className="flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-center hover:bg-slate-50 focus-ring"
+                  className="flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-2xl p-2 text-center hover:bg-slate-50 focus-ring"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                    <Icon size={17} />
+                  <span className={cn('flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm', color.bg, color.text)}>
+                    <Icon size={22} />
                   </span>
                   <span className="line-clamp-2 text-[11px] font-medium leading-tight text-slate-700">
                     {row.name}
@@ -184,25 +197,16 @@ export default function MenuPage() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {groups.map((g) => (
-            <div key={g.letter || 'khoj'}>
-              {g.letter && (
-                <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  {g.letter}
-                </p>
-              )}
-              <Card padding={false}>
-                <ul>
-                  {g.rows.map((row) => (
-                    <MenuRow key={row.to} row={row}
-                      badge={row.badgeKey ? badges[row.badgeKey] : 0}
-                      pinned={pinned.includes(row.to)}
-                      onTogglePin={() => togglePin(row.to)} />
-                  ))}
-                </ul>
-              </Card>
-            </div>
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4 xs:grid-cols-4 sm:grid-cols-5 lg:grid-cols-6">
+          {filtered.map((row, i) => (
+            <AppTile
+              key={row.to}
+              row={row}
+              color={TILE_COLORS[i % TILE_COLORS.length]}
+              badge={row.badgeKey ? badges[row.badgeKey] : 0}
+              pinned={pinned.includes(row.to)}
+              onTogglePin={() => togglePin(row.to)}
+            />
           ))}
         </div>
       )}
@@ -251,46 +255,44 @@ export default function MenuPage() {
   );
 }
 
-function MenuRow({ row, badge, pinned, onTogglePin }) {
+function AppTile({ row, color, badge, pinned, onTogglePin }) {
   const Icon = row.icon;
   return (
-    <li className="border-b border-slate-100 last:border-0">
-      {/* py-3 = tap ka ghera 48px+; ungli se galat line kabhi nahi dabti */}
-      <div className="flex items-center gap-1 px-2">
-        <Link to={row.to}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-slate-50 focus-ring">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-            <Icon size={17} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium text-slate-900">{row.name}</span>
-              {badge > 0 && (
-                <span className="shrink-0 rounded-full bg-brand-600 px-1.5 text-[10px] font-semibold leading-4 text-white">
-                  {badge > 99 ? '99+' : badge}
-                </span>
-              )}
+    <div className="relative flex flex-col items-center">
+      <Link
+        to={row.to}
+        aria-label={row.meaning ? `${row.name} — ${row.meaning}` : row.name}
+        className="flex flex-col items-center gap-1.5 rounded-2xl p-1.5 text-center hover:bg-slate-50 focus-ring"
+      >
+        <span className={cn('relative flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm', color.bg, color.text)}>
+          <Icon size={26} />
+          {badge > 0 && (
+            <span className="absolute -left-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+              {badge > 99 ? '99+' : badge}
             </span>
-            {row.meaning && (
-              <span className="mt-0.5 block truncate text-xs text-slate-500">{row.meaning}</span>
-            )}
-          </span>
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
-        </Link>
-
-        {/* Quick Links me pin/hatana — list se alag button, taaki galti se khulne wale link pe na lage */}
-        <button
-          type="button"
-          onClick={onTogglePin}
-          aria-label={pinned ? t('Quick Links se hatayein') : t('Quick Links me jodein')}
-          className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg focus-ring',
-            pinned ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500',
           )}
-        >
-          {pinned ? <PinOff size={16} /> : <Pin size={16} />}
-        </button>
-      </div>
-    </li>
+        </span>
+
+        <span className="line-clamp-2 text-xs font-medium leading-tight text-slate-700">{row.name}</span>
+      </Link>
+
+      {/*
+        Pin button `<Link>` ke ANDAR nahi, BAAJU me hai (sibling) — button ko
+        anchor ke andar rakhna galat HTML hai aur browser me kabhi-kabhi
+        dono click ek saath chal jate hain. Yahan `absolute` se upar dikh
+        jata hai, par asal me alag hi element hai.
+      */}
+      <button
+        type="button"
+        onClick={onTogglePin}
+        aria-label={pinned ? t('Quick Links se hatayein') : t('Quick Links me jodein')}
+        className={cn(
+          'absolute right-1 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow ring-1 ring-slate-200 focus-ring',
+          pinned ? 'text-brand-600' : 'text-slate-300',
+        )}
+      >
+        {pinned ? <PinOff size={11} /> : <Pin size={11} />}
+      </button>
+    </div>
   );
 }

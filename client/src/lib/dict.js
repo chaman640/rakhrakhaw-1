@@ -2052,6 +2052,37 @@ const DICT = {
   'Video jald aayega': { hi: 'वीडियो जल्द आएगा', en: 'Video coming soon' },
   'Tutorial dobara dekhein': { hi: 'ट्यूटोरियल दोबारा देखें', en: 'Watch tutorial again' },
   'Har page ka video, phir se': { hi: 'हर पेज का वीडियो, फिर से', en: 'Every page\u2019s video, once more' },
+
+  /* ── Landing page redesign (Part 30) ── */
+  'Thok dukaandaron ke liye bana': { hi: 'थोक दुकानदारों के लिए बना', en: 'Built for wholesale shops' },
+  '15 din ka free trial': { hi: '15 दिन का फ्री ट्रायल', en: '15-day free trial' },
+  'Card ki zarurat nahi': { hi: 'कार्ड की ज़रूरत नहीं', en: 'No card needed' },
+  'Retailer ke liye hamesha free': { hi: 'रिटेलर के लिए हमेशा फ्री', en: 'Always free for retailers' },
+  'Billing': { hi: 'बिलिंग', en: 'Billing' },
+  'Stock': { hi: 'स्टॉक', en: 'Stock' },
+  'Khata': { hi: 'खाता', en: 'Ledger' },
+  'Order': { hi: 'ऑर्डर', en: 'Orders' },
+  'Report': { hi: 'रिपोर्ट', en: 'Reports' },
+  'Sabse pasandida': { hi: 'सबसे पसंदीदा', en: 'Most popular' },
+  'account': { hi: 'खाते', en: 'accounts' },
+  'Aap aur do log': { hi: 'आप और दो लोग', en: 'You and two others' },
+  'Apna stock, apna bill, apna khata': { hi: 'अपना स्टॉक, अपना बिल, अपना खाता', en: 'Your stock, your bills, your ledger' },
+  'Retailer seedha order karein': { hi: 'रिटेलर सीधा ऑर्डर करें', en: 'Retailers order directly' },
+  'Das log tak': { hi: 'दस लोगों तक', en: 'Up to ten people' },
+  'Chhoti dukaan wala sab kuch': { hi: 'छोटी दुकान वाला सब कुछ', en: 'Everything in the small-shop plan' },
+  'Salesman, munshi, godown': { hi: 'सेल्समैन, मुंशी, गोदाम', en: 'Salesman, accountant, warehouse' },
+  'Bees log tak': { hi: 'बीस लोगों तक', en: 'Up to twenty people' },
+  'Badhti dukaan wala sab kuch': { hi: 'बढ़ती दुकान वाला सब कुछ', en: 'Everything in the growing-shop plan' },
+  'Kai counter, kai godown': { hi: 'कई काउंटर, कई गोदाम', en: 'Multiple counters, multiple warehouses' },
+  'Jitne account chahein': { hi: 'जितने खाते चाहें', en: 'As many accounts as you need' },
+  'Badi dukaan wala sab kuch': { hi: 'बड़ी दुकान वाला सब कुछ', en: 'Everything in the large-shop plan' },
+  'Account ki koi ginti nahi': { hi: 'खातों की कोई गिनती नहीं', en: 'No limit on accounts' },
+  'Kharidna hamesha free. Paisa sirf bechne ke liye lagta hai — ginti sirf login karne walon ki.': { hi: 'खरीदना हमेशा फ्री। पैसा सिर्फ बेचने के लिए लगता है — गिनती सिर्फ लॉगिन करने वालों की।', en: 'Buying is always free. Payment is only for selling — the count is only of people who log in.' },
+  'Phone me app ki tarah chalta hai': { hi: 'फ़ोन में ऐप की तरह चलता है', en: 'Works like an app on your phone' },
+  'Alag se install karne ki zarurat nahi — browser me kholiye, "Home screen pe daalein" dabaiye, ban gaya.': { hi: 'अलग से इंस्टॉल करने की ज़रूरत नहीं — ब्राउज़र में खोलिए, "होम स्क्रीन पे डालें" दबाइए, बन गया।', en: 'No separate install needed — open in browser, tap "Add to Home Screen", done.' },
+
+  /* ── Chat bugfix (Part 31) ── */
+  'Photo load nahi hui': { hi: 'फ़ोटो लोड नहीं हुई', en: 'Photo failed to load' },
 };
 
 export default DICT;

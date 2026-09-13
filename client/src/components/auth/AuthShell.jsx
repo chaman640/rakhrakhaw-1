@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { t } from '@/lib/i18n';
-import { Store } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 // Login / signup / join — teeno ka same frame
 export default function AuthShell({ title, subtitle, children, footer, logoUrl, brandName }) {
@@ -11,9 +11,7 @@ export default function AuthShell({ title, subtitle, children, footer, logoUrl, 
           {logoUrl ? (
             <img src={logoUrl} alt="" className="mb-3 h-14 w-14 rounded-xl object-cover ring-1 ring-slate-200" />
           ) : (
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700 text-white">
-              <Store size={22} />
-            </div>
+            <Logo size={48} className="mb-3" />
           )}
           <h1 className="text-xl font-semibold text-slate-900">{brandName || title}</h1>
           {subtitle && <div className="mt-1 max-w-sm text-sm text-slate-500">{subtitle}</div>}

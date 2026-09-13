@@ -16,6 +16,35 @@ function timeLabel(iso) {
 }
 
 /**
+ * PHOTO KA BUBBLE — WhatsApp jaisa: turant dikhe (upload chalte-chalte),
+ * aur agar kabhi link hi toota ho to chup-chaap khali jagah nahi, saaf
+ * sandesh (Part 31 — pehle ye dono jagah galat/adhoori thi).
+ */
+function ChatImage({ src, pending }) {
+  const [broken, setBroken] = useState(false);
+
+  if (broken) {
+    return (
+      <div className="mb-1 flex h-28 w-full items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+        {t('Photo load nahi hui')}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mb-1 overflow-hidden rounded-lg">
+      <img src={src} alt="" onError={() => setBroken(true)}
+        className="max-h-64 w-full object-cover" />
+      {pending && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+          <Spinner size={20} className="text-white" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * EK CHAT KI POORI SCREEN — wholesaler aur retailer dono isi ko istemal karte
  * hain, bas `myRole` aur do function (padhna/bhejna) badal jate hain.
  *
@@ -32,6 +61,26 @@ export default function ChatThreadView({
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
+
+  /*
+   * KEYBOARD KHULTE HI COMPOSER GAAYAB HO JATA THA (Part 31) — mobile
+   * Chrome me keyboard khulne par asli dikhne wali screen chhoti ho jati
+   * hai, par `fixed inset-0` ye badlaav khud nahi pakadta, isliye neeche ka
+   * hissa keyboard ke peeche chala jata tha.
+   *
+   * `visualViewport` seedha poochh leta hai "abhi kitni jagah dikh rahi
+   * hai" aur ussi ke barabar screen ki oonchai rakhte hain — keyboard
+   * khule ya band ho, composer hamesha upar hi rehta hai.
+   */
+  const [vh, setVh] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 0));
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => setVh(vv.height);
+    onResize();
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
 
   async function load() {
     try {
@@ -76,22 +125,33 @@ export default function ChatThreadView({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || sending) return;
+
+    // WhatsApp jaisa — turant dikha do, upload poora hone ka intezaar nahi
+    const localUrl = URL.createObjectURL(file);
+    const tempId = `local-${Date.now()}`;
+    setMessages((cur) => [...(cur || []), {
+      _id: tempId, type: 'photo', imageUrl: localUrl, text: '',
+      senderRole: myRole, createdAt: new Date().toISOString(), pending: true,
+    }]);
+
     setSending(true);
     try {
       const fd = new FormData();
       fd.append('type', 'photo');
       fd.append('photo', file);
       await postMessage(fd);
-      await load();
+      await load(); // asli message wapas aayega, temp wala apne aap hat jayega
     } catch (err) {
       toast.error(err.message);
+      setMessages((cur) => (cur || []).filter((m) => m._id !== tempId));
     } finally {
       setSending(false);
+      URL.revokeObjectURL(localUrl);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-slate-50">
+    <div className="fixed inset-x-0 top-0 z-40 flex flex-col bg-slate-50" style={{ height: vh || '100dvh' }}>
       {/* ── header ── */}
       <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         <button type="button" onClick={onBack} aria-label={t('Wapas')}
@@ -127,7 +187,7 @@ export default function ChatThreadView({
                     mine ? 'rounded-br-sm bg-brand-600 text-white' : 'rounded-bl-sm bg-white text-slate-900',
                   )}>
                     {m.type === 'photo' && m.imageUrl && (
-                      <img src={m.imageUrl} alt="" className="mb-1 max-h-64 w-full rounded-lg object-cover" />
+                      <ChatImage src={m.imageUrl} pending={m.pending} />
                     )}
 
                     {isShare && (
