@@ -29,6 +29,11 @@ import auditRoutes from './audit.routes.js';
 import diagRoutes from './diag.routes.js';
 import partnerRoutes from './partner.routes.js';
 import publicRoutes from './public.routes.js';
+import chatRoutes from './chat.routes.js';
+import myChatRoutes from './myChat.routes.js';
+import storyRoutes from './story.routes.js';
+import myStoryRoutes from './myStory.routes.js';
+import tutorialRoutes from './tutorial.routes.js';
 
 const router = Router();
 
@@ -111,5 +116,14 @@ router.use('/backup', backupRoutes);
 
 // Part 12 — sub-account, ijazat aur "kisne kya kiya"
 router.use('/activity', auditRoutes);
+
+// Part 25 — Chat + Stories, WhatsApp-jaisa
+router.use('/chat', chatRoutes);
+router.use('/my/chat', myChatRoutes);
+router.use('/stories', storyRoutes);
+router.use('/my/stories', myStoryRoutes);
+
+// Part 29 — Tutorial videos (onboarding tour)
+router.use('/tutorials', tutorialRoutes);
 
 export default router;

@@ -78,6 +78,22 @@ const itemSchema = new mongoose.Schema(
     imageUrl: { type: String, default: '' },
     imagePublicId: { type: String, default: '' },
 
+    /*
+     * EXTRA PHOTOS (Part 18 — product detail page ka slider).
+     *
+     * `imageUrl` upar hamesha COVER photo hai — yahi card/list me dikhta hai,
+     * kahin badalna nahi. Ye array sirf ADDITIONAL photos hain jo buyer ke
+     * product detail page pe slide karke dikhte hain. 5 tak — isse zyada ki
+     * zarurat kam hi padti hai aur upload dheere na ho jaye.
+     */
+    images: {
+      type: [{
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
+      }],
+      default: [],
+    },
+
     visibleToRetailers: { type: Boolean, default: true },
     isActive: { type: Boolean, default: true },
   },

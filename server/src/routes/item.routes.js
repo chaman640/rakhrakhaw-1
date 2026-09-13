@@ -50,4 +50,9 @@ router.post('/:id/stock', requirePermission('items:edit'), validate({ params: id
 router.post('/:id/photo', requirePermission('items:edit'), validate({ params: idParamSchema }), uploadImage.single('photo'), handleUploadError, ctrl.uploadPhoto);
 router.delete('/:id/photo', requirePermission('items:edit'), validate({ params: idParamSchema }), ctrl.deletePhoto);
 
+// Extra photos — product detail page ke slider ke liye (cover photo se alag)
+router.post('/:id/photos', requirePermission('items:edit'), validate({ params: idParamSchema }), uploadImage.array('photos', 5), handleUploadError, ctrl.addGalleryPhotos);
+router.put('/:id/photos/reorder', requirePermission('items:edit'), validate({ params: idParamSchema }), ctrl.reorderGalleryPhotos);
+router.delete('/:id/photos', requirePermission('items:edit'), validate({ params: idParamSchema }), ctrl.removeGalleryPhoto);
+
 export default router;

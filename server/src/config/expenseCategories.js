@@ -26,8 +26,18 @@ export const EXPENSE_CATEGORIES = [
   { value: 'packing', label: 'Packing', hint: 'Dibba, tape, bori' },
   { value: 'marammat', label: 'Marammat', hint: 'Dukaan, gaadi ya machine theek karana' },
   { value: 'tax-fees', label: 'Tax / fees', hint: 'CA fees, licence, sarkari fees' },
+  /*
+   * Ye ek hi category KHARCH + STOCK dono chhuti hai (Part 20). `touchesStock`
+   * flag isi wajah se — frontend aur backend dono isi se pehchante hain ki
+   * item + quantity maangni hai, aur amount khud hi nikalna hai (type nahi
+   * karwana), kyunki lagat hi asli nuksan hai.
+   */
+  { value: 'waste-stock', label: 'Waste / Damaged Stock', hint: 'Maal toota ya kharab ho gaya', touchesStock: true },
   { value: 'other', label: 'Aur kuch', hint: 'Jo upar kisi me na aaye' },
 ];
+
+// Seedha check karne ke liye — 'waste-stock' string poore project me kahin aur na likha jaye
+export const WASTE_STOCK_CATEGORY = 'waste-stock';
 
 export const CATEGORY_LABEL = Object.fromEntries(
   EXPENSE_CATEGORIES.map((c) => [c.value, c.label]),

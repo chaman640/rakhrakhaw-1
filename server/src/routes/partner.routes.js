@@ -6,6 +6,7 @@ import {
   partnerSignupSchema, partnerLoginSchema, partnerPasswordSchema, payoutSchema,
   adminLoginSchema, adminPasswordSchema, markPaidSchema, toggleSchema,
 } from '../validators/partner.validator.js';
+import { upsertTutorialSchema, tutorialKeyParamSchema } from '../validators/tutorial.validator.js';
 import * as ctrl from '../controllers/partner.controller.js';
 
 const router = Router();
@@ -61,5 +62,14 @@ router.get('/admin/one/:id', requirePartnerAdmin, ctrl.adminOne);
 router.post('/admin/paid/:id', requirePartnerAdmin, validate({ body: markPaidSchema }), ctrl.adminMarkPaid);
 router.post('/admin/toggle/:id', requirePartnerAdmin, validate({ body: toggleSchema }), ctrl.adminToggle);
 router.post('/admin/password', requirePartnerAdmin, validate({ body: adminPasswordSchema }), ctrl.adminChangePassword);
+
+/*
+ * TUTORIAL VIDEOS (Part 29) — sirf platform admin lagata/hataata hai.
+ * Padhna sabke liye khula hai (`tutorial.routes.js`, dukaan wale token se) —
+ * ye sirf LIKHNE ka darwaza hai, isliye yahan `requirePartnerAdmin` hai.
+ */
+router.get('/admin/tutorials', requirePartnerAdmin, ctrl.adminTutorialList);
+router.post('/admin/tutorials', requirePartnerAdmin, validate({ body: upsertTutorialSchema }), ctrl.adminTutorialUpsert);
+router.delete('/admin/tutorials/:key', requirePartnerAdmin, validate({ params: tutorialKeyParamSchema }), ctrl.adminTutorialDelete);
 
 export default router;

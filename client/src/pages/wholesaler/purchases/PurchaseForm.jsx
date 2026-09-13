@@ -5,15 +5,19 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty } from '@/lib/format';
 import {
-  PageHeader, Card, CardHeader, Button, Input, Textarea, Combobox,
+  PageHeader, Card, CardHeader, Button, Input, Select, Textarea, Combobox,
   Switch, Badge, LineItemCard, NumField, useToast } from
 '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', 'LTR', 'ML', 'MTR', 'FT', 'BAG', 'BUNDLE'];
 const emptyRow = () => ({ key: Math.random().toString(36).slice(2), itemId: '', name: '', unit: 'PCS',
-  stockQty: 0, qty: '', rate: '', discount: '', gstRate: 0 });
+  stockQty: 0, qty: '', rate: '', discount: '', gstRate: 0,
+  // Naya item banate waqt (Part 20) — search ki jagah ye chhota form khulta hai
+  isNew: false, newItem: null });
+const blankNewItem = () => ({ name: '', unit: 'PCS', hsn: '', mrp: '', brand: '' });
 
 export default function PurchaseForm() {
   const navigate = useNavigate();
@@ -71,7 +75,8 @@ export default function PurchaseForm() {
     setRow(key, {
       itemId: i._id, name: i.name, unit: i.unit, stockQty: i.stockQty,
       rate: String(i.purchasePrice || ''), gstRate: i.gstRate || 0,
-      qty: rows.find((r) => r.key === key)?.qty || '1'
+      qty: rows.find((r) => r.key === key)?.qty || '1',
+      isNew: false, newItem: null
     });
   }
 
@@ -80,11 +85,23 @@ export default function PurchaseForm() {
     setRows((rs) => rs.length === 1 ? [emptyRow()] : rs.filter((r) => r.key !== key));
   }
 
+  // ---- Naya item — purchase se hi ban jaye, Items page pe jaane ki zarurat nahi ----
+  function startNewItem(key) {
+    setRow(key, { itemId: '', name: '', isNew: true, newItem: blankNewItem() });
+  }
+  function cancelNewItem(key) {
+    setRow(key, { isNew: false, newItem: null });
+  }
+  function setNewItemField(key, field, value) {
+    setRows((rs) => rs.map((r) =>
+      r.key === key ? { ...r, newItem: { ...r.newItem, [field]: value } } : r));
+  }
+
   // ---- Live totals (server pe bhi yahi hisaab hota hai) ----
   const totals = useMemo(() => {
     let subTotal = 0,discountTotal = 0,taxableTotal = 0,taxTotal = 0;
     for (const r of rows) {
-      if (!r.itemId) continue;
+      if (!r.itemId && !(r.isNew && r.newItem?.name?.trim())) continue;
       const qty = Number(r.qty || 0);
       const rate = Number(r.rate || 0);
       const disc = Number(r.discount || 0);
@@ -104,7 +121,8 @@ export default function PurchaseForm() {
 
   const paid = Math.min(Number(paidAmount || 0), totals.grandTotal);
   const due = round2(totals.grandTotal - paid);
-  const filledRows = rows.filter((r) => r.itemId && Number(r.qty) > 0);
+  const filledRows = rows.filter((r) =>
+    (r.itemId || (r.isNew && r.newItem?.name?.trim())) && Number(r.qty) > 0);
 
   async function save() {
     // Supplier ab zaroori nahi — nakad kharid bhi entry ho sakti hai
@@ -116,13 +134,30 @@ export default function PurchaseForm() {
         supplierId: supplier?.value || '',
         supplierBillNo: billNo,
         purchaseDate: date,
-        items: filledRows.map((r) => ({
-          itemId: r.itemId,
-          qty: Number(r.qty),
-          rate: Number(r.rate || 0),
-          discount: Number(r.discount || 0),
-          gstRate: gstEnabled ? Number(r.gstRate || 0) : 0
-        })),
+        items: filledRows.map((r) => (
+          r.isNew
+            ? {
+                newItem: {
+                  name: r.newItem.name.trim(),
+                  unit: r.newItem.unit,
+                  hsn: r.newItem.hsn || '',
+                  gstRate: gstEnabled ? Number(r.gstRate || 0) : 0,
+                  ...(r.newItem.mrp !== '' ? { mrp: Number(r.newItem.mrp) } : {}),
+                  ...(r.newItem.brand.trim() ? { brand: r.newItem.brand.trim() } : {}),
+                },
+                qty: Number(r.qty),
+                rate: Number(r.rate || 0),
+                discount: Number(r.discount || 0),
+                gstRate: gstEnabled ? Number(r.gstRate || 0) : 0,
+              }
+            : {
+                itemId: r.itemId,
+                qty: Number(r.qty),
+                rate: Number(r.rate || 0),
+                discount: Number(r.discount || 0),
+                gstRate: gstEnabled ? Number(r.gstRate || 0) : 0,
+              }
+        )),
         paidAmount: Number(paidAmount || 0),
         notes,
         updatePurchasePrice: updatePrice
@@ -212,21 +247,33 @@ export default function PurchaseForm() {
                     return (
                       <tr key={r.key} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2">
-                          <Combobox
-                            placeholder={t('Item dhundhein')}
-                            display={r.name}
-                            value={r.itemId}
-                            onChange={(opt) => pickItem(r.key, opt)}
-                            fetchOptions={fetchItems}
-                            emptyText={t('Koi item nahi mila')}
-                            onCreateNew={() => navigate('/items')}
-                            createNewLabel={t("Items page pe jaayein")} />
-                          
-                          {r.itemId &&
-                          <p className="mt-1 text-xs text-slate-400">{t("Abhi stock: {a0}", { a0:
-                              formatQty(r.stockQty, r.unit) })}
-                          </p>
-                          }
+                          {r.isNew ? (
+                            <div className="w-64">
+                              <NewItemFields
+                                newItem={r.newItem}
+                                onField={(field, value) => setNewItemField(r.key, field, value)}
+                                onCancel={() => cancelNewItem(r.key)}
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <Combobox
+                                placeholder={t('Item dhundhein')}
+                                display={r.name}
+                                value={r.itemId}
+                                onChange={(opt) => pickItem(r.key, opt)}
+                                fetchOptions={fetchItems}
+                                emptyText={t('Koi item nahi mila')}
+                                onCreateNew={() => startNewItem(r.key)}
+                                createNewLabel={t('Naya item banayein')} />
+
+                              {r.itemId &&
+                              <p className="mt-1 text-xs text-slate-400">{t("Abhi stock: {a0}", { a0:
+                                  formatQty(r.stockQty, r.unit) })}
+                              </p>
+                              }
+                            </>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           <input type="number" step="0.01" min="0" inputMode="decimal"
@@ -255,7 +302,7 @@ export default function PurchaseForm() {
                           </td>
                         }
                         <td className="tabular px-3 py-2 text-right font-medium text-slate-900">
-                          {r.itemId ? formatMoney(taxable + tax) : '—'}
+                          {(r.itemId || r.isNew) ? formatMoney(taxable + tax) : '—'}
                         </td>
                         <td className="px-2 py-2">
                           <button type="button" onClick={() => removeRow(r.key)}
@@ -284,15 +331,22 @@ export default function PurchaseForm() {
                     key={r.key}
                     index={idx}
                     onRemove={() => removeRow(r.key)}
-                    total={r.itemId ? formatMoney(taxable + tax) : '—'}
+                    total={(r.itemId || r.isNew) ? formatMoney(taxable + tax) : '—'}
                     picker={
-                    <Combobox
-                      placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
-                      onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
-                      emptyText={t('Koi item nahi mila')}
-                      onCreateNew={() => navigate('/items')}
-                      createNewLabel={t("Items page pe jaayein")} />
-
+                    r.isNew ? (
+                      <NewItemFields
+                        newItem={r.newItem}
+                        onField={(field, value) => setNewItemField(r.key, field, value)}
+                        onCancel={() => cancelNewItem(r.key)}
+                      />
+                    ) : (
+                      <Combobox
+                        placeholder={t('Item dhundhein')} display={r.name} value={r.itemId}
+                        onChange={(opt) => pickItem(r.key, opt)} fetchOptions={fetchItems}
+                        emptyText={t('Koi item nahi mila')}
+                        onCreateNew={() => startNewItem(r.key)}
+                        createNewLabel={t('Naya item banayein')} />
+                    )
                     }
                     note={r.itemId &&
                     <p className="mt-1.5 text-xs text-slate-400">{t("Abhi stock: {a0}", { a0:
@@ -417,4 +471,43 @@ function Row({ label, value, tone }) {
       </dd>
     </div>);
 
+}
+
+/**
+ * NAYA ITEM — bilkul yahin, is purchase se hi (Part 20).
+ *
+ * GST rate iske andar dobara nahi maangte — table/card me pehle se ek GST
+ * column/field hai, wahi is naye item ke liye bhi kaam aata hai. Do jagah
+ * ek hi cheez maangna sirf confusion badhata.
+ */
+function NewItemFields({ newItem, onField, onCancel }) {
+  return (
+    <div className="space-y-2 rounded-lg border border-dashed border-brand-300 bg-brand-50/40 p-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-brand-700">{t('Naya item')}</span>
+        <button type="button" onClick={onCancel} className="text-xs text-slate-500 underline focus-ring">
+          {t('Search karein')}
+        </button>
+      </div>
+      <Input
+        label={t('Item ka naam')}
+        value={newItem.name}
+        onChange={(e) => onField('name', e.target.value)}
+      />
+      <div className="grid grid-cols-2 gap-1.5">
+        <Select
+          label={t('Unit')}
+          options={UNITS}
+          value={newItem.unit}
+          onChange={(e) => onField('unit', e.target.value)}
+          placeholder=""
+        />
+        <Input
+          label={t('HSN')}
+          value={newItem.hsn}
+          onChange={(e) => onField('hsn', e.target.value)}
+        />
+      </div>
+    </div>
+  );
 }

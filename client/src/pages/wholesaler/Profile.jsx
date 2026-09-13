@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Upload, Trash2, Store, Save, CheckCircle2, QrCode, Landmark, FileText, Info,
+  Upload, Trash2, Store, Save, CheckCircle2, QrCode, Landmark, FileText, Info, Plus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useQuery, bust } from '@/hooks/useQuery';
 import {
   PageHeader, Tabs, Button, Input, Select, Textarea, Card, CardHeader, Switch,
   Spinner, useToast,
@@ -143,22 +144,121 @@ function SaveBar({ saving }) {
   );
 }
 
+/* ══════════════════════════════ Story — WhatsApp Status jaisa ══════════════════════════════ */
+
+function StoriesCard() {
+  const toast = useToast();
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [pending, setPending] = useState(null); // { file, previewUrl }
+  const [caption, setCaption] = useState('');
+
+  const { data: stories } = useQuery(['my-stories'], () => api.get('/stories').then((r) => r.data));
+
+  function pickFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPending({ file, previewUrl: URL.createObjectURL(file) });
+  }
+
+  function cancelPending() {
+    if (pending) URL.revokeObjectURL(pending.previewUrl);
+    setPending(null);
+    setCaption('');
+  }
+
+  async function post() {
+    if (!pending) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', pending.file);
+      if (caption.trim()) fd.append('caption', caption.trim());
+      await api.post('/stories', fd);
+      toast.success(t('Story lag gayi'));
+      cancelPending();
+      bust('my-stories');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function remove(id) {
+    try {
+      await api.delete(`/stories/${id}`);
+      bust('my-stories');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title={t('Story')} subtitle={t('24 ghante ke liye rehti hai — jude hue retailer dekh sakenge')} />
+
+      <div className="flex flex-wrap gap-2">
+        {stories?.map((s) => (
+          <div key={s._id} className="group relative h-20 w-20 overflow-hidden rounded-lg ring-1 ring-slate-200">
+            <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />
+            <span className="absolute bottom-0.5 left-0.5 rounded bg-black/50 px-1 text-[10px] text-white">
+              {t('{n} dekhi', { n: s.viewCount })}
+            </span>
+            <button
+              type="button"
+              onClick={() => remove(s._id)}
+              aria-label={t('Hatayein')}
+              className="absolute right-0.5 top-0.5 rounded-full bg-white/90 p-0.5 text-red-600 shadow focus-ring"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        ))}
+
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pickFile} />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-brand-400 hover:text-brand-600 focus-ring"
+        >
+          <Plus size={22} />
+        </button>
+      </div>
+
+      {pending && (
+        <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 p-2">
+          <img src={pending.previewUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+          <Input value={caption} onChange={(e) => setCaption(e.target.value)}
+            placeholder={t('Caption (marzi se)')} containerClassName="flex-1" />
+          <Button size="sm" variant="ghost" onClick={cancelPending}>{t('Rehne dein')}</Button>
+          <Button size="sm" loading={uploading} onClick={post}>{t('Post karein')}</Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /* ══════════════════════════════ 1. Dukaan ══════════════════════════════ */
 
 function ShopSection({ business, onSaved }) {
   const toast = useToast();
   const { refresh } = useAuth();
   const fileRef = useRef(null);
+  const coverFileRef = useRef(null);
   const navigate = useNavigate();
   const [states, setStates] = useState([]);
   const [gstReady, setGstReady] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const { save, saving, fieldErrors } = useBusinessSave(onSaved);
 
   const [form, setForm] = useState(() => ({
     name: business.name || '',
     phone: business.phone || '',
     email: business.email || '',
+    bio: business.bio || '',
     address: { ...emptyAddress, ...(business.address || {}) },
     gstEnabled: Boolean(business.gstEnabled),
     gstin: business.gstin || '',
@@ -176,7 +276,7 @@ function ShopSection({ business, onSaved }) {
   async function handleSave(e) {
     e.preventDefault();
     const payload = {
-      name: form.name, phone: form.phone, email: form.email,
+      name: form.name, phone: form.phone, email: form.email, bio: form.bio,
       address: { ...form.address },
       gstEnabled: form.gstEnabled,
     };
@@ -214,8 +314,82 @@ function ShopSection({ business, onSaved }) {
     }
   }
 
+  async function handleCoverPhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('coverPhoto', file);
+      const res = await api.post('/business/cover-photo', fd);
+      onSaved({ ...business, coverPhotoUrl: res.data.coverPhotoUrl });
+      await refresh();
+      toast.success(t('Cover photo lag gayi'));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCoverUploading(false);
+      if (coverFileRef.current) coverFileRef.current.value = '';
+    }
+  }
+
+  async function removeCoverPhoto() {
+    try {
+      await api.delete('/business/cover-photo');
+      onSaved({ ...business, coverPhotoUrl: '' });
+      await refresh();
+      toast.info(t('Cover photo hata di'));
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
+  /*
+   * Approval toggle — turant save hota hai, "Save karein" button ka
+   * intezaar nahi karta (InviteCard.jsx me bhi yahi tarika hai, wahin se
+   * bhi ye setting badli ja sakti hai).
+   */
+  async function toggleApproval(value) {
+    try {
+      const res = await api.put('/business/me', { autoApproveRetailers: value });
+      onSaved(res.data);
+      await refresh();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
   return (
     <form onSubmit={handleSave} className="space-y-5">
+      <Card padding={false}>
+        <div className="p-5 pb-0">
+          <CardHeader title={t('Cover photo')} subtitle={t('Retailer jab aapki dukaan kholega, sabse upar yahi dikhega')} />
+        </div>
+        <div className="relative mx-5 mb-5 h-32 overflow-hidden rounded-lg bg-slate-100 sm:h-40">
+          {business.coverPhotoUrl ? (
+            <img src={business.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-slate-300">
+              <Store size={32} />
+            </div>
+          )}
+          <div className="absolute bottom-2 right-2 flex flex-wrap justify-end gap-2">
+            <input ref={coverFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleCoverPhoto} />
+            <Button type="button" variant="secondary" size="sm" icon={Upload} loading={coverUploading}
+              onClick={() => coverFileRef.current?.click()}>
+              {business.coverPhotoUrl ? t('Badlein') : t('Upload karein')}
+            </Button>
+            {business.coverPhotoUrl && (
+              <Button type="button" variant="ghost" size="sm" icon={Trash2} onClick={removeCoverPhoto}>
+                {t('Hatayein')}
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <StoriesCard />
+
       <Card>
         <CardHeader title={t('Logo')} subtitle={t('Har invoice ke upar chhapega')} />
         <div className="flex items-center gap-4">
@@ -249,7 +423,22 @@ function ShopSection({ business, onSaved }) {
           <Input label={t('Phone')} prefix="+91" value={form.phone} onChange={set('phone')} error={fieldErrors.phone} />
           <Input label={t('Email')} type="email" value={form.email} onChange={set('email')}
             containerClassName="sm:col-span-2" error={fieldErrors.email} />
+          <Textarea label={t('Bio')} rows={2} maxLength={300} value={form.bio} onChange={set('bio')}
+            containerClassName="sm:col-span-2" error={fieldErrors.bio}
+            placeholder={t('Chhota parichay — jaise "10 saal se auto parts ka thok kaam"')}
+            hint={t('{n}/300', { n: form.bio.length })} />
         </div>
+      </Card>
+
+      <Card>
+        <CardHeader title={t('Retailer approval')} />
+        <Switch
+          id="profile-auto-approve"
+          checked={Boolean(business.autoApproveRetailers)}
+          onChange={toggleApproval}
+          label={t('Apne aap approve kar do')}
+          description={t('On karne par koi bhi retailer aapki dukaan seedha dekh aur order kar sakega — approval ka intezaar nahi karna padega. Off rakhne par har naye retailer ko pehle aapki manzoori chahiye hogi.')}
+        />
       </Card>
 
       <Card>

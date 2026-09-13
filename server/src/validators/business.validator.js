@@ -22,6 +22,9 @@ export const updateBusinessSchema = z
     gstEnabled: z.boolean().optional(),
     gstin: z.string().trim().toUpperCase().or(z.literal('')).optional(),
 
+    // Instagram-jaisi profile — chhota parichay (Part 24)
+    bio: z.string().trim().max(300).optional(),
+
     upiId: z.string().trim().max(64).or(z.literal('')).optional(),
     upiName: z.string().trim().max(80).optional(),
 

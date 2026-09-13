@@ -38,6 +38,14 @@ export const verify = asyncHandler(async (req, res) =>
 export const history = asyncHandler(async (req, res) =>
   ok(res, await service.paymentHistory(req.businessId)));
 
+/*
+ * "Har mahine paisa aaya ya nahi" (Part 28) — ye `history` (rasid) se ALAG
+ * hai. Rasid me sirf jo CHUKTA hua wahi hai; yahan fail wale mahine bhi hain,
+ * taaki malik ko poori tasveer mile, sirf achhi khabar nahi.
+ */
+export const cycleHistory = asyncHandler(async (req, res) =>
+  ok(res, await service.getBillingHistory(req.businessId)));
+
 
 /* ── Autopay ── */
 

@@ -100,6 +100,8 @@ export const STOCK_MOVEMENT_TYPES = {
   ADJUSTMENT: 'ADJUSTMENT',
   PURCHASE_RETURN: 'PURCHASE_RETURN',
   SALE_RETURN: 'SALE_RETURN',
+  // Maal kharab ho gaya / toot-phoot me nikla — expense ke saath judta hai (Part 19)
+  WASTE: 'WASTE',
 };
 
 export const LEDGER_TYPES = {

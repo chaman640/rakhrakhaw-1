@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import PlanNeeded from '@/pages/wholesaler/PlanNeeded';
+import OnboardingTour from '@/components/tutorial/OnboardingTour';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
@@ -22,7 +23,7 @@ import { t } from '@/lib/i18n';
  * patti ke peeche chhup jata hai aur user use daba hi nahi pata.
  */
 export default function AppLayout() {
-  const { can } = useAuth();
+  const { can, business, isWholesaler } = useAuth();
   // Menu ab role se nahi, DARWAZE se tay hota hai — wahi wholesaler Seller me
   // apni dukaan chalata hai aur Buyer me doosri dukaan se maal mangwata hai
   const { buying } = useShop();
@@ -71,6 +72,30 @@ export default function AppLayout() {
     setNeedsPlan(false);
   }, [buying]);
 
+  /*
+   * ─────────── ONBOARDING TOUR — pehli baar wala safar (Part 29) ───────────
+   *
+   * `checkedRef` isliye ki ye jaanch sirf EK BAAR ho, jab `business` pehli
+   * baar load ho. Warna "Skip" dabate hi (jab `business` object abhi purana
+   * hai) ye dobara turant khud khul jata — user ke saamne band hi na hota.
+   */
+  const [showTour, setShowTour] = useState(false);
+  const [rewatch, setRewatch] = useState(false);
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    if (checkedRef.current || !business || !isWholesaler || buying) return;
+    checkedRef.current = true;
+    if (!business.onboardingCompletedAt && !business.onboardingSkippedAt) setShowTour(true);
+  }, [business, isWholesaler, buying]);
+
+  // MenuPage se "Tutorial dobara dekhein" — kahin se bhi khul sakta hai
+  useEffect(() => {
+    const on = () => { setRewatch(true); setShowTour(true); };
+    window.addEventListener('rr:show-tour', on);
+    return () => window.removeEventListener('rr:show-tour', on);
+  }, []);
+
   /**
    * Back ka "plan B" — jab history khali ho (link se seedha khola ya refresh).
    *
@@ -104,6 +129,13 @@ export default function AppLayout() {
       </div>
 
       <BottomNav />
+
+      {showTour && (
+        <OnboardingTour
+          isRewatch={rewatch}
+          onDone={() => { setShowTour(false); setRewatch(false); }}
+        />
+      )}
     </div>
   );
 }

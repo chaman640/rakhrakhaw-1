@@ -37,6 +37,7 @@ router.use(protect, requireRole(ROLES.WHOLESALER), withTenant);
 
 router.get('/me', ctrl.mine);
 router.get('/history', ctrl.history);
+router.get('/cycles', ctrl.cycleHistory);
 router.post('/checkout', requirePermission('settings:edit'), validate({ body: checkoutSchema }), ctrl.checkout);
 router.post('/verify', requirePermission('settings:edit'), validate({ body: verifySchema }), ctrl.verify);
 router.post('/cancel', requirePermission('settings:edit'), ctrl.cancel);

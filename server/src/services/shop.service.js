@@ -4,7 +4,7 @@ import ApiError from '../utils/ApiError.js';
 import { normalizePhone } from '../utils/phone.js';
 import { buyerFilter, buyerFields } from '../utils/buyer.js';
 import { ROLES, PARTY_TYPES, PARTY_STATUS } from '../config/constants.js';
-import { Business, Party, Membership, Item, User } from '../models/index.js';
+import { Business, Party, Membership, Item, User, Story } from '../models/index.js';
 
 /**
  * DUKAAN DHOONDHO, JUDO, SAVE KARO.
@@ -89,6 +89,9 @@ function shopCard(business, { membership = null, party = null, counts = null, is
     name: business.name,
     phone: business.phone || '',
     logoUrl: business.logoUrl || '',
+    // Instagram-jaisi profile (Part 24) — cover photo aur chhota parichay
+    coverPhotoUrl: business.coverPhotoUrl || '',
+    bio: business.bio || '',
     city: business.address?.city || '',
     state: business.address?.state || '',
     gstEnabled: Boolean(business.gstEnabled),
@@ -308,21 +311,31 @@ export async function getShopProfile(user, businessId) {
 export async function getCurrentShopCard(user, businessId, partyId) {
   const mine = buyerFilter(user);
 
-  const [business, membership, party, counts] = await Promise.all([
-    Business.findById(businessId).select('name phone logoUrl address gstEnabled').lean(),
+  const [business, membership, party, counts, stories] = await Promise.all([
+    Business.findById(businessId).select('name phone logoUrl coverPhotoUrl bio address gstEnabled').lean(),
     mine ? Membership.findOne({ ...mine, businessId }).lean() : null,
     partyId ? Party.findById(partyId).select('status balance').lean() : null,
     shopCounts(businessId),
+    // Story-ring ke liye — ye SIRF yahan lagaya hai (ek hi dukaan ka detail
+    // hai), search/saved-list wale bulk-jawab me nahi, warna har ek dukaan
+    // ke liye alag query chal padti.
+    Story.find({ businessId }).select('viewedBy').lean(),
   ]);
 
   if (!business) throw ApiError.notFound('Dukaan nahi mili');
 
-  return shopCard(business, {
+  const card = shopCard(business, {
     membership,
     party,
     counts,
     isOwn: String(businessId) === String(user.businessId || ''),
   });
+
+  const myKey = user.role === ROLES.WHOLESALER ? `biz:${user.businessId}` : `user:${user._id}`;
+  card.hasStory = stories.length > 0;
+  card.hasUnseenStory = stories.some((s) => !s.viewedBy?.includes(myKey));
+
+  return card;
 }
 
 /**
@@ -341,7 +354,7 @@ export async function listSavedShops(user, { all = false } = {}) {
 
   const [businesses, parties] = await Promise.all([
     Business.find({ _id: { $in: memberships.map((m) => m.businessId) } })
-      .select('name phone logoUrl address gstEnabled').lean(),
+      .select('name phone logoUrl coverPhotoUrl bio address gstEnabled').lean(),
     Party.find({ _id: { $in: memberships.map((m) => m.partyId) } })
       .select('status balance').lean(),
   ]);
@@ -378,7 +391,7 @@ export async function setShopSaved(user, businessId, saved) {
   if (!membership) throw ApiError.notFound('Aap is dukaan se jude nahi hain');
 
   const [business, party] = await Promise.all([
-    Business.findById(businessId).select('name phone logoUrl address gstEnabled').lean(),
+    Business.findById(businessId).select('name phone logoUrl coverPhotoUrl bio address gstEnabled').lean(),
     Party.findById(membership.partyId).select('status balance').lean(),
   ]);
 

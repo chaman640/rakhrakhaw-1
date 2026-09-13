@@ -5,6 +5,7 @@ import { PARTY_STATUS, ORDER_PAYMENT_MODES } from '../config/constants.js';
 import { Business, Cart, Membership, Party } from '../models/index.js';
 import { getCart } from './cart.service.js';
 import { placeOrder } from './order.service.js';
+import { sendMessage } from './chat.service.js';
 
 /**
  * SAB DUKAANON KA CART EK SAATH.
@@ -191,6 +192,17 @@ export async function checkoutMany(user, { orders = [] } = {}) {
         // ye batana order jitna hi zaroori hai
         dropped: order.dropped || [],
       });
+
+      /*
+       * Order bhejte hi chat me bhi ek link chala jata hai (Part 26) —
+       * wholesaler ke order page pe to wo pehle se hi dikh raha hai, ye
+       * bas usi ka seedha rasta hai. Isse order KABHI mat rukwao — chat
+       * failed ho to bhi order to ja hi chuka hai, isliye chup-chaap ignore.
+       */
+      sendMessage(
+        membership.businessId, membership.partyId,
+        { type: 'order', refId: order._id }, null, 'retailer', user._id,
+      ).catch(() => {});
     } catch (err) {
       /*
         Yahan `throw` NAHI karte — upar wali wajah. Par galti nigalte bhi nahi:

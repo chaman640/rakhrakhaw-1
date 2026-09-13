@@ -45,12 +45,14 @@ export const buildInviteLink = (code) => (code ? `${clientOrigin()}/s/${code}` :
 // Bill banane/chhapne ke liye jitna chahiye — utna hi
 const STAFF_FIELDS = [
   '_id', 'name', 'phone', 'address', 'gstEnabled', 'gstin', 'logoUrl',
+  'bio', 'coverPhotoUrl',
   'invoicePrefix', 'orderPrefix', 'termsAndConditions', 'invoiceFooterNote',
   'lowStockThreshold', 'currency', 'isActive', 'createdAt', 'updatedAt',
+  'onboardingCompletedAt', 'onboardingSkippedAt',
 ];
 
 // Retailer ko sirf dukaan ki pehchaan
-const RETAILER_FIELDS = ['_id', 'name', 'phone', 'address', 'logoUrl', 'gstEnabled'];
+const RETAILER_FIELDS = ['_id', 'name', 'phone', 'address', 'logoUrl', 'bio', 'coverPhotoUrl', 'gstEnabled'];
 
 const pick = (obj, fields) => {
   const out = {};

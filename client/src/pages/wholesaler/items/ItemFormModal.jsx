@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload, Trash2, Package, Plus, ChevronRight } from 'lucide-react';
+import { Upload, Trash2, Package, Plus, ChevronRight, Images, GripVertical } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney } from '@/lib/format';
@@ -59,6 +59,31 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   const [addingCategory, setAddingCategory] = useState(false);
   const [photo, setPhoto] = useState({ url: '', pendingFile: null });
 
+  /*
+    GALLERY — extra photos, product detail page ke slider ke liye. Cover
+    photo se alag hai.
+
+    Naya item banate waqt itemId hota hi nahi (upload ke liye chahiye) — isliye
+    yahan files turant upload nahi hoti, `pendingGalleryFiles` me sirf localy
+    rakhi jaati hain (jaise cover photo `photo.pendingFile` karta hai) aur
+    item save hote hi, usi order me, ek saath upload ho jaati hain.
+  */
+  const [gallery, setGallery] = useState([]); // edit mode — server se synced {url, publicId}
+  const [pendingGalleryFiles, setPendingGalleryFiles] = useState([]); // create mode — {id, file, previewUrl}
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const galleryFileRef = useRef(null);
+  const MAX_GALLERY = 5;
+
+  // Dikhane ke liye dono ko ek hi shape me — edit ho ya naya, gallery grid same code use kare
+  const galleryDisplay = isEdit
+    ? gallery.map((g) => ({ key: g.publicId, url: g.url }))
+    : pendingGalleryFiles.map((p) => ({ key: p.id, url: p.previewUrl }));
+
+  // Drag-handle se photo ka order badalna (finger/mouse dono ke liye pointer events)
+  const dragFromIndex = useRef(null);
+  const dragOverIndexRef = useRef(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
   useEffect(() => {
     if (!open) return;
     setFieldErrors({});
@@ -96,9 +121,13 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
         visibleToRetailers: item.visibleToRetailers !== false
       });
       setPhoto({ url: item.imageUrl || '', pendingFile: null });
+      setGallery(item.images || []);
+      setPendingGalleryFiles([]);
     } else {
       setForm({ ...blank, lowStockAt: String(business?.lowStockThreshold ?? 5) });
       setPhoto({ url: '', pendingFile: null });
+      setGallery([]);
+      setPendingGalleryFiles([]);
     }
   }, [open, item, business]);
 
@@ -147,6 +176,140 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
     }
     setPhoto({ url: '', pendingFile: null });
     if (fileRef.current) fileRef.current.value = '';
+  }
+
+  async function pickGalleryPhotos(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+
+    const currentCount = isEdit ? gallery.length : pendingGalleryFiles.length;
+    const room = MAX_GALLERY - currentCount;
+    if (room <= 0) { toast.error(t('Zyada se zyada {n} photo lag sakti hain', { n: MAX_GALLERY })); return; }
+
+    const picked = files.slice(0, room);
+
+    if (!isEdit) {
+      // Naya item — abhi upload nahi, bas local me rakh lo. Save karte hi jayengi.
+      const oversize = picked.find((f) => f.size > 3 * 1024 * 1024);
+      if (oversize) { toast.error(t('Image 3 MB se choti honi chahiye')); return; }
+      setPendingGalleryFiles((cur) => [
+        ...cur,
+        ...picked.map((file) => ({
+          id: Math.random().toString(36).slice(2),
+          file,
+          previewUrl: URL.createObjectURL(file),
+        })),
+      ]);
+      return;
+    }
+
+    setGalleryBusy(true);
+    try {
+      const fd = new FormData();
+      picked.forEach((f) => fd.append('photos', f));
+      const res = await api.post(`/items/${item._id}/photos`, fd);
+      setGallery(res.data.images || []);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGalleryBusy(false);
+    }
+  }
+
+  function removePendingGalleryFile(id) {
+    setPendingGalleryFiles((cur) => {
+      const match = cur.find((p) => p.id === id);
+      if (match) URL.revokeObjectURL(match.previewUrl);
+      return cur.filter((p) => p.id !== id);
+    });
+  }
+
+  async function removeGalleryPhoto(publicId) {
+    setGalleryBusy(true);
+    try {
+      const res = await api.delete(`/items/${item._id}/photos`, { data: { publicId } });
+      setGallery(res.data.images || []);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGalleryBusy(false);
+    }
+  }
+
+  async function moveGalleryPhoto(from, to) {
+    if (!isEdit) {
+      // Naya item — sirf local array me kram badlo, kahin bhejna nahi
+      setPendingGalleryFiles((cur) => {
+        const next = [...cur];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
+      });
+      return;
+    }
+
+    const before = gallery;
+    const next = [...gallery];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setGallery(next); // turant dikhao, backend se confirm baad me
+
+    try {
+      const res = await api.put(`/items/${item._id}/photos/reorder`, {
+        order: next.map((g) => g.publicId),
+      });
+      setGallery(res.data.images || next);
+    } catch (err) {
+      toast.error(err.message);
+      setGallery(before); // save nahi hua to purana order wapas
+    }
+  }
+
+  /** Naya item save hote hi, jo photos local me pending thi, ek saath upload */
+  async function uploadPendingGalleryFor(itemId) {
+    if (!pendingGalleryFiles.length) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      pendingGalleryFiles.forEach((p) => fd.append('photos', p.file));
+      await api.post(`/items/${itemId}/photos`, fd);
+    } catch (err) {
+      toast.error(t('Kuch photos upload nahi hui: {a}', { a: err.message }));
+    } finally {
+      pendingGalleryFiles.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      setUploading(false);
+    }
+  }
+
+  // Grip pakad kar khisकाना — mouse aur touch dono isi ek pointer event se chalte hain
+  function startGalleryDrag(index) {
+    dragFromIndex.current = index;
+    dragOverIndexRef.current = index;
+    setDragOverIndex(index);
+
+    function onMove(ev) {
+      const point = ev.touches ? ev.touches[0] : ev;
+      const el = document.elementFromPoint(point.clientX, point.clientY);
+      const thumb = el?.closest('[data-gallery-index]');
+      if (!thumb) return;
+      const idx = Number(thumb.dataset.galleryIndex);
+      dragOverIndexRef.current = idx;
+      setDragOverIndex(idx);
+    }
+
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      const from = dragFromIndex.current;
+      const to = dragOverIndexRef.current;
+      dragFromIndex.current = null;
+      setDragOverIndex(null);
+      if (from !== null && to !== null && from !== to) moveGalleryPhoto(from, to);
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   }
 
   async function addCategory() {
@@ -213,6 +376,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       await api.post('/items', payload);
 
       await uploadPhotoFor(res.data._id);
+      if (!isEdit) await uploadPendingGalleryFor(res.data._id);
 
       toast.success(isEdit ? 'Item save ho gaya' : `${payload.name} add ho gaya`);
       onSaved();
@@ -266,7 +430,71 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           </div>
         </div>
 
-        {/* ---- Basic ---- */}
+        {/* ---- Gallery (extra photos — product detail page ka slider) ---- */}
+        <div className="rounded-lg border border-slate-200 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+              <Images size={15} className="text-slate-400" />
+              {t('Aur photos')}
+            </p>
+            <span className="text-xs text-slate-400">{galleryDisplay.length}/{MAX_GALLERY}</span>
+          </div>
+          <p className="mb-2 text-xs text-slate-500">
+            {t('Retailer ko product khente hue in sab photos ko slide kar ke dekhne ka option milega.')}
+            {galleryDisplay.length > 1 && ` ${t('Grip pakad kar kram badal sakte hain.')}`}
+            {!isEdit && ` ${t('Item save karte hi ye lag jayengi.')}`}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {galleryDisplay.map((g, i) => (
+              <div
+                key={g.key}
+                data-gallery-index={i}
+                className={cn(
+                  'group relative h-16 w-16 overflow-hidden rounded-lg ring-1 transition-shadow',
+                  dragOverIndex === i ? 'ring-2 ring-brand-500' : 'ring-slate-200',
+                )}
+              >
+                <img src={g.url} alt="" className="pointer-events-none h-full w-full object-cover" />
+
+                {galleryDisplay.length > 1 && (
+                  <span
+                    onPointerDown={() => startGalleryDrag(i)}
+                    className="absolute bottom-0.5 left-0.5 flex cursor-grab touch-none items-center justify-center rounded bg-white/90 p-0.5 text-slate-500 shadow active:cursor-grabbing"
+                    aria-label={t('Photo khiskane ke liye pakdein')}
+                  >
+                    <GripVertical size={12} />
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => isEdit ? removeGalleryPhoto(g.key) : removePendingGalleryFile(g.key)}
+                  disabled={galleryBusy}
+                  aria-label={t('Photo hatayein')}
+                  className="absolute right-0.5 top-0.5 rounded-full bg-white/90 p-0.5 text-red-600 shadow focus-ring"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+
+            {galleryDisplay.length < MAX_GALLERY && (
+              <>
+                <input ref={galleryFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple
+                  className="hidden" onChange={pickGalleryPhotos} />
+                <button
+                  type="button"
+                  onClick={() => galleryFileRef.current?.click()}
+                  disabled={galleryBusy}
+                  className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-brand-400 hover:text-brand-600 focus-ring disabled:opacity-50"
+                >
+                  <Plus size={18} />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label={t('Item ka naam')} required autoFocus placeholder={t('Bearing 6203')}
           value={form.name} onChange={set('name')} error={fieldErrors.name}

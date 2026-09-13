@@ -31,6 +31,13 @@ export const createInvoiceSchema = z.object({
   paymentMode: z.enum(Object.values(PAYMENT_MODES)).optional().default('CASH'),
   notes: z.string().trim().max(500).optional().default(''),
   termsAndConditions: z.string().trim().max(2000).optional(),
+  /*
+   * GST-registered dukaan bhi kabhi-kabhi bina tax ke bill banana chahti hai
+   * (jaise chhoot wala maal, ya kisi khaas wajah se) — Part 27. Sirf tab kaam
+   * karta hai jab business GST me registered hai; warna bill pehle se hi Bill
+   * of Supply hai, ye tick ka koi matlab nahi.
+   */
+  forceBillOfSupply: z.boolean().optional().default(false),
 });
 
 export const listInvoicesQuerySchema = z.object({

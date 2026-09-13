@@ -33,7 +33,7 @@ export async function updateBusiness(businessId, payload, user = null) {
   const simpleFields = [
     'name', 'email', 'upiId', 'upiName', 'invoicePrefix', 'orderPrefix',
     'termsAndConditions', 'invoiceFooterNote', 'lowStockThreshold',
-    'autoApproveRetailers', 'inviteEnabled',
+    'autoApproveRetailers', 'inviteEnabled', 'bio',
   ];
   for (const field of simpleFields) {
     if (payload[field] !== undefined) business[field] = payload[field];
@@ -97,6 +97,51 @@ export async function removeLogo(businessId) {
   business.logoPublicId = '';
   await business.save();
   return { logoUrl: '' };
+}
+
+/*
+ * COVER PHOTO — Instagram-jaisi profile ke sabse upar wali badi photo
+ * (Part 24). Logo se bilkul alag, isi wajah se apna khud ka publicId.
+ */
+export async function setCoverPhoto(businessId, file) {
+  if (!file) throw ApiError.badRequest('Koi image nahi mili');
+
+  const business = await Business.findById(businessId);
+  if (!business) throw ApiError.notFound('Business profile nahi mila');
+
+  const { url, publicId } = await saveImage(file, 'covers');
+
+  if (business.coverPhotoPublicId) await deleteImage(business.coverPhotoPublicId);
+
+  business.coverPhotoUrl = url;
+  business.coverPhotoPublicId = publicId;
+  await business.save();
+
+  return { coverPhotoUrl: url };
+}
+
+export async function removeCoverPhoto(businessId) {
+  const business = await Business.findById(businessId);
+  if (!business) throw ApiError.notFound('Business profile nahi mila');
+
+  if (business.coverPhotoPublicId) await deleteImage(business.coverPhotoPublicId);
+  business.coverPhotoUrl = '';
+  business.coverPhotoPublicId = '';
+  await business.save();
+  return { coverPhotoUrl: '' };
+}
+
+/**
+ * "Poora tour dekh liya" ya "abhi chhod diya" — Part 29.
+ *
+ * Dono me se koi bhi ho jaye to onboarding tour AUTO-SHOW hona band ho jata
+ * hai. Isse chhota-mota ye rakha hai ki agli baar bhi tour poocha nahi
+ * jayega — sirf "Tutorial dobara dekhein" button se seedha khulega.
+ */
+export async function markOnboarding(businessId, { completed = false } = {}) {
+  const field = completed ? 'onboardingCompletedAt' : 'onboardingSkippedAt';
+  await Business.updateOne({ _id: businessId }, { $set: { [field]: new Date() } });
+  return { ok: true };
 }
 
 export async function regenerateInvite(businessId) {

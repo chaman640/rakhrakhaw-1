@@ -10,6 +10,7 @@ import {
   Purchase, Party, Item, Business, Counter, StockMovement, StockLot, Payment, ReturnNote,
 } from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
+import { createItem } from './item.service.js';
 import { khepBanao, khepHatao } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { applyCredit } from './settlement.service.js';
@@ -255,13 +256,46 @@ export async function createPurchase(businessId, payload, userId) {
     throw ApiError.badRequest('Supplier nahi mila — pehle Suppliers page se add karein');
   }
 
+  /*
+    NAYE ITEM PEHLE BANA LO (Part 20).
+
+    Jaise StockIntake me hota hai waise hi yahan bhi: item BAS KHULTA hai,
+    opening stock ZERO — maal isi purchase line se chadhega, na ki do baar
+    (ek opening stock se, ek isse). `purchasePrice` isi bill ke rate se aata
+    hai, taaki lagat pehle hi sahi ho.
+  */
+  const resolvedItems = [];
+  for (const line of payload.items) {
+    if (line.itemId) {
+      resolvedItems.push(line);
+      continue;
+    }
+    const created = await createItem(businessId, {
+      name: line.newItem.name,
+      sku: line.newItem.sku || '',
+      unit: line.newItem.unit || 'PCS',
+      hsn: line.newItem.hsn || '',
+      gstRate: line.newItem.gstRate ?? line.gstRate ?? 0,
+      categoryId: line.newItem.categoryId || null,
+      mrp: line.newItem.mrp ?? 0,
+      brand: line.newItem.brand || '',
+      imageUrl: line.newItem.imageUrl || '',
+      warrantyMonths: line.newItem.warrantyMonths ?? 0,
+      warrantyNote: line.newItem.warrantyNote || '',
+      purchasePrice: line.rate,
+      salePrice: 0,
+      openingStock: 0,
+    }, userId);
+    resolvedItems.push({ ...line, itemId: created._id });
+  }
+
   // Saare item ek saath nikal lo (har row pe alag query nahi)
-  const itemIds = payload.items.map((i) => i.itemId);
+  const itemIds = resolvedItems.map((i) => i.itemId);
   const items = await Item.find({ _id: { $in: itemIds }, businessId })
     .select('name unit gstRate purchasePrice').lean();
   const itemMap = new Map(items.map((i) => [String(i._id), i]));
 
-  const lines = payload.items.map((line, idx) => {
+  const lines = resolvedItems.map((line, idx) => {
     const item = itemMap.get(String(line.itemId));
     if (!item) throw ApiError.badRequest(`Row ${idx + 1}: item nahi mila`);
     return {

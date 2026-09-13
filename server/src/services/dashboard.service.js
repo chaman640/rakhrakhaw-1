@@ -120,7 +120,13 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
 
   const saleSum = async (from, to) => Invoice.aggregate([
     { $match: await docScope({ businessId: bid, isCancelled: false, invoiceDate: { $gte: from, $lte: to } }) },
-    { $group: { _id: null, n: { $sum: 1 }, amount: { $sum: '$grandTotal' } } },
+    { $group: {
+      _id: null,
+      n: { $sum: 1 },
+      amount: { $sum: '$grandTotal' },
+      // Tay rate se zyada/kam liya — Part 21 (Reports me isi ka poora byora hai)
+      rateVariance: { $sum: { $ifNull: ['$rateVarianceTotal', 0] } },
+    } },
   ]);
 
   const [
@@ -321,7 +327,7 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
   const activity = buildActivity(recentInvoices, recentOrders, recentPayments);
 
   // Munafa — usi hisaab se jo Reports pe chalta hai
-  const { profitLossReport } = await import('./report.service.js');
+  const { profitLossReport, gstReport } = await import('./report.service.js');
   const plRes = await profitLossReport(businessId, { from: monthStart, to: todayEnd }, user);
   const pl = {
     month: round2(plRes.meta?.netProfit || 0),
@@ -330,7 +336,22 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
     cost: round2(plRes.meta?.cost || 0),
     expenses: round2(plRes.meta?.expenses || 0),
     marginPct: plRes.meta?.netMarginPct ?? null,
+    // Is mahine tay rate se kitna zyada/kam liya — Part 21, poora byora Reports pe
+    rateVarianceTotal: round2(plRes.meta?.rateVarianceTotal || 0),
   };
+
+  /*
+   * "Is mahine GST dena hai" — GST report pehle se poora hisaab lagata hai
+   * (output tax − input credit); yahan sirf uska netPayable utha lete hain.
+   * GST report chalane se pehle check karte hain ki dukaan GST me registered
+   * hai bhi ya nahi — na ho to ye poora hissa hi response se hata dete hain.
+   */
+  const business = await Business.findById(businessId).select('gstEnabled').lean();
+  let gst = null;
+  if (business?.gstEnabled) {
+    const gstRes = await gstReport(businessId, { from: monthStart, to: todayEnd }, user);
+    gst = { payable: round2(gstRes.meta?.netPayable || 0) };
+  }
 
   /**
    * Staff ko sirf wahi dikhe jiski ijazat hai.
@@ -349,6 +370,8 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
       changePct: yesterday > 0 ? round2(((today - yesterday) / yesterday) * 100) : null,
       month: round2(monthSale[0]?.amount || 0),
       monthBills: monthSale[0]?.n || 0,
+      // Aaj tay rate se kitna zyada/kam liya
+      todayRateVariance: round2(todaySale[0]?.rateVariance || 0),
     },
     collection: {
       today: round2(todayCollection[0]?.amount || 0),
@@ -381,6 +404,7 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
       kuch aur kehta aur report kuch aur — dukaandaar dono par bharosa khota.
     */
     profit: pl,
+    gst,
     orders: {
       new: statusMap[ORDER_STATUS.PLACED] || 0,
       packed: statusMap[ORDER_STATUS.PACKED] || 0,
@@ -498,9 +522,11 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
       tak pahunch jata jise Reports kholne ki bhi ijazat nahi.
     */
     delete full.profit;
+    delete full.gst;
     if (full.sale) {
       delete full.sale.month;
       delete full.sale.monthBills;
+      delete full.sale.todayRateVariance;
     }
   }
   // Activity feed me har cheez mil-jul kar aati hai — jo dekh nahi sakta, wo row hata do

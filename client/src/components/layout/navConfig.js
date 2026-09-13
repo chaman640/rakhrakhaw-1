@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus,
+  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard,
 } from 'lucide-react';
 
 /**
@@ -37,6 +37,14 @@ export const wholesalerNav = [
   {
     to: '/retailers', label: 'Retailers', icon: Users, part: 4, perm: 'parties',
     desc: 'Jinko aap maal bechte hain',
+  },
+  {
+    to: '/chat', label: 'Chat', icon: MessageCircle, part: 25, badgeKey: 'chatUnread',
+    desc: 'Retailer se seedha baat — text aur photo',
+  },
+  {
+    to: '/autopay', label: 'Autopay', icon: CreditCard, part: 28,
+    desc: 'Plan, autopay aur har mahine ka hisaab',
   },
   /*
     Teen ki jagah ek: "Kharid".
@@ -134,6 +142,10 @@ export const buyerNav = [
   },
   { to: '/shop', label: 'Catalog', icon: Store, part: 6, desc: 'Chuni hui dukaan ka poora maal aur rate' },
   { to: '/cart', label: 'Cart', icon: ShoppingCart, part: 6, badgeKey: 'cartCount', desc: 'Jo maal aapne chuna hai' },
+  {
+    to: '/buy/chat', label: 'Chat', icon: MessageCircle, part: 25, badgeKey: 'chatUnread',
+    desc: 'Dukaandaar se seedha baat',
+  },
   { to: '/my-orders', label: 'My Orders', icon: FileText, part: 7, desc: 'Aapke bheje hue order' },
   { to: '/my-bills', label: 'Mere Bills', icon: Receipt, part: 8, desc: 'Aapke saare bill' },
   { to: '/my-khata', label: 'My Khata', icon: BookOpen, part: 9, desc: 'Kitna baaki hai' },

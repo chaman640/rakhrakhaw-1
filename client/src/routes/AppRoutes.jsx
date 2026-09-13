@@ -33,6 +33,12 @@ import StockIntakePage from '@/pages/wholesaler/StockIntake';
 import IntakeReview from '@/pages/wholesaler/intake/IntakeReview';
 import ShopSearch from '@/pages/buy/ShopSearch';
 import ShopPage from '@/pages/buy/ShopPage';
+import ProductDetail from '@/pages/buy/ProductDetail';
+import BuyChat from '@/pages/buy/Chat';
+import BuyChatThread from '@/pages/buy/ChatThread';
+import WholesalerChat from '@/pages/wholesaler/Chat';
+import WholesalerChatThread from '@/pages/wholesaler/ChatThread';
+import Autopay from '@/pages/wholesaler/Autopay';
 import CartPage from '@/pages/retailer/Cart';
 import MyOrders from '@/pages/retailer/MyOrders';
 import OrderDetail from '@/pages/retailer/OrderDetail';
@@ -223,6 +229,9 @@ export default function AppRoutes() {
         <Route path="/items" element={<RequirePermission permission="items"><Items /></RequirePermission>} />
         <Route path="/retailers" element={<RequirePermission permission="parties"><Retailers /></RequirePermission>} />
         <Route path="/retailers/:id" element={<RequirePermission permission="parties"><PartyDetail type="retailer" /></RequirePermission>} />
+        <Route path="/chat" element={<WholesalerChat />} />
+        <Route path="/chat/:partyId" element={<WholesalerChatThread />} />
+        <Route path="/autopay" element={<Autopay />} />
         {/*
           Teen pate, ek page.
 
@@ -297,6 +306,9 @@ export default function AppRoutes() {
         */}
         <Route path="/buy" element={<ShopSearch />} />
         <Route path="/shop" element={<ShopPage />} />
+        <Route path="/shop/item/:id" element={<ProductDetail />} />
+        <Route path="/buy/chat" element={<BuyChat />} />
+        <Route path="/buy/chat/:businessId" element={<BuyChatThread />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/my-orders/:id" element={<OrderDetail />} />

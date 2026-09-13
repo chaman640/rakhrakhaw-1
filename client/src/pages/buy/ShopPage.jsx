@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import StoryViewer from '@/components/story/StoryViewer';
 
 /**
  * DUKAAN KA PAGE — Instagram wali window.
@@ -242,6 +243,9 @@ export default function ShopPage() {
                 qty={qtys[item._id] ?? minQty(item)}
                 onQty={(v) => setQtys((s) => ({ ...s, [item._id]: v }))}
                 onAdd={() => add(item)}
+                onOpen={() => navigate(`/shop/item/${item._id}?${new URLSearchParams({
+                  q: debouncedQ, categoryId, stock, sort, page: String(page),
+                }).toString()}`)}
                 adding={adding === item._id}
                 added={justAdded?.id === item._id ? justAdded : null}
               />
@@ -273,84 +277,133 @@ export default function ShopPage() {
 /* ────────────────────────── upar wala hissa (Instagram jaisa) ────────────────────────── */
 
 function ShopHeader({ shop, saving, onToggleSave, onSwitch, onCart, cartCount }) {
+  const [storyOpen, setStoryOpen] = useState(false);
+
   if (!shop) {
     return <Card className="mb-4"><div className="h-24 animate-pulse rounded-lg bg-slate-100" /></Card>;
   }
 
-  return (
-    <Card className="mb-4">
-      <div className="flex items-start gap-4">
-        {shop.logoUrl ? (
-          <img src={shop.logoUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-slate-200 sm:h-20 sm:w-20" />
-        ) : (
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 sm:h-20 sm:w-20">
-            <Store size={26} />
-          </div>
-        )}
+  const hasCover = Boolean(shop.coverPhotoUrl);
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-slate-900">{shop.name}</h1>
-              <p className="truncate text-xs text-slate-500">
-                {shop.phone}
-                {shop.city ? ` · ${shop.city}` : ''}
-              </p>
+  const logoInner = shop.logoUrl ? (
+    <img src={shop.logoUrl} alt="" className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20" />
+  ) : (
+    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 sm:h-20 sm:w-20">
+      <Store size={26} />
+    </div>
+  );
+
+  return (
+    <Card className="mb-4 overflow-hidden" padding={false}>
+      {/* Cover photo — Instagram-jaisi banner, logo isi ke upar thoda overlap karta hai */}
+      {hasCover && (
+        <div className="h-28 w-full bg-slate-100 sm:h-36">
+          <img src={shop.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+
+      <div className={cn('p-5', hasCover && '-mt-8 sm:-mt-10')}>
+        <div className="flex items-start gap-4">
+          {/*
+            Story ring — WhatsApp/Instagram jaisa. Rangeen = koi story andekhi
+            hai, sadi grey = sab dekh li. Story na ho to logo pehle jaisa hi,
+            tap karne se kuch nahi hota.
+          */}
+          {shop.hasStory ? (
+            <button
+              type="button"
+              onClick={() => setStoryOpen(true)}
+              aria-label={t('Story dekhein')}
+              className={cn(
+                'shrink-0 rounded-full p-[3px] focus-ring',
+                shop.hasUnseenStory ? 'bg-gradient-to-tr from-amber-400 via-brand-600 to-pink-500' : 'bg-slate-300',
+              )}
+            >
+              <div className="rounded-full bg-white p-0.5">{logoInner}</div>
+            </button>
+          ) : (
+            <div className={cn('shrink-0 rounded-full', hasCover && 'ring-4 ring-white')}>{logoInner}</div>
+          )}
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-semibold text-slate-900">{shop.name}</h1>
+                <p className="truncate text-xs text-slate-500">
+                  {shop.phone}
+                  {shop.city ? ` · ${shop.city}` : ''}
+                </p>
+              </div>
+
+              {/* Save — follow jaisa. Juda hua ho tabhi. */}
+              {shop.connected && (
+                <button
+                  type="button"
+                  onClick={onToggleSave}
+                  disabled={saving}
+                  aria-label={shop.saved ? t('Save hatayein') : t('Save karein')}
+                  title={shop.saved ? t('Save hatayein') : t('Save karein')}
+                  className={cn(
+                    'shrink-0 rounded-lg p-2 transition-colors focus-ring',
+                    shop.saved ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-400 hover:bg-slate-100',
+                  )}
+                >
+                  {shop.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
+                </button>
+              )}
             </div>
 
-            {/* Save — follow jaisa. Juda hua ho tabhi. */}
-            {shop.connected && (
-              <button
-                type="button"
-                onClick={onToggleSave}
-                disabled={saving}
-                aria-label={shop.saved ? t('Save hatayein') : t('Save karein')}
-                title={shop.saved ? t('Save hatayein') : t('Save karein')}
-                className={cn(
-                  'shrink-0 rounded-lg p-2 transition-colors focus-ring',
-                  shop.saved ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-400 hover:bg-slate-100',
-                )}
-              >
-                {shop.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
-              </button>
+            {/* Bio — dukaan ka chhota parichay */}
+            {shop.bio && (
+              <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{shop.bio}</p>
             )}
-          </div>
 
-          {/*
-            Do ginti — Instagram ke "posts / followers" jaisi.
-            Inhi se pata chalta hai ki dukaan bhari hai ya khali.
-          */}
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-            <span className="inline-flex items-center gap-1.5 text-slate-700">
-              <Package size={14} className="text-slate-400" />
-              <span className="font-semibold">{shop.itemCount ?? 0}</span>
-              <span className="text-xs text-slate-500">{t('item')}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-slate-700">
-              <Layers size={14} className="text-slate-400" />
-              <span className="font-semibold">{shop.categoryCount ?? 0}</span>
-              <span className="text-xs text-slate-500">{t('category')}</span>
-            </span>
-            {shop.balance > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-amber-700">
-                <span className="tabular font-semibold">{formatMoney(shop.balance)}</span>
-                <span className="text-xs">{t('baaki')}</span>
+            {/*
+              Do ginti — Instagram ke "posts / followers" jaisi.
+              Inhi se pata chalta hai ki dukaan bhari hai ya khali.
+            */}
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+              <span className="inline-flex items-center gap-1.5 text-slate-700">
+                <Package size={14} className="text-slate-400" />
+                <span className="font-semibold">{shop.itemCount ?? 0}</span>
+                <span className="text-xs text-slate-500">{t('item')}</span>
               </span>
-            )}
+              <span className="inline-flex items-center gap-1.5 text-slate-700">
+                <Layers size={14} className="text-slate-400" />
+                <span className="font-semibold">{shop.categoryCount ?? 0}</span>
+                <span className="text-xs text-slate-500">{t('category')}</span>
+              </span>
+              {shop.balance > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-amber-700">
+                  <span className="tabular font-semibold">{formatMoney(shop.balance)}</span>
+                  <span className="text-xs">{t('baaki')}</span>
+                </span>
+              )}
+            </div>
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+          <Button size="sm" variant="secondary" icon={ArrowLeftRight} onClick={onSwitch}>
+            {t('Dukaan badlein')}
+          </Button>
+          {cartCount > 0 && (
+            <Button size="sm" icon={ShoppingCart} onClick={onCart}>
+              {t('Cart ({a0})', { a0: cartCount })}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-        <Button size="sm" variant="secondary" icon={ArrowLeftRight} onClick={onSwitch}>
-          {t('Dukaan badlein')}
-        </Button>
-        {cartCount > 0 && (
-          <Button size="sm" icon={ShoppingCart} onClick={onCart}>
-            {t('Cart ({a0})', { a0: cartCount })}
-          </Button>
-        )}
-      </div>
+      {storyOpen && (
+        <StoryViewer
+          businessId={shop._id}
+          onClose={() => {
+            setStoryOpen(false);
+            bust('shop-info'); // dekh li — ring ab sadi ho jaani chahiye
+          }}
+        />
+      )}
     </Card>
   );
 }
@@ -412,36 +465,45 @@ function FilterSheet({
 
 /* ────────────────────────── ek item ka card ────────────────────────── */
 
-function ItemCard({ item, qty, onQty, onAdd, adding, added }) {
+function ItemCard({ item, qty, onQty, onAdd, onOpen, adding, added }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="relative aspect-square bg-slate-50">
-        {item.imageUrl ? (
-          <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-slate-300">
-            <Package size={36} />
-          </div>
-        )}
+      {/*
+        Photo + naam pe tap = product detail page (poora byora, photo slider,
+        chat me bhejne ka option). Neeche ki stepper aur "Daal dein" alag hain
+        taaki grid me se bina khole bhi turant add kiya ja sake.
+      */}
+      <button type="button" onClick={onOpen} className="block text-left focus-ring" aria-label={t('{naam} ka poora byora dekhein', { naam: item.name })}>
+        <div className="relative aspect-square bg-slate-50">
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-slate-300">
+              <Package size={36} />
+            </div>
+          )}
 
-        {!item.inStock && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-            <Badge tone="red">{t('Abhi khatam')}</Badge>
-          </div>
-        )}
-        {item.inStock && item.hasSpecialRate && (
-          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-            <Tag size={10} /> {t('Aapka rate')}
-          </span>
-        )}
-      </div>
+          {!item.inStock && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+              <Badge tone="red">{t('Abhi khatam')}</Badge>
+            </div>
+          )}
+          {item.inStock && item.hasSpecialRate && (
+            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+              <Tag size={10} /> {t('Aapka rate')}
+            </span>
+          )}
+        </div>
+      </button>
 
       <div className="flex flex-1 flex-col p-3">
-        <p className="line-clamp-2 text-sm font-medium text-slate-900">{item.name}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-500">
-          {item.brand || item.category || item.sku || ' '}
-          {item.modelNo && <span className="text-slate-400"> · {item.modelNo}</span>}
-        </p>
+        <button type="button" onClick={onOpen} className="text-left focus-ring">
+          <p className="line-clamp-2 text-sm font-medium text-slate-900">{item.name}</p>
+          <p className="mt-0.5 truncate text-xs text-slate-500">
+            {item.brand || item.category || item.sku || ' '}
+            {item.modelNo && <span className="text-slate-400"> · {item.modelNo}</span>}
+          </p>
+        </button>
 
         <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
           <span className="tabular text-lg font-semibold text-slate-900">{formatMoney(item.rate)}</span>

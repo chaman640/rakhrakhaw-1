@@ -9,7 +9,8 @@ import { normalizePhone } from '../utils/phone.js';
 import { getStateCode } from '../config/states.js';
 import { validateGstin } from '../utils/gstin.js';
 import { generateInviteCode } from '../utils/generateCode.js';
-import { businessForUser } from '../utils/businessView.js';
+import { businessForUser, isOwnerUser } from '../utils/businessView.js';
+import { SUB_STATUS } from '../config/billing.js';
 import { User, Business, Party, Membership } from '../models/index.js';
 import { assertOtpToken } from './otp.service.js';
 import { cacheBust } from '../utils/cache.js';
@@ -312,6 +313,31 @@ export async function login({ phone, password }) {
 
   const okPassword = await user.checkPassword(password);
   if (!okPassword) throw ApiError.unauthorized('Password galat hai');
+
+  /*
+   * DUKAAN KA PAISA RUKA HAI TO STAFF LOGIN NAHI KAR SAKTA (Part 28).
+   *
+   * MALIK ke liye ye jaanch bilkul nahi lagti — use andar aakar payment
+   * karna hai, use bahar rok dena hi sabse badi galti hogi (poori wajah
+   * `billing.service.js` me `assertCanSell` ke paas likhi hai).
+   *
+   * STAFF paisa de hi nahi sakta — sirf malik de sakta hai. Isliye use
+   * "kuch din aur chalne do" (grace) ka koi fayda nahi; turant rok dete hain,
+   * taaki dukaandaar ko turant pata chale ki uska staff kaam nahi kar pa
+   * raha, chhupa hua na rahe.
+   */
+  if (user.role === ROLES.WHOLESALER && !isOwnerUser(user) && user.businessId) {
+    const { isFreeMode, subscriptionOf } = await import('./billing.service.js');
+    if (!isFreeMode()) {
+      const state = await subscriptionOf(user.businessId);
+      if (state.status !== SUB_STATUS.ACTIVE) {
+        throw ApiError.forbidden(
+          'Dukaan ka payment ruka hua hai. Malik se sampark karein — unke payment karte hi aap dobara login kar sakenge.',
+          { reason: 'business_payment_due' },
+        );
+      }
+    }
+  }
 
   /*
     NAYA LOGIN = PURANA PHONE BAHAR (item 24).

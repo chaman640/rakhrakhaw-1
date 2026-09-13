@@ -26,6 +26,19 @@ export const deleteLogo = asyncHandler(async (req, res) => {
   return ok(res, result, 'Logo hata diya');
 });
 
+export const uploadCoverPhoto = asyncHandler(async (req, res) => {
+  const result = await businessService.setCoverPhoto(req.businessId, req.file);
+  return ok(res, result, 'Cover photo lag gayi');
+});
+
+export const deleteCoverPhoto = asyncHandler(async (req, res) => {
+  const result = await businessService.removeCoverPhoto(req.businessId);
+  return ok(res, result, 'Cover photo hata di');
+});
+
+export const setOnboarding = asyncHandler(async (req, res) =>
+  ok(res, await businessService.markOnboarding(req.businessId, req.body)));
+
 export const regenerateInvite = asyncHandler(async (req, res) => {
   const result = await businessService.regenerateInvite(req.businessId);
   return ok(res, result, 'Naya link ban gaya — purana ab kaam nahi karega');

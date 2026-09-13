@@ -1910,6 +1910,148 @@ const DICT = {
   'Kitne ka bechenge': { hi: 'कितने का बेचेंगे', en: 'Selling price' },
   '{n} item add karein': { hi: '{n} आइटम जोड़ें', en: 'Add {n} items' },
   'Bill se add': { hi: 'बिल से जोड़ें', en: 'Add from bill' },
+
+  /* ── product detail page (Part 18) ── */
+  '{naam} ka poora byora dekhein': { hi: '{naam} का पूरा ब्योरा देखें', en: 'View full details for {naam}' },
+  'Wapas': { hi: 'वापस', en: 'Back' },
+  'Wapas jaayein': { hi: 'वापस जाएँ', en: 'Go back' },
+  'Item nahi mila': { hi: 'आइटम नहीं मिला', en: 'Item not found' },
+  'Ye item ab available nahi hai, ya hata diya gaya hai.': { hi: 'यह आइटम अब उपलब्ध नहीं है, या हटा दिया गया है।', en: 'This item is no longer available, or has been removed.' },
+  'Photo {n}': { hi: 'फ़ोटो {n}', en: 'Photo {n}' },
+  'Byora': { hi: 'ब्योरा', en: 'Details' },
+  'Chat me bhejein': { hi: 'चैट में भेजें', en: 'Send in chat' },
+  'Chat feature jald aa raha hai': { hi: 'चैट फ़ीचर जल्द आ रहा है', en: 'The chat feature is coming soon' },
+  'Cart me daal diya': { hi: 'कार्ट में डाल दिया', en: 'Added to cart' },
+
+  /* ── item gallery — extra photos (Part 18) ── */
+  'Aur photos': { hi: 'और फ़ोटो', en: 'More photos' },
+  'Retailer ko product khente hue in sab photos ko slide kar ke dekhne ka option milega.': { hi: 'रिटेलर को प्रोडक्ट खोलते ही इन सब फ़ोटो को स्लाइड करके देखने का विकल्प मिलेगा।', en: 'Retailers will be able to swipe through all these photos when they open the product.' },
+  'Photo hatayein': { hi: 'फ़ोटो हटाएँ', en: 'Remove photo' },
+  'Zyada se zyada {n} photo lag sakti hain': { hi: 'ज़्यादा से ज़्यादा {n} फ़ोटो लग सकती हैं', en: 'You can add up to {n} photos' },
+  'Grip pakad kar kram badal sakte hain.': { hi: 'ग्रिप पकड़कर क्रम बदल सकते हैं।', en: 'Hold the grip to reorder.' },
+  'Photo khiskane ke liye pakdein': { hi: 'फ़ोटो खिसकाने के लिए पकड़ें', en: 'Hold to drag photo' },
+
+  /* ── purchase se naya item (Part 20) ── */
+  'Search karein': { hi: 'सर्च करें', en: 'Search' },
+  'Unit': { hi: 'यूनिट', en: 'Unit' },
+  'HSN': { hi: 'एचएसएन', en: 'HSN' },
+
+  /* ── waste / damaged stock (Part 20) ── */
+  'Kaunsa item kharab hua': { hi: 'कौन सा आइटम ख़राब हुआ', en: 'Which item was damaged' },
+  'Kitni quantity kharab hui': { hi: 'कितनी क्वांटिटी ख़राब हुई', en: 'How much quantity was damaged' },
+  'Andazan nuksan: {a0}': { hi: 'अंदाज़न नुक़सान: {a0}', en: 'Estimated loss: {a0}' },
+  'Itna stock nahi hai — zyada se zyada {a0} chun sakte hain': { hi: 'इतना स्टॉक नहीं है — ज़्यादा से ज़्यादा {a0} चुन सकते हैं', en: 'Not enough stock — you can select up to {a0}' },
+  'Save karte hi itni quantity ka stock kam ho jayega, aur uski lagat hi is kharch ka amount ban jayegi.': { hi: 'सेव करते ही इतनी क्वांटिटी का स्टॉक कम हो जाएगा, और उसकी लागत ही इस ख़र्च का अमाउंट बन जाएगी।', en: 'Saving this will reduce stock by this quantity, and its cost becomes this expense\u2019s amount.' },
+  'Waste/Damaged Stock ki entry me item ya quantity badla nahi ja sakta — hata kar dobara banayein.': { hi: 'Waste/Damaged Stock की एंट्री में आइटम या क्वांटिटी बदला नहीं जा सकता — हटाकर दोबारा बनाएं।', en: 'Item or quantity can\u2019t be changed on a Waste/Damaged Stock entry — delete and recreate it.' },
+
+  /* ── billing rate variance (Part 21) ── */
+  '{a} zyada': { hi: '{a} ज़्यादा', en: '{a} more' },
+  '{a} kam': { hi: '{a} कम', en: '{a} less' },
+  'Tay rate ({a}) se {b} zyada — is line par': { hi: 'तय रेट ({a}) से {b} ज़्यादा — इस लाइन पर', en: '{b} above the set rate ({a}) — on this line' },
+  'Tay rate ({a}) se {b} kam — is line par': { hi: 'तय रेट ({a}) से {b} कम — इस लाइन पर', en: '{b} below the set rate ({a}) — on this line' },
+  'Tay rate se zyada mila': { hi: 'तय रेट से ज़्यादा मिला', en: 'Extra above set rate' },
+  'Tay rate se kam liya': { hi: 'तय रेट से कम लिया', en: 'Less than set rate' },
+
+  /* ── GST payable on dashboard (Part 22) ── */
+  'Is mahine GST dena hai': { hi: 'इस महीने GST देना है', en: 'GST due this month' },
+  'Output − input credit': { hi: 'आउटपुट − इनपुट क्रेडिट', en: 'Output − input credit' },
+
+  /* ── naya item banate waqt hi gallery photos (Part 23) ── */
+  'Item save karte hi ye lag jayengi.': { hi: 'आइटम सेव करते ही ये लग जाएँगी।', en: 'These will be added as soon as you save the item.' },
+  'Kuch photos upload nahi hui: {a}': { hi: 'कुछ फ़ोटो अपलोड नहीं हुईं: {a}', en: 'Some photos failed to upload: {a}' },
+  'Image 3 MB se choti honi chahiye': { hi: 'इमेज 3 MB से छोटी होनी चाहिए', en: 'Image should be under 3 MB' },
+
+  /* ── Instagram-jaisi profile — cover photo, bio, approval (Part 24) ── */
+  'Cover photo': { hi: 'कवर फ़ोटो', en: 'Cover photo' },
+  'Retailer jab aapki dukaan kholega, sabse upar yahi dikhega': { hi: 'रिटेलर जब आपकी दुकान खोलेगा, सबसे ऊपर यही दिखेगा', en: 'This shows at the top when a retailer opens your shop' },
+  'Cover photo lag gayi': { hi: 'कवर फ़ोटो लग गई', en: 'Cover photo added' },
+  'Cover photo hata di': { hi: 'कवर फ़ोटो हटा दी', en: 'Cover photo removed' },
+  'Bio': { hi: 'बायो', en: 'Bio' },
+  'Chhota parichay — jaise "10 saal se auto parts ka thok kaam"': { hi: 'छोटा परिचय — जैसे "10 साल से ऑटो पार्ट्स का थोक काम"', en: 'A short intro — like "10 years in auto parts wholesale"' },
+  '{n}/300': { hi: '{n}/300', en: '{n}/300' },
+  'Retailer approval': { hi: 'रिटेलर अप्रूवल', en: 'Retailer approval' },
+  'On karne par koi bhi retailer aapki dukaan seedha dekh aur order kar sakega — approval ka intezaar nahi karna padega. Off rakhne par har naye retailer ko pehle aapki manzoori chahiye hogi.': { hi: 'ऑन करने पर कोई भी रिटेलर आपकी दुकान सीधा देख और ऑर्डर कर सकेगा — अप्रूवल का इंतज़ार नहीं करना पड़ेगा। ऑफ रखने पर हर नए रिटेलर को पहले आपकी मंज़ूरी चाहिए होगी।', en: 'When on, any retailer can view and order from your shop right away — no approval wait. When off, every new retailer needs your approval first.' },
+
+  /* ── product reel — Instagram-jaisi browsing (Part 25) ── */
+  'Stock me hai': { hi: 'स्टॉक में है', en: 'In stock' },
+  '{n} photo': { hi: '{n} फ़ोटो', en: '{n} photos' },
+
+  /* ── Chat (Part 25) ── */
+  'Chat': { hi: 'चैट', en: 'Chat' },
+  'Retailer se seedha baat — text aur photo': { hi: 'रिटेलर से सीधा बात — टेक्स्ट और फ़ोटो', en: 'Message retailers directly — text and photos' },
+  'Dukaandaar se seedha baat': { hi: 'दुकानदार से सीधा बात', en: 'Message the shop directly' },
+  'Naya chat — naam ya number se dhundhein': { hi: 'नया चैट — नाम या नंबर से ढूंढें', en: 'New chat — search by name or number' },
+  'Apni dukaanon me dhundhein': { hi: 'अपनी दुकानों में ढूंढें', en: 'Search among your shops' },
+  'Koi nahi mila': { hi: 'कोई नहीं मिला', en: 'Nothing found' },
+  'Abhi koi chat nahi': { hi: 'अभी कोई चैट नहीं', en: 'No chats yet' },
+  'Upar search karke kisi retailer se baat shuru karein': { hi: 'ऊपर सर्च करके किसी रिटेलर से बात शुरू करें', en: 'Search above to start chatting with a retailer' },
+  'Upar search karke kisi judi hui dukaan se baat shuru karein': { hi: 'ऊपर सर्च करके किसी जुड़ी हुई दुकान से बात शुरू करें', en: 'Search above to start chatting with a connected shop' },
+  'Baat shuru karein': { hi: 'बात शुरू करें', en: 'Start the conversation' },
+  'Naya chat shuru karein': { hi: 'नया चैट शुरू करें', en: 'Start a new chat' },
+  'Retailer': { hi: 'रिटेलर', en: 'Retailer' },
+  'Dukaan': { hi: 'दुकान', en: 'Shop' },
+  'Yahan koi message nahi hai — kuch likh kar shuru karein': { hi: 'यहाँ कोई मैसेज नहीं है — कुछ लिखकर शुरू करें', en: 'No messages here yet — write something to start' },
+  'Message likhein': { hi: 'मैसेज लिखें', en: 'Type a message' },
+  'Photo bhejein': { hi: 'फ़ोटो भेजें', en: 'Send photo' },
+  'Bhejein': { hi: 'भेजें', en: 'Send' },
+  'abhi': { hi: 'अभी', en: 'now' },
+  '{n} min': { hi: '{n} मिनट', en: '{n}m' },
+  '{n} ghante': { hi: '{n} घंटे', en: '{n}h' },
+  '{n} din': { hi: '{n} दिन', en: '{n}d' },
+
+  /* ── Stories (Part 25) ── */
+  'Story': { hi: 'स्टोरी', en: 'Story' },
+  '24 ghante ke liye rehti hai — jude hue retailer dekh sakenge': { hi: '24 घंटे के लिए रहती है — जुड़े हुए रिटेलर देख सकेंगे', en: 'Stays for 24 hours — connected retailers will see it' },
+  'Caption (marzi se)': { hi: 'कैप्शन (मर्ज़ी से)', en: 'Caption (optional)' },
+  'Post karein': { hi: 'पोस्ट करें', en: 'Post' },
+  'Story lag gayi': { hi: 'स्टोरी लग गई', en: 'Story posted' },
+  '{n} dekhi': { hi: '{n} ने देखी', en: '{n} views' },
+  'Story dekhein': { hi: 'स्टोरी देखें', en: 'View story' },
+  'Pichli story': { hi: 'पिछली स्टोरी', en: 'Previous story' },
+  'Agli story': { hi: 'अगली स्टोरी', en: 'Next story' },
+
+  /* ── Quick Links (Part 27) ── */
+  'Quick Links': { hi: 'क्विक लिंक्स', en: 'Quick Links' },
+  'Quick Links me jodein': { hi: 'क्विक लिंक्स में जोड़ें', en: 'Add to Quick Links' },
+  'Quick Links se hatayein': { hi: 'क्विक लिंक्स से हटाएं', en: 'Remove from Quick Links' },
+
+  /* ── Tax Invoice / Bill of Supply toggle (Part 27) ── */
+  'Tax Invoice (GST lagega)': { hi: 'टैक्स इनवॉइस (GST लगेगा)', en: 'Tax Invoice (GST applies)' },
+  'Bill of Supply (GST nahi)': { hi: 'बिल ऑफ सप्लाई (GST नहीं)', en: 'Bill of Supply (no GST)' },
+  'Ye bill GST ke saath banega': { hi: 'यह बिल GST के साथ बनेगा', en: 'This bill will include GST' },
+  'Sirf isi bill par GST nahi lagega — Bill of Supply banega': { hi: 'सिर्फ इसी बिल पर GST नहीं लगेगा — बिल ऑफ सप्लाई बनेगा', en: 'GST won\u2019t apply to just this bill — it\u2019ll be a Bill of Supply' },
+
+  /* ── Autopay page (Part 28) ── */
+  'Autopay': { hi: 'ऑटोपे', en: 'Autopay' },
+  'Har mahine kitna kate, kab kate — sab yahin se': { hi: 'हर महीने कितना कटे, कब कटे — सब यहीं से', en: 'How much and when it charges each month — all here' },
+  'Autopay band karein': { hi: 'ऑटोपे बंद करें', en: 'Turn off autopay' },
+  'Autopay band karein?': { hi: 'ऑटोपे बंद करें?', en: 'Turn off autopay?' },
+  'Mohlat khatam ho gayi hai. Aapke liye ({n} din) abhi sab chal raha hai — par jo STAFF hain unke liye turant ruk gaya hai. Payment kar dein taaki sabka kaam chalu ho jaye.': { hi: 'मोहलत खत्म हो गई है। आपके लिए ({n} दिन) अभी सब चल रहा है — पर जो STAFF हैं उनके लिए तुरंत रुक गया है। पेमेंट कर दें ताकि सबका काम चालू हो जाए।', en: 'Your grace period ({n} days) still works for you — but STAFF are blocked immediately. Pay now so everyone can work again.' },
+  'Mohlat bhi khatam ho gayi hai. Bechne ka kaam ruk gaya hai, aur STAFF login bhi nahi kar payenge — sirf aap login kar sakte hain, payment karne ke liye.': { hi: 'मोहलत भी खत्म हो गई है। बेचने का काम रुक गया है, और STAFF लॉगिन भी नहीं कर पाएंगे — सिर्फ आप लॉगिन कर सकते हैं, पेमेंट करने के लिए।', en: 'Grace period is over too. Selling has stopped, and STAFF can\u2019t even log in — only you can, to make the payment.' },
+  'Autopay ki halat': { hi: 'ऑटोपे की हालत', en: 'Autopay status' },
+  'Har mahine paisa apne aap katega ya nahi': { hi: 'हर महीने पैसा अपने आप कटेगा या नहीं', en: 'Whether payment auto-deducts every month' },
+  'Paisa kaatne ki koshish fail ho rahi hai — card/UPI check kar lein, ya naya autopay laga lein.': { hi: 'पैसा काटने की कोशिश फेल हो रही है — कार्ड/UPI चेक कर लें, या नया ऑटोपे लगा लें।', en: 'Payment attempts are failing — check your card/UPI, or set up autopay again.' },
+  'Har mahine khud yaad rakh kar renew karna padega, ya neeche se autopay laga lein.': { hi: 'हर महीने खुद याद रखकर रिन्यू करना पड़ेगा, या नीचे से ऑटोपे लगा लें।', en: 'You\u2019ll need to renew manually every month, or set up autopay below.' },
+  'Plan lagayein ya badlein': { hi: 'प्लान लगाएं या बदलें', en: 'Set up or change plan' },
+  'Ek baar manzoori dijiye, phir har mahine apne aap kategá': { hi: 'एक बार मंज़ूरी दें, फिर हर महीने अपने आप कटेगा', en: 'Approve once, then it charges automatically every month' },
+  'Har mahine ka hisaab': { hi: 'हर महीने का हिसाब', en: 'Month-by-month record' },
+  'Kaunsa mahina chukta hua, kaunsa nahi': { hi: 'कौन सा महीना चुकता हुआ, कौन सा नहीं', en: 'Which months were paid, which weren\u2019t' },
+  'Abhi tak koi mahina record nahi hua.': { hi: 'अभी तक कोई महीना रिकॉर्ड नहीं हुआ।', en: 'No months recorded yet.' },
+  'Aaya': { hi: 'आया', en: 'Received' },
+  'Nahi aaya': { hi: 'नहीं आया', en: 'Missed' },
+  'Abhi ye dukaan free mode me hai — koi payment nahi lagta.': { hi: 'अभी यह दुकान फ्री मोड में है — कोई पेमेंट नहीं लगता।', en: 'This shop is in free mode right now — no payment needed.' },
+
+  /* ── PlanNeeded staff messaging (Part 28) ── */
+  'Dukaan ka payment ruka hua hai': { hi: 'दुकान का पेमेंट रुका हुआ है', en: 'Shop payment is overdue' },
+  'Ye sirf malik theek kar sakte hain. Unse kahiye payment kar dein — hote hi aap dobara kaam kar sakenge.': { hi: 'यह सिर्फ मालिक ठीक कर सकते हैं। उनसे कहिए पेमेंट कर दें — होते ही आप दोबारा काम कर सकेंगे।', en: 'Only the owner can fix this. Ask them to pay — you\u2019ll be able to work again right after.' },
+
+  /* ── Onboarding tour (Part 29) ── */
+  '{n}/{total}': { hi: '{n}/{total}', en: '{n}/{total}' },
+  'Skip karein': { hi: 'स्किप करें', en: 'Skip' },
+  'Poora hua': { hi: 'पूरा हुआ', en: 'Done' },
+  'Video jald aayega': { hi: 'वीडियो जल्द आएगा', en: 'Video coming soon' },
+  'Tutorial dobara dekhein': { hi: 'ट्यूटोरियल दोबारा देखें', en: 'Watch tutorial again' },
+  'Har page ka video, phir se': { hi: 'हर पेज का वीडियो, फिर से', en: 'Every page\u2019s video, once more' },
 };
 
 export default DICT;

@@ -184,6 +184,6 @@ export async function requireActiveParty(req, res, next) {
  */
 export const requirePaidSeller = asyncHandler(async (req, res, next) => {
   const { assertCanSell } = await import('../services/billing.service.js');
-  await assertCanSell(req.businessId);
+  await assertCanSell(req.businessId, req.user);
   next();
 });

@@ -41,7 +41,7 @@ export async function listCatalog(businessId, partyId, q) {
       .skip(sortByRate ? 0 : skip)
       .limit(sortByRate ? 500 : q.limit)
       .populate('categoryId', 'name')
-      .select('name sku unit imageUrl description stockQty lowStockAt salePrice wholesalePrice categoryId createdAt brand modelNo mrp warrantyMonths warrantyNote minOrderQty')
+      .select('name sku unit imageUrl images description stockQty lowStockAt salePrice wholesalePrice categoryId createdAt brand modelNo mrp warrantyMonths warrantyNote minOrderQty')
       .lean(),
     Item.countDocuments(filter),
   ]);
@@ -68,6 +68,8 @@ function decorate(item) {
     unit: item.unit,
     description: item.description,
     imageUrl: item.imageUrl,
+    // Slider ke liye — cover photo pehle, uske baad gallery ki extra photos
+    images: [item.imageUrl, ...(item.images || []).map((i) => i.url)].filter(Boolean),
     category: item.categoryId?.name || null,
     categoryId: item.categoryId?._id || null,
     rate: round2(item.rate),

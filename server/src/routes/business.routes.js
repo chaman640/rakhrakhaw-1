@@ -23,6 +23,12 @@ router.put('/me', requirePermission('settings:edit'), validate({ body: updateBus
 router.post('/logo', requirePermission('settings:edit'), uploadImage.single('logo'), handleUploadError, ctrl.uploadLogo);
 router.delete('/logo', requirePermission('settings:edit'), ctrl.deleteLogo);
 
+router.post('/cover-photo', requirePermission('settings:edit'), uploadImage.single('coverPhoto'), handleUploadError, ctrl.uploadCoverPhoto);
+router.delete('/cover-photo', requirePermission('settings:edit'), ctrl.deleteCoverPhoto);
+
+// Onboarding tour — koi bhi staff dekh/chhod sakta hai, sirf malik nahi
+router.post('/onboarding', ctrl.setOnboarding);
+
 router.post('/invite/regenerate', requirePermission('settings:edit'), ctrl.regenerateInvite);
 
 // Pehle ye sab sirf malik kar sakta tha (`requireOwner`). Ab `settings:edit`

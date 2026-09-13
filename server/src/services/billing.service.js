@@ -11,8 +11,9 @@ import {
   BILLING_MODES, PLANS, PAID_PLANS, PLAN_BY_CODE, FREE_PLAN,
   SUB_STATUS, seatsOf, seatsAllow, rupees,
 } from '../config/billing.js';
-import { Subscription, User, BillingOrder, RazorpayPlan } from '../models/index.js';
+import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
+import { isOwnerUser } from '../utils/businessView.js';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -29,7 +30,7 @@ import { creditReferral, reverseReferral } from './partner.service.js';
  * tak nahi hai — provider badalne pe ye file waisi ki waisi rehni chahiye.
  */
 
-const isFreeMode = () => env.billing.mode === BILLING_MODES.FREE;
+export const isFreeMode = () => env.billing.mode === BILLING_MODES.FREE;
 
 /*
   Ek mahina aage — bina tareekh phisle.
@@ -198,15 +199,30 @@ export async function assertSeat(businessId, { extra = 1 } = {}) {
  * Kharidne wale hisse pe ye kabhi nahi lagta — wo hamesha free hai. Sirf
  * bechne wala hissa (apna stock, apna bill, apne retailer) isse guzarta hai.
  *
+ * MALIK aur STAFF ka jawab ALAG hota hai (Part 28) — jaan-boojh kar:
+ *
+ *   MALIK   — GRACE me bhi chalta rehta hai (purana rawaiya, nahi badla).
+ *             Mohlat khatam hone ke baad bhi malik LOGIN kar sakta hai, sirf
+ *             "bechne" wala kaam rukta hai — plan lene ke alawa kuch nahi.
+ *             Use bahar hi rok dena sabse bewakoofi wali rok hogi: paisa
+ *             dega kaise agar andar hi na aa paaye.
+ *
+ *   STAFF   — GRACE nahi milti. Mohlat wale din bhi agar ACTIVE nahi hai to
+ *             turant ruk jata hai. Wajah seedhi hai: staff paisa de hi nahi
+ *             sakta, sirf malik de sakta hai — to staff ko "kuch din aur
+ *             chalne do" ka koi fayda nahi, ulta risk hai ki dukaandaar ko
+ *             pata hi na chale ki paisa ruka hua hai jab tak staff bataye.
+ *
  * Jawab me `reason` aur `plans` dono jate hain, taaki app ek adha-adhoora
  * error dikhane ki jagah seedha wahi screen khol sake jahan se aadmi plan le
  * sakta hai. Rok tabhi kaam ki hai jab uske saath aage ka rasta bhi ho.
  */
-export async function assertCanSell(businessId) {
+export async function assertCanSell(businessId, user = null) {
   if (isFreeMode()) return;
 
   const state = await subscriptionOf(businessId);
-  if (state.usable) return;
+  const usable = isOwnerUser(user) ? state.usable : state.status === SUB_STATUS.ACTIVE;
+  if (usable) return;
 
   throw ApiError.forbidden(
     state.status === SUB_STATUS.EXPIRED && state.paidTill
@@ -1084,6 +1100,17 @@ async function handleSubscriptionEvent(kind, event) {
       receiptNo: `RR-${String(payId || ent.id).slice(-8).toUpperCase()}`,
     }).catch((e) => console.warn('[billing] rasid nahi bani:', e.message));
 
+    /*
+     * "Is mahine paisa aaya" — Autopay page ke itihaas ke liye (Part 28).
+     * `BillingOrder` rasid ke liye hai (GST/hisaab), ye sirf "aaya ya nahi"
+     * ka seedha jawab dene ke liye — dono alag kaam hain, isliye alag rakhe.
+     */
+    logBillingCycle({
+      businessId: sub.businessId, subscriptionId: sub._id,
+      status: 'paid', amountPaise: payment.amount || plan.pricePaise,
+      planCode: plan.code, providerSubId: ent.id, paymentId: payId,
+    }).catch(() => {});
+
     return { ok: true, charged: plan.code, paidTill };
   }
 
@@ -1104,6 +1131,16 @@ async function handleSubscriptionEvent(kind, event) {
       { _id: sub._id },
       { $set: { mandateStatus: kind === 'subscription.halted' ? 'halted' : 'pending' } },
     );
+
+    // "Is mahine paisa NAHI aaya" — itihaas me chadha do, Autopay page pe dikhega
+    logBillingCycle({
+      businessId: sub.businessId, subscriptionId: sub._id,
+      status: 'failed', amountPaise: sub.pricePaise, planCode: sub.planCode,
+      providerSubId: ent.id, failureReason: kind === 'subscription.halted'
+        ? 'Baar-baar koshish ke baad bhi paisa nahi kata — mandate ruk gaya'
+        : 'Is baar paisa nahi kata — Razorpay dobara koshish karega',
+    }).catch(() => {});
+
     return { ok: true, mandate: kind.split('.')[1] };
   }
 
@@ -1129,5 +1166,41 @@ export async function paymentHistory(businessId, { limit = 20 } = {}) {
     ...r,
     amountRupees: rupees(r.amountPaise),
     planName: PLAN_BY_CODE[r.planCode]?.name || r.planCode,
+  }));
+}
+
+/**
+ * "Is mahine paisa aaya ya nahi" — ek record likh dena (Part 28).
+ *
+ * `.catch(() => {})` lagaana hai jahan se bhi bulaya jaaye — ye sirf
+ * ITIHAAS hai, iski koi bhi gadbad asli paisa/plan ke kaam ko kabhi na roke.
+ */
+export async function logBillingCycle({
+  businessId, subscriptionId, status, amountPaise, planCode,
+  providerSubId = '', paymentId = '', failureReason = '',
+}) {
+  await BillingCycle.create({
+    businessId, subscriptionId, status, amountPaise, planCode,
+    providerSubId, paymentId, failureReason, chargedAt: new Date(),
+  });
+}
+
+/**
+ * Autopay page ka poora itihaas — naya sabse upar.
+ *
+ * Yahi wo jagah hai jahan malik dekh sakta hai "kaunsa mahina chukta hua,
+ * kaunsa nahi" — seedha jawab, bina kisi aur page pe jaane ke.
+ */
+export async function getBillingHistory(businessId, { limit = 24 } = {}) {
+  const rows = await BillingCycle.find({ businessId })
+    .sort({ chargedAt: -1 }).limit(Math.min(limit, 60)).lean();
+
+  return rows.map((r) => ({
+    _id: r._id,
+    status: r.status,
+    amountRupees: rupees(r.amountPaise),
+    planName: PLAN_BY_CODE[r.planCode]?.name || r.planCode,
+    failureReason: r.failureReason || '',
+    chargedAt: r.chargedAt,
   }));
 }

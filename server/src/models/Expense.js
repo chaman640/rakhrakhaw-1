@@ -21,6 +21,12 @@ import { EXPENSE_MODES } from '../config/expenseCategories.js';
  *   stock ka asar — kharch se maal nahi aata. Maal aaye to wo "purchase" hai.
  *     Ye farak zaroori hai, warna ek hi cheez do jagah gini jayegi aur munafa
  *     do baar ghatega.
+ *
+ *     EK HI JAAN-BOOJH KAR APWAAD (Part 20): "Waste / Damaged Stock" category.
+ *     Maal TOOTA/KHARAB hua — na aaya na bika, bas GAYA. Isliye yahan stock
+ *     bhi GHATTA hai (`wasteItemId` + `wasteQty` se), aur usi maal ki lagat
+ *     hi is kharch ka amount ban jati hai (khud type nahi karte) — kyunki
+ *     "kitna nuksan hua" ka sahi jawab yahi hai: jo maal gaya uski lagat.
  */
 
 const expenseSchema = new mongoose.Schema(
@@ -44,6 +50,14 @@ const expenseSchema = new mongoose.Schema(
     paidTo: { type: String, trim: true, default: '' },
 
     note: { type: String, trim: true, default: '' },
+
+    /*
+     * Sirf "Waste / Damaged Stock" category ke saath bharte hain — baaki sab
+     * kharch me khali rehte hain. Amount inhi se calculate hota hai
+     * (expense.service.js me), khud type nahi karte.
+     */
+    wasteItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
+    wasteQty: { type: Number, default: 0, min: 0 },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   },

@@ -45,12 +45,35 @@ const businessSchema = new mongoose.Schema(
     logoUrl: { type: String, default: '' },
     logoPublicId: { type: String, default: '' },
 
+    /*
+     * DUKAAN KI PEHCHAN — Instagram-jaisi profile ke liye (Part 24).
+     *
+     * `bio` — chhota parichay, jaise "10 saal se auto parts ka thok kaam"।
+     * `coverPhotoUrl` — logo ke upar wali badi photo, buyer ke shop page pe
+     * sabse pehle dikhti hai।
+     */
+    bio: { type: String, trim: true, maxlength: 300, default: '' },
+    coverPhotoUrl: { type: String, default: '' },
+    coverPhotoPublicId: { type: String, default: '' },
+
     // ---- Retailer invite (ek hi shared link, phir approve) ----
     // Ramesh Bhai ek link WhatsApp pe bhejte hain; jo bhi join kare wo 'pending' me
     // aata hai aur approve hone tak catalog nahi dekh sakta.
     inviteCode: { type: String, index: true, sparse: true, default: null },
     inviteEnabled: { type: Boolean, default: true },
     autoApproveRetailers: { type: Boolean, default: false },
+
+    /*
+     * ONBOARDING TOUR — pehli baar wala safar (Part 29).
+     *
+     * `null` = abhi tak na dekha na chhoda — isi wajah se pehla login hote
+     * hi tour apne aap shuru hota hai. Dono me se koi ek bhar jaye to dobara
+     * apne aap kabhi nahi khulta — par "Tutorial dobara dekhein" button se
+     * hamesha khul sakta hai (isliye ye field sirf "AUTO-SHOW" ko control
+     * karta hai, poori tarah band nahi karta).
+     */
+    onboardingCompletedAt: { type: Date, default: null },
+    onboardingSkippedAt: { type: Date, default: null },
 
     // ---- UPI (Part 9) ----
     // Retailer ko QR aur "pay" link isi se banta hai. Khali chhod do to

@@ -18,7 +18,9 @@ const NEW_ITEM_UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', '
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const emptyRow = () => ({ key: Math.random().toString(36).slice(2), itemId: '', name: '', unit: 'PCS',
-  stockQty: 0, qty: '', rate: '', discount: '', gstRate: 0, hsn: '' });
+  stockQty: 0, qty: '', rate: '', discount: '', gstRate: 0, hsn: '',
+  // Tay rate — item/party chunte hi set hota hai, badalta nahi (Part 21 ka hint isi se)
+  expectedRate: 0 });
 
 export default function InvoiceForm() {
   const navigate = useNavigate();
@@ -41,6 +43,9 @@ export default function InvoiceForm() {
   const [orderNo, setOrderNo] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(Boolean(orderId));
+  // Is bill par GST lagega ya nahi — sirf tab maayne rakhta hai jab dukaan
+  // GST-registered hai. Default haan, warna hamesha jaisa chalta tha.
+  const [applyGst, setApplyGst] = useState(true);
 
   useEffect(() => {
     api.get('/invoices/next-number').then((r) => setPreview(r.data.preview)).catch(() => {});
@@ -55,7 +60,7 @@ export default function InvoiceForm() {
       setRows(d.items.map((i) => ({
         key: Math.random().toString(36).slice(2),
         itemId: i.itemId, name: i.name, unit: i.unit, stockQty: i.stockQty,
-        qty: String(i.qty), rate: String(i.rate), discount: '',
+        qty: String(i.qty), rate: String(i.rate), expectedRate: i.rate, discount: '',
         gstRate: i.gstRate, hsn: i.hsn
       })));
     }).
@@ -84,7 +89,7 @@ export default function InvoiceForm() {
         try {
           const res = await api.get(`/parties/${opt.value}/rates`, { params: { q: r.name, limit: 1 } });
           const found = res.data.rows?.find((x) => String(x._id) === String(r.itemId));
-          if (found) setRow(r.key, { rate: String(found.rate) });
+          if (found) setRow(r.key, { rate: String(found.rate), expectedRate: found.rate });
         } catch {/* chup-chaap */}
       }
     }
@@ -106,7 +111,7 @@ export default function InvoiceForm() {
     }
     setRow(key, {
       itemId: i._id, name: i.name, unit: i.unit, stockQty: i.stockQty,
-      rate: String(rate), gstRate: i.gstRate || 0, hsn: i.hsn || '',
+      rate: String(rate), expectedRate: rate, gstRate: i.gstRate || 0, hsn: i.hsn || '',
       qty: rows.find((r) => r.key === key)?.qty || '1'
     });
   }
@@ -159,6 +164,7 @@ export default function InvoiceForm() {
       setRow(newItemFor.key, {
         itemId: i._id, name: i.name, unit: i.unit, stockQty: i.stockQty ?? 0,
         rate: String(i.wholesalePrice || i.salePrice || 0),
+        expectedRate: i.wholesalePrice || i.salePrice || 0,
         gstRate: i.gstRate || 0, hsn: i.hsn || '',
         qty: rows.find((r) => r.key === newItemFor.key)?.qty || '1',
       });
@@ -169,6 +175,33 @@ export default function InvoiceForm() {
 
   const addRow = () => setRows((rs) => [...rs, emptyRow()]);
   const removeRow = (key) => setRows((rs) => rs.length === 1 ? [emptyRow()] : rs.filter((r) => r.key !== key));
+
+  /*
+   * TAY RATE SE HINT — turant, type karte hi (Part 21).
+   *
+   * Sirf UI ke liye hai; asli hisaab server khud `rate.service.js` se
+   * dobara nikalta hai jab bill save hota hai (invoice.service.js). Isliye
+   * yahan koi bhi andaza chale to bhi paisa galat nahi banega.
+   */
+  function rateHint(r) {
+    const qty = Number(r.qty || 0);
+    const rate = Number(r.rate || 0);
+    if (!r.itemId || !(r.expectedRate > 0) || !(qty > 0) || rate === Number(r.expectedRate)) return null;
+    const diff = round2((rate - r.expectedRate) * qty);
+    if (diff === 0) return null;
+    const amount = formatMoney(Math.abs(diff));
+    return diff > 0
+      ? {
+          brief: t('{a} zyada', { a: amount }),
+          text: t('Tay rate ({a}) se {b} zyada — is line par', { a: formatMoney(r.expectedRate), b: amount }),
+          tone: 'text-emerald-600',
+        }
+      : {
+          brief: t('{a} kam', { a: amount }),
+          text: t('Tay rate ({a}) se {b} kam — is line par', { a: formatMoney(r.expectedRate), b: amount }),
+          tone: 'text-amber-600',
+        };
+  }
 
   const isIgst = gstEnabled && partyState && business?.address?.stateCode &&
   partyState !== business.address.stateCode;
@@ -192,11 +225,12 @@ export default function InvoiceForm() {
     const extra = round2(Math.min(Math.max(Number(extraDiscount || 0), 0), beforeExtra));
 
     let taxableTotal = 0,tax = 0;
+    const billGstOn = gstEnabled && applyGst;
     for (const l of base) {
       const share = beforeExtra > 0 ? round2(l.taxable / beforeExtra * extra) : 0;
       const tv = round2(l.taxable - share);
       taxableTotal = round2(taxableTotal + tv);
-      if (gstEnabled) tax = round2(tax + round2(tv * l.gstRate / 100));
+      if (billGstOn) tax = round2(tax + round2(tv * l.gstRate / 100));
     }
 
     const before = round2(taxableTotal + tax);
@@ -206,7 +240,7 @@ export default function InvoiceForm() {
       taxTotal: tax, cgst: round2(tax / 2), sgst: round2(tax - round2(tax / 2)),
       roundOff: round2(grandTotal - before), grandTotal
     };
-  }, [rows, extraDiscount, gstEnabled]);
+  }, [rows, extraDiscount, gstEnabled, applyGst]);
 
   const paid = Math.min(Number(paidAmount || 0), totals.grandTotal);
   const due = round2(totals.grandTotal - paid);
@@ -244,6 +278,8 @@ export default function InvoiceForm() {
         // ULTA TICK: jama paisa ab APNE AAP lagta hai; ye us aadmi ke liye
         // hai jo jaan-boojh kar use jama hi rakhna chahta hai
         ...(!useJama && jama > 0 ? { keepAdvance: true } : {}),
+        // Is bill ko jaan-boojh kar Bill of Supply banana hai (Part 27)
+        ...(gstEnabled && !applyGst ? { forceBillOfSupply: true } : {}),
         ...extra
       });
       toast.success(res.message);
@@ -343,6 +379,7 @@ export default function InvoiceForm() {
                     const taxable = round2(qty * Number(r.rate || 0) - Number(r.discount || 0));
                     const tax = gstEnabled ? round2(taxable * Number(r.gstRate || 0) / 100) : 0;
                     const short = r.itemId && qty > r.stockQty;
+                    const hint = rateHint(r);
                     return (
                       <tr key={r.key} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2">
@@ -370,6 +407,11 @@ export default function InvoiceForm() {
                           aria-label={`Row ${idx + 1} rate`} value={r.rate}
                           onChange={(e) => setRow(r.key, { rate: e.target.value })}
                           className="tabular h-10 w-full rounded-lg border border-slate-300 px-2 text-right focus-ring" />
+                          {hint && (
+                            <p className={cn('mt-1 text-right text-xs', hint.tone)}>
+                              {hint.brief}
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           <input type="number" step="0.01" min="0" inputMode="decimal"
@@ -411,6 +453,7 @@ export default function InvoiceForm() {
                 const taxable = round2(qty * Number(r.rate || 0) - Number(r.discount || 0));
                 const tax = gstEnabled ? round2(taxable * Number(r.gstRate || 0) / 100) : 0;
                 const short = r.itemId && qty > r.stockQty;
+                const hint = rateHint(r);
                 return (
                   <LineItemCard
                     key={r.key}
@@ -427,10 +470,13 @@ export default function InvoiceForm() {
 
                     }
                     note={r.itemId &&
-                    <p className={cn('mt-1.5 text-xs', short ? 'font-medium text-red-600' : 'text-slate-400')}>{t("Stock: {a0}{a1}", { a0:
-                        formatQty(r.stockQty, r.unit), a1:
-                        short && ' — itna hai hi nahi' })}
-                    </p>
+                    <>
+                      <p className={cn('mt-1.5 text-xs', short ? 'font-medium text-red-600' : 'text-slate-400')}>{t("Stock: {a0}{a1}", { a0:
+                          formatQty(r.stockQty, r.unit), a1:
+                          short && ' — itna hai hi nahi' })}
+                      </p>
+                      {hint && <p className={cn('mt-1 text-xs', hint.tone)}>{hint.text}</p>}
+                    </>
                     }>
                     
                     <NumField label={t('Qty')} srLabel={`Item ${idx + 1} quantity`} step="0.01" min="0"
@@ -467,13 +513,27 @@ export default function InvoiceForm() {
           <Card className="lg:sticky lg:top-20">
             <CardHeader title={t('Hisaab')} />
 
+            {gstEnabled && (
+              <div className="mb-3 rounded-lg border border-slate-200 p-3">
+                <Switch
+                  id="apply-gst"
+                  checked={applyGst}
+                  onChange={setApplyGst}
+                  label={applyGst ? t('Tax Invoice (GST lagega)') : t('Bill of Supply (GST nahi)')}
+                  description={applyGst
+                    ? t('Ye bill GST ke saath banega')
+                    : t('Sirf isi bill par GST nahi lagega — Bill of Supply banega')}
+                />
+              </div>
+            )}
+
             <dl className="space-y-2 text-sm">
               <Row label={t('Kul maal')} value={formatMoney(totals.subTotal)} />
               {totals.discountTotal > 0 &&
               <Row label={t('Discount')} value={`− ${formatMoney(totals.discountTotal)}`} tone="green" />
               }
-              {gstEnabled && <Row label={t('Taxable')} value={formatMoney(totals.taxableTotal)} />}
-              {gstEnabled && totals.taxTotal > 0 && (isIgst ?
+              {gstEnabled && applyGst && <Row label={t('Taxable')} value={formatMoney(totals.taxableTotal)} />}
+              {gstEnabled && applyGst && totals.taxTotal > 0 && (isIgst ?
               <Row label="IGST" value={formatMoney(totals.taxTotal)} /> :
               <>
                     <Row label="CGST" value={formatMoney(totals.cgst)} />

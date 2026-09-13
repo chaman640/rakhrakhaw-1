@@ -383,6 +383,64 @@ export async function removePhoto(businessId, id) {
   return { imageUrl: '' };
 }
 
+/* ---------------------------------------------------- gallery (extra photos) */
+
+const MAX_GALLERY_PHOTOS = 5;
+
+/**
+ * Product detail page ke slider ke liye EXTRA photos. Cover photo
+ * (`imageUrl`/`imagePublicId`) is se alag hai aur nahi badalti.
+ */
+export async function addGalleryPhotos(businessId, id, files) {
+  if (!files?.length) throw ApiError.badRequest('Koi image nahi mili');
+
+  const item = await Item.findOne({ _id: id, businessId });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  const room = MAX_GALLERY_PHOTOS - (item.images?.length || 0);
+  if (room <= 0) {
+    throw ApiError.badRequest(`Zyada se zyada ${MAX_GALLERY_PHOTOS} photo lag sakti hain`);
+  }
+
+  const uploads = await Promise.all(files.slice(0, room).map((f) => saveImage(f, 'items')));
+  item.images.push(...uploads);
+  await item.save();
+
+  return { images: item.images };
+}
+
+export async function removeGalleryPhoto(businessId, id, publicId) {
+  const item = await Item.findOne({ _id: id, businessId });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  const match = item.images.find((i) => i.publicId === publicId);
+  if (match) await deleteImage(match.publicId);
+  item.images = item.images.filter((i) => i.publicId !== publicId);
+  await item.save();
+
+  return { images: item.images };
+}
+
+/**
+ * Photo drag karke order badalna. `order` un publicId ka poora array hai,
+ * jis kram me dikhna chahiye. Koi publicId chhoot jaye (race condition, ya
+ * beech me hi photo delete ho gayi) to use bas ande me chhod dete hain —
+ * galti se koi photo gayab nahi honi chahiye, sirf uska kram peeche chala jaye.
+ */
+export async function reorderGalleryPhotos(businessId, id, order) {
+  const item = await Item.findOne({ _id: id, businessId });
+  if (!item) throw ApiError.notFound('Item nahi mila');
+
+  const byId = new Map(item.images.map((img) => [img.publicId, img]));
+  const reordered = order.map((pid) => byId.get(pid)).filter(Boolean);
+  const leftover = item.images.filter((img) => !order.includes(img.publicId));
+
+  item.images = [...reordered, ...leftover];
+  await item.save();
+
+  return { images: item.images };
+}
+
 /* ----------------------------------------------------------------- stock */
 
 export async function adjustStock(businessId, id, { mode, qty, note, type }, userId) {

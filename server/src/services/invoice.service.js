@@ -3,6 +3,7 @@ import ApiError from '../utils/ApiError.js';
 import {
   PARTY_TYPES, STOCK_MOVEMENT_TYPES, LEDGER_TYPES, COUNTER_KEYS,
   ORDER_STATUS, NOTIFICATION_TYPES, PAYMENT_STATUS, RETURN_TYPES,
+  DOCUMENT_TYPES, TAX_TYPES,
 } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
 import { getFinancialYear } from '../utils/financialYear.js';
@@ -462,12 +463,25 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
   // Items ki detail
   const itemIds = payload.items.map((i) => i.itemId);
   const dbItems = await Item.find({ _id: { $in: itemIds }, businessId })
-    .select('name hsn gstRate unit stockQty warrantyMonths warrantyNote purchasePrice').lean();
+    .select('name hsn gstRate unit stockQty warrantyMonths warrantyNote purchasePrice wholesalePrice salePrice').lean();
   const itemMap = new Map(dbItems.map((i) => [String(i._id), i]));
+
+  /*
+   * TAY RATE — bill se bilkul alag se nikalte hain (Part 21).
+   *
+   * `rate.service.js` ki wahi chain jo cart/InvoiceForm sujhata hai
+   * (PartyItemRate → wholesalePrice → salePrice). Wholesaler ne bill me jo
+   * bhi type kiya ho, uska fark isi se napte hain — client ka bheja hua
+   * "expected rate" kabhi trust nahi karte, warna galat number report me
+   * chala jayega.
+   */
+  const pricedItems = await resolveRates(businessId, party._id, dbItems);
+  const expectedRateMap = new Map(pricedItems.map((i) => [String(i._id), i.rate]));
 
   const lines = payload.items.map((l, idx) => {
     const item = itemMap.get(String(l.itemId));
     if (!item) throw ApiError.badRequest(`Row ${idx + 1}: item nahi mila`);
+    const expectedRate = expectedRateMap.get(String(item._id)) ?? Number(l.rate);
     return {
       itemId: item._id,
       name: item.name,
@@ -479,6 +493,8 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
       costPrice: item.purchasePrice || 0,
       qty: l.qty,
       rate: l.rate,
+      expectedRate,
+      rateVarianceAmount: round2((Number(l.rate) - expectedRate) * Number(l.qty)),
       discount: l.discount || 0,
       gstRate: l.gstRate ?? item.gstRate ?? 0,
     };
@@ -505,22 +521,48 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     }
   }
 
-  const { documentType, taxType } = decideTaxType({
+  let { documentType, taxType } = decideTaxType({
     gstEnabled: business.gstEnabled,
     businessStateCode: business.address?.stateCode,
     partyStateCode: party.address?.stateCode,
   });
 
+  /*
+   * "Is bill par GST nahi" (Part 27) — GST-registered dukaan bhi kabhi-kabhi
+   * kisi ek bill ko Bill of Supply banana chahti hai (chhoot wala maal,
+   * ya koi aur wajah). Ulta kabhi nahi — GST band ho to koi Tax Invoice
+   * force nahi kar sakta, wo bina registration ke ho hi nahi sakta.
+   */
+  const billGstEnabled = business.gstEnabled && !payload.forceBillOfSupply;
+  if (payload.forceBillOfSupply) {
+    documentType = DOCUMENT_TYPES.BILL_OF_SUPPLY;
+    taxType = TAX_TYPES.NONE;
+  }
+
   let totals;
   try {
     totals = computeInvoice(lines, {
-      gstEnabled: business.gstEnabled,
+      gstEnabled: billGstEnabled,
       taxType,
       extraDiscount: payload.extraDiscount || 0,
     });
   } catch (err) {
     throw ApiError.badRequest(err.message);
   }
+
+  /*
+   * `computeInvoice` (gst.service.js) apni khud ki line shape banata hai aur
+   * humara `expectedRate`/`rateVarianceAmount` usme copy nahi hota — isliye
+   * yahan wapas jod dete hain. Order `lines` jaisa hi rehta hai
+   * (`computeInvoice` sirf `.map()` karta hai, kram nahi badalta), isliye
+   * index se milana surakshit hai.
+   */
+  totals.items = totals.items.map((it, idx) => ({
+    ...it,
+    expectedRate: lines[idx].expectedRate,
+    rateVarianceAmount: lines[idx].rateVarianceAmount,
+  }));
+  const rateVarianceTotal = round2(lines.reduce((s, l) => s + l.rateVarianceAmount, 0));
 
   /*
     BILL SE ZYADA PAISA — ab chup-chaap nigla nahi jata.
@@ -583,6 +625,7 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     igstTotal: totals.igstTotal,
     roundOff: totals.roundOff,
     grandTotal: totals.grandTotal,
+    rateVarianceTotal,
 
     paidAmount,
     dueAmount,

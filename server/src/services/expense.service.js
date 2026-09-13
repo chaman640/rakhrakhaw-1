@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
-import { COUNTER_KEYS } from '../config/constants.js';
+import { COUNTER_KEYS, STOCK_MOVEMENT_TYPES } from '../config/constants.js';
 import {
-  EXPENSE_CATEGORIES, slugifyCategory, categoryLabel,
+  EXPENSE_CATEGORIES, WASTE_STOCK_CATEGORY, slugifyCategory, categoryLabel,
 } from '../config/expenseCategories.js';
 import { round2 } from '../utils/money.js';
-import { Expense, Counter } from '../models/index.js';
+import { Expense, Counter, Item } from '../models/index.js';
+import { applyStockChange } from './stock.service.js';
+import { khepNikalo } from './lot.service.js';
 import { isScoped } from '../utils/scope.js';
 
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
@@ -170,34 +172,104 @@ export async function getExpense(businessId, id, viewer = null) {
 }
 
 export async function createExpense(businessId, payload, userId) {
-  const amount = round2(payload.amount);
-  if (!(amount > 0)) throw ApiError.badRequest('Rakam 0 se zyada honi chahiye');
-
   const category = slugifyCategory(payload.category) || 'other';
   const date = payload.date ? new Date(payload.date) : new Date();
 
-  const { number: expenseNo } = await Counter.nextNumber({
-    businessId, key: COUNTER_KEYS.EXPENSE, prefix: 'EXP', date,
-  });
+  let amount = round2(payload.amount);
+  let wasteItemId = null;
+  let wasteQty = 0;
+  let stockAlreadyDeducted = false;
 
-  const expense = await Expense.create({
-    businessId,
-    expenseNo,
-    date,
-    category,
-    amount,
-    mode: payload.mode || 'CASH',
-    paidTo: payload.paidTo || '',
-    note: payload.note || '',
-    createdBy: userId || null,
-  });
+  try {
+    /*
+     * WASTE / DAMAGED STOCK — ek hi jagah jahan kharch stock ko chhuta hai
+     * (Expense.js me poori wajah likhi hai).
+     *
+     * Amount YAHAN KHUD nikalta hai — khud type nahi karte — kyunki jo maal
+     * gaya uski FIFO lagat hi asli nuksan hai. Isi wajah se `applyStockChange`
+     * pehle (stock kam hai to yahin rukega — "current stock se zyada nahi"
+     * wala niyam isi se poora hota hai), phir `khepNikalo` (sahi lagat).
+     */
+    if (category === WASTE_STOCK_CATEGORY) {
+      wasteItemId = payload.wasteItemId;
+      wasteQty = round2(payload.wasteQty);
+      if (!wasteItemId) throw ApiError.badRequest('Item chunein');
+      if (!(wasteQty > 0)) throw ApiError.badRequest('Quantity 0 se zyada honi chahiye');
 
-  return { ...expense.toObject(), categoryLabel: categoryLabel(category) };
+      const item = await Item.findOne({ _id: wasteItemId, businessId })
+        .select('name unit purchasePrice').lean();
+      if (!item) throw ApiError.badRequest('Item nahi mila');
+
+      await applyStockChange({
+        businessId,
+        itemId: item._id,
+        type: STOCK_MOVEMENT_TYPES.WASTE,
+        qty: -wasteQty,
+        note: `Waste/damaged — ${item.name}`,
+        userId,
+      });
+      stockAlreadyDeducted = true;
+
+      const { cost } = await khepNikalo({
+        businessId, itemId: item._id, qty: wasteQty, fallbackCost: item.purchasePrice || 0,
+      });
+      amount = round2(cost);
+    } else if (!(amount > 0)) {
+      throw ApiError.badRequest('Rakam 0 se zyada honi chahiye');
+    }
+
+    const { number: expenseNo } = await Counter.nextNumber({
+      businessId, key: COUNTER_KEYS.EXPENSE, prefix: 'EXP', date,
+    });
+
+    const expense = await Expense.create({
+      businessId,
+      expenseNo,
+      date,
+      category,
+      amount,
+      mode: payload.mode || 'CASH',
+      paidTo: payload.paidTo || '',
+      note: payload.note || '',
+      wasteItemId,
+      wasteQty,
+      createdBy: userId || null,
+    });
+
+    return { ...expense.toObject(), categoryLabel: categoryLabel(category) };
+  } catch (err) {
+    // Stock ghat chuka tha par expense save nahi hua — wapas chadha do
+    if (stockAlreadyDeducted) {
+      await applyStockChange({
+        businessId, itemId: wasteItemId, type: STOCK_MOVEMENT_TYPES.WASTE,
+        qty: wasteQty, note: 'Waste expense save nahi hua — wapas', allowNegative: true,
+      }).catch(() => {});
+    }
+    throw err;
+  }
 }
 
 export async function updateExpense(businessId, id, payload, viewer = null) {
   const expense = await Expense.findOne(scopeFilter({ _id: id, businessId }, viewer));
   if (!expense) throw ApiError.notFound('Ye kharch nahi mila');
+
+  /*
+   * Waste/Damaged Stock ka amount aur category BADALTE nahi — inke peeche
+   * stock pehle hi ghat chuka hai, aur amount usi lagat se bandha hai. Note,
+   * tareekh, mode, paidTo badalna theek hai; sirf VAASTAVIK badlaav rokte
+   * hain (payload me wahi purani value bhej di ho to wo rukna nahi chahiye).
+   */
+  const wasWaste = expense.category === WASTE_STOCK_CATEGORY;
+  const switchingIntoWaste = payload.category !== undefined
+    && !wasWaste && slugifyCategory(payload.category) === WASTE_STOCK_CATEGORY;
+  const movingAwayFromWaste = wasWaste
+    && payload.category !== undefined && slugifyCategory(payload.category) !== WASTE_STOCK_CATEGORY;
+  const changingWasteAmount = wasWaste
+    && payload.amount !== undefined && round2(payload.amount) !== expense.amount;
+
+  if (switchingIntoWaste || movingAwayFromWaste || changingWasteAmount) {
+    throw ApiError.badRequest('Waste/Damaged Stock ka amount ya category badla nahi ja sakta — hata kar dobara banayein');
+  }
 
   if (payload.amount !== undefined) {
     const amount = round2(payload.amount);
@@ -221,10 +293,24 @@ export async function updateExpense(businessId, id, payload, viewer = null) {
  * nahi, ulta ho jata hai. Kharch ki apni koi legal shakal nahi hai — galat
  * likha to hata dena hi seedha hai. Par kisne hataya, ye register me zaroor
  * chadhta hai (controller me), taaki baad me sawal ka jawab ho.
+ *
+ * Waste/Damaged Stock ho to stock bhi WAPAS chadhta hai — warna maal hamesha
+ * ke liye kho jata, sirf isliye ki kisi ne galti se entry kar di thi.
  */
 export async function deleteExpense(businessId, id, viewer = null) {
   const expense = await Expense.findOne(scopeFilter({ _id: id, businessId }, viewer));
   if (!expense) throw ApiError.notFound('Ye kharch nahi mila');
+
+  if (expense.category === WASTE_STOCK_CATEGORY && expense.wasteItemId && expense.wasteQty > 0) {
+    await applyStockChange({
+      businessId,
+      itemId: expense.wasteItemId,
+      type: STOCK_MOVEMENT_TYPES.WASTE,
+      qty: expense.wasteQty,
+      note: `${expense.expenseNo} hata diya — stock wapas`,
+      allowNegative: true,
+    });
+  }
 
   await Expense.deleteOne({ _id: expense._id });
   return { expenseNo: expense.expenseNo, amount: expense.amount, message: `${expense.expenseNo} hata diya` };

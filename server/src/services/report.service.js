@@ -820,7 +820,15 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
   const [saleAgg, saleLines, returnAgg, returnLines, expenses, jamaAgg] = await Promise.all([
     Invoice.aggregate([
       { $match: saleMatch },
-      { $group: { _id: null, bills: { $sum: 1 }, taxable: { $sum: '$taxableTotal' }, grand: { $sum: '$grandTotal' }, tax: { $sum: { $add: ['$cgstTotal', '$sgstTotal', '$igstTotal'] } } } },
+      { $group: {
+        _id: null,
+        bills: { $sum: 1 },
+        taxable: { $sum: '$taxableTotal' },
+        grand: { $sum: '$grandTotal' },
+        tax: { $sum: { $add: ['$cgstTotal', '$sgstTotal', '$igstTotal'] } },
+        // Tay rate se jitna zyada/kam liya — Part 21 (invoice.service.js me bane)
+        rateVariance: { $sum: { $ifNull: ['$rateVarianceTotal', 0] } },
+      } },
     ]),
     Invoice.aggregate([{ $match: saleMatch }, ...costPipeline()]),
     ReturnNote.aggregate([
@@ -864,12 +872,28 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
   const grossProfit = round2(netSale - netCost);
   const netProfit = round2(grossProfit - expenses.total);
 
+  /*
+   * TAY RATE SE FARK (Part 21) — sirf ek NAZAR hai, hisaab me pehle se
+   * shaamil hai. `grossProfit` waise bhi sahi hai (asli billed rate se hi
+   * banta hai) — ye row bas ye batati hai ki us profit ka kitna hissa
+   * "aaj thoda zyada/kam liya" se aaya, taaki dukaandaar ko pata chale.
+   */
+  const rateVarianceTotal = round2(saleAgg[0]?.rateVariance || 0);
+
   const rows = [
     { key: 'sale', label: 'Sale (bina GST)', amount: saleTaxable },
     ...(returnTaxable > 0 ? [{ key: 'saleReturn', label: 'Maal wapas aaya', amount: -returnTaxable }] : []),
     { key: 'netSale', label: 'Asli sale', amount: netSale, strong: true },
     { key: 'cogs', label: 'Maal ki lagat', amount: -netCost },
     { key: 'gross', label: 'Maal ka fayda', amount: grossProfit, strong: true },
+    ...(rateVarianceTotal !== 0 ? [{
+      key: 'rateVariance',
+      label: rateVarianceTotal > 0
+        ? '   Isme se tay rate se zyada mila'
+        : '   Isme se tay rate se kam liya gaya',
+      amount: rateVarianceTotal,
+      muted: true,
+    }] : []),
     ...expenses.byCategory.map((c) => ({
       key: `exp:${c.category}`, label: `   ${c.label}`, amount: -c.amount, muted: true,
     })),
@@ -906,6 +930,7 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
       netSale,
       cost: netCost,
       grossProfit,
+      rateVarianceTotal,
       expenses: expenses.total,
       expenseCount: expenses.count,
       expenseByCategory: expenses.byCategory,

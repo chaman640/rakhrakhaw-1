@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   LogOut, Search, IndianRupee, KeyRound, AlertTriangle, ArrowLeft, Ban, Check,
+  Video, Plus, Trash2,
 } from 'lucide-react';
 import api, { getToken, setToken } from './partnerApi';
 
@@ -177,11 +178,158 @@ function One({ id, onBack }) {
   );
 }
 
+/**
+ * TUTORIAL VIDEOS — har page/kadam ka YouTube link yahin se lagta hai
+ * (Part 29). Naya "key" bana kar naya video jodo, ya purane ka URL badlo.
+ *
+ * Video khud yahan nahi aata — sirf YouTube ka URL. Iska poora karan
+ * `TutorialVideo.js` model me likha hai.
+ */
+function EditableTutorial({ row, onSaved }) {
+  const [f, setF] = useState({
+    key: row?.key || '', title: row?.title || '', order: row?.order ?? 0,
+    inOnboardingTour: row?.inOnboardingTour || false,
+    hi: row?.videos?.hi || '', en: row?.videos?.en || '',
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const isNew = !row;
+
+  async function save() {
+    if (!f.key.trim() || !f.title.trim()) { setErr('Key aur naam dono chahiye'); return; }
+    setErr(''); setBusy(true);
+    try {
+      const res = await api.post('/admin/tutorials', {
+        key: f.key.trim(), title: f.title.trim(), order: Number(f.order) || 0,
+        inOnboardingTour: f.inOnboardingTour,
+        videos: { hi: f.hi.trim(), en: f.en.trim() },
+      });
+      onSaved(res.data);
+      if (isNew) setF({ key: '', title: '', order: 0, inOnboardingTour: false, hi: '', en: '' });
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm(`"${row.title}" hata dein?`)) return;
+    setBusy(true);
+    try { await api.delete(`/admin/tutorials/${row.key}`); onSaved(null, row.key); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_80px]">
+        <input
+          placeholder="key — jaise page:/items"
+          value={f.key} disabled={!isNew}
+          onChange={(e) => setF((p) => ({ ...p, key: e.target.value }))}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500"
+        />
+        <input
+          placeholder="Naam — jaise Items page"
+          value={f.title}
+          onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        />
+        <input
+          type="number" placeholder="Kram"
+          value={f.order}
+          onChange={(e) => setF((p) => ({ ...p, order: e.target.value }))}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        />
+      </div>
+
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <input
+          placeholder="Hindi wala YouTube URL"
+          value={f.hi}
+          onChange={(e) => setF((p) => ({ ...p, hi: e.target.value }))}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        />
+        <input
+          placeholder="English wala YouTube URL"
+          value={f.en}
+          onChange={(e) => setF((p) => ({ ...p, en: e.target.value }))}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        />
+      </div>
+
+      <div className="mt-2 flex items-center justify-between">
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox" checked={f.inOnboardingTour}
+            onChange={(e) => setF((p) => ({ ...p, inOnboardingTour: e.target.checked }))}
+          />
+          Onboarding tour me shaamil ho
+        </label>
+
+        <div className="flex gap-2">
+          {!isNew && (
+            <button type="button" onClick={remove} disabled={busy}
+              className="rounded-lg px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
+              <Trash2 size={14} />
+            </button>
+          )}
+          <button type="button" onClick={save} disabled={busy}
+            className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60">
+            {isNew ? 'Jodein' : 'Save karein'}
+          </button>
+        </div>
+      </div>
+
+      {err && <p className="mt-2 text-sm text-red-700">{err}</p>}
+    </div>
+  );
+}
+
+function Tutorials() {
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(async () => {
+    try { setRows((await api.get('/admin/tutorials')).data); } catch (e) { setErr(e.message); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  function handleSaved(updated, deletedKey) {
+    setRows((cur) => {
+      if (deletedKey) return cur.filter((r) => r.key !== deletedKey);
+      const exists = cur.some((r) => r.key === updated.key);
+      const next = exists ? cur.map((r) => (r.key === updated.key ? updated : r)) : [...cur, updated];
+      return next.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+        <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+          <Plus size={14} /> Naya video jodein
+        </p>
+        <EditableTutorial onSaved={handleSaved} />
+      </div>
+
+      {err && <p className="text-sm text-red-700">{err}</p>}
+      {!rows ? (
+        <p className="py-12 text-center text-slate-400">Ruko...</p>
+      ) : rows.length === 0 ? (
+        <p className="py-12 text-center text-slate-500">Abhi tak koi video nahi laga</p>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((row) => <EditableTutorial key={row.key} row={row} onSaved={handleSaved} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function Panel({ onLogout, warnPassword }) {
   const [d, setD] = useState(null);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
   const [pw, setPw] = useState(null);
+  const [tab, setTab] = useState('salesmen'); // 'salesmen' | 'tutorials'
 
   const load = useCallback(async () => {
     try { setD((await api.get(`/admin/list?q=${encodeURIComponent(q)}`)).data); } catch { /* dikh jayega */ }
@@ -192,7 +340,7 @@ function Panel({ onLogout, warnPassword }) {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <p className="font-bold text-slate-900">Salesman ka hisaab</p>
+          <p className="font-bold text-slate-900">Admin</p>
           <div className="flex gap-1">
             <button type="button" onClick={() => setPw({})} className="rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-100">
               <KeyRound size={15} />
@@ -202,9 +350,25 @@ function Panel({ onLogout, warnPassword }) {
             </button>
           </div>
         </div>
+        <div className="mx-auto flex max-w-3xl gap-1 px-4 pb-2">
+          <button
+            type="button" onClick={() => { setTab('salesmen'); setOpen(null); }}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === 'salesmen' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            Salesman ka hisaab
+          </button>
+          <button
+            type="button" onClick={() => setTab('tutorials')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${tab === 'tutorials' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <Video size={14} /> Tutorial videos
+          </button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-3xl space-y-4 px-4 py-5">
+        {tab === 'tutorials' ? <Tutorials /> : (
+        <>
         {warnPassword && (
           <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
@@ -277,6 +441,8 @@ function Panel({ onLogout, warnPassword }) {
                   )}
             </div>
           </>
+        )}
+        </>
         )}
       </main>
     </div>

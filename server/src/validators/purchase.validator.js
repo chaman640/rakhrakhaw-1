@@ -4,12 +4,37 @@ import { UNITS } from '../config/constants.js';
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
 const money = z.coerce.number().min(0).max(100000000);
 
+/*
+ * NAYA ITEM — purchase karte waqt hi (Part 20).
+ *
+ * Jaisa StockIntake me hota hai: item yahin KHULTA hai, opening stock ZERO
+ * rehta hai, maal isi purchase line se chadhta hai. Isi wajah se yahan
+ * itemId zaroori nahi hai — `newItem` bhi chal jata hai.
+ */
+export const purchaseNewItemSchema = z.object({
+  name: z.string().trim().min(1, 'Item ka naam likhein').max(120),
+  sku: z.string().trim().max(40).optional().default(''),
+  unit: z.enum(UNITS).optional(),
+  hsn: z.string().trim().max(10).optional().default(''),
+  gstRate: z.coerce.number().min(0).max(28).optional().default(0),
+  mrp: money.optional(),
+  brand: z.string().trim().max(60).optional().default(''),
+  imageUrl: z.string().trim().max(500).optional().default(''),
+  warrantyMonths: z.coerce.number().min(0).max(600).optional(),
+  warrantyNote: z.string().trim().max(200).optional().default(''),
+  categoryId: objectId.optional(),
+});
+
 export const purchaseItemSchema = z.object({
-  itemId: objectId,
+  itemId: objectId.optional(),
+  newItem: purchaseNewItemSchema.optional(),
   qty: z.coerce.number().gt(0, 'Quantity 0 se zyada honi chahiye').max(10000000),
   rate: money,
   discount: money.optional().default(0),
   gstRate: z.coerce.number().min(0).max(28).optional().default(0),
+}).refine((l) => l.itemId || l.newItem?.name, {
+  message: 'Item chunein ya naye item ka naam bharein',
+  path: ['itemId'],
 });
 
 export const createPurchaseSchema = z.object({

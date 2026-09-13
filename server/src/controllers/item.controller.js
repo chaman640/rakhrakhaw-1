@@ -102,6 +102,15 @@ export const uploadPhoto = asyncHandler(async (req, res) =>
 export const deletePhoto = asyncHandler(async (req, res) =>
   ok(res, await service.removePhoto(req.businessId, req.params.id), 'Photo hata di'));
 
+export const addGalleryPhotos = asyncHandler(async (req, res) =>
+  ok(res, await service.addGalleryPhotos(req.businessId, req.params.id, req.files), 'Photo lag gayi'));
+
+export const removeGalleryPhoto = asyncHandler(async (req, res) =>
+  ok(res, await service.removeGalleryPhoto(req.businessId, req.params.id, req.body.publicId), 'Photo hata di'));
+
+export const reorderGalleryPhotos = asyncHandler(async (req, res) =>
+  ok(res, await service.reorderGalleryPhotos(req.businessId, req.params.id, req.body.order || [])));
+
 export const adjustStock = asyncHandler(async (req, res) => {
   const item = await service.adjustStock(req.businessId, req.params.id, req.body, req.user._id);
   await logAction(req, {

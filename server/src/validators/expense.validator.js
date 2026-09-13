@@ -2,7 +2,14 @@ import { z } from 'zod';
 import { EXPENSE_MODES } from '../config/expenseCategories.js';
 
 const money = z.coerce.number().min(0.01, 'Rakam 0 se zyada honi chahiye').max(100000000);
+const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
 
+/*
+ * wasteItemId/wasteQty sirf "Waste / Damaged Stock" category ke saath
+ * bhejte hain — service layer inhi se amount nikalta hai (khud type nahi
+ * karte), isliye `amount` yahan bhi bhara aana chahiye (ek andaza chalta
+ * hai, server asli lagat se badal dega).
+ */
 export const createExpenseSchema = z.object({
   date: z.coerce.date().optional(),
   category: z.string().trim().min(1, 'Kharch kis cheez ka hai, ye chunein').max(60),
@@ -10,6 +17,8 @@ export const createExpenseSchema = z.object({
   mode: z.enum(EXPENSE_MODES).optional().default('CASH'),
   paidTo: z.string().trim().max(120).optional(),
   note: z.string().trim().max(500).optional(),
+  wasteItemId: objectId.optional(),
+  wasteQty: z.coerce.number().min(0).max(10000000).optional(),
 }).strict();
 
 export const updateExpenseSchema = z.object({

@@ -208,6 +208,30 @@ export default function Dashboard() {
       sub: d.profit.marginPct !== null ? `${d.profit.marginPct}% margin` : t('sale ke baad'),
       icon: TrendingUp, tone: d.profit.month >= 0 ? 'green' : 'red', to: '/reports',
     },
+    /*
+     * TAY RATE SE FARK (Part 21) — sirf tab dikhta hai jab kuch fark hua ho,
+     * warna khali dukaan ke liye bhi ek aur khali tile ban jata.
+     */
+    d.profit && d.profit.rateVarianceTotal !== 0 && {
+      key: 'rateVariance',
+      label: d.profit.rateVarianceTotal > 0 ? t('Tay rate se zyada mila') : t('Tay rate se kam liya'),
+      value: formatMoney(Math.abs(d.profit.rateVarianceTotal)),
+      sub: t('Is mahine'),
+      icon: d.profit.rateVarianceTotal > 0 ? TrendingUp : TrendingDown,
+      tone: d.profit.rateVarianceTotal > 0 ? 'green' : 'amber',
+      to: '/reports',
+    },
+    /*
+     * GST DENA HAI (Part 22) — sirf GST-registered dukaan ke liye. `gst` khud
+     * server se null aata hai agar `gstEnabled` false hai — isliye yahan
+     * `d.gst` ka hona hi kaafi jaanch hai, dobara business.gstEnabled poochne
+     * ki zarurat nahi.
+     */
+    d.gst && {
+      key: 'gst', label: t('Is mahine GST dena hai'), value: formatMoney(d.gst.payable),
+      sub: t('Output − input credit'), icon: Receipt,
+      tone: d.gst.payable > 0 ? 'amber' : 'green', to: '/reports?tab=gst',
+    },
     d.expense && {
       key: 'exp', label: t('Aaj ka kharch'), value: formatMoney(d.expense.today),
       sub: `${t('Mahine me')} ${formatMoney(d.expense.month)}`, icon: Coins,

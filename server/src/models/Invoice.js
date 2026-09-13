@@ -66,6 +66,20 @@ const invoiceItemSchema = new mongoose.Schema(
     qty: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0 },
+
+    /*
+     * RATE VARIANCE — bill banate waqt jo "apna tay rate" tha uska snapshot
+     * (Part 21). `rate.service.js` ki chain (PartyItemRate → wholesalePrice
+     * → salePrice) se bill bante hi nikala jata hai, kabhi badalta nahi.
+     *
+     * `rateVarianceAmount` = (billed rate − expectedRate) × qty.
+     * Positive = tay rate se ZYADA liya (extra profit), negative = KAM liya
+     * (extra discount). Ledger/khata isse chhuta nahi — poora `total` hi
+     * udhaar me jata hai jaisa pehle jata tha; ye sirf REPORTING ke liye hai.
+     */
+    expectedRate: { type: Number, default: 0 },
+    rateVarianceAmount: { type: Number, default: 0 },
+
     taxableValue: { type: Number, default: 0 },
     gstRate: { type: Number, default: 0 },
     cgst: { type: Number, default: 0 },
@@ -148,6 +162,9 @@ const invoiceSchema = new mongoose.Schema(
     igstTotal: { type: Number, default: 0 },
     roundOff: { type: Number, default: 0 },
     grandTotal: { type: Number, default: 0 },
+
+    // Sabhi line ke rateVarianceAmount ka jod — Reports/Dashboard ke liye
+    rateVarianceTotal: { type: Number, default: 0 },
 
     paidAmount: { type: Number, default: 0 },
     dueAmount: { type: Number, default: 0 },
