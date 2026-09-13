@@ -39,7 +39,7 @@ export default function ModeSwitch() {
     setMode(next);
     // Darwaza badla to seedha us duniya ke ghar pe — warna aadmi wahi purana
     // page dekhta rehta hai aur lagta hai ki button ne kuch kiya hi nahi
-    navigate(next === 'buy' ? '/buy' : '/home');
+    navigate(next === 'buy' ? '/buy' : '/menu');
   }
 
   return (

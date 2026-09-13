@@ -53,7 +53,7 @@ export default function JoinStaff() {
     setLoading(true);
     try {
       await joinAsStaff(token, form);
-      navigate('/home', { replace: true });
+      navigate('/menu', { replace: true });
     } catch (err) {
       setError(err.message);
       if (Array.isArray(err.details)) {

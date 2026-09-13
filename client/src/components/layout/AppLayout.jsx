@@ -10,6 +10,7 @@ import { useShop } from '@/context/ShopContext';
 import { useIsFetching } from '@/hooks/useQuery';
 import { RefreshBar } from '@/components/ui';
 import { wholesalerNav, buyerNav, isRootPage } from './navConfig';
+import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 /**
@@ -100,13 +101,13 @@ export default function AppLayout() {
    * Back ka "plan B" — jab history khali ho (link se seedha khola ya refresh).
    *
    *   /invoices/123  ->  /invoices   (apni list pe)
-   *   /invoices      ->  /dashboard  (ghar pe)
+   *   /invoices      ->  /menu       (ghar pe — ab Menu hi ghar hai, Part 35)
    *
    * Doosri line zaroori hai: pehle yahan hamesha section ka apna rasta jata
    * tha, yaani /settings pe back dabane se /settings hi khulta tha — kuch
    * hota hi nahi dikhta tha.
    */
-  const homeRoot = '/home';
+  const homeRoot = '/menu';
   const backTo = current && pathname !== current.to ? current.to : homeRoot;
 
   return (
@@ -123,12 +124,25 @@ export default function AppLayout() {
           backTo={backTo}
         />
 
-        <main className="px-4 pb-20 pt-4 sm:px-5 lg:px-6 lg:pb-6">
+        <main className={cn('px-4 pt-4 sm:px-5 lg:px-6 lg:pb-6', buying ? 'pb-20' : 'pb-6')}>
           {!buying && needsPlan ? <PlanNeeded /> : <Outlet />}
         </main>
       </div>
 
-      <BottomNav />
+      {/*
+        SELLER SIDE ME AB YE PATTI NAHI HAI (Part 35) — jaan-boojh kar.
+
+        Pehle Home/Dashboard/Sale/Payment/Menu — paanch button hamesha
+        neeche chipke rehte the. Ab seller ka safar Odoo jaisa hai: `/menu`
+        hi ghar hai, wahin se har jagah jaate hain, aur wapas bhi wahin
+        aate hain (upar `homeRoot` isi wajah se `/menu` hai). Do jagah se
+        navigate karne ka rasta dena confuse karta — ek hi jagah pakki.
+
+        RETAILER (khareedne wale) ke liye patti waisi hi hai — unka safar
+        alag hai (Shop, Cart, Orders roz ke kaam hain, ek-doosre se bilkul
+        alag), unhe angoothe ke neeche seedha button milna zaroori hai.
+      */}
+      {buying && <BottomNav />}
 
       {showTour && (
         <OnboardingTour

@@ -1,14 +1,37 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShoppingCart, FileText, Wallet, Package, RotateCcw,
   BarChart3, Users, Bell, ShieldCheck, Check, ArrowRight, Smartphone,
-  MessageCircle, Boxes, Percent,
+  MessageCircle, Boxes, Percent, Download,
 } from 'lucide-react';
 import { t } from '@/lib/i18n';
 import { COMPANY } from './PolicyShell';
 import useSeo from '@/lib/useSeo';
 import InstallPrompt from '@/components/InstallPrompt';
 import Logo from '@/components/Logo';
+
+/**
+ * WEBSITE DOWNLOAD KARNE KA BUTTON — Landing page pe seedha (Part 35).
+ *
+ * `InstallPrompt.jsx` khud-ba-khud, thodi der baad, ek bottom-banner dikhata
+ * hai — wo apni jagah theek hai. Ye button ALAG hai: turant, hero ke andar
+ * hi, kisi ke poochhe bina dikh jaye. `beforeinstallprompt` DOM event pe do
+ * jagah sun sakte hain — dono ko wahi ek event milta hai, ek-doosre ko
+ * rokta nahi, isliye `InstallPrompt.jsx` ko chhedne ki zarurat nahi padi.
+ *
+ * Safari/iOS pe ye event kabhi aata hi nahi (Apple ka apna niyam hai) —
+ * isliye wahan button dikhta hi nahi, jhoothi ummeed nahi dete.
+ */
+function useInstallEvent() {
+  const [evt, setEvt] = useState(null);
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setEvt(e); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+  }, []);
+  return evt;
+}
 
 /**
  * GHAR KA PAGE — BINA LOGIN KE (Part 30 me nikhara).
@@ -147,6 +170,8 @@ function DashboardMockup() {
 }
 
 export default function Landing() {
+  const installEvt = useInstallEvent();
+
   useSeo({
     title: t('Rakh Rakhav — thok dukaan ka poora hisaab'),
     description: t('Rakh Rakhav ek thok dukaan ka app hai — stock, bill, khata, udhaar, order aur report sab ek jagah. Retailer ke liye hamesha free.'),
@@ -205,6 +230,17 @@ export default function Landing() {
               <Link to="/pricing" className="rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 font-semibold text-white hover:bg-white/10">
                 {t('Daam dekhein')}
               </Link>
+              {installEvt && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try { installEvt.prompt(); await installEvt.userChoice; } catch { /* browser ne mana kiya */ }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 font-semibold text-white hover:bg-white/10"
+                >
+                  <Download size={17} /> {t('Website download karein')}
+                </button>
+              )}
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-brand-100">

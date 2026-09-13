@@ -41,7 +41,7 @@ export default function Login() {
       if (data.user.role === 'retailer') {
         navigate(data.party?.status === 'active' ? (from || '/shop') : '/pending', { replace: true });
       } else {
-        navigate(from || '/home', { replace: true });
+        navigate(from || '/menu', { replace: true });
       }
     } catch (err) {
       setError(err.message);

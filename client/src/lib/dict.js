@@ -2092,6 +2092,12 @@ const DICT = {
   'Retailer ke liye free': { hi: 'रिटेलर के लिए फ्री', en: 'Free for retailers' },
   '15 din free trial': { hi: '15 दिन फ्री ट्रायल', en: '15-day free trial' },
   'Hindi + English support': { hi: 'हिंदी + अंग्रेज़ी सपोर्ट', en: 'Hindi + English support' },
+
+  /* ── Top Retail page (Part 34) ── */
+  'Top Retail': { hi: 'टॉप रिटेल', en: 'Top Retail' },
+  'Top Retail dekhein': { hi: 'टॉप रिटेल देखें', en: 'View Top Retail' },
+  'Sabse zyada bikne wale item, sabse bade retailer, aur abhi kya hua': { hi: 'सबसे ज़्यादा बिकने वाले आइटम, सबसे बड़े रिटेलर, और अभी क्या हुआ', en: 'Best-selling items, top retailers, and recent activity' },
+  'Website download karein': { hi: 'वेबसाइट डाउनलोड करें', en: 'Download the app' },
 };
 
 export default DICT;
