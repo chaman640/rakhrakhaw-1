@@ -295,20 +295,26 @@ function ShopHeader({ shop, saving, onToggleSave, onSwitch, onCart, cartCount })
 
   return (
     <Card className="mb-4 overflow-hidden" padding={false}>
-      {/* Cover photo — Instagram-jaisi banner, logo isi ke upar thoda overlap karta hai */}
+      {/*
+        Cover photo — pehle `h-28`/`h-36` ki chhoti fixed height thi, aur
+        `object-cover` usme jabardasti photo bhar deta tha — matlab lambi ya
+        chaudi photo ka bahut sa hissa kat jata tha. Ab `aspect-[16/9]` +
+        `object-contain` — poori photo hamesha dikhti hai, kinaron pe khaali
+        jagah (letterbox) aa sakti hai par photo kabhi katti nahi.
+      */}
       {hasCover && (
-        <div className="h-28 w-full bg-slate-100 sm:h-36">
-          <img src={shop.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
+        <div className="flex aspect-[16/9] w-full items-center justify-center bg-slate-100">
+          <img src={shop.coverPhotoUrl} alt="" className="h-full w-full object-contain" />
         </div>
       )}
 
       <div className={cn('p-5', hasCover && '-mt-8 sm:-mt-10')}>
-        <div className="flex items-start gap-4">
-          {/*
-            Story ring — WhatsApp/Instagram jaisa. Rangeen = koi story andekhi
-            hai, sadi grey = sab dekh li. Story na ho to logo pehle jaisa hi,
-            tap karne se kuch nahi hota.
-          */}
+        {/*
+          Logo + naam + number — ab BEECH ME (Qodes jaisa reference), cover
+          ke upar overlap karte hue. Baaki sab (bio, ginti, buttons) apni
+          purani jagah — side (left-aligned) block me, isi ke neeche.
+        */}
+        <div className="flex flex-col items-center text-center">
           {shop.hasStory ? (
             <button
               type="button"
@@ -325,61 +331,57 @@ function ShopHeader({ shop, saving, onToggleSave, onSwitch, onCart, cartCount })
             <div className={cn('shrink-0 rounded-full', hasCover && 'ring-4 ring-white')}>{logoInner}</div>
           )}
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold text-slate-900">{shop.name}</h1>
-                <p className="truncate text-xs text-slate-500">
-                  {shop.phone}
-                  {shop.city ? ` · ${shop.city}` : ''}
-                </p>
-              </div>
+          <h1 className="mt-2 truncate text-lg font-semibold text-slate-900">{shop.name}</h1>
+          <p className="truncate text-xs text-slate-500">
+            {shop.phone}
+            {shop.city ? ` · ${shop.city}` : ''}
+          </p>
+        </div>
 
-              {/* Save — follow jaisa. Juda hua ho tabhi. */}
-              {shop.connected && (
-                <button
-                  type="button"
-                  onClick={onToggleSave}
-                  disabled={saving}
-                  aria-label={shop.saved ? t('Save hatayein') : t('Save karein')}
-                  title={shop.saved ? t('Save hatayein') : t('Save karein')}
-                  className={cn(
-                    'shrink-0 rounded-lg p-2 transition-colors focus-ring',
-                    shop.saved ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-400 hover:bg-slate-100',
-                  )}
-                >
-                  {shop.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
-                </button>
-              )}
-            </div>
-
-            {/* Bio — dukaan ka chhota parichay */}
-            {shop.bio && (
-              <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{shop.bio}</p>
+        {/* Save — follow jaisa. Juda hua ho tabhi. Naam ki row ke saath hi, daayein kone me */}
+        {shop.connected && (
+          <button
+            type="button"
+            onClick={onToggleSave}
+            disabled={saving}
+            aria-label={shop.saved ? t('Save hatayein') : t('Save karein')}
+            title={shop.saved ? t('Save hatayein') : t('Save karein')}
+            className={cn(
+              '-mt-9 ml-auto flex shrink-0 rounded-lg p-2 transition-colors focus-ring',
+              shop.saved ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-400 hover:bg-slate-100',
             )}
+          >
+            {shop.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
+          </button>
+        )}
 
-            {/*
-              Do ginti — Instagram ke "posts / followers" jaisi.
-              Inhi se pata chalta hai ki dukaan bhari hai ya khali.
-            */}
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-              <span className="inline-flex items-center gap-1.5 text-slate-700">
-                <Package size={14} className="text-slate-400" />
-                <span className="font-semibold">{shop.itemCount ?? 0}</span>
-                <span className="text-xs text-slate-500">{t('item')}</span>
+        <div className="mt-3">
+          {/* Bio — dukaan ka chhota parichay */}
+          {shop.bio && (
+            <p className="whitespace-pre-line text-sm text-slate-600">{shop.bio}</p>
+          )}
+
+          {/*
+            Do ginti — Instagram ke "posts / followers" jaisi.
+            Inhi se pata chalta hai ki dukaan bhari hai ya khali.
+          */}
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+            <span className="inline-flex items-center gap-1.5 text-slate-700">
+              <Package size={14} className="text-slate-400" />
+              <span className="font-semibold">{shop.itemCount ?? 0}</span>
+              <span className="text-xs text-slate-500">{t('item')}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-slate-700">
+              <Layers size={14} className="text-slate-400" />
+              <span className="font-semibold">{shop.categoryCount ?? 0}</span>
+              <span className="text-xs text-slate-500">{t('category')}</span>
+            </span>
+            {shop.balance > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-amber-700">
+                <span className="tabular font-semibold">{formatMoney(shop.balance)}</span>
+                <span className="text-xs">{t('baaki')}</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 text-slate-700">
-                <Layers size={14} className="text-slate-400" />
-                <span className="font-semibold">{shop.categoryCount ?? 0}</span>
-                <span className="text-xs text-slate-500">{t('category')}</span>
-              </span>
-              {shop.balance > 0 && (
-                <span className="inline-flex items-center gap-1.5 text-amber-700">
-                  <span className="tabular font-semibold">{formatMoney(shop.balance)}</span>
-                  <span className="text-xs">{t('baaki')}</span>
-                </span>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

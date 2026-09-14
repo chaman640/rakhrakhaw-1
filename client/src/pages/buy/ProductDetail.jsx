@@ -197,23 +197,100 @@ function ReelPanel({ item, shop, sectionRef, index }) {
   const { refresh: refreshCart } = useCart();
   const photos = item.images?.length ? item.images : [];
   const [slide, setSlide] = useState(0);
-  const touchRef = useRef({ x: 0, y: 0 });
 
-  // Baayein/daayein swipe se photo badle — Instagram jaisa. Ungli utha kar
-  // dekhte hain ki HORIZONTAL zyada chala hai ya VERTICAL — warna panel ke
-  // upar-neeche scroll karne wala swipe bhi galti se photo badal deta.
+  const containerRef = useRef(null);
+  const touchRef = useRef({ x: 0, y: 0, mode: null, originX: 50, originY: 50 });
+  const zoomTimerRef = useRef(null);
+
+  const [dragX, setDragX] = useState(0);       // swipe ke waqt track kitna khisak gaya (px)
+  const [animating, setAnimating] = useState(false); // ungli chhutne ke baad ka animation
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomOrigin, setZoomOrigin] = useState('50% 50%');
+
+  /*
+    EK HI FINGER, TEEN KAAM (Part 41) — swipe (agli/pichhli photo, Instagram
+    jaisa animation ke saath), zoom (ungli tika kar rakhein to badi ho jaye,
+    hatate hi wapas chhoti), ya panel khud upar-neeche scroll ho (agar ungli
+    zyada seedhi upar-neeche chali). Pehle 8px tak koi faisla nahi lete — us
+    thodi si harkat se pata chalta hai ki teenon me se kaun sa hai.
+  */
   function onTouchStart(e) {
     const p = e.touches[0];
-    touchRef.current = { x: p.clientX, y: p.clientY };
+    const rect = containerRef.current?.getBoundingClientRect();
+    touchRef.current = {
+      x: p.clientX,
+      y: p.clientY,
+      mode: null,
+      originX: rect ? ((p.clientX - rect.left) / rect.width) * 100 : 50,
+      originY: rect ? ((p.clientY - rect.top) / rect.height) * 100 : 50,
+    };
+    clearTimeout(zoomTimerRef.current);
+    zoomTimerRef.current = setTimeout(() => {
+      if (touchRef.current.mode) return; // tab tak swipe/scroll shuru ho chuka hoga to zoom nahi
+      touchRef.current.mode = 'zoom';
+      setZoomOrigin(`${touchRef.current.originX}% ${touchRef.current.originY}%`);
+      setZoomScale(1.8);
+    }, 280);
   }
-  function onTouchEnd(e) {
-    const p = e.changedTouches[0];
+
+  function onTouchMove(e) {
+    const p = e.touches[0];
     const dx = p.clientX - touchRef.current.x;
     const dy = p.clientY - touchRef.current.y;
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0) setSlide((s) => Math.min(s + 1, photos.length - 1));
-    else setSlide((s) => Math.max(s - 1, 0));
+
+    if (touchRef.current.mode === 'zoom') return; // zoom ke waqt ungli hilne se kuch nahi hota
+
+    if (!touchRef.current.mode) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      clearTimeout(zoomTimerRef.current);
+      touchRef.current.mode = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'swipe' : 'scroll';
+    }
+    if (touchRef.current.mode !== 'swipe' || photos.length < 2) return;
+
+    // Kinaron pe rubber-band — pehli/aakhri photo pe aage-peeche khichne se
+    // thoda hi hilta hai, batata hai ki aage kuch nahi hai
+    const atStart = slide === 0 && dx > 0;
+    const atEnd = slide === photos.length - 1 && dx < 0;
+    setDragX(atStart || atEnd ? dx / 3 : dx);
   }
+
+  function onTouchEnd() {
+    clearTimeout(zoomTimerRef.current);
+    if (touchRef.current.mode === 'zoom') {
+      setZoomScale(1);
+      touchRef.current.mode = null;
+      return;
+    }
+    if (touchRef.current.mode !== 'swipe') {
+      touchRef.current.mode = null;
+      return;
+    }
+    touchRef.current.mode = null;
+
+    const width = containerRef.current?.offsetWidth || window.innerWidth;
+    const threshold = width * 0.22;
+    if (dragX <= -threshold && slide < photos.length - 1) {
+      finishSwipe(width, 1);
+    } else if (dragX >= threshold && slide > 0) {
+      finishSwipe(width, -1);
+    } else {
+      setAnimating(true);
+      setDragX(0);
+      setTimeout(() => setAnimating(false), 220);
+    }
+  }
+
+  function finishSwipe(width, dir) {
+    setAnimating(true);
+    setDragX(dir > 0 ? -width : width);
+    setTimeout(() => {
+      setSlide((s) => s + dir);
+      setDragX(0);
+      setAnimating(false);
+    }, 220);
+  }
+
+  useEffect(() => () => clearTimeout(zoomTimerRef.current), []);
 
   const [showQty, setShowQty] = useState(false);
   const [qty, setQty] = useState(null);
@@ -266,12 +343,37 @@ function ReelPanel({ item, shop, sectionRef, index }) {
       className="relative flex h-full w-full snap-start bg-black"
     >
       <div
+        ref={containerRef}
         className="absolute inset-0 overflow-hidden bg-slate-900"
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
         {photos.length ? (
-          <img src={photos[slide]} alt="" className="h-full w-full object-cover" />
+          <>
+            {/* ZOOM — sirf scale karta hai, ungli tikaye rakhne se badi hoti hai */}
+            <div
+              className="h-full w-full"
+              style={{
+                transform: `scale(${zoomScale})`,
+                transformOrigin: zoomOrigin,
+                transition: zoomScale === 1 ? 'transform 200ms ease-out' : 'transform 150ms ease-out',
+              }}
+            >
+              {/* SWIPE — sirf khisakta hai, photo se photo Instagram jaisi animation ke saath */}
+              <div
+                className="flex h-full"
+                style={{
+                  transform: `translateX(${-slide * (containerRef.current?.offsetWidth || 0) + dragX}px)`,
+                  transition: animating ? 'transform 220ms ease-out' : 'none',
+                }}
+              >
+                {photos.map((src, i) => (
+                  <img key={i} src={src} alt="" className="h-full w-full flex-shrink-0 object-cover" />
+                ))}
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-600">
             <Package size={64} />
@@ -280,8 +382,23 @@ function ReelPanel({ item, shop, sectionRef, index }) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/45 to-transparent" />
       </div>
 
+      {/* Kitni photo hai, kaun si chal rahi hai — jaise Instagram carousel me */}
       {photos.length > 1 && (
-        <div className="absolute inset-x-0 top-3 flex justify-center gap-1.5">
+        <span className="absolute left-3 top-8 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+          {slide + 1}/{photos.length}
+        </span>
+      )}
+
+      <span className={cn(
+        'absolute right-3 top-8 rounded-full px-3 py-1 text-xs font-semibold text-white shadow',
+        item.inStock ? 'bg-emerald-600' : 'bg-red-600',
+      )}>
+        {item.inStock ? t('Stock me hai') : t('Stock khatam')}
+      </span>
+
+      {/* Dots — ab neeche, photo ke bilkul upar-caption se pehle (Instagram jaisa) */}
+      {photos.length > 1 && (
+        <div className="absolute inset-x-0 bottom-[190px] flex justify-center gap-1.5">
           {photos.map((_, i) => (
             <button
               key={i}
@@ -296,13 +413,6 @@ function ReelPanel({ item, shop, sectionRef, index }) {
           ))}
         </div>
       )}
-
-      <span className={cn(
-        'absolute right-3 top-8 rounded-full px-3 py-1 text-xs font-semibold text-white shadow',
-        item.inStock ? 'bg-emerald-600' : 'bg-red-600',
-      )}>
-        {item.inStock ? t('Stock me hai') : t('Stock khatam')}
-      </span>
 
       {/* DAAYAN COLUMN — like/comment/share ki jagah: rate, chat, photo count, dukaan ka logo */}
       <div className="absolute bottom-32 right-3 flex flex-col items-center gap-4 text-white">
