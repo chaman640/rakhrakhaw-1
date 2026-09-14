@@ -31,9 +31,8 @@ import { t } from '@/lib/i18n';
  *      pehle aata hai.
  */
 export default function PlanNeeded() {
-  const { user } = useAuth();
+  const { isOwner } = useAuth();
   const { setMode } = useShop() || {};
-  const isOwner = !user?.staffRole || user.staffRole === 'OWNER';
 
   return (
     <div className="mx-auto max-w-3xl px-1 py-6">
