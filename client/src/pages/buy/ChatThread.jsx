@@ -36,6 +36,7 @@ export default function ChatThread() {
       contactAvatar={state?.logoUrl}
       onBack={() => navigate('/buy/chat')}
       onOpenRef={openRef}
+      onOpenContact={() => { selectShop(businessId); navigate('/shop'); }}
       fetchMessages={() => api.get('/my/chat/messages', {
         headers: { 'X-Shop-Id': businessId },
       }).then((r) => r.data)}

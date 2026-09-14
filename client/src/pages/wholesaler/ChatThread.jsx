@@ -20,6 +20,7 @@ export default function ChatThread() {
       contactName={state?.name || t('Retailer')}
       onBack={() => navigate('/chat')}
       onOpenRef={openRef}
+      onOpenContact={() => navigate(`/retailers/${partyId}?tab=orders`)}
       fetchMessages={() => api.get(`/chat/${partyId}/messages`).then((r) => r.data)}
       postMessage={async (formData) => {
         const res = await api.post(`/chat/${partyId}/messages`, formData);

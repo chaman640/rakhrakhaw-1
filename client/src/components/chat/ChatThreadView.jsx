@@ -53,7 +53,7 @@ function ChatImage({ src, pending }) {
  * {POLL_MS} par turant poochh lete hain "kuch naya aaya?" — chat khuli ho tabhi.
  */
 export default function ChatThreadView({
-  myRole, contactName, contactAvatar, onBack, fetchMessages, postMessage, onOpenRef,
+  myRole, contactName, contactAvatar, onBack, fetchMessages, postMessage, onOpenRef, onOpenContact,
 }) {
   const toast = useToast();
   const [messages, setMessages] = useState(null);
@@ -158,14 +158,40 @@ export default function ChatThreadView({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-ring">
           <ArrowLeft size={20} />
         </button>
-        {contactAvatar ? (
-          <img src={contactAvatar} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+        {/*
+          Profile tap karne se aage khulta hai (Part 43) — pehle ye ek chup
+          <p> tha, kahin le hi nahi jaata tha:
+            RETAILER ke liye  -> uski chuni hui dukaan (`onOpenContact`)
+            WHOLESALER ke liye -> usi retailer ka poora record: kab-kab order
+                                  diya, kya khareeda, kitne ka — `PartyDetail`
+        */}
+        {onOpenContact ? (
+          <button
+            type="button"
+            onClick={onOpenContact}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-0.5 text-left focus-ring"
+          >
+            {contactAvatar ? (
+              <img src={contactAvatar} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <Store size={17} />
+              </div>
+            )}
+            <p className="truncate text-sm font-semibold text-slate-900">{contactName}</p>
+          </button>
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-            <Store size={17} />
-          </div>
+          <>
+            {contactAvatar ? (
+              <img src={contactAvatar} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <Store size={17} />
+              </div>
+            )}
+            <p className="truncate text-sm font-semibold text-slate-900">{contactName}</p>
+          </>
         )}
-        <p className="truncate text-sm font-semibold text-slate-900">{contactName}</p>
       </div>
 
       {/* ── messages ── */}
