@@ -159,7 +159,7 @@ export default function ProductDetail() {
     <div className="fixed inset-0 z-40 bg-black">
       <div
         ref={scrollRef}
-        className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
+        className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, i) => (
           <ReelPanel
@@ -197,6 +197,23 @@ function ReelPanel({ item, shop, sectionRef, index }) {
   const { refresh: refreshCart } = useCart();
   const photos = item.images?.length ? item.images : [];
   const [slide, setSlide] = useState(0);
+  const touchRef = useRef({ x: 0, y: 0 });
+
+  // Baayein/daayein swipe se photo badle — Instagram jaisa. Ungli utha kar
+  // dekhte hain ki HORIZONTAL zyada chala hai ya VERTICAL — warna panel ke
+  // upar-neeche scroll karne wala swipe bhi galti se photo badal deta.
+  function onTouchStart(e) {
+    const p = e.touches[0];
+    touchRef.current = { x: p.clientX, y: p.clientY };
+  }
+  function onTouchEnd(e) {
+    const p = e.changedTouches[0];
+    const dx = p.clientX - touchRef.current.x;
+    const dy = p.clientY - touchRef.current.y;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) setSlide((s) => Math.min(s + 1, photos.length - 1));
+    else setSlide((s) => Math.max(s - 1, 0));
+  }
 
   const [showQty, setShowQty] = useState(false);
   const [qty, setQty] = useState(null);
@@ -248,7 +265,11 @@ function ReelPanel({ item, shop, sectionRef, index }) {
       data-reel-index={index}
       className="relative flex h-full w-full snap-start bg-black"
     >
-      <div className="absolute inset-0 overflow-hidden bg-slate-900">
+      <div
+        className="absolute inset-0 overflow-hidden bg-slate-900"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         {photos.length ? (
           <img src={photos[slide]} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -260,7 +281,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
       </div>
 
       {photos.length > 1 && (
-        <div className="absolute inset-x-3 top-3 flex gap-1">
+        <div className="absolute inset-x-0 top-3 flex justify-center gap-1.5">
           {photos.map((_, i) => (
             <button
               key={i}
@@ -268,8 +289,8 @@ function ReelPanel({ item, shop, sectionRef, index }) {
               onClick={() => setSlide(i)}
               aria-label={t('Photo {n}', { n: i + 1 })}
               className={cn(
-                'h-1 flex-1 rounded-full transition-colors',
-                i === slide ? 'bg-white' : 'bg-white/30',
+                'h-1.5 rounded-full transition-all',
+                i === slide ? 'w-4 bg-white' : 'w-1.5 bg-white/40',
               )}
             />
           ))}
@@ -316,12 +337,21 @@ function ReelPanel({ item, shop, sectionRef, index }) {
           </div>
         )}
 
-        {shop?.logoUrl ? (
-          <img src={shop.logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover ring-2 ring-white/70" />
-        ) : (
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 text-white ring-2 ring-white/70">
-            <Store size={16} />
-          </span>
+        {item.inStock && (
+          <button
+            type="button"
+            onClick={() => setShowQty(true)}
+            aria-label={t('Add to Cart')}
+            className="flex flex-col items-center focus-ring"
+          >
+            <span className={cn(
+              'flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-sm',
+              added ? 'bg-emerald-500 text-white' : 'bg-white/15 text-white',
+            )}>
+              {added ? <Check size={19} /> : <ShoppingCart size={19} />}
+            </span>
+            <span className="mt-1 text-xs">{t('Cart')}</span>
+          </button>
         )}
       </div>
 

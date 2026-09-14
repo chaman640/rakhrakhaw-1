@@ -141,8 +141,13 @@ export default function AppLayout() {
         RETAILER (khareedne wale) ke liye patti waisi hi hai — unka safar
         alag hai (Shop, Cart, Orders roz ke kaam hain, ek-doosre se bilkul
         alag), unhe angoothe ke neeche seedha button milna zaroori hai.
+
+        PRODUCT REEL (Part 40) yahan se bhi chhupa di gayi hai — wo page
+        khud full-screen `fixed inset-0` hai, isi z-index (40) pe. Patti
+        DOM me baad me aati hai isliye ऊपर baith jati — Add to Cart button
+        aur caption uske peeche dab jate the.
       */}
-      {buying && <BottomNav />}
+      {buying && !pathname.startsWith('/shop/item/') && <BottomNav />}
 
       {showTour && (
         <OnboardingTour
