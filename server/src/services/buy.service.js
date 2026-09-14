@@ -44,6 +44,9 @@ function shopHead(business, party) {
     gstEnabled: Boolean(business.gstEnabled),
     partyStatus: party?.status || null,
     balance: party ? Number(party.balance || 0) : 0,
+    // Cart me "UPI" chunte hi QR banana hai — usi ke liye
+    upiId: business.upiId || '',
+    upiName: business.upiName || business.name || '',
   };
 }
 
@@ -71,7 +74,7 @@ export async function getGroupedCart(user) {
 
   const [businesses, parties] = await Promise.all([
     Business.find({ _id: { $in: live.map((m) => m.businessId) } })
-      .select('name phone logoUrl address gstEnabled').lean(),
+      .select('name phone logoUrl address gstEnabled upiId upiName').lean(),
     Party.find({ _id: { $in: live.map((m) => m.partyId) } })
       .select('status balance').lean(),
   ]);

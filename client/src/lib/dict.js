@@ -923,6 +923,8 @@ const DICT = {
 
   'Paisa kahan bhejein': { hi: 'पैसा कहां भेजें', en: 'Where to send the money' },
   'Bhejni hai': { hi: 'भेजनी है', en: 'To pay' },
+  /* ── Cart UPI QR (Part 42) ── */
+  'Is dukaan ne abhi UPI ID nahi daali hai — Udhaar chunein ya inhe seedha poochh lein.': { hi: 'इस दुकान ने अभी UPI ID नहीं डाली है — उधार चुनें या इन्हें सीधा पूछ लें।', en: 'This shop has not added a UPI ID yet — choose Credit, or ask them directly.' },
   'UPI QR': { hi: 'UPI QR', en: 'UPI QR' },
   'Kisi bhi UPI app se scan karein': { hi: 'किसी भी UPI ऐप से स्कैन करें', en: 'Scan with any UPI app' },
   'Bank wale khate ka QR nahi banta — ye number apne bank app me daalein': { hi: 'बैंक वाले खाते का QR नहीं बनता — ये नंबर अपने बैंक ऐप में डालें', en: 'A bank account cannot make a QR — enter these details in your bank app' },

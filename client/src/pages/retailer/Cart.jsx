@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Trash2, ShoppingCart, Package, TriangleAlert, Send, Store, Tag, ArrowUp, ArrowDown,
@@ -52,7 +52,6 @@ import { t } from '@/lib/i18n';
 */
 const PAY_MODES = [
   { value: 'UDHAAR', label: 'Udhaar', hint: 'Khate me chadha dein' },
-  { value: 'CASH', label: 'Cash', hint: 'Maal ke saath de denge' },
   { value: 'UPI', label: 'UPI', hint: 'Online bhej denge' },
 ];
 
@@ -68,6 +67,21 @@ export default function Cart() {
   const [placing, setPlacing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(null);   // { shopId, name }
   const [result, setResult] = useState(null);               // checkout ke baad
+
+  /*
+    QUANTITY — SCREEN TURANT, SERVER THODI DER BAAD (Part 42).
+
+    Pehle +/- dabate hi seedha server ko call jata tha aur poora cart dobara
+    load hota tha — har tap pe ek network round-trip, isliye dheema mehsoos
+    hota tha. Ab number YAHIN, isi waqt badal jata hai (neeche `qtyOverride`
+    se); server ko save 500ms baad, ek hi baar, chup-chaap bheja jata hai.
+
+    "Order bhejein" dabane se pehle `flushPendingQty()` bacha hua koi bhi save
+    turant bhej kar uska poora hona wait karta hai — taaki server ke paas
+    order jaate waqt bilkul wahi quantity ho jo screen pe dikh rahi thi.
+  */
+  const [qtyOverride, setQtyOverride] = useState({});   // `${shopId}|${itemId}` -> qty
+  const pendingSaveRef = useRef({});                    // usi chaabi -> { itemId, shopId, qty, timer, promise }
 
   /*
     CHETAVNI TOAST ME NAHI, SCREEN PE.
@@ -89,6 +103,29 @@ export default function Cart() {
 
   const shops = data?.shops || [];
   const warnings = data?.warnings || [];
+
+  /*
+    `qtyOverride` ko yahan (aur sirf yahan) laaga dete hain — baaki poora
+    component `shops` ki jagah `displayShops` dekhta hai, isliye kahin bhi
+    ye sochne ki zarurat nahi ki "abhi wala number ya server wala number".
+  */
+  function withQtyOverride(row) {
+    let changed = false;
+    const items = row.items
+      .map((l) => {
+        const key = `${row.shop._id}|${l.itemId}`;
+        if (!(key in qtyOverride)) return l;
+        changed = true;
+        const qty = qtyOverride[key];
+        return { ...l, qty, amount: Math.round(qty * l.rate * 100) / 100 };
+      })
+      .filter((l) => l.qty > 0);
+    if (!changed) return row;
+    return { ...row, items, total: items.reduce((s, l) => s + l.amount, 0), itemCount: items.length };
+  }
+
+  const displayShops = shops.map(withQtyOverride);
+  const grandTotal = displayShops.reduce((s, r) => s + r.total, 0);
 
   // Server pe pada note pehli baar dabbe me bhar do
   useEffect(() => {
@@ -122,16 +159,51 @@ export default function Cart() {
   const withShop = (shopId) => ({ headers: { 'X-Shop-Id': String(shopId) } });
 
   async function setQty(shopId, itemId, qty) {
-    setBusyItem(`${shopId}|${itemId}`);
-    try {
-      await api.put(`/cart/items/${itemId}`, { qty }, withShop(shopId));
-      await Promise.all([refetch(), refreshCart()]);
-      bust('cart');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusyItem(null);
-    }
+    const key = `${shopId}|${itemId}`;
+
+    // TURANT — screen isi pal badalti hai, network ka intezaar nahi
+    setQtyOverride((o) => ({ ...o, [key]: qty }));
+
+    let entry = pendingSaveRef.current[key];
+    if (!entry) entry = pendingSaveRef.current[key] = {};
+    entry.shopId = shopId;
+    entry.itemId = itemId;
+    entry.qty = qty;
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = setTimeout(() => runSave(key), 500);
+  }
+
+  function runSave(key) {
+    const entry = pendingSaveRef.current[key];
+    if (!entry) return;
+    entry.timer = null;
+    entry.promise = api
+      .put(`/cart/items/${entry.itemId}`, { qty: entry.qty }, withShop(entry.shopId))
+      .then(() => {
+        bust('cart');
+        refreshCart();
+      })
+      .catch((err) => {
+        // Save hi nahi hua — jhooth wala number screen pe nahi rehne dena,
+        // server se sahi wapas mangwa lo
+        toast.error(err.message);
+        setQtyOverride((o) => { const n = { ...o }; delete n[key]; return n; });
+        refetch();
+      });
+    return entry.promise;
+  }
+
+  /** "Order bhejein" se pehle — jo bhi save abhi ruka hua hai, turant bhej kar poora hone do */
+  async function flushPendingQty() {
+    const entries = Object.entries(pendingSaveRef.current);
+    const waits = entries.map(([key, entry]) => {
+      if (entry.timer) {
+        clearTimeout(entry.timer);
+        return runSave(key);
+      }
+      return entry.promise;
+    });
+    await Promise.all(waits.filter(Boolean));
   }
 
   async function removeItem(shopId, itemId) {
@@ -181,6 +253,10 @@ export default function Cart() {
 
     setPlacing(true);
     try {
+      // Screen pe jo quantity dikh rahi hai wahi server tak pahunche —
+      // koi bhi abhi ruka hua save turant bhej kar poora hone do
+      await flushPendingQty();
+
       const res = await api.post('/buy/checkout', { orders });
       await Promise.all([refetch(), refreshCart()]);
       bust('cart', 'buy-cart', 'my-orders');
@@ -322,7 +398,7 @@ export default function Cart() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          {shops.map((row) => (
+          {displayShops.map((row) => (
             <ShopBlock
               key={String(row.shop._id)}
               row={row}
@@ -343,7 +419,7 @@ export default function Cart() {
             <p className="mb-3 text-base font-semibold text-slate-900">{t('Kul jod')}</p>
 
             <dl className="space-y-2 text-sm">
-              {shops.map((row) => (
+              {displayShops.map((row) => (
                 <div key={String(row.shop._id)} className="flex justify-between gap-3">
                   <dt className="min-w-0 truncate text-slate-500">{row.shop.name}</dt>
                   <dd className="tabular shrink-0 text-slate-900">{formatMoney(row.total)}</dd>
@@ -352,7 +428,7 @@ export default function Cart() {
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                 <dt className="font-semibold text-slate-900">{t('Kul')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">
-                  {formatMoney(data.grandTotal)}
+                  {formatMoney(grandTotal)}
                 </dd>
               </div>
             </dl>
@@ -552,6 +628,14 @@ function ShopBlock({ row, state, onState, busyItem, onQty, onRemove, onClear, on
         </div>
 
         {/*
+          UPI chuna hai to seedha QR yahin — dukaan badalne ka koi matlab
+          nahi, jo dukaan ka cart hai usi ki UPI ID se QR banta hai.
+        */}
+        {state.paymentMode === 'UPI' && (
+          <UpiQrBox upiId={shop.upiId} upiName={shop.upiName || shop.name} amount={row.total} />
+        )}
+
+        {/*
           Note chhupa hua kyun: sau me se navve baar koi likhta hi nahi, aur
           teen dukaanon ke teen khule textarea poori screen kha jate hain.
         */}
@@ -577,5 +661,63 @@ function ShopBlock({ row, state, onState, busyItem, onQty, onRemove, onClear, on
         )}
       </div>
     </Card>
+  );
+}
+
+/* ────────────────────────── UPI chunte hi QR ────────────────────────── */
+
+/**
+ * Bilkul wahi tarika jo bill ke "Paisa kahan bhejein" wale box me hai
+ * (`billUpiLink` / `PayBox`) — sirf UPI ID + naam + rakam se link banta hai,
+ * aur `qrcode` package usi link ka QR banata hai. Alag jagah, alag rakam
+ * (poora bill nahi — sirf isi dukaan ka cart ka jod), isliye chhota alag
+ * component, par soch wahi hai.
+ */
+function UpiQrBox({ upiId, upiName, amount }) {
+  const [qr, setQr] = useState('');
+  const due = Number(amount || 0);
+
+  useEffect(() => {
+    if (!upiId || due <= 0) { setQr(''); return undefined; }
+    let alive = true;
+    const params = new URLSearchParams({
+      pa: upiId,
+      pn: upiName || 'Wholesaler',
+      cu: 'INR',
+      am: due.toFixed(2),
+      tn: 'Order payment',
+    });
+    import('qrcode')
+      .then(({ default: QRCode }) => QRCode.toDataURL(`upi://pay?${params.toString()}`, { width: 200, margin: 0 }))
+      .then((url) => { if (alive) setQr(url); })
+      .catch(() => { if (alive) setQr(''); });
+    return () => { alive = false; };
+  }, [upiId, upiName, due]);
+
+  if (!upiId) {
+    return (
+      <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        {t('Is dukaan ne abhi UPI ID nahi daali hai — Udhaar chunein ya inhe seedha poochh lein.')}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-3">
+      {qr ? (
+        <img src={qr} alt={t('UPI QR')} className="h-24 w-24 shrink-0" />
+      ) : (
+        <div className="flex h-24 w-24 shrink-0 items-center justify-center text-slate-300">
+          <Spinner size={20} />
+        </div>
+      )}
+      <div className="min-w-0 text-xs">
+        <p className="text-slate-700">
+          {t('Bhejni hai')}: <strong className="tabular text-sm">{formatMoney(due)}</strong>
+        </p>
+        <p className="mt-1 truncate text-slate-500">UPI: <span className="font-medium text-slate-700">{upiId}</span></p>
+        <p className="mt-1 text-slate-500">{t('Kisi bhi UPI app se scan karein')}</p>
+      </div>
+    </div>
   );
 }
