@@ -740,6 +740,9 @@ const DICT = {
   'wholesale price': { hi: 'होलसेल रेट', en: 'wholesale price' },
   'Wholesale price': { hi: 'होलसेल रेट', en: 'Wholesale price' },
   'Wholesaler account': { hi: 'होलसेलर अकाउंट', en: 'Wholesaler account' },
+  /* ── Standalone retailer signup (Part 39) ── */
+  'Retailer account': { hi: 'रिटेलर अकाउंट', en: 'Retailer account' },
+  'Kisi bhi dukaan ka number search karke seedha order shuru karein': { hi: 'किसी भी दुकान का नंबर सर्च करके सीधा ऑर्डर शुरू करें', en: 'Search any shop by number and start ordering right away' },
   'Wholesaler account banayein': { hi: 'होलसेलर अकाउंट बनाएं', en: 'Create a wholesaler account' },
   'Ya khud likhein': { hi: 'या खुद लिखें', en: 'Or write your own' },
   'Yahi ek link apne saare retailers ko WhatsApp pe bhej dein': { hi: 'यही एक लिंक अपने सारे रिटेलर को WhatsApp पर भेज दें', en: 'Send this one link to all your retailers on WhatsApp' },

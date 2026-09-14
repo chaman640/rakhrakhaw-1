@@ -33,7 +33,10 @@ export const loginSchema = z.object({
 });
 
 export const retailerSignupSchema = z.object({
-  inviteCode: z.string().trim().min(4, 'Invite code galat hai'),
+  // Khaali chhoda ja sakta hai — retailer ab bina kisi dukaan ke invite link
+  // ke bhi seedha signup kar sakta hai, aur baad me Buy me number search
+  // karke jitni chahe dukaanon se jud sakta hai.
+  inviteCode: z.string().trim().min(4, 'Invite code galat hai').optional().default(''),
   name,
   shopName: z.string().trim().max(120).optional().default(''),
   phone,

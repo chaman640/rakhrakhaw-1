@@ -196,17 +196,26 @@ export async function getInviteInfo(code) {
   };
 }
 
-/** Retailer signup — invite code se. User + Party dono bante hain. */
+/**
+ * Retailer signup — DO TARIKE.
+ *
+ *   invite code KE SAATH  — purana rasta. Seedha usi wholesaler se juda
+ *                            hua account banta hai (jaisa pehle tha).
+ *
+ *   invite code KE BINA    — STANDALONE. Retailer ka apna akela login banta
+ *                            hai, kisi dukaan se juda hua nahi (Membership.js
+ *                            me `userId` isi ke liye hai). Login hote hi Buy
+ *                            page khulta hai jahan number search karke jitni
+ *                            chahe dukaanon se juda ja sakta hai.
+ *
+ * Dono me User + Party turant ACTIVE — kisi approval ka intezaar nahi
+ * (shop.service.js me poori wajah).
+ */
 export async function signupRetailer({ inviteCode, name, shopName, phone, password, otpToken }) {
   const cleanPhone = normalizePhone(phone);
-  const code = inviteCode.toUpperCase();
 
   // OTP pehle — upar wholesaler wale me poori wajah likhi hai
   assertOtpToken(otpToken, 'SIGNUP', cleanPhone);
-
-  const business = await Business.findOne({ inviteCode: code, isActive: true });
-  if (!business) throw ApiError.notFound('Invite link galat hai ya expire ho gaya');
-  if (!business.inviteEnabled) throw ApiError.forbidden('Ye link abhi band hai');
 
   /*
     Ye number pehle se registered hai.
@@ -228,6 +237,26 @@ export async function signupRetailer({ inviteCode, name, shopName, phone, passwo
     );
   }
 
+  if (!inviteCode) {
+    const user = new User({
+      name,
+      phone: cleanPhone,
+      passwordHash: 'temp',
+      role: ROLES.RETAILER,
+      businessId: null,
+    });
+    await user.setPassword(password);
+    await user.save();
+
+    // Koi dukaan abhi nahi — client isi (`party: null`) se Buy page kholta hai
+    return { token: signToken(user), user: publicUser(user), party: null, business: null };
+  }
+
+  const code = inviteCode.toUpperCase();
+  const business = await Business.findOne({ inviteCode: code, isActive: true });
+  if (!business) throw ApiError.notFound('Invite link galat hai ya expire ho gaya');
+  if (!business.inviteEnabled) throw ApiError.forbidden('Ye link abhi band hai');
+
   // Wholesaler ne pehle se is phone ki party bana rakhi ho to usi ko link karo
   let party = await Party.findOne({
     businessId: business._id,
@@ -235,7 +264,8 @@ export async function signupRetailer({ inviteCode, name, shopName, phone, passwo
     phone: cleanPhone,
   });
 
-  const status = business.autoApproveRetailers ? PARTY_STATUS.ACTIVE : PARTY_STATUS.PENDING;
+  // Approval ka intezaar hata diya gaya hai — dekho shop.service.js me poori wajah
+  const status = PARTY_STATUS.ACTIVE;
 
   if (party) {
     party.name = party.name || name;

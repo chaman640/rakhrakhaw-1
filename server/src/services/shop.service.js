@@ -154,7 +154,15 @@ async function buyerIdentity(user) {
  * return doosri party pe chhoot jate aur hisaab do jagah bat jata.
  */
 async function findOrCreateParty(business, ident, byUserId) {
-  const wantStatus = business.autoApproveRetailers ? PARTY_STATUS.ACTIVE : PARTY_STATUS.PENDING;
+  /*
+    Pehle yahan `business.autoApproveRetailers` dekh kar PENDING ya ACTIVE
+    tay hota tha — retailer ko wholesaler ke "approve" karne ka intezaar
+    karna padta. Ab wo intezaar hata diya gaya hai: koi bhi retailer kisi
+    bhi dukaan se jud kar seedha maal dekh aur order kar sakta hai.
+    `autoApproveRetailers` field Business model me pada rehta hai (purana
+    data), par ab kahin padha nahi jata.
+  */
+  const wantStatus = PARTY_STATUS.ACTIVE;
 
   let party = ident.phone
     ? await Party.findOne({ businessId: business._id, type: PARTY_TYPES.RETAILER, phone: ident.phone })

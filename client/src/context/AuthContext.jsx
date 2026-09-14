@@ -97,7 +97,11 @@ export function AuthProvider({ children }) {
     // Isi se Profile pe Buyer wala button dikhta hai.
     canBuy: Boolean(user?.canBuy),
     // Retailer approve hua ya nahi
-    isApproved: user?.role !== 'retailer' || party?.status === 'active',
+    // Koi party hi nahi (naya standalone retailer, abhi kisi dukaan se juda
+    // nahi) — ye "approval baaki" nahi hai, bas abhi tak koi dukaan chuni
+    // nahi. Approval ka intezaar waise bhi ab kahin lagta hi nahi (server
+    // hamesha ACTIVE deta hai) — party hoga to status 'active' hi hoga.
+    isApproved: user?.role !== 'retailer' || !party || party?.status === 'active',
     partyStatus: party?.status || null,
     // GST on/off — poori app isi flag se tax fields dikhati/chhupati hai
     gstEnabled: Boolean(business?.gstEnabled),
