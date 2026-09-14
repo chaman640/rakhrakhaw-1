@@ -56,6 +56,7 @@ router.post('/cancel', requirePermission('settings:edit'), ctrl.cancel);
 router.post('/subscribe', requirePermission('settings:edit'), validate({ body: planOnlySchema }), ctrl.subscribe);
 router.post('/sub-verify', requirePermission('settings:edit'), validate({ body: subVerifySchema }), ctrl.confirmSub);
 router.post('/change-plan', requirePermission('settings:edit'), validate({ body: planOnlySchema }), ctrl.changePlan);
+router.post('/switch-mandate', requirePermission('settings:edit'), validate({ body: planOnlySchema }), ctrl.switchMandate);
 router.post('/undo-change', requirePermission('settings:edit'), ctrl.undoChange);
 
 export default router;

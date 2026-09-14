@@ -58,6 +58,12 @@ export const confirmSub = asyncHandler(async (req, res) =>
 export const changePlan = asyncHandler(async (req, res) =>
   ok(res, await service.changePlan(req.businessId, req.body)));
 
+// UPI mandate ka amount PATCH se badalta nahi — isliye purana band karke
+// naya banana padta hai. `changePlan` ke `upi_mandate_immutable` error ke
+// baad client isi ko bulata hai.
+export const switchMandate = asyncHandler(async (req, res) =>
+  ok(res, await service.switchMandate(req.businessId, req.body)));
+
 export const undoChange = asyncHandler(async (req, res) =>
   ok(res, await service.undoPendingChange(req.businessId)));
 

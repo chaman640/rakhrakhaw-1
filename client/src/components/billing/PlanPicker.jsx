@@ -34,6 +34,9 @@ export default function PlanPicker({ onDone, compact = false }) {
   const [data, setData] = useState(null);
   const [me, setMe] = useState(null);
   const [busy, setBusy] = useState('');
+  // UPI se bana mandate PATCH nahi hota — us plan ka code yahan rakh kar
+  // "naya mandate banayein" wala button dikhaya jata hai (neeche `badlein`).
+  const [upiStuck, setUpiStuck] = useState('');
 
   const load = useCallback(async () => {
     const [plans, mine] = await Promise.all([
@@ -114,13 +117,61 @@ export default function PlanPicker({ onDone, compact = false }) {
   /** Mandate pehle se hai — sirf plan badalna hai, dobara manzoori nahi */
   async function badlein(code) {
     setBusy(code);
+    setUpiStuck('');
     try {
       const res = await api.post('/billing/change-plan', { planCode: code });
       toast.success(res.message);
       await refresh(res.data);
     } catch (err) {
-      toast.error(err.message);
+      if (err.details?.reason === 'upi_mandate_immutable') {
+        setUpiStuck(code);
+      } else {
+        toast.error(err.message);
+      }
     } finally {
+      setBusy('');
+    }
+  }
+
+  /**
+   * UPI mandate ka amount badalta nahi — purana band karke isi plan ke liye
+   * NAYA mandate banate hain. Grahak ko ek baar phir UPI se manzoori deni
+   * padti hai, bilkul pehli baar jaisa (`shuruKarein` jaisa hi flow).
+   */
+  async function nayaMandateBanao(code) {
+    setBusy(code);
+    try {
+      const okScript = await loadRazorpay();
+      if (!okScript) {
+        toast.error(t('Payment ka page khul nahi paya — internet check karke dobara koshish karein'));
+        setBusy('');
+        return;
+      }
+
+      const sub = (await api.post('/billing/switch-mandate', { planCode: code })).data;
+
+      openAutopay({
+        sub,
+        business,
+        user,
+        onDismiss: () => setBusy(''),
+        onFail: (why) => { setBusy(''); toast.error(why || t('Manzoori poori nahi hui')); },
+        onSuccess: async (proof) => {
+          try {
+            const res = await api.post('/billing/sub-verify', proof);
+            toast.success(res.message);
+            setUpiStuck('');
+            await refresh(res.data);
+          } catch (err) {
+            toast.error(t('Manzoori mil gayi hai. Plan chalu hone me thoda waqt lag raha hai — ek minute me page dobara kholein.'));
+            console.warn('[billing] sub-verify:', err.message);
+          } finally {
+            setBusy('');
+          }
+        },
+      });
+    } catch (err) {
+      toast.error(err.message);
       setBusy('');
     }
   }
@@ -276,6 +327,23 @@ export default function PlanPicker({ onDone, compact = false }) {
                 <p className="mt-1.5 text-center text-[11px] text-amber-700">
                   {t('Manzoori adhoori rah gayi thi — Autopay dobara chalu karne ke liye koi doosra plan chunein ya page refresh karein')}
                 </p>
+              )}
+
+              {upiStuck === p.code && (
+                <div className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+                  <p className="text-[11px] text-amber-900">
+                    {t('UPI se bana autopay ka amount badla nahi jata — ye UPI ka hi niyam hai. Naya mandate banayein, purana apne aap band ho jayega.')}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="mt-2 w-full"
+                    loading={busy === p.code}
+                    onClick={() => nayaMandateBanao(p.code)}
+                  >
+                    {t('Naya mandate banayein')}
+                  </Button>
+                </div>
               )}
 
               {autopayOn && !yahi && !rukaHua && !intezaar && (

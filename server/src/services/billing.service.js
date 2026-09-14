@@ -536,10 +536,28 @@ export async function changePlan(businessId, { planCode }) {
     await cancelScheduledChange(sub.providerSubId).catch(() => {});
   }
 
-  await updateSubscriptionPlan(sub.providerSubId, {
-    planId,
-    when: bada ? 'now' : 'cycle_end',
-  });
+  try {
+    await updateSubscriptionPlan(sub.providerSubId, {
+      planId,
+      when: bada ? 'now' : 'cycle_end',
+    });
+  } catch (err) {
+    /*
+      UPI AUTOPAY MANDATE — Razorpay/NPCI ka niyam hai ki UPI se bane
+      mandate ka amount PATCH se badla hi nahi ja sakta (card/e-mandate wale
+      mein chalta hai). Razorpay ka raw jawab seedha grahak ko dikhana
+      bekaar hai — uska matlab samajh nahi aata. Iske bajaye ek nishaan
+      dete hain, taaki client "naya mandate banayein" wala rasta dikha sake
+      (`switchMandate` neeche).
+    */
+    if (/upi/i.test(err.message || '') && /update/i.test(err.message || '')) {
+      throw ApiError.badRequest(
+        'UPI se bana autopay mandate ka amount badla nahi ja sakta — ye UPI ka hi niyam hai. Naya mandate banayein, purana apne aap band ho jayega.',
+        { reason: 'upi_mandate_immutable', planCode: plan.code },
+      );
+    }
+    throw err;
+  }
 
   if (bada) {
     /*
@@ -585,6 +603,67 @@ export async function changePlan(businessId, { planCode }) {
     pendingPlanCode: plan.code,
     pendingFrom: kabSe,
     ...(await billingSummary(businessId)),
+  };
+}
+
+/**
+ * UPI AUTOPAY MANDATE BADLA NAHI JA SAKTA — ISLIYE NAYA BANANA PADTA HAI.
+ *
+ * `changePlan` pehle seedha PATCH bhejta hai (mandate wahi rehta hai, dobara
+ * manzoori nahi maangi jati). UPI se bane mandate ke liye Razorpay wo PATCH
+ * khud reject kar deta hai (NPCI ka niyam) — client ko `upi_mandate_immutable`
+ * nishaan milte hi ye function bulaya jata hai.
+ *
+ * Purana mandate turant band, naya usi (naye) plan ke liye bana kar checkout
+ * khola jata hai — grahak ko sirf ek baar phir UPI se manzoori deni padti hai.
+ */
+export async function switchMandate(businessId, { planCode }) {
+  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
+
+  const plan = PLAN_BY_CODE[planCode];
+  if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
+
+  await assertSeatsFitPlan(businessId, plan.code);
+
+  const sub = await Subscription.findOne({ businessId });
+  if (sub?.providerSubId) {
+    await cancelSubscriptionAt(sub.providerSubId, false).catch(() => {});
+  }
+
+  const planId = await razorpayPlanId(plan);
+  const made = await createSubscription({
+    planId,
+    notes: { businessId: String(businessId), planCode: plan.code },
+  });
+
+  await Subscription.findOneAndUpdate(
+    { businessId },
+    {
+      $set: {
+        providerSubId: made.id,
+        providerPlanId: planId,
+        mandateStatus: made.status || 'created',
+        autoRenew: true,
+        cancelledAt: null,
+        mandatePlanCode: plan.code,
+        pendingPlanCode: '',
+        pendingFrom: null,
+      },
+      $setOnInsert: { businessId, startedAt: new Date() },
+    },
+    { upsert: true },
+  );
+
+  return {
+    needsCheckout: true,
+    autopay: true,
+    subscriptionId: made.id,
+    keyId: env.razorpay.keyId,
+    planCode: plan.code,
+    planName: plan.name,
+    amountPaise: plan.pricePaise,
+    amountRupees: rupees(plan.pricePaise),
+    currency: 'INR',
   };
 }
 
