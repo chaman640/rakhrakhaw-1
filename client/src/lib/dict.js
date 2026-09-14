@@ -1682,6 +1682,9 @@ const DICT = {
   'category': { hi: 'कैटेगरी', en: 'categories' },
   'Jo badlenge wo peeche turant lag jayega': { hi: 'जो बदलेंगे वो पीछे तुरंत लग जाएगा', en: 'Changes apply behind this instantly' },
   'Ho gaya': { hi: 'हो गया', en: 'Done' },
+  /* ── Item photo — camera se khichna (Part 44) ── */
+  'Camera se khichein': { hi: 'कैमरे से खींचें', en: 'Take a photo' },
+  'Gallery se chunein': { hi: 'गैलरी से चुनें', en: 'Choose from gallery' },
   /* ── UPI autopay mandate switch (Part 38) ── */
   'UPI se bana autopay ka amount badla nahi jata — ye UPI ka hi niyam hai. Naya mandate banayein, purana apne aap band ho jayega.': { hi: 'UPI से बना ऑटोपे का अमाउंट बदला नहीं जाता — ये UPI का ही नियम है। नया मैंडेट बनाएं, पुराना अपने आप बंद हो जाएगा।', en: "A UPI-based autopay amount cannot be changed — that is a UPI rule. Set up a fresh mandate; the old one will cancel automatically." },
   'Naya mandate banayein': { hi: 'नया मैंडेट बनाएं', en: 'Set up a new mandate' },

@@ -308,7 +308,24 @@ function ShopHeader({ shop, saving, onToggleSave, onSwitch, onCart, cartCount })
         </div>
       )}
 
-      <div className={cn('p-5', hasCover && '-mt-8 sm:-mt-10')}>
+      <div className={cn('relative p-5', hasCover && '-mt-8 sm:-mt-10')}>
+        {/* Save — follow jaisa. Juda hua ho tabhi. Upar daayein kone me, ek pakka rasta (absolute) se — margin se dhakkelna kabhi bharosemand nahi hota */}
+        {shop.connected && (
+          <button
+            type="button"
+            onClick={onToggleSave}
+            disabled={saving}
+            aria-label={shop.saved ? t('Save hatayein') : t('Save karein')}
+            title={shop.saved ? t('Save hatayein') : t('Save karein')}
+            className={cn(
+              'absolute right-4 top-4 z-10 rounded-lg p-2 transition-colors focus-ring',
+              shop.saved ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-400 hover:bg-slate-100',
+            )}
+          >
+            {shop.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
+          </button>
+        )}
+
         {/*
           Logo + naam + number — ab BEECH ME (Qodes jaisa reference), cover
           ke upar overlap karte hue. Baaki sab (bio, ginti, buttons) apni
@@ -337,23 +354,6 @@ function ShopHeader({ shop, saving, onToggleSave, onSwitch, onCart, cartCount })
             {shop.city ? ` · ${shop.city}` : ''}
           </p>
         </div>
-
-        {/* Save — follow jaisa. Juda hua ho tabhi. Naam ki row ke saath hi, daayein kone me */}
-        {shop.connected && (
-          <button
-            type="button"
-            onClick={onToggleSave}
-            disabled={saving}
-            aria-label={shop.saved ? t('Save hatayein') : t('Save karein')}
-            title={shop.saved ? t('Save hatayein') : t('Save karein')}
-            className={cn(
-              '-mt-9 ml-auto flex shrink-0 rounded-lg p-2 transition-colors focus-ring',
-              shop.saved ? 'text-brand-600 hover:bg-brand-50' : 'text-slate-400 hover:bg-slate-100',
-            )}
-          >
-            {shop.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
-          </button>
-        )}
 
         <div className="mt-3">
           {/* Bio — dukaan ka chhota parichay */}

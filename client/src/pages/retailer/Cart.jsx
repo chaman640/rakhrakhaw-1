@@ -124,7 +124,10 @@ export default function Cart() {
     return { ...row, items, total: items.reduce((s, l) => s + l.amount, 0), itemCount: items.length };
   }
 
-  const displayShops = shops.map(withQtyOverride);
+  // Sab item 0 kar diye — server pe wo dukaan cart se hi hat jaati hai
+  // (khali cart save hi nahi hoti); yahan bhi wahi dikhna chahiye, ek khaali
+  // card latakta hua nahi
+  const displayShops = shops.map(withQtyOverride).filter((row) => row.items.length > 0);
   const grandTotal = displayShops.reduce((s, r) => s + r.total, 0);
 
   // Server pe pada note pehli baar dabbe me bhar do

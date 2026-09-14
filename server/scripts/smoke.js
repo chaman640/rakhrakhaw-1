@@ -228,7 +228,11 @@ async function run() {
       },
     });
     check('retailer ka account bana', r.status === 201 && r.data?.token, `${r.message}`);
-    check('retailer pending me gaya', r.data?.party?.status === 'pending', `status: ${r.data?.party?.status}`);
+    /*
+      Ab approval ka intezaar hi nahi hai (shop.service.js me poori wajah) —
+      retailer signup hote hi ACTIVE hai, PENDING kabhi nahi.
+    */
+    check('retailer turant active hai — approval ka intezaar nahi', r.data?.party?.status === 'active', `status: ${r.data?.party?.status}`);
     let rToken = r.data?.token;
     const partyId = r.data?.party?._id;
 
@@ -239,17 +243,11 @@ async function run() {
     r = await call('GET', '/business/me', { token: rToken });
     check('retailer wholesaler ka settings API nahi khol saka', r.status === 403, `status ${r.status}`);
 
-    // ---------------------------------------------------------- Approval
+    // ---------------------------------------------------------- Approval hata diya
     console.log(`\n${Y}Approval${N}`);
 
     r = await call('GET', '/business/retailers?status=pending', { token: wToken });
-    check('pending list me retailer dikha', r.data?.retailers?.length === 1 && r.data?.summary?.pending === 1);
-
-    r = await call('POST', `/business/retailers/${partyId}/approve`, { token: wToken });
-    check('approve chala', r.status === 200 && r.data?.status === 'active', `${r.message}`);
-
-    r = await call('GET', '/auth/me', { token: rToken });
-    check('retailer ab active dikh raha hai', r.data?.party?.status === 'active');
+    check('koi retailer pending nahi hai — sab turant active hote hain', r.data?.summary?.pending === 0, `pending: ${r.data?.summary?.pending}`);
 
     r = await call('POST', `/business/retailers/${partyId}/block`, { token: wToken });
     check('block chala', r.data?.status === 'blocked');

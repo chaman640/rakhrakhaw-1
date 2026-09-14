@@ -36,7 +36,15 @@ export const retailerSignupSchema = z.object({
   // Khaali chhoda ja sakta hai — retailer ab bina kisi dukaan ke invite link
   // ke bhi seedha signup kar sakta hai, aur baad me Buy me number search
   // karke jitni chahe dukaanon se jud sakta hai.
-  inviteCode: z.string().trim().min(4, 'Invite code galat hai').optional().default(''),
+  //
+  // `.refine()` isliye, `.optional().min(4)` ki jagah: khaali STRING (form se
+  // aa sakti hai) aur bilkul GAYAB field (`undefined`) — dono ko ek jaisa
+  // "nahi diya" maanna hai. `.optional()` sirf `undefined` ko chhodta hai;
+  // khaali string '' ab bhi andar wale `.min(4)` se guzar kar reject ho jati.
+  inviteCode: z.string().trim().optional().default('').refine(
+    (v) => !v || v.length >= 4,
+    { message: 'Invite code galat hai' },
+  ),
   name,
   shopName: z.string().trim().max(120).optional().default(''),
   phone,

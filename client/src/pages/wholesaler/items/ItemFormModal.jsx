@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload, Trash2, Package, Plus, ChevronRight, Images, GripVertical } from 'lucide-react';
+import { Upload, Trash2, Package, Plus, ChevronRight, Images, GripVertical, Camera } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney } from '@/lib/format';
@@ -49,6 +49,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   const { gstEnabled, business } = useAuth();
   const toast = useToast();
   const fileRef = useRef(null);
+  const cameraRef = useRef(null);
 
   const isEdit = Boolean(item?._id);
   const [form, setForm] = useState(blank);
@@ -72,6 +73,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   const [pendingGalleryFiles, setPendingGalleryFiles] = useState([]); // create mode — {id, file, previewUrl}
   const [galleryBusy, setGalleryBusy] = useState(false);
   const galleryFileRef = useRef(null);
+  const galleryCameraRef = useRef(null);
   const MAX_GALLERY = 5;
 
   // Dikhane ke liye dono ko ek hi shape me — edit ho ya naya, gallery grid same code use kare
@@ -418,9 +420,23 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           <div className="flex flex-wrap gap-2">
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp"
             className="hidden" onChange={pickPhoto} data-testid="item-photo-input" />
+            {/*
+              Camera wala ALAG input hai (Part 44) — usi `accept` ke saath
+              par `capture="environment"` bhi. Ek hi input pe capture lagane
+              se kai phone "gallery se chunein" ka option hi hata dete hain —
+              isliye do alag button: ek seedha camera kholta hai, doosra
+              gallery/file picker (jisme bhi kai jagah camera ka option
+              already hota hai, par ab seedha shortcut bhi hai).
+            */}
+            <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp"
+            capture="environment" className="hidden" onChange={pickPhoto} />
+            <Button type="button" variant="secondary" size="sm" icon={Camera}
+            onClick={() => cameraRef.current?.click()}>
+              {t('Camera se khichein')}
+            </Button>
             <Button type="button" variant="secondary" size="sm" icon={Upload}
             onClick={() => fileRef.current?.click()}>
-              {photo.url ? 'Photo badlein' : 'Photo lagayein'}
+              {photo.url ? 'Photo badlein' : 'Gallery se chunein'}
             </Button>
             {photo.url &&
             <Button type="button" variant="ghost" size="sm" icon={Trash2} onClick={removePhoto}>
@@ -483,10 +499,24 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
               <>
                 <input ref={galleryFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple
                   className="hidden" onChange={pickGalleryPhotos} />
+                <input ref={galleryCameraRef} type="file" accept="image/png,image/jpeg,image/webp"
+                  capture="environment" className="hidden" onChange={pickGalleryPhotos} />
+                <button
+                  type="button"
+                  onClick={() => galleryCameraRef.current?.click()}
+                  disabled={galleryBusy}
+                  aria-label={t('Camera se khichein')}
+                  title={t('Camera se khichein')}
+                  className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-brand-400 hover:text-brand-600 focus-ring disabled:opacity-50"
+                >
+                  <Camera size={18} />
+                </button>
                 <button
                   type="button"
                   onClick={() => galleryFileRef.current?.click()}
                   disabled={galleryBusy}
+                  aria-label={t('Gallery se chunein')}
+                  title={t('Gallery se chunein')}
                   className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-brand-400 hover:text-brand-600 focus-ring disabled:opacity-50"
                 >
                   <Plus size={18} />
