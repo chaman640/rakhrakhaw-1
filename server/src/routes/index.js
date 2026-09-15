@@ -34,6 +34,7 @@ import myChatRoutes from './myChat.routes.js';
 import storyRoutes from './story.routes.js';
 import myStoryRoutes from './myStory.routes.js';
 import tutorialRoutes from './tutorial.routes.js';
+import crmRoutes from './crm.routes.js';
 
 const router = Router();
 
@@ -125,5 +126,6 @@ router.use('/my/stories', myStoryRoutes);
 
 // Part 29 — Tutorial videos (onboarding tour)
 router.use('/tutorials', tutorialRoutes);
+router.use('/crm', crmRoutes);
 
 export default router;

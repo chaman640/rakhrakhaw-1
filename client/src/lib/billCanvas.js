@@ -153,6 +153,16 @@ export function drawBill(canvas, invoice, { qrImage = null, logoImage = null } =
     ctx.restore();
   }
 
+  /*
+    RAKH RAKHAV KA APNA WATERMARK — chhota, seedha (jhukaya nahi), taaki
+    upar wale dukaandaar-naam wale jhuke hue watermark se takraaye nahi.
+    Bahut halka — sirf itna ki bill "kahan se bana" pehchaana ja sake.
+  */
+  ctx.save();
+  ctx.globalAlpha = 0.05;
+  drawLogoMark(ctx, W / 2 - 90, H - 320, 180);
+  ctx.restore();
+
   let y = M;
 
   /* ───────────── cancel ka theppa ───────────── */
@@ -425,7 +435,38 @@ export function drawBill(canvas, invoice, { qrImage = null, logoImage = null } =
   p.line(W - M - 180, H - M - 22, W - M, H - M - 22);
   p.text(`${b.name || ''} ke liye`, W - M, H - M - 6, { size: 9.5, color: MUTED, align: 'right', max: 180 });
 
+  /* SIDE BRANDING — chhoti, kone mein (bayen), "Powered by" jaisi. Usi
+     row mein jahan daayein "{business} ke liye" hai — safe margin ke andar. */
+  drawLogoMark(ctx, M, H - M - 17, 11);
+  p.text('Powered by Rakh Rakhav', M + 15, H - M - 6, { size: 8.5, weight: 500, color: '#94a3b8' });
+
   return canvas;
+}
+
+/**
+ * RAKH RAKHAV KA APNA NISHAAN — canvas pe, `Logo.jsx` jaisa hi (Part 45).
+ * React component yahan use nahi ho sakta (ye canvas hai, DOM nahi), isliye
+ * wahi shakal haath se dobara banayi — rang bhi wahi (`index.css` ke
+ * `--color-brand-700`/`--color-brand-300`, hex seedha yahan likhna pada
+ * kyunki canvas CSS variable padh nahi sakta).
+ */
+function drawLogoMark(ctx, x, y, size) {
+  const r = (size * 7) / 32;
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, x, y, size, size, r);
+  ctx.fillStyle = '#93251f';
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  const u = size / 32;
+  ctx.fillRect(x + 8 * u, y + 12 * u, 16 * u, 2 * u);
+  ctx.fillRect(x + 8 * u, y + 17 * u, 16 * u, 2 * u);
+  ctx.fillRect(x + 8 * u, y + 22 * u, 11 * u, 2 * u);
+  ctx.beginPath();
+  ctx.arc(x + 23 * u, y + 23 * u, 3 * u, 0, Math.PI * 2);
+  ctx.fillStyle = '#f2a5a5';
+  ctx.fill();
+  ctx.restore();
 }
 
 function warrantyText(months) {

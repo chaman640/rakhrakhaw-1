@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard,
+  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target,
 } from 'lucide-react';
 
 /**
@@ -37,6 +37,10 @@ export const wholesalerNav = [
   {
     to: '/retailers', label: 'Retailers', icon: Users, part: 4, perm: 'parties',
     desc: 'Jinko aap maal bechte hain',
+  },
+  {
+    to: '/crm', label: 'CRM', icon: Target, part: 46, perm: 'parties',
+    desc: 'Naye lead, follow-up chahiye, aur gayab ho rahe retailer',
   },
   {
     to: '/chat', label: 'Chat', icon: MessageCircle, part: 25, badgeKey: 'chatUnread',

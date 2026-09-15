@@ -39,7 +39,7 @@ import BuyChatThread from '@/pages/buy/ChatThread';
 import WholesalerChat from '@/pages/wholesaler/Chat';
 import WholesalerChatThread from '@/pages/wholesaler/ChatThread';
 import Autopay from '@/pages/wholesaler/Autopay';
-//import TopRetail from '@/pages/wholesaler/TopRetail';
+import Crm from '@/pages/wholesaler/Crm';
 import CartPage from '@/pages/retailer/Cart';
 import MyOrders from '@/pages/retailer/MyOrders';
 import OrderDetail from '@/pages/retailer/OrderDetail';
@@ -225,7 +225,7 @@ export default function AppRoutes() {
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
-        {/* <Route path="/top-retail" element={<TopRetail />} /> */}
+        <Route path="/crm" element={<RequirePermission permission="parties"><Crm /></RequirePermission>} />
         <Route path="/orders" element={<RequirePermission permission="orders"><Orders /></RequirePermission>} />
         <Route path="/orders/:id" element={<RequirePermission permission="orders"><WholesalerOrderDetail /></RequirePermission>} />
         <Route path="/items" element={<RequirePermission permission="items"><Items /></RequirePermission>} />

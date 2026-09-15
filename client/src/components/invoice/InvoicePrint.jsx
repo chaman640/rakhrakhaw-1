@@ -1,6 +1,7 @@
 import { formatMoney, formatQty, formatDate, formatDateTime, formatPhone } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import PayBox from './PayBox';
+import Logo from '@/components/Logo';
 import { t } from '@/lib/i18n';
 
 const TAX_LABEL = { CGST_SGST: 'CGST + SGST', IGST: 'IGST', NONE: '' };
@@ -30,7 +31,20 @@ export default function InvoicePrint({ invoice }) {
   filter(Boolean).join(', ');
 
   return (
-    <div className="invoice-sheet mx-auto max-w-[820px] bg-white p-6 text-slate-900 sm:p-10">
+    <div className="invoice-sheet relative mx-auto max-w-[820px] overflow-hidden bg-white p-6 text-slate-900 sm:p-10">
+      {/*
+        RAKH RAKHAV KA APNA WATERMARK (Part 45) — bahut halka, seedha (jhukaya
+        hua nahi), taaki dukaandaar ke apne naam wale watermark se takraaye
+        nahi (wo bill.controller.js/InvoicePrint ke bahar, chhapai/PDF wale
+        raste me alag se lagta hai — jhuka hua, dukaan ke naam ka). Ye sirf
+        itna hai ki bill "kahan se bana" ye pehchaana ja sake — dukaandaar ki
+        apni branding hi sabse upar/bada rehni chahiye, RakhRakhav ki nahi.
+      */}
+      <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center opacity-[0.035]">
+        <Logo size={260} rounded={false} />
+      </div>
+
+      <div className="relative z-10">
       {invoice.isCancelled &&
       <div className="mb-4 rounded border-2 border-red-500 px-4 py-2 text-center text-lg font-bold text-red-600">
           {t('CANCELLED')}
@@ -275,6 +289,18 @@ export default function InvoicePrint({ invoice }) {
           <div className="h-12" />
           <p className="border-t border-slate-400 px-6 pt-1">{t("{a0} ke liye", { a0: b.name })}</p>
         </div>
+      </div>
+
+      {/*
+        SIDE BRANDING — "Powered by" jaisi, chhoti, kone mein. Dukaandaar ka
+        naam/logo hamesha upar bada rehta hai; yahan sirf itna bataya ja raha
+        hai ki bill kis se bana — usi tarah jaise kai billing app karte hain.
+      */}
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-[9px] text-slate-400">
+        <span>{t('Powered by')}</span>
+        <Logo size={12} />
+        <span className="font-medium text-slate-500">Rakh Rakhav</span>
+      </div>
       </div>
     </div>);
 
