@@ -38,6 +38,9 @@ export const createInvoiceSchema = z.object({
    * of Supply hai, ye tick ka koi matlab nahi.
    */
   forceBillOfSupply: z.boolean().optional().default(false),
+  // DO YA ZYADA UPI (Part 49) — is bill pe kaunsa UPI jaye. Khali = default
+  // (jo bhi `business.upiId` hai, jaisa pehle hamesha hota tha).
+  upiAccountId: objectId.or(z.literal('')).optional().default(''),
 });
 
 export const listInvoicesQuerySchema = z.object({

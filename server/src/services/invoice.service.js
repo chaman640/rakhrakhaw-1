@@ -604,6 +604,18 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     date: payload.invoiceDate || new Date(),
   });
 
+  /*
+    DO YA ZYADA UPI (Part 49) — is bill ke liye kaunsa UPI. Khaali chhoda
+    ho to default hi jaata hai (`business.upiId`) — bilkul jaisa pehle
+    hamesha hota tha, isliye purane bill ya jinhone kabhi ye chuna hi nahi,
+    unpe koi farak nahi padta.
+  */
+  const chosenUpi = payload.upiAccountId
+    ? business.upiAccounts?.find((a) => String(a._id) === String(payload.upiAccountId))
+    : null;
+  const upiId = chosenUpi?.upiId || business.upiId || '';
+  const upiName = chosenUpi?.label || business.upiName || business.name || '';
+
   const invoice = await Invoice.create({
     businessId,
     partyId: party._id,
@@ -635,7 +647,7 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
       name: business.name, phone: business.phone, gstin: business.gstin,
       logoUrl: business.logoUrl, address: business.address,
       // Bill pe QR aur "account me daal do" — dono isi snapshot se chhapte hain
-      upiId: business.upiId || '', upiName: business.upiName || '',
+      upiId, upiName,
       bankName: business.bankName || '',
       bankAccountName: business.bankAccountName || '',
       bankAccountNumber: business.bankAccountNumber || '',

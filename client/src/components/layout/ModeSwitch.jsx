@@ -1,24 +1,29 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Store, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
-import { Card, CardHeader } from '@/components/ui';
+import { Card, CardHeader, ConfirmModal } from '@/components/ui';
 import { t } from '@/lib/i18n';
 
 /**
- * SELLER  ⇄  BUYER
+ * SELLER  ⇄  BUYER (Part 52)
  *
- * Ek hi account ke do darwaze. Ye toggle Profile page pe hai — jaan-boojh kar.
+ * Ek hi account ke do darwaze.
  *
- * Neeche wali patti me daalne ki koshish ki thi. Wo ulta pad gaya: wo patti roz
- * ke kaam ke liye hai aur waha ka har button ek hi tap se dab jata hai. Poori
- * duniya badal dene wala button aisi jagah nahi hona chahiye jahan angootha
- * galti se lag jaye — aadmi bill banane ja raha hota aur achanak doosri dukaan
- * ka catalog khul jata.
+ * PEHLE ye Profile (settings) page pe tha — apni dukaan ka naam/GST/UPI
+ * badalne wale kaam ke beech mein ek "poori duniya badal do" wala button
+ * dekh kar log confuse ho jaate the: "ye kya hai, isse kya hoga".
  *
- * Profile do tap door hai, aur din me do baar hi khulta hai — darwaza badalne
- * ka kaam bhi utni hi baar hota hai. Dono ka mel baith gaya.
+ * AB Menu pe hai — jahan aadmi "kya karna hai" soch kar aata hai, "apni
+ * dukaan set karni hai" soch kar nahi. Sahi jagah, sahi mansha.
+ *
+ * Par Menu ab bahut baar khulta hai (har "peeche" button Menu pe hi le jaata
+ * hai — AppLayout.jsx dekhien) — isliye SIRF jagah badalna kaafi nahi tha.
+ * Ek CONFIRMATION jodi gayi hai: tap karte hi seedha badal nahi jaata, pehle
+ * poochha jaata hai. Isse angoothe se galti se lagne ka wahi purana khatra
+ * nahi rehta, chahe page kitni hi baar kyun na khule.
  *
  * Kis-kis ko dikhta hai: sirf us wholesaler ko jiske paas maal khareedne ka
  * haq hai (`canBuy` — server ka faisla, `purchases:create`). Godown incharge ko
@@ -28,14 +33,21 @@ export default function ModeSwitch() {
   const navigate = useNavigate();
   const { isRetailer, canBuy } = useAuth();
   const { mode, setMode, shop } = useShop();
+  const [pending, setPending] = useState(null); // 'sell' | 'buy' | null
 
   // Retailer ka poora kaam hi khareedna hai — usko chunne ko kuch hai hi nahi
   if (isRetailer || !canBuy) return null;
 
   const selling = mode !== 'buy';
 
-  function choose(next) {
+  function ask(next) {
     if (next === mode) return;
+    setPending(next);
+  }
+
+  function confirm() {
+    const next = pending;
+    setPending(null);
     setMode(next);
     // Darwaza badla to seedha us duniya ke ghar pe — warna aadmi wahi purana
     // page dekhta rehta hai aur lagta hai ki button ne kuch kiya hi nahi
@@ -43,35 +55,48 @@ export default function ModeSwitch() {
   }
 
   return (
-    <Card className="mb-5">
-      <CardHeader
-        title={t('Aap abhi kya kar rahe hain?')}
-        subtitle={t('Bechna ho to Seller, doosri dukaan se maal lena ho to Buyer')}
+    <>
+      <Card className="mb-5">
+        <CardHeader
+          title={t('Aap abhi kya kar rahe hain?')}
+          subtitle={t('Bechna ho to Seller, doosri dukaan se maal lena ho to Buyer')}
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <ModeButton
+            active={selling}
+            icon={Store}
+            label={t('Seller')}
+            hint={t('Apni dukaan chalayein')}
+            onClick={() => ask('sell')}
+          />
+          <ModeButton
+            active={!selling}
+            icon={ShoppingBag}
+            label={t('Buyer')}
+            hint={shop?.name || t('Doosri dukaan se maal lein')}
+            onClick={() => ask('buy')}
+          />
+        </div>
+
+        {!selling && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+            {t('Buy mode chalu hai — Orders, Items aur Khata abhi aapki apni dukaan ke nahi, jis dukaan se aap khareed rahe hain uske dikh rahe hain.')}
+          </p>
+        )}
+      </Card>
+
+      <ConfirmModal
+        open={Boolean(pending)}
+        onClose={() => setPending(null)}
+        onConfirm={confirm}
+        title={pending === 'buy' ? t('Buyer mode mein jaayein?') : t('Seller mode mein wapas jaayein?')}
+        message={pending === 'buy'
+          ? t('Ab aapko apni dukaan ki jagah jis dukaan se khareed rahe hain uska catalog, khata aur order dikhenge.')
+          : t('Ab aapko apni dukaan ka Menu, Items, Orders aur Khata wapas dikhenge.')}
+        confirmLabel={t('Haan, badlein')}
       />
-
-      <div className="grid grid-cols-2 gap-3">
-        <ModeButton
-          active={selling}
-          icon={Store}
-          label={t('Seller')}
-          hint={t('Apni dukaan chalayein')}
-          onClick={() => choose('sell')}
-        />
-        <ModeButton
-          active={!selling}
-          icon={ShoppingBag}
-          label={t('Buyer')}
-          hint={shop?.name || t('Doosri dukaan se maal lein')}
-          onClick={() => choose('buy')}
-        />
-      </div>
-
-      {!selling && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-          {t('Buy mode chalu hai — Orders, Items aur Khata abhi aapki apni dukaan ke nahi, jis dukaan se aap khareed rahe hain uske dikh rahe hain.')}
-        </p>
-      )}
-    </Card>
+    </>
   );
 }
 

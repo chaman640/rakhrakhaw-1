@@ -10,6 +10,7 @@ import {
 '@/components/ui';
 import PartyPicker from './PartyPicker';
 import { bust } from '@/hooks/useQuery';
+import { enqueue } from '@/lib/offlineQueue';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -38,6 +39,7 @@ export default function InvoiceForm() {
   const [useJama, setUseJama] = useState(true); // jama paisa pada ho to default haan
   const [ask, setAsk] = useState(null); // "bill se zyada — jama kar dein?"
   const [paymentMode, setPaymentMode] = useState('CASH');
+  const [upiAccountId, setUpiAccountId] = useState('');
   const [notes, setNotes] = useState('');
   const [preview, setPreview] = useState('');
   const [orderNo, setOrderNo] = useState('');
@@ -262,26 +264,46 @@ export default function InvoiceForm() {
 
   async function send(extra = {}) {
     setSaving(true);
+    const payload = {
+      partyId: party.value,
+      orderId: orderId || null,
+      invoiceDate: date,
+      items: filled.map((r) => ({
+        itemId: r.itemId, qty: Number(r.qty), rate: Number(r.rate || 0),
+        discount: Number(r.discount || 0), gstRate: gstEnabled ? Number(r.gstRate || 0) : 0
+      })),
+      extraDiscount: Number(extraDiscount || 0),
+      paidAmount: Number(paidAmount || 0),
+      paymentMode,
+      ...(upiAccountId ? { upiAccountId } : {}),
+      notes,
+      // ULTA TICK: jama paisa ab APNE AAP lagta hai; ye us aadmi ke liye
+      // hai jo jaan-boojh kar use jama hi rakhna chahta hai
+      ...(!useJama && jama > 0 ? { keepAdvance: true } : {}),
+      // Is bill ko jaan-boojh kar Bill of Supply banana hai (Part 27)
+      ...(gstEnabled && !applyGst ? { forceBillOfSupply: true } : {}),
+      ...extra
+    };
+
+    /*
+      OFFLINE (Part 50) — bill turant nahi ban sakta (number aur stock ki
+      jaanch dono SERVER pe hoti hai), par yahan se ruk nahi jaata. Queue ho
+      jaata hai, internet wapas aate hi apne aap bhej diya jaata hai — usi
+      waqt number bhi milta hai, aur stock bhi tab ki taazi jaanchi jaati
+      hai. Agar sach me koi takraav nikla (kisi aur ne pehle bech diya),
+      wahi bill "bhej nahi paya" wale message me dikhega — chup-chaap
+      galat nahi banega (`offlineQueue.js` me poori wajah).
+    */
+    if (!navigator.onLine) {
+      await enqueue('invoice', payload);
+      toast.success(t('Internet nahi hai — bill save kar liya, net aate hi bhej denge'));
+      setSaving(false);
+      navigate('/invoices', { replace: true });
+      return;
+    }
+
     try {
-      const res = await api.post('/invoices', {
-        partyId: party.value,
-        orderId: orderId || null,
-        invoiceDate: date,
-        items: filled.map((r) => ({
-          itemId: r.itemId, qty: Number(r.qty), rate: Number(r.rate || 0),
-          discount: Number(r.discount || 0), gstRate: gstEnabled ? Number(r.gstRate || 0) : 0
-        })),
-        extraDiscount: Number(extraDiscount || 0),
-        paidAmount: Number(paidAmount || 0),
-        paymentMode,
-        notes,
-        // ULTA TICK: jama paisa ab APNE AAP lagta hai; ye us aadmi ke liye
-        // hai jo jaan-boojh kar use jama hi rakhna chahta hai
-        ...(!useJama && jama > 0 ? { keepAdvance: true } : {}),
-        // Is bill ko jaan-boojh kar Bill of Supply banana hai (Part 27)
-        ...(gstEnabled && !applyGst ? { forceBillOfSupply: true } : {}),
-        ...extra
-      });
+      const res = await api.post('/invoices', payload);
       toast.success(res.message);
       if (res.data?.usedAdvance > 0) {
         toast.success(`Jama me se ${formatMoney(res.data.usedAdvance)} kat gaya`);
@@ -561,6 +583,28 @@ export default function InvoiceForm() {
                 { value: 'BANK', label: t('Bank') }, { value: 'CHEQUE', label: t('Cheque') }]
                 } />
               </div>
+
+              {/*
+                DO YA ZYADA UPI (Part 49) — sirf tab dikhta hai jab chunne
+                ko kuch ho. Ek hi UPI hai to chuna kya jaaye — chup-chaap
+                wahi lag jaata hai, jaisa hamesha hota tha.
+              */}
+              {business.upiAccounts?.length > 1 && (
+                <Select
+                  label={t('Is bill pe kaunsa UPI QR')}
+                  placeholder=""
+                  value={upiAccountId}
+                  onChange={(e) => setUpiAccountId(e.target.value)}
+                  hint={t('Baaki rakam ka QR isi UPI ka banega')}
+                  options={[
+                    { value: '', label: t('Default') },
+                    ...business.upiAccounts.map((a) => ({
+                      value: a._id,
+                      label: a.label || a.upiId,
+                    })),
+                  ]}
+                />
+              )}
 
               <div className={cn('flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
               dueAfterJama > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>

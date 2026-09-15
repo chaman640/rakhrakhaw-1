@@ -78,6 +78,12 @@ const businessSchema = new mongoose.Schema(
     // ---- UPI (Part 9) ----
     // Retailer ko QR aur "pay" link isi se banta hai. Khali chhod do to
     // sirf cash/manual entry chalegi.
+    //
+    // Ye ab "DEFAULT UPI" hai — jahan bhi purana code seedha `business.upiId`
+    // padhta hai (retailer ka Cart QR, jaisi jagah), wahi chalta rehta hai.
+    // `upiAccounts` (neeche, Part 49) me se jo pehla hai, wahi hamesha yahan
+    // copy rehta hai — do jagah alag data na ho isliye `business.service.js`
+    // me sync hota hai.
     upiId: {
       type: String, trim: true, default: '',
       validate: {
@@ -86,6 +92,28 @@ const businessSchema = new mongoose.Schema(
       },
     },
     upiName: { type: String, trim: true, default: '' },
+
+    /*
+      DO YA ZYADA UPI (Part 49) — kai dukaandaar ek se zyada UPI istemal
+      karte hain (khud ka alag, dukaan ka alag, kabhi partner ka bhi). Bill
+      BANATE WAQT ismein se koi bhi chuna ja sakta hai — jo chuna jaye
+      wahi us EK bill ke `businessSnapshot` me jaata hai (baaki bill apne
+      purane UPI ke saath hi rehte hain, jaisa hamesha invoice snapshot ka
+      niyam raha hai).
+    */
+    upiAccounts: {
+      type: [{
+        label: { type: String, trim: true, maxlength: 40, default: '' },
+        upiId: {
+          type: String, trim: true, required: true,
+          validate: {
+            validator: (v) => /^[\w.\-]{2,64}@[a-zA-Z]{2,32}$/.test(v),
+            message: 'UPI ID aisi hoti hai: naam@bank',
+          },
+        },
+      }],
+      default: [],
+    },
 
     /* ---- Bank ka khata (Part 15) ----
      *

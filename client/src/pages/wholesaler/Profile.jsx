@@ -11,7 +11,6 @@ import {
   Spinner, useToast,
 } from '@/components/ui';
 import AccountTab from './settings/AccountTab';
-import ModeSwitch from '@/components/layout/ModeSwitch';
 import { t } from '@/lib/i18n';
 
 /**
@@ -63,15 +62,6 @@ export default function Profile() {
           ? t('Dukaan ki pehchan, paisa lene ka tarika aur apna login')
           : t('Aapka apna login')}
       />
-
-      {/*
-        Seller ⇄ Buyer — sabse upar, tab se pehle.
-
-        Tab ke andar daalne ki koshish ki thi ("Dukaan" wale tab me). Wo galat
-        tha: wo tab sirf malik ko dikhta hai, jabki godown incharge ko bhi
-        khareedna hota hai — aur uske liye wo button kabhi dikhta hi nahi.
-      */}
-      <ModeSwitch />
 
       <Tabs
         value={tab}
@@ -533,21 +523,45 @@ function ShopSection({ business, onSaved }) {
 function PaySection({ business, onSaved }) {
   const { save, saving, fieldErrors } = useBusinessSave(onSaved);
   const [form, setForm] = useState(() => ({
-    upiId: business.upiId || '',
-    upiName: business.upiName || '',
     bankName: business.bankName || '',
     bankAccountName: business.bankAccountName || '',
     bankAccountNumber: business.bankAccountNumber || '',
     bankIfsc: business.bankIfsc || '',
   }));
 
+  /*
+    DO YA ZYADA UPI (Part 49) — poori list yahan. Kabhi kisi ka bhi UPI ID
+    khaali na chhode isliye purana single-UPI data bhi yahin dikh jaata hai:
+    agar `upiAccounts` khaali hai par purana `upiId` bhara hua hai (naye
+    field se pehle ka account), usi ko pehli row bana dete hain — warna
+    purana UPI "gayab" lagta.
+  */
+  const [accounts, setAccounts] = useState(() => {
+    if (business.upiAccounts?.length) {
+      return business.upiAccounts.map((a) => ({ _id: a._id, label: a.label || '', upiId: a.upiId || '' }));
+    }
+    if (business.upiId) return [{ label: business.upiName || '', upiId: business.upiId }];
+    return [];
+  });
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  function setAccount(i, key, value) {
+    setAccounts((list) => list.map((a, idx) => (idx === i ? { ...a, [key]: value } : a)));
+  }
+  function addAccount() {
+    setAccounts((list) => [...list, { label: '', upiId: '' }]);
+  }
+  function removeAccount(i) {
+    setAccounts((list) => list.filter((_, idx) => idx !== i));
+  }
 
   async function handleSave(e) {
     e.preventDefault();
     await save({
-      upiId: form.upiId.trim(),
-      upiName: form.upiName.trim(),
+      upiAccounts: accounts
+        .filter((a) => a.upiId.trim())
+        .map((a) => ({ label: a.label.trim(), upiId: a.upiId.trim() })),
       bankName: form.bankName.trim(),
       bankAccountName: form.bankAccountName.trim(),
       bankAccountNumber: form.bankAccountNumber.trim(),
@@ -560,15 +574,43 @@ function PaySection({ business, onSaved }) {
       <Card>
         <CardHeader
           title={t('UPI — QR wala rasta')}
-          subtitle={t('Bill pe QR isi se banta hai. Retailer scan karke seedha paisa bhej deta hai.')}
+          subtitle={t('Bill pe QR isi se banta hai. Ek se zyada UPI rakh sakte hain — har bill banate waqt chun sakte hain kaunsa use karna hai.')}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input label={t('Aapki UPI ID')} value={form.upiId} onChange={set('upiId')}
-            placeholder={t('ramesh@okhdfcbank')} error={fieldErrors.upiId}
-            hint={t("GPay/PhonePe app me 'UPI ID' ke naam se milti hai")} />
-          <Input label={t('UPI pe naam')} value={form.upiName} onChange={set('upiName')}
-            placeholder={business.name || t('Ramesh Auto Parts')}
-            hint={t('Retailer ko paisa bhejte waqt yahi naam dikhega')} />
+
+        <div className="space-y-3">
+          {accounts.map((a, i) => (
+            <div key={a._id || i} className="flex items-start gap-2 rounded-lg border border-slate-200 p-3">
+              <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                <Input
+                  label={t('UPI ID')}
+                  value={a.upiId}
+                  onChange={(e) => setAccount(i, 'upiId', e.target.value)}
+                  placeholder={t('ramesh@okhdfcbank')}
+                  error={i === 0 ? fieldErrors.upiId : undefined}
+                  hint={i === 0 ? t("GPay/PhonePe app me 'UPI ID' ke naam se milti hai") : undefined}
+                />
+                <Input
+                  label={t('Kis liye (naam)')}
+                  value={a.label}
+                  onChange={(e) => setAccount(i, 'label', e.target.value)}
+                  placeholder={t('Jaise: Dukaan, Personal, SBI khata')}
+                  hint={i === 0 ? t('Bill banate waqt yahi naam dikhega chunne ke liye') : undefined}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeAccount(i)}
+                aria-label={t('Hatayein')}
+                className="mt-6 shrink-0 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 focus-ring"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+
+          <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={addAccount}>
+            {t('Naya UPI jodein')}
+          </Button>
         </div>
 
         <div className="mt-4 flex items-start gap-2 rounded-lg bg-brand-50 px-3 py-2.5 text-xs text-brand-900">

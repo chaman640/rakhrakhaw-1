@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Wallet, Check, Package } from 'lucide-react';
 import api from '@/lib/api';
 import { bust } from '@/hooks/useQuery';
+import { enqueue } from '@/lib/offlineQueue';
 import { formatMoney, formatQty } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Combobox, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -153,6 +154,22 @@ export default function ExpenseFormModal({ open, onClose, expense, categories, o
               wasteQty: wasteQtyNum,
             }
           : { ...shared, amount: Number(form.amount), category: chosenCategory };
+
+      /*
+        OFFLINE (Part 48) — sirf NAYA, SEEDHA (waste wala nahi) kharch.
+        Waste category stock ghatati hai — usme wahi takraav ka khatra hai
+        jo bill/stock me hai, isliye use is queue se jaan-boojh kar door
+        rakha hai. Edit karna bhi door rakha hai — jo already save hai
+        usme badlaav ka bhi apna hisaab hai.
+      */
+      if (!navigator.onLine && !editing && !isWaste) {
+        await enqueue('expense', payload);
+        toast.success(t('Internet nahi hai — abhi ke liye save kar liya, net aate hi bhej denge'));
+        onSaved?.(null);
+        onClose();
+        return;
+      }
+
       const res = editing
         ? await api.put(`/expenses/${expense._id}`, payload)
         : await api.post('/expenses', payload);

@@ -39,6 +39,20 @@ export async function updateBusiness(businessId, payload, user = null) {
     if (payload[field] !== undefined) business[field] = payload[field];
   }
 
+  /*
+    DO YA ZYADA UPI (Part 49) — poori list yahan se badalti hai. Pehla wala
+    hi "DEFAULT" ban jata hai — `upiId`/`upiName` (upar) usi se sync hote
+    hain, taaki jahan bhi purana code seedha `business.upiId` padhta hai
+    (retailer ka Cart QR jaisi jagah), use kuch pata hi na chale ki neeche
+    ab poori list bhi hai.
+  */
+  if (payload.upiAccounts !== undefined) {
+    business.upiAccounts = payload.upiAccounts;
+    const first = payload.upiAccounts[0];
+    business.upiId = first?.upiId || '';
+    business.upiName = first?.label || business.name || '';
+  }
+
   if (payload.phone !== undefined) {
     business.phone = payload.phone ? normalizePhone(payload.phone) : '';
   }

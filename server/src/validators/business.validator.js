@@ -28,6 +28,12 @@ export const updateBusinessSchema = z
     upiId: z.string().trim().max(64).or(z.literal('')).optional(),
     upiName: z.string().trim().max(80).optional(),
 
+    // DO YA ZYADA UPI (Part 49) — poori list ek saath bachaayi jaati hai
+    upiAccounts: z.array(z.object({
+      label: z.string().trim().max(40).optional().default(''),
+      upiId: z.string().trim().regex(/^[\w.\-]{2,64}@[a-zA-Z]{2,32}$/, 'UPI ID aisi hoti hai: naam@bank'),
+    })).max(10, 'Zyada se zyada 10 UPI ID rakhi ja sakti hain').optional(),
+
     // Bank ka khata — bill pe likhne ke liye (QR isse nahi banta, Business
     // model me wajah likhi hai)
     bankName: z.string().trim().max(80).optional(),

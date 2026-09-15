@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { formatPhone } from '@/lib/format';
 import { Button, Input, Card, CardHeader, useToast } from '@/components/ui';
+import InstallButton from '@/components/InstallButton';
 import { t } from '@/lib/i18n';
 
 export default function AccountTab() {
@@ -79,6 +80,11 @@ export default function AccountTab() {
 
           <Button type="submit" icon={KeyRound} loading={loading}>{t('Password badlein')}</Button>
         </form>
+      </Card>
+
+      <Card>
+        <CardHeader title={t('App jaisa install karein')} subtitle={t('Isse phone mein icon ban jaata hai aur bina internet ke bhi kaafi kaam chalta hai.')} />
+        <InstallButton variant="light" />
       </Card>
 
       <Card>

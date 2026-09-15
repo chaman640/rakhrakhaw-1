@@ -5,6 +5,7 @@ import { ShopProvider } from '@/context/ShopContext';
 import { CartProvider } from '@/context/CartContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import { OfflineSync, OfflineBanner } from '@/components/OfflineSync';
 import AppRoutes from '@/routes/AppRoutes';
 
 /**
@@ -28,6 +29,8 @@ export default function App() {
             <ShopProvider>
               <CartProvider>
                 <NotificationProvider>
+                  <OfflineBanner />
+                  <OfflineSync />
                   <AppRoutes />
                 </NotificationProvider>
               </CartProvider>
