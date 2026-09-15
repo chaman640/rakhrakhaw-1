@@ -39,7 +39,21 @@ export default function AppLayout() {
     .sort((a, b) => b.to.length - a.to.length)
     .find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`));
 
-  const atRoot = isRootPage(pathname, allowedNav, buying);
+  /*
+    Root — jahan back arrow ki zarurat nahi (ghar pe hi ho).
+
+    SELLING SIDE: sirf `/menu` khud. `isRootPage`/`BOTTOM_WHOLESALER` yahan
+    pehle bhi istemal hota tha, par wo Part 35 se pehle ke 4 button
+    (`/home`, `/dashboard`, `/sales`, `/payments`) ka bacha hua hisaab tha —
+    unhi 4 page pe abhi tak back arrow gayab tha, kyunki ye unhi 4 ko "root"
+    maan leta tha. Ab neeche patti hai hi nahi, isliye "root" ka matlab bhi
+    seedha ho gaya: sirf Menu.
+
+    BUY MODE: waisa hi jaisa pehle tha — wahan sach me neeche ki patti hai
+    (Home/Shop/Cart/Orders/Menu), to unhi pancho pe back arrow ki zarurat
+    nahi.
+  */
+  const atRoot = buying ? isRootPage(pathname, allowedNav, buying) : pathname === '/menu';
 
   /*
     ─────────── PLAN KHATAM TO BECHNE KA HISSA BAND (Step 1) ───────────
@@ -98,17 +112,21 @@ export default function AppLayout() {
   }, []);
 
   /**
-   * Back ka "plan B" — jab history khali ho (link se seedha khola ya refresh).
+   * Back kahan jaaye.
    *
-   *   /invoices/123  ->  /invoices   (apni list pe)
-   *   /invoices      ->  /menu       (ghar pe — ab Menu hi ghar hai, Part 35)
+   * SELLING SIDE — hamesha seedha Menu (Part 47). Pehle yahan pehle section
+   * ke apne root pe jata tha (jaise `/retailers/123` se `/retailers`), aur
+   * Menu sirf DOOSRE tap pe milta. Ab "Menu hi ghar hai" wali baat sach me
+   * lagu hoti hai — jahan se bhi ho, ek hi tap me Menu.
    *
-   * Doosri line zaroori hai: pehle yahan hamesha section ka apna rasta jata
-   * tha, yaani /settings pe back dabane se /settings hi khulta tha — kuch
-   * hota hi nahi dikhta tha.
+   * BUY MODE mein purana hisaab hi rehta hai (Header.jsx isse buy mode me
+   * istemal karta hi nahi — wahan history se peeche jata hai — par backTo
+   * fallback ke liye yahan bhi maujood rehna chahiye).
    */
   const homeRoot = '/menu';
-  const backTo = current && pathname !== current.to ? current.to : homeRoot;
+  const backTo = buying
+    ? (current && pathname !== current.to ? current.to : homeRoot)
+    : homeRoot;
 
   return (
     <div className="min-h-screen bg-slate-50">

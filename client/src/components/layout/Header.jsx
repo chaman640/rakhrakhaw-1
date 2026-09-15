@@ -61,13 +61,24 @@ export default function Header({ title, showBack, backTo }) {
   /**
    * Peeche jaana.
    *
-   * History me kuch ho to seedha peeche. Na ho (link se seedha khola, ya
-   * refresh kiya) to `backTo` pe — jo AppLayout tay karta hai: sub-page se
-   * uski list pe, aur list se ghar (dashboard/home) pe.
+   * SELLING SIDE (Part 47) — hamesha seedha `backTo` (jo AppLayout tay karta
+   * hai — ab hamesha Menu). Pehle yahan history hoti to `navigate(-1)` chalta
+   * tha, jo bilkul PHONE KE BACK BUTTON jaisa hi tha: jin-jin page se hoke
+   * gaye the, unhi se hoke wapas — Menu tak pahunchne me kai tap lagte the.
+   * Ab is button ka poora matlab hi ye hai ki "ek tap me Menu" — history se
+   * koi lena-dena nahi.
+   *
+   * BUY MODE mein waisa hi hai jaisa pehle tha — wahan neeche hamesha
+   * Home/Shop/Cart/Orders/Menu ki patti dikhti hai, isliye "ek kadam peeche"
+   * wala feel wahan theek baithta hai, use chheda nahi.
    */
   const goBack = () => {
-    if (canGoBack()) navigate(-1);
-    else navigate(backTo || '/', { replace: true });
+    if (isBuyMode) {
+      if (canGoBack()) navigate(-1);
+      else navigate(backTo || '/', { replace: true });
+    } else {
+      navigate(backTo || '/menu');
+    }
   };
 
   return (
