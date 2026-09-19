@@ -670,6 +670,7 @@ function BillSection({ business, onSaved }) {
   const [form, setForm] = useState(() => ({
     invoicePrefix: business.invoicePrefix || 'INV',
     lowStockThreshold: business.lowStockThreshold ?? 5,
+    deliveryCharge: business.deliveryCharge || '',
     termsAndConditions: business.termsAndConditions || '',
   }));
 
@@ -680,6 +681,7 @@ function BillSection({ business, onSaved }) {
     await save({
       invoicePrefix: form.invoicePrefix,
       lowStockThreshold: Number(form.lowStockThreshold),
+      deliveryCharge: Number(form.deliveryCharge || 0),
       termsAndConditions: form.termsAndConditions,
     }, 'Bill ki setting save ho gayi');
   }
@@ -693,6 +695,8 @@ function BillSection({ business, onSaved }) {
             hint={t('Bill aisa dikhega: INV/26-27/0001')} />
           <Input label={t('Low stock warning')} type="number" min="0" value={form.lowStockThreshold}
             onChange={set('lowStockThreshold')} hint={t('Itne se kam stock par alert aayega')} />
+          <Input label={t('Delivery charge')} type="number" min="0" step="0.01" prefix="₹" value={form.deliveryCharge}
+            onChange={set('deliveryCharge')} hint={t('Har bill mein apne aap jud jaata hai — bill banate waqt bhi badal sakte hain')} />
           <Textarea label={t('Invoice ke terms & conditions')} rows={3} value={form.termsAndConditions}
             onChange={set('termsAndConditions')} containerClassName="sm:col-span-2"
             placeholder={t('Maal wapas nahi hoga. Payment 30 din me.')} />

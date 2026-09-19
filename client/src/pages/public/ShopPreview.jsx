@@ -104,7 +104,7 @@ export default function ShopPreview() {
               <button
                 key={i._id}
                 type="button"
-                onClick={lenaHai}
+                onClick={() => nav(`/s/${code}/item/${i._id}?page=${page}`)}
                 className="overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition hover:border-brand-400 dark:border-slate-700 dark:bg-slate-800"
               >
                 <div className="flex aspect-square items-center justify-center bg-slate-50 dark:bg-slate-700">

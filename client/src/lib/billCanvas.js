@@ -330,6 +330,7 @@ export function drawBill(canvas, invoice, { qrImage = null, logoImage = null } =
   }
   if (gst && isIgst && invoice.igstTotal > 0) row('IGST', formatMoney(invoice.igstTotal));
   if (invoice.roundOff) row('Round off', formatMoney(invoice.roundOff));
+  if (invoice.deliveryCharge > 0) row('Delivery charge', `+ ${formatMoney(invoice.deliveryCharge)}`);
   row('Kul', formatMoney(invoice.grandTotal), { bold: true, big: true, top: true });
   if (invoice.paidAmount > 0) row('Diya', formatMoney(invoice.paidAmount));
   p.line(tX, ty, W - M, ty);

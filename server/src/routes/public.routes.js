@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import ApiError from '../utils/ApiError.js';
 import { Business, Item } from '../models/index.js';
+import * as catalog from '../services/catalog.service.js';
 
 /*
   BINA LOGIN KE DUKAAN DEKHNA.
@@ -80,6 +81,29 @@ router.get('/shop/:code/items', asyncHandler(async (req, res) => {
     page,
     hasMore: page * limit < total,
   });
+}));
+
+/**
+ * BINA LOGIN KE — EK item ka poora detail (Part 55).
+ *
+ * Retailer ko URL bheja jaaye to poori tarah wahi Instagram-jaisa product
+ * page khulta hai jo login karke dikhta — reel, swipe, zoom, sab kuch —
+ * bas "Add to Cart" ki jagah "Order karein" (jo signup/login pe le jaata
+ * hai). Isi wajah se ye `getCatalogItem` KO HI dobara istemal karta hai,
+ * naya likhne ke bajaye — `partyId` seedha `null` bhej dete hain, jisse
+ * `resolveRates` khud-ba-khud kisi retailer ka khaas rate kabhi nahi
+ * dhoondta, hamesha aam bikri ka daam (`salePrice`) milta hai. Ek hi jagah
+ * se dono (logged-in aur guest) ka jawab aata hai — kabhi alag-alag ho hi
+ * nahi sakta.
+ */
+router.get('/shop/:code/item/:itemId', asyncHandler(async (req, res) => {
+  const code = String(req.params.code || '').trim().toUpperCase();
+  const biz = await Business.findOne({ inviteCode: code, inviteEnabled: true })
+    .select('_id').lean();
+  if (!biz) throw ApiError.notFound('Ye dukaan nahi mili');
+
+  const item = await catalog.getCatalogItem(biz._id, null, req.params.itemId);
+  return ok(res, item);
 }));
 
 export default router;

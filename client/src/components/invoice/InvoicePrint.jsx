@@ -251,6 +251,9 @@ export default function InvoicePrint({ invoice }) {
               {invoice.roundOff !== 0 &&
               <Row label={t('Round off')} value={formatMoney(invoice.roundOff)} />
               }
+              {invoice.deliveryCharge > 0 &&
+              <Row label={t('Delivery charge')} value={`+ ${formatMoney(invoice.deliveryCharge)}`} />
+              }
               <tr className="border-t-2 border-slate-800">
                 <td className="py-2 text-sm font-bold">{t('Kul')}</td>
                 <td className="tabular py-2 text-right text-sm font-bold">

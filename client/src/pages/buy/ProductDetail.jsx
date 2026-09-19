@@ -344,7 +344,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
     >
       <div
         ref={containerRef}
-        className="absolute inset-0 overflow-hidden bg-slate-900"
+        className="absolute inset-x-0 top-16 bottom-20 overflow-hidden rounded-2xl bg-slate-900"
         style={{ touchAction: 'pan-y' }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}

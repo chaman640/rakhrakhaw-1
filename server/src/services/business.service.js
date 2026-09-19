@@ -32,7 +32,7 @@ export async function updateBusiness(businessId, payload, user = null) {
 
   const simpleFields = [
     'name', 'email', 'upiId', 'upiName', 'invoicePrefix', 'orderPrefix',
-    'termsAndConditions', 'invoiceFooterNote', 'lowStockThreshold',
+    'termsAndConditions', 'invoiceFooterNote', 'lowStockThreshold', 'deliveryCharge',
     'autoApproveRetailers', 'inviteEnabled', 'bio',
   ];
   for (const field of simpleFields) {

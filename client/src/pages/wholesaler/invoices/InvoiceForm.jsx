@@ -35,6 +35,9 @@ export default function InvoiceForm() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState([emptyRow()]);
   const [extraDiscount, setExtraDiscount] = useState('');
+  // Dukaan ki default rakam se bhara hua shuru hota hai — is EK bill ke
+  // liye badla ya hataya ja sakta hai, dukaan ki setting nahi badalti
+  const [deliveryCharge, setDeliveryCharge] = useState(() => (business.deliveryCharge ? String(business.deliveryCharge) : ''));
   const [paidAmount, setPaidAmount] = useState('');
   const [useJama, setUseJama] = useState(true); // jama paisa pada ho to default haan
   const [ask, setAsk] = useState(null); // "bill se zyada — jama kar dein?"
@@ -236,13 +239,13 @@ export default function InvoiceForm() {
     }
 
     const before = round2(taxableTotal + tax);
-    const grandTotal = Math.round(before);
+    const grandTotal = Math.round(before) + round2(Number(deliveryCharge || 0));
     return {
       subTotal, discountTotal: round2(lineDisc + extra), taxableTotal,
       taxTotal: tax, cgst: round2(tax / 2), sgst: round2(tax - round2(tax / 2)),
-      roundOff: round2(grandTotal - before), grandTotal
+      roundOff: round2(Math.round(before) - before), grandTotal
     };
-  }, [rows, extraDiscount, gstEnabled, applyGst]);
+  }, [rows, extraDiscount, deliveryCharge, gstEnabled, applyGst]);
 
   const paid = Math.min(Number(paidAmount || 0), totals.grandTotal);
   const due = round2(totals.grandTotal - paid);
@@ -273,6 +276,7 @@ export default function InvoiceForm() {
         discount: Number(r.discount || 0), gstRate: gstEnabled ? Number(r.gstRate || 0) : 0
       })),
       extraDiscount: Number(extraDiscount || 0),
+      deliveryCharge: Number(deliveryCharge || 0),
       paidAmount: Number(paidAmount || 0),
       paymentMode,
       ...(upiAccountId ? { upiAccountId } : {}),
@@ -562,6 +566,9 @@ export default function InvoiceForm() {
                     <Row label="SGST" value={formatMoney(totals.sgst)} />
                   </>)}
               {totals.roundOff !== 0 && <Row label={t('Round off')} value={formatMoney(totals.roundOff)} tone="muted" />}
+              {Number(deliveryCharge || 0) > 0 &&
+              <Row label={t('Delivery charge')} value={`+ ${formatMoney(Number(deliveryCharge))}`} />
+              }
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                 <dt className="font-semibold text-slate-900">{t('Kul')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">{formatMoney(totals.grandTotal)}</dd>
@@ -572,6 +579,10 @@ export default function InvoiceForm() {
               <Input label={t('Bill pe extra discount')} type="number" step="0.01" min="0" prefix="₹"
               value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)}
               hint={t('Saare items pe barabar bat jayega')} />
+
+              <Input label={t('Delivery charge')} type="number" step="0.01" min="0" prefix="₹"
+              value={deliveryCharge} onChange={(e) => setDeliveryCharge(e.target.value)}
+              hint={t('Is bill ke liye badal ya hata sakte hain — dukaan ki setting nahi badalti')} />
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input label={t('Abhi kitna mila')} type="number" step="0.01" min="0" prefix="₹"

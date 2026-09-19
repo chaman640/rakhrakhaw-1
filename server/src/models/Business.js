@@ -148,6 +148,14 @@ const businessSchema = new mongoose.Schema(
     lowStockThreshold: { type: Number, default: 5, min: 0 },
     currency: { type: String, default: 'INR' },
 
+    /*
+      DELIVERY CHARGE (Part 54) — bill banate waqt apne aap jud jaata hai,
+      taaki har bill mein haath se na daalna pade. Bill banate waqt bhi
+      badla ja sakta hai (ya hataya bhi) — ye sirf shuruaati (default) rakam
+      hai, us ek bill ka aakhri faisla nahi.
+    */
+    deliveryCharge: { type: Number, default: 0, min: 0 },
+
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

@@ -45,6 +45,7 @@ export const updateBusinessSchema = z
     termsAndConditions: z.string().max(2000).optional(),
     invoiceFooterNote: z.string().max(500).optional(),
     lowStockThreshold: z.coerce.number().min(0).max(100000).optional(),
+    deliveryCharge: z.coerce.number().min(0).max(100000).optional(),
     autoApproveRetailers: z.boolean().optional(),
     inviteEnabled: z.boolean().optional(),
   })

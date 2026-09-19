@@ -1682,12 +1682,21 @@ const DICT = {
   'category': { hi: 'कैटेगरी', en: 'categories' },
   'Jo badlenge wo peeche turant lag jayega': { hi: 'जो बदलेंगे वो पीछे तुरंत लग जाएगा', en: 'Changes apply behind this instantly' },
   'Ho gaya': { hi: 'हो गया', en: 'Done' },
+  'Order karein': { hi: 'ऑर्डर करें', en: 'Place order' },
   /* ── Mode switch confirmation (Part 52) ── */
   'Buyer mode mein jaayein?': { hi: 'Buyer मोड में जाएं?', en: 'Switch to Buyer mode?' },
   'Seller mode mein wapas jaayein?': { hi: 'Seller मोड में वापस जाएं?', en: 'Switch back to Seller mode?' },
   'Ab aapko apni dukaan ki jagah jis dukaan se khareed rahe hain uska catalog, khata aur order dikhenge.': { hi: 'अब आपको अपनी दुकान की जगह जिस दुकान से खरीद रहे हैं उसका कैटलॉग, खाता और ऑर्डर दिखेंगे।', en: 'You will now see the catalogue, khata and orders of the shop you are buying from, instead of your own.' },
   'Ab aapko apni dukaan ka Menu, Items, Orders aur Khata wapas dikhenge.': { hi: 'अब आपको अपनी दुकान का Menu, Items, Orders और खाता वापस दिखेंगे।', en: "You will now see your own shop's Menu, Items, Orders and Khata again." },
   'Haan, badlein': { hi: 'हां, बदलें', en: 'Yes, switch' },
+  /* ── Compact mode-switch in Settings (Part 53) ── */
+  'Buyer mode mein jaayein': { hi: 'Buyer मोड में जाएं', en: 'Switch to Buyer mode' },
+  'Seller mode mein wapas jaayein': { hi: 'Seller मोड में वापस जाएं', en: 'Switch back to Seller mode' },
+  'Apni dukaan pe wapas aayein': { hi: 'अपनी दुकान पे वापस आएं', en: 'Return to your own shop' },
+  /* ── Delivery charge (Part 54) ── */
+  'Delivery charge': { hi: 'डिलीवरी चार्ज', en: 'Delivery charge' },
+  'Is bill ke liye badal ya hata sakte hain — dukaan ki setting nahi badalti': { hi: 'इस बिल के लिए बदल या हटा सकते हैं — दुकान की सेटिंग नहीं बदलती', en: "Can be changed or removed for this bill — your shop's setting stays the same" },
+  'Har bill mein apne aap jud jaata hai — bill banate waqt bhi badal sakte hain': { hi: 'हर बिल में अपने आप जुड़ जाता है — बिल बनाते वक्त भी बदल सकते हैं', en: 'Gets added automatically to every bill — can still be changed while making a bill' },
   /* ── Install button (Part 51) ── */
   'Offline': { hi: 'ऑफ़लाइन', en: 'Offline' },
   'App jaisa install karein': { hi: 'ऐप जैसा इंस्टॉल करें', en: 'Install like an app' },

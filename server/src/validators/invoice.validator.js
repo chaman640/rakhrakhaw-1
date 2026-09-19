@@ -18,6 +18,7 @@ export const createInvoiceSchema = z.object({
   invoiceDate: z.coerce.date().optional(),
   items: z.array(invoiceItemSchema).min(1, 'Kam se kam ek item daalein').max(200),
   extraDiscount: money.optional().default(0),
+  deliveryCharge: money.optional().default(0),
   paidAmount: money.optional().default(0),
   // Bill se zyada paisa — rok ke baad "haan, jama kar dein"
   allowAdvance: z.boolean().optional().default(false),

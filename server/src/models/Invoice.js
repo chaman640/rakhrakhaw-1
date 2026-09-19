@@ -165,6 +165,8 @@ const invoiceSchema = new mongoose.Schema(
 
     // Sabhi line ke rateVarianceAmount ka jod — Reports/Dashboard ke liye
     rateVarianceTotal: { type: Number, default: 0 },
+    // Bill-specific — us waqt ki default ya haath se badli hui rakam (Part 54)
+    deliveryCharge: { type: Number, default: 0 },
 
     paidAmount: { type: Number, default: 0 },
     dueAmount: { type: Number, default: 0 },

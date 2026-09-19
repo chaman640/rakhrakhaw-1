@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatPhone } from '@/lib/format';
 import { Button, Input, Card, CardHeader, useToast } from '@/components/ui';
 import InstallButton from '@/components/InstallButton';
+import ModeSwitch from '@/components/layout/ModeSwitch';
 import { t } from '@/lib/i18n';
 
 export default function AccountTab() {
@@ -86,6 +87,8 @@ export default function AccountTab() {
         <CardHeader title={t('App jaisa install karein')} subtitle={t('Isse phone mein icon ban jaata hai aur bina internet ke bhi kaafi kaam chalta hai.')} />
         <InstallButton variant="light" />
       </Card>
+
+      <ModeSwitch compact />
 
       <Card>
         <CardHeader title={t('Logout')} subtitle={t('Is device se nikal jayein')} />

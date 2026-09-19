@@ -14,6 +14,7 @@ import Contact from '@/pages/public/Contact';
 import Pricing from '@/pages/public/Pricing';
 import Landing from '@/pages/public/Landing';
 import ShopPreview from '@/pages/public/ShopPreview';
+import PublicProductDetail from '@/pages/public/PublicProductDetail';
 import PartnerHome from '@/pages/partner/PartnerHome';
 import PartnerAdmin from '@/pages/partner/PartnerAdmin';
 import Signup from '@/pages/auth/Signup';
@@ -195,6 +196,7 @@ export default function AppRoutes() {
       */}
       {/* Dukaan bina login ke — order karte waqt hi account maanga jata hai */}
       <Route path="/s/:code" element={<ShopPreview />} />
+      <Route path="/s/:code/item/:itemId" element={<PublicProductDetail />} />
 
       <Route path="/partner" element={<PartnerHome />} />
       <Route path="/partner/admin" element={<PartnerAdmin />} />

@@ -565,6 +565,19 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
   const rateVarianceTotal = round2(lines.reduce((s, l) => s + l.rateVarianceAmount, 0));
 
   /*
+    DELIVERY CHARGE (Part 54) — jaan-boojh kar `computeInvoice`'s ke andar
+    ke per-item GST-split se bahar rakha gaya hai: ye kisi ek item ka hissa
+    nahi, ek alag flat charge hai, isliye upar ka delicate taxable-share
+    hisaab (jahan discount har line mein bant'ta hai) ko chhedne ki zarurat
+    nahi padi — seedha grandTotal mein jud jata hai. Jo iss EK bill ke liye
+    bheja gaya (`payload.deliveryCharge`), wahi aakhri hai — dukaan ki
+    default rakam (`business.deliveryCharge`) sirf shuruaati sujhaav hai,
+    client-side (InvoiceForm.jsx) usi se form bhar deta hai.
+  */
+  const deliveryCharge = round2(payload.deliveryCharge || 0);
+  totals.grandTotal = round2(totals.grandTotal + deliveryCharge);
+
+  /*
     BILL SE ZYADA PAISA — ab chup-chaap nigla nahi jata.
 
     Pehle yahan sirf `Math.min(...)` tha. Yaani ₹3,000 ka bill banate waqt
@@ -637,6 +650,7 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     igstTotal: totals.igstTotal,
     roundOff: totals.roundOff,
     grandTotal: totals.grandTotal,
+    deliveryCharge,
     rateVarianceTotal,
 
     paidAmount,
