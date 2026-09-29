@@ -14,6 +14,7 @@ import { createItem } from './item.service.js';
 import { khepBanao, khepHatao } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { applyCredit } from './settlement.service.js';
+import { sweepAdvance } from './balance.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const PREFIX = 'PUR';

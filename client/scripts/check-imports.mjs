@@ -89,7 +89,7 @@ for (const file of walk(ROOT)) {
 const GLOBALS = new Set([
   // Browser ke apne global — push notification ke liye
   'Notification', 'PushManager', 'ServiceWorkerRegistration',
-  'window', 'document', 'navigator', 'console', 'localStorage', 'sessionStorage',
+  'window', 'document', 'navigator', 'console', 'localStorage', 'sessionStorage', 'indexedDB',
   'fetch', 'FormData', 'Blob', 'File', 'FileReader', 'URL', 'URLSearchParams',
   'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame',
   'cancelAnimationFrame', 'MutationObserver', 'IntersectionObserver', 'ResizeObserver',

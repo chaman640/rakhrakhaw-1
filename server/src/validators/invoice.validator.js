@@ -22,6 +22,8 @@ export const createInvoiceSchema = z.object({
   paidAmount: money.optional().default(0),
   // Bill se zyada paisa — rok ke baad "haan, jama kar dein"
   allowAdvance: z.boolean().optional().default(false),
+  // Bill se zyada paisa maal ke daam (fayde) me jodna hai, jama me nahi
+  extraAsProfit: z.boolean().optional().default(false),
   // Party ka pehle se jama paisa isi bill me se kaat lein
   /*
     ULTA TICK. Pehle `useAdvance: true` bhejna padta tha, warna jama paisa

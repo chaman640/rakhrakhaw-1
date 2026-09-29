@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="hi">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <!--
@@ -14,7 +14,14 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBmNzY2ZSIvPjxwYXRoIGQ9Ik04IDEyaDE2djJIOHptMCA1aDE2djJIOHptMCA1aDExdjJIOHoiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSIyMyIgY3k9IjIzIiByPSIzIiBmaWxsPSIjNWVlYWQ0Ii8+PC9zdmc+" />
+    <!--
+      Ek hi logo, asli file me (data: URI nahi). Google search apna chhota
+      logo sirf asli URL wali file se uthata hai — data: wala wo padhta hi
+      nahi tha, isliye search me alag/khali nishaan dikhta tha. favicon.ico
+      purane browser aur Google dono ke liye; svg naye browser ke liye.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!--
       Title me brand PEHLE, phir kaam. "Rakhrakhav" Hindi ka aam shabd bhi
       hai (rakhrakhav = maintenance), aur us shabd pe dictionary wali site
@@ -69,6 +76,7 @@
           "alternateName": ["RakhRakhav", "रख रखाव", "Rakh Rakhav App"],
           "url": "https://rakhrakhav.in/",
           "email": "support@rakhrakhav.in",
+          "logo": "https://rakhrakhav.in/icon-512.png",
           "description": "Rakh Rakhav thok dukaan ke liye bana app hai — stock, bill, khata, udhaar, order aur report ek jagah.",
           "areaServed": { "@type": "Country", "name": "India" }
         },

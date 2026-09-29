@@ -1,5 +1,5 @@
+import Logo from '@/components/Logo';
 import { NavLink } from 'react-router-dom';
-import { Store } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
@@ -55,9 +55,7 @@ export default function Sidebar() {
           {headLogo ? (
             <img src={headLogo} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-white">
-              <Store size={18} />
-            </div>
+            <Logo size={36} className="shrink-0 rounded-lg" />
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900">

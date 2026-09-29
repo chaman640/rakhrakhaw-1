@@ -2174,6 +2174,13 @@ const DICT = {
   'Top Retail dekhein': { hi: 'टॉप रिटेल देखें', en: 'View Top Retail' },
   'Sabse zyada bikne wale item, sabse bade retailer, aur abhi kya hua': { hi: 'सबसे ज़्यादा बिकने वाले आइटम, सबसे बड़े रिटेलर, और अभी क्या हुआ', en: 'Best-selling items, top retailers, and recent activity' },
   'Website download karein': { hi: 'वेबसाइट डाउनलोड करें', en: 'Download the app' },
+
+  /* ── Bill: zyada paisa fayde me, intake me pehle ka diya paisa ── */
+  'Bill banate waqt {naam} ko {a} de chuke hain — ye udhaar me nahi chadhega': { hi: 'बिल बनाते वक़्त {naam} को {a} दे चुके हैं — ये उधार में नहीं चढ़ेगा', en: 'You already paid {a} to {naam} when the bill was made — it won\'t be added as credit' },
+  'Poora paisa de diya gaya hai — kuch baaki nahi': { hi: 'पूरा पैसा दे दिया गया है — कुछ बाकी नहीं', en: 'Fully paid — nothing due' },
+  'Khate me jama karein': { hi: 'खाते में जमा करें', en: 'Keep as advance' },
+  'Maal ke fayde me jodein': { hi: 'माल के फ़ायदे में जोड़ें', en: 'Add to item profit' },
+  'Maal zyada daam pe bika hai — zyada paisa item ke rate me jud jayega aur item ke munafe me dikhega. Retailer ke khate me kuch jama nahi hoga.': { hi: 'माल ज़्यादा दाम पे बिका है — ज़्यादा पैसा आइटम के रेट में जुड़ जाएगा और आइटम के मुनाफ़े में दिखेगा। रिटेलर के खाते में कुछ जमा नहीं होगा।', en: 'The goods sold at a higher price — the extra goes into the item rate and shows as item profit. Nothing is kept as advance in the retailer\'s account.' },
 };
 
 export default DICT;

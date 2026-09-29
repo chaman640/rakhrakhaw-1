@@ -4,7 +4,7 @@ import {
   PARTY_TYPES, PARTY_STATUS, NOTIFICATION_TYPES,
 } from '../config/constants.js';
 import {
-  Business, Item, Membership, Party, StockIntake,
+  Business, Invoice, Item, Membership, Party, StockIntake,
 } from '../models/index.js';
 import { notifyWholesaler } from './notification.service.js';
 import { createPurchase } from './purchase.service.js';
@@ -289,10 +289,28 @@ export async function pendingIntakeCount(businessId) {
   return { count };
 }
 
+/**
+ * Bechne wale ke bill pe ab tak kitna paisa aa chuka hai — SEEDHA bill se,
+ * abhi ka.
+ *
+ * Pehle kharidne wale ko hamesha "poora udhaar chadh jayega, kitna diya?"
+ * poocha jata tha, chahe bill banate waqt hi poora paisa de diya gaya ho.
+ * Wo khali chhod deta to uske supplier-khate me wo rakam UDHAAR chadh jati jo
+ * wo de chuka tha — aur app baar baar "paisa do" dikhata. Bill pe jo likha
+ * hai wahi sach hai, isliye wahin se padhte hain (copy rakhte to baad me aaya
+ * paisa chhoot jata).
+ */
+async function sourcePaidOf(intake) {
+  if (!intake.sourceInvoiceId) return 0;
+  const inv = await Invoice.findById(intake.sourceInvoiceId).select('paidAmount isCancelled').lean();
+  if (!inv || inv.isCancelled) return 0;
+  return round2(inv.paidAmount || 0);
+}
+
 export async function getIntake(businessId, id) {
   const intake = await StockIntake.findOne({ _id: id, businessId }).lean();
   if (!intake) throw ApiError.notFound('Ye kaam nahi mila');
-  return shape(intake);
+  return { ...shape(intake), sourcePaid: await sourcePaidOf(intake) };
 }
 
 /**
@@ -551,6 +569,18 @@ export async function finishIntake(businessId, id, payload, userId) {
   const business = await Business.findById(businessId).select('gstEnabled').lean();
   const gstOn = Boolean(business?.gstEnabled);
 
+  /*
+    Kitna diya — screen ne bheja to wahi (aadmi ne khud likha/badla), warna
+    bill pe jitna paisa aa chuka hai. Kuch item chhode hon to diya hua paisa
+    bache maal se zyada nahi ho sakta.
+  */
+  const addedTotal = round2(added.reduce((sum, l) => sum + (l.total || 0), 0));
+  const given = payload?.paidAmount;
+  const paidAmount = round2(Math.min(
+    addedTotal,
+    Math.max(0, given === undefined || given === null || given === '' ? await sourcePaidOf(found) : Number(given) || 0),
+  ));
+
   const items = added.map((l) => (gstOn
     ? {
       itemId: l.itemId, qty: l.qty, rate: l.rate, discount: l.discount, gstRate: l.gstRate,
@@ -592,7 +622,7 @@ export async function finishIntake(businessId, id, payload, userId) {
       // Tareekh BILL ki, aaj ki nahi — FIFO me is khep ka number usi hisaab se aana chahiye
       purchaseDate: found.invoiceDate || new Date(),
       items,
-      paidAmount: round2(payload?.paidAmount || 0),
+      paidAmount,
       notes: payload?.notes || `${found.sellerName} se aaya maal`,
       updatePurchasePrice: true,
     }, userId);

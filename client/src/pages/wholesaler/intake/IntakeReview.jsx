@@ -59,7 +59,8 @@ export default function IntakeReview() {
   const [index, setIndex] = useState(null);
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
-  const [paidAmount, setPaidAmount] = useState('');
+  // null = aadmi ne kuch nahi likha -> bill pe jitna paisa aa chuka wahi maana jayega
+  const [paidAmount, setPaidAmount] = useState(null);
 
   // Pehla wo item jiska faisla baaki hai — wahin se kaam shuru hota hai
   const firstPending = useMemo(
@@ -175,9 +176,10 @@ export default function IntakeReview() {
   async function finish() {
     setFinishing(true);
     try {
-      const res = await api.post(`/stock-intake/${id}/finish`, {
-        paidAmount: Number(paidAmount || 0),
-      });
+      const res = await api.post(
+        `/stock-intake/${id}/finish`,
+        paidAmount === null ? {} : { paidAmount: Number(paidAmount || 0) },
+      );
       prime(['intake', id], res.data.intake);
       // Stock, khep, khata aur purchase — sab badle hain
       bust('stock-intake', 'items', 'purchases', 'khata', 'dashboard', 'reports');
@@ -650,6 +652,11 @@ function FinishStep({ intake, gstEnabled, paidAmount, setPaidAmount, finishing, 
 
   const total = added.reduce((s, l) => s + (l.total || 0), 0);
 
+  // Bill banate waqt hi jo paisa de diya tha — wo dobara udhaar nahi banna chahiye
+  const alreadyPaid = Math.min(Number(intake.sourcePaid || 0), total);
+  const shown = paidAmount === null ? (alreadyPaid > 0 ? String(Math.round(alreadyPaid * 100) / 100) : '') : paidAmount;
+  const fullyPaid = total > 0 && alreadyPaid >= total - 0.005;
+
   return (
     <div className="space-y-5">
       <Card>
@@ -697,21 +704,32 @@ function FinishStep({ intake, gstEnabled, paidAmount, setPaidAmount, finishing, 
       <Card>
         <CardHeader
           title={t('Paisa')}
-          subtitle={t('{naam} ke khate me poora udhaar chadh jayega — abhi kuch diya ho to yahan likh dein', {
-            naam: intake.sellerName,
-          })}
+          subtitle={alreadyPaid > 0
+            ? t('Bill banate waqt {naam} ko {a} de chuke hain — ye udhaar me nahi chadhega', {
+              naam: intake.sellerName, a: formatMoney(alreadyPaid),
+            })
+            : t('{naam} ke khate me poora udhaar chadh jayega — abhi kuch diya ho to yahan likh dein', {
+              naam: intake.sellerName,
+            })}
         />
-        <Input
-          label={t('Abhi kitna diya')}
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="0.01"
-          prefix="₹"
-          value={paidAmount}
-          onChange={(e) => setPaidAmount(e.target.value)}
-          hint={t('Khali chhod dein to poora udhaar')}
-        />
+        {fullyPaid && paidAmount === null ? (
+          <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            <CheckCircle2 size={15} className="shrink-0" />
+            {t('Poora paisa de diya gaya hai — kuch baaki nahi')}
+          </p>
+        ) : (
+          <Input
+            label={t('Abhi kitna diya')}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            prefix="₹"
+            value={shown}
+            onChange={(e) => setPaidAmount(e.target.value)}
+            hint={t('Khali chhod dein to poora udhaar')}
+          />
+        )}
         {!gstEnabled && intake.taxTotal > 0 && (
           <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
             {t('Aapki dukaan GST me registered nahi hai, isliye bill ka GST aapki lagat me jud gaya hai — jod bill se poora milta hai.')}

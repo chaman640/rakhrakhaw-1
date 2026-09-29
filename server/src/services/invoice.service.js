@@ -539,32 +539,12 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     taxType = TAX_TYPES.NONE;
   }
 
-  let totals;
-  try {
-    totals = computeInvoice(lines, {
-      gstEnabled: billGstEnabled,
-      taxType,
-      extraDiscount: payload.extraDiscount || 0,
-    });
-  } catch (err) {
-    throw ApiError.badRequest(err.message);
-  }
+  const deliveryCharge = round2(payload.deliveryCharge || 0);
 
   /*
-   * `computeInvoice` (gst.service.js) apni khud ki line shape banata hai aur
-   * humara `expectedRate`/`rateVarianceAmount` usme copy nahi hota — isliye
-   * yahan wapas jod dete hain. Order `lines` jaisa hi rehta hai
-   * (`computeInvoice` sirf `.map()` karta hai, kram nahi badalta), isliye
-   * index se milana surakshit hai.
-   */
-  totals.items = totals.items.map((it, idx) => ({
-    ...it,
-    expectedRate: lines[idx].expectedRate,
-    rateVarianceAmount: lines[idx].rateVarianceAmount,
-  }));
-  const rateVarianceTotal = round2(lines.reduce((s, l) => s + l.rateVarianceAmount, 0));
+    Bill ka poora jod — ek function me, kyunki "zyada paisa fayde me" (neeche)
+    rate badal kar ise dobara chalata hai.
 
-  /*
     DELIVERY CHARGE (Part 54) — jaan-boojh kar `computeInvoice`'s ke andar
     ke per-item GST-split se bahar rakha gaya hai: ye kisi ek item ka hissa
     nahi, ek alag flat charge hai, isliye upar ka delicate taxable-share
@@ -573,9 +553,34 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     bheja gaya (`payload.deliveryCharge`), wahi aakhri hai — dukaan ki
     default rakam (`business.deliveryCharge`) sirf shuruaati sujhaav hai,
     client-side (InvoiceForm.jsx) usi se form bhar deta hai.
+
+    `computeInvoice` (gst.service.js) apni khud ki line shape banata hai aur
+    humara `expectedRate`/`rateVarianceAmount` usme copy nahi hota — isliye
+    yahan wapas jod dete hain. Order `lines` jaisa hi rehta hai
+    (`computeInvoice` sirf `.map()` karta hai, kram nahi badalta), isliye
+    index se milana surakshit hai.
   */
-  const deliveryCharge = round2(payload.deliveryCharge || 0);
-  totals.grandTotal = round2(totals.grandTotal + deliveryCharge);
+  const computeAll = () => {
+    let out;
+    try {
+      out = computeInvoice(lines, {
+        gstEnabled: billGstEnabled,
+        taxType,
+        extraDiscount: payload.extraDiscount || 0,
+      });
+    } catch (err) {
+      throw ApiError.badRequest(err.message);
+    }
+    out.items = out.items.map((it, idx) => ({
+      ...it,
+      expectedRate: lines[idx].expectedRate,
+      rateVarianceAmount: lines[idx].rateVarianceAmount,
+    }));
+    out.grandTotal = round2(out.grandTotal + deliveryCharge);
+    return out;
+  };
+
+  let totals = computeAll();
 
   /*
     BILL SE ZYADA PAISA — ab chup-chaap nigla nahi jata.
@@ -586,13 +591,48 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
     error se bhi bura hai: dukaandaar ko lagta hai paisa likh diya, aur wo
     kabhi likha hi nahi gaya.
 
-    Ab do saaf raste hain, aur dono me paisa poora darj hota hai:
-      - bina kahe   -> rok, poore hisaab ke saath ("₹27,000 zyada hai")
-      - jama kar do -> bill utna hi chukta, aur bacha hua JAMA paisa ban jata
-                       hai (khate me credit, agle bill me kaam aayega)
+    Ab teen saaf raste hain, aur teeno me paisa poora darj hota hai:
+      - bina kahe      -> rok, poore hisaab ke saath ("₹27,000 zyada hai")
+      - jama kar do    -> bill utna hi chukta, aur bacha hua JAMA paisa ban
+                          jata hai (khate me credit, agle bill me kaam aayega)
+      - fayde me jodo  -> maal asal me zyada daam pe bika. Zyada paisa maal ke
+                          RATE me chala jata hai (har line apne hisse ke
+                          barabar), bill utne ka hi banta hai jitna mila, aur
+                          wo fark item ke munafe me dikhta hai — retailer ke
+                          khate me jama nahi.
   */
-  const received = round2(payload.paidAmount || 0);
-  const extraPaid = round2(received - totals.grandTotal);
+  let received = round2(payload.paidAmount || 0);
+  let extraPaid = round2(received - totals.grandTotal);
+
+  if (extraPaid > 0 && payload.extraAsProfit === true) {
+    /*
+      Rate ko ek hi anupaat se badhate hain, 2 dashamlav tak. Ek baar me jod
+      paise tak nahi milta (har line alag round hoti hai, GST bhi upar se), isliye
+      2-3 baar sudhaar lete hain. Bill ka jod rupaye me round hota hai, to
+      aakhir tak fark ₹1 se kam hi bachta hai — wo bill ka "round off" hi hai.
+    */
+    const itemsTotal = () => round2(totals.grandTotal - deliveryCharge);
+    for (let pass = 0; pass < 4 && itemsTotal() > 0; pass++) {
+      if (pass > 0 && Math.abs(extraPaid) < 1) break;
+      const factor = (received - deliveryCharge) / itemsTotal();
+      for (const line of lines) {
+        line.rate = round2(Number(line.rate) * factor);
+        line.rateVarianceAmount = round2((line.rate - line.expectedRate) * Number(line.qty));
+      }
+      totals = computeAll();
+      extraPaid = round2(received - totals.grandTotal);
+    }
+    /*
+      Bill rupaye me round hota hai, to paise wali rakam (₹1,100.50) kabhi
+      poori barabar nahi baithti. ₹1 se kam bacha to wo bill ka round off hi
+      hai — use ₹0.50 ka jama banana khate me kachra bharna hai.
+    */
+    if (extraPaid > 0 && extraPaid < 1) {
+      received = totals.grandTotal;
+      extraPaid = 0;
+    }
+  }
+  const rateVarianceTotal = round2(lines.reduce((s, l) => s + l.rateVarianceAmount, 0));
 
   if (extraPaid > 0 && payload.allowAdvance !== true) {
     throw ApiError.badRequest(

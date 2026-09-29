@@ -1,5 +1,6 @@
+import Logo from '@/components/Logo';
 import { useState } from 'react';
-import { ArrowLeft, LogOut, ChevronDown, Store, UserCircle } from 'lucide-react';
+import { ArrowLeft, LogOut, ChevronDown, UserCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
@@ -103,9 +104,7 @@ export default function Header({ title, showBack, backTo }) {
           {headLogo ? (
             <img src={headLogo} alt="" className="h-8 w-8 rounded-lg object-cover" />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-white">
-              <Store size={16} />
-            </div>
+            <Logo size={32} className="shrink-0 rounded-lg" />
           )}
         </button>
       )}

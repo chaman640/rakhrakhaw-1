@@ -171,6 +171,9 @@ async function run() {
 
     r = await call('POST', '/auth/login', { body: { phone: '+91 90000-00001', password: 'test1234' } });
     check('login chala (formatted number bhi)', r.status === 200 && r.data?.token, `status ${r.status}`);
+    // Naya login purane token ko band kar deta hai (ek phone, ek session) —
+    // isliye aage ka kaam isi naye token se
+    if (r.data?.token) wToken = r.data.token;
 
     r = await call('GET', '/auth/me', { token: wToken });
     check('/auth/me ne session diya', r.data?.user?.role === 'wholesaler' && r.data?.business?.name === 'Ramesh Auto Parts');
@@ -3607,6 +3610,39 @@ async function run() {
       (r.data || []).every((x) => x.sellerName === 'Bada Traders'),
       JSON.stringify((r.data || []).map((x) => x.sellerName)));
 
+    /*
+      BILL PE POORA PAISA DE DIYA — to kharidne wale ke yahan wo udhaar nahi
+      banna chahiye. Pehle intake hamesha "poora udhaar" maan leta tha.
+    */
+    // ₹1,000 + 18% GST = ₹1,180 — bill banate waqt hi poora de diya
+    r = await call('POST', '/invoices', {
+      token: bigToken,
+      body: { partyId: w1PartyInBig, items: [{ itemId: bigItem, qty: 1, rate: 1000 }], paidAmount: 1180 },
+    });
+    const paidInvNo = r.data?.invoiceNo;
+    const paidInvTotal = r.data?.grandTotal;
+    check('bade wholesaler ne bill pe poora paisa le liya', r.status === 201 && r.data?.paymentStatus === 'paid',
+      `status ${r.status} · ${r.data?.paymentStatus} · ${r.message}`);
+
+    r = await call('GET', '/stock-intake', { token: wToken });
+    const paidIntake = (r.data || []).find((x) => x.sourceInvoiceNo === paidInvNo);
+    r = await call('GET', `/stock-intake/${paidIntake?._id}`, { token: wToken });
+    check('intake ko pata hai ki bill pe paisa de diya gaya',
+      Math.abs((r.data?.sourcePaid || 0) - paidInvTotal) < 0.01, `${r.data?.sourcePaid} vs ${paidInvTotal}`);
+
+    await call('POST', `/stock-intake/${paidIntake?._id}/lines/0`, {
+      token: wToken, body: { sellingPrice: 1300, itemId: madeItem?._id },
+    });
+    const paidSupBefore = (await call('GET', '/parties?type=supplier', { token: wToken })).data
+      ?.find((x) => x.phone === BIG_PHONE)?.balance || 0;
+    r = await call('POST', `/stock-intake/${paidIntake?._id}/finish`, { token: wToken, body: {} });
+    check('paid bill wala maal stock me gaya', r.status === 201, `${r.message}`);
+    check('purchase bhi "chukta" bani', r.data?.purchase?.dueAmount === 0, `due ${r.data?.purchase?.dueAmount}`);
+    const paidSupAfter = (await call('GET', '/parties?type=supplier', { token: wToken })).data
+      ?.find((x) => x.phone === BIG_PHONE)?.balance || 0;
+    check('supplier ke khate me naya udhaar NAHI chadha', Math.abs(paidSupAfter - paidSupBefore) < 0.01,
+      `${paidSupBefore} -> ${paidSupAfter}`);
+
     /* ═══════════ OTP — signup aur "password bhool gaye" ═══════════
 
        Asli OTP yahan nahi mangwate: har run pe asli SMS jata (paisa lagta) aur
@@ -3813,6 +3849,40 @@ async function run() {
       `${dash.data?.khata?.billsDue} > ${dash.data?.khata?.receivable}`);
     check('ek graahak ka khata bhi wahi tod-phod deta hai',
       khataOne.data?.hisaab?.billsDue !== undefined);
+
+    /* ═════════════ Zyada paisa = maal ka fayda (extraAsProfit) ═════════════ */
+    console.log(`\n${Y}Zyada paisa — fayde me${N}`);
+
+    r = await call('POST', '/parties', {
+      token: wToken,
+      body: { name: 'Fayda Test Traders', type: 'retailer', phone: '9333300012' },
+    });
+    const fParty = r.data?._id;
+    r = await call('POST', '/items', {
+      token: wToken,
+      body: { name: 'Fayda Test Item', purchasePrice: 50, salePrice: 100, openingStock: 50 },
+    });
+    const fItem = r.data?._id;
+
+    // ₹1,000 ka bill, ₹1,100 mile — bina kahe rukna chahiye (purana rasta)
+    const fBody = { partyId: fParty, items: [{ itemId: fItem, qty: 10, rate: 100 }], paidAmount: 1100 };
+    r = await call('POST', '/invoices', { token: wToken, body: fBody });
+    check('zyada paisa bina kahe nahi liya jata', r.status === 400 && r.details?.needsAdvance === true,
+      `status ${r.status}`);
+
+    r = await call('POST', '/invoices', { token: wToken, body: { ...fBody, extraAsProfit: true } });
+    check('"fayde me jodo" se bill ban gaya', r.status === 201, `status ${r.status} · ${r.message}`);
+    check('bill ka jod utna hi hai jitna paisa mila', r.data?.grandTotal === 1100, `${r.data?.grandTotal}`);
+    check('bill poora chukta hai', r.data?.dueAmount === 0 && r.data?.paymentStatus === 'paid',
+      `due ${r.data?.dueAmount} · ${r.data?.paymentStatus}`);
+    check('zyada paisa item ke rate me gaya', r.data?.items?.[0]?.rate === 110, `${r.data?.items?.[0]?.rate}`);
+    check('tay rate se fark (fayda) darj hua', Math.round(r.data?.rateVarianceTotal) === 100,
+      `${r.data?.rateVarianceTotal}`);
+
+    r = await call('GET', `/khata/${fParty}`, { token: wToken });
+    check('retailer ke khate me kuch jama nahi (advance 0)',
+      Math.round(r.data?.hisaab?.advance || 0) === 0 && (r.data?.hisaab?.billsDue || 0) === 0,
+      `advance ${r.data?.hisaab?.advance} · billsDue ${r.data?.hisaab?.billsDue}`);
 
     /* ═════════════ Dono taraf ka rishta — Batch B ═════════════ */
     console.log(`\n${Y}Dono taraf ka rishta (Batch B)${N}`);

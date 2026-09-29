@@ -746,8 +746,11 @@ export default function InvoiceForm() {
         footer={
         <>
             <Button variant="secondary" onClick={() => setAsk(null)}>{t('Nahi, badal dein')}</Button>
-            <Button onClick={() => send({ allowAdvance: true })} loading={saving}>
-              {t('Haan, jama kar dein')}
+            <Button variant="secondary" onClick={() => send({ allowAdvance: true })} loading={saving}>
+              {t('Khate me jama karein')}
+            </Button>
+            <Button onClick={() => send({ extraAsProfit: true })} loading={saving}>
+              {t('Maal ke fayde me jodein')}
             </Button>
           </>
         }>
@@ -769,6 +772,11 @@ export default function InvoiceForm() {
               </div>
             </dl>
             <p className="text-slate-600">
+              <span className="font-medium text-slate-900">{t('Maal ke fayde me jodein')}:</span>{' '}
+              {t('Maal zyada daam pe bika hai — zyada paisa item ke rate me jud jayega aur item ke munafe me dikhega. Retailer ke khate me kuch jama nahi hoga.')}
+            </p>
+            <p className="text-slate-600">
+              <span className="font-medium text-slate-900">{t('Khate me jama karein')}:</span>{' '}
               {t('Zyada paisa pehle inke purane khule bill pe lagega. Jo phir bhi bache wo JAMA rahega — agle bill me kat jayega ya kabhi bhi wapas ho sakta hai.')}
             </p>
           </div>

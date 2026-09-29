@@ -65,7 +65,7 @@ export const decideLineSchema = z.object({
 });
 
 export const finishIntakeSchema = z.object({
-  // Turant kitna diya — khali chhod do to poora udhaar (wahi aam baat hai)
-  paidAmount: money.optional().default(0),
+  // Turant kitna diya. Na bheja to bill pe jitna paisa aa chuka wahi (intake.service.js — finishIntake)
+  paidAmount: money.optional(),
   notes: z.string().trim().max(500).optional().default(''),
 });

@@ -1,4 +1,4 @@
-import { setLang } from './i18n';
+import { setLang, DEFAULT_LANG } from './i18n';
 
 /**
  * APP KI TEEN CHHOTI SETTINGS — bhasha, roshni aur akshar ka size.
@@ -27,7 +27,7 @@ export const TEXT_SIZES = [
   { value: 'xlarge', label: 'Sabse bada', px: 20 },
 ];
 
-export const DEFAULT_PREFS = { lang: 'hinglish', theme: 'light', textSize: 'normal' };
+export const DEFAULT_PREFS = { lang: DEFAULT_LANG, theme: 'light', textSize: 'normal' };
 
 const THEME_COLORS = { light: '#0f766e', dark: '#0c1220' };
 
@@ -36,6 +36,12 @@ export function readPrefs() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { ...DEFAULT_PREFS };
     const saved = JSON.parse(raw);
+    /*
+      Pehle default Hinglish tha, aur theme badalne par bhi poori setting
+      (lang: 'hinglish' ke saath) save ho jati thi. Isliye jisne bhasha KHUD
+      nahi chuni, uski purani saved bhasha nahi maante — use bhi English.
+    */
+    if (!saved.langChosen) delete saved.lang;
     return { ...DEFAULT_PREFS, ...saved };
   } catch {
     // Purani ya tooti hui setting — usse app rukni nahi chahiye

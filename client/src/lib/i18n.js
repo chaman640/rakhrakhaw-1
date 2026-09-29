@@ -5,9 +5,9 @@ import DICT from './dict';
  *
  * Teen bhashayein hain:
  *
- *   hinglish  — jo abhi tak app me likha hai (default)
+ *   hinglish  — jo code me likha hai (shabd ki "chaabi")
  *   hi        — शुद्ध हिन्दी
- *   en        — English
+ *   en        — English (naye aadmi ko yahi dikhti hai)
  *
  * Ek baat samajhne layak hai: yahan "key" koi code jaisa naam nahi hai
  * (`invoice.create` type ka), balki KHUD HINGLISH WALA SHABD hai.
@@ -31,7 +31,18 @@ export const LANGS = [
 ];
 
 const VALID = new Set(LANGS.map((l) => l.value));
-const DEFAULT_LANG = 'hinglish';
+/*
+  Do alag cheezein hain, isliye do alag naam:
+
+    BASE_LANG     — code me shabd isi bhasha me likhe hain. Iska anuvaad
+                    dhoondhna hi nahi padta.
+    DEFAULT_LANG  — site pehli baar khulne par kaunsi bhasha dikhe.
+
+  Pehle dono ek hi the (Hinglish). Ab site khulte hi English dikhni chahiye,
+  jabki code ke shabd Hinglish hi rahenge.
+*/
+const BASE_LANG = 'hinglish';
+export const DEFAULT_LANG = 'en';
 
 /*
   Ye module ke andar ki ek chhoti si cheez hai, React ke state me nahi.
@@ -62,7 +73,7 @@ export function setLang(lang) {
 export function t(key, vars) {
   let out = key;
 
-  if (current !== DEFAULT_LANG) {
+  if (current !== BASE_LANG) {
     const row = DICT[key];
     const found = row && row[current];
     if (found) out = found;
