@@ -4,6 +4,25 @@ import {
   Video, Plus, Trash2,
 } from 'lucide-react';
 import api, { getToken, setToken } from './partnerApi';
+import {
+  AdminDashboard, AdminBusinesses, AdminUsers, AdminPayments, AdminPlans, AdminAnnouncements, AdminAuditLog,
+} from './PlatformAdmin';
+
+/*
+  Admin ki navigation — desktop pe upar ek line, phone pe khisakne wali.
+  Platform wale tab (PlatformAdmin.jsx) + purane do (salesman, video).
+*/
+const ADMIN_TABS = [
+  ['dashboard', 'Dashboard'],
+  ['businesses', 'Dukaanein'],
+  ['users', 'Users'],
+  ['payments', 'Payments'],
+  ['plans', 'Plans & Features'],
+  ['tutorials', 'Tutorial videos'],
+  ['announcements', 'Soochna'],
+  ['salesmen', 'Salesman'],
+  ['audit', 'Register'],
+];
 
 /*
   ADMIN PANEL — sirf aapke liye.
@@ -329,7 +348,15 @@ function Panel({ onLogout, warnPassword }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
   const [pw, setPw] = useState(null);
-  const [tab, setTab] = useState('salesmen'); // 'salesmen' | 'tutorials'
+  const [tab, setTab] = useState('dashboard');
+  const [bizId, setBizId] = useState(null);
+  // Plan ki list — dropdown (plan dena, filter, soochna) ke liye ek baar
+  const [plans, setPlans] = useState([]);
+  const loadPlans = useCallback(async () => {
+    try { setPlans((await api.get('/admin/platform/plans')).data.plans); } catch { /* dikh jayega */ }
+  }, []);
+  useEffect(() => { loadPlans(); }, [loadPlans]);
+  const go = (t, id = null) => { setTab(t); setBizId(id); setOpen(null); };
 
   const load = useCallback(async () => {
     try { setD((await api.get(`/admin/list?q=${encodeURIComponent(q)}`)).data); } catch { /* dikh jayega */ }
@@ -339,8 +366,8 @@ function Panel({ onLogout, warnPassword }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <p className="font-bold text-slate-900">Admin</p>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <p className="font-bold text-slate-900">RakhRakhav Admin</p>
           <div className="flex gap-1">
             <button type="button" onClick={() => setPw({})} className="rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-100">
               <KeyRound size={15} />
@@ -350,24 +377,28 @@ function Panel({ onLogout, warnPassword }) {
             </button>
           </div>
         </div>
-        <div className="mx-auto flex max-w-3xl gap-1 px-4 pb-2">
-          <button
-            type="button" onClick={() => { setTab('salesmen'); setOpen(null); }}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === 'salesmen' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            Salesman ka hisaab
-          </button>
-          <button
-            type="button" onClick={() => setTab('tutorials')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${tab === 'tutorials' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            <Video size={14} /> Tutorial videos
-          </button>
-        </div>
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
+          {ADMIN_TABS.map(([v, label]) => (
+            <button
+              key={v} type="button" onClick={() => go(v)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium ${tab === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            >
+              {v === 'tutorials' && <Video size={14} className="mr-1 inline" />}{label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-4 px-4 py-5">
-        {tab === 'tutorials' ? <Tutorials /> : (
+      <main className="mx-auto max-w-6xl space-y-4 px-4 py-5">
+        {pw && <PasswordBox onClose={() => setPw(null)} />}
+        {tab === 'dashboard' && <AdminDashboard go={go} />}
+        {tab === 'businesses' && <AdminBusinesses openId={bizId} plans={plans} />}
+        {tab === 'users' && <AdminUsers />}
+        {tab === 'payments' && <AdminPayments />}
+        {tab === 'plans' && <AdminPlans onChanged={loadPlans} />}
+        {tab === 'announcements' && <AdminAnnouncements plans={plans} />}
+        {tab === 'audit' && <AdminAuditLog />}
+        {tab === 'tutorials' ? <Tutorials /> : tab !== 'salesmen' ? null : (
         <>
         {warnPassword && (
           <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
@@ -379,7 +410,6 @@ function Panel({ onLogout, warnPassword }) {
           </div>
         )}
 
-        {pw && <PasswordBox onClose={() => setPw(null)} />}
 
         {open ? <One id={open} onBack={() => { setOpen(null); load(); }} /> : (
           <>

@@ -36,6 +36,8 @@ import myStoryRoutes from './myStory.routes.js';
 import tutorialRoutes from './tutorial.routes.js';
 import crmRoutes from './crm.routes.js';
 import { buyerWishlist, sellerDemand } from './wishlist.routes.js';
+import adminPlatformRoutes from './adminPlatform.routes.js';
+import announcementRoutes from './announcement.routes.js';
 
 const router = Router();
 
@@ -53,6 +55,8 @@ router.use('/diag', diagRoutes);
   lagte hi nahi. Uska apna pehra `middleware/partnerAuth.js` me hai, aur uska
   token dukaan wale raste pe chalta nahi (aud alag hai).
 */
+// Admin Panel (platform) — salesman wale `/partner` se PEHLE, taaki wahan atke nahi
+router.use('/partner/admin/platform', adminPlatformRoutes);
 router.use('/partner', partnerRoutes);
 
 // Bina login ke dukaan dekhna — koi pehra nahi
@@ -92,6 +96,7 @@ router.use('/buy', buyRoutes);
 router.use('/catalog', catalogRoutes);
 router.use('/cart', cartRoutes);
 router.use('/wishlist', buyerWishlist);
+router.use('/announcements', announcementRoutes);
 router.use('/wishlist-demand', sellerDemand);
 router.use('/my-orders', myOrderRoutes);
 

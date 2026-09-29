@@ -23,6 +23,8 @@ export { default as Counter } from './Counter.js';
 export { default as Cart } from './Cart.js';
 export { default as Wishlist } from './Wishlist.js';
 export { default as PlatformConfig } from './PlatformConfig.js';
+export { default as AdminAudit } from './AdminAudit.js';
+export { default as Announcement } from './Announcement.js';
 export { default as ReturnNote } from './ReturnNote.js';
 export { default as AuditLog } from './AuditLog.js';
 export { default as StaffInvite } from './StaffInvite.js';

@@ -79,6 +79,14 @@ const businessSchema = new mongoose.Schema(
     requireApproval: { type: Boolean, default: false },
 
     /*
+     * PLATFORM NE BAND KIYA (Admin Panel → Suspend). `isActive: false` ke saath
+     * — dukaan search/link se gayab, aur bechne wale saare raste band
+     * (middleware/tenant.js — requirePaidSeller). Kharidna chalu rehta hai.
+     */
+    suspendedAt: { type: Date, default: null },
+    suspendReason: { type: String, trim: true, maxlength: 300, default: '' },
+
+    /*
      * ONBOARDING TOUR — pehli baar wala safar (Part 29).
      *
      * `null` = abhi tak na dekha na chhoda — isi wajah se pehla login hote

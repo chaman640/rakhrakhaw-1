@@ -183,6 +183,24 @@ export async function requireActiveParty(req, res, next) {
  * dena sabse bewakoofi wali rok hogi.
  */
 export const requirePaidSeller = asyncHandler(async (req, res, next) => {
+  /*
+    Platform ne dukaan band ki ho (Admin → Suspend) to bechne ka koi rasta
+    nahi — free mode me bhi. 30 second ka cache: har request pe ek query
+    bachti hai, aur admin ka suspend cache turant saaf karta hai.
+  */
+  const { cached } = await import('../utils/cache.js');
+  const { Business } = await import('../models/index.js');
+  const state = await cached(`biz-active:${req.businessId}`, 30000, async () => {
+    const b = await Business.findById(req.businessId).select('isActive suspendReason').lean();
+    return { active: b ? b.isActive !== false : true, reason: b?.suspendReason || '' };
+  });
+  if (!state.active) {
+    throw ApiError.forbidden(
+      `Ye dukaan platform ne band ki hai${state.reason ? ` — ${state.reason}` : ''}. Support se baat karein.`,
+      { reason: 'suspended' },
+    );
+  }
+
   const { assertCanSell } = await import('../services/billing.service.js');
   await assertCanSell(req.businessId, req.user);
   next();

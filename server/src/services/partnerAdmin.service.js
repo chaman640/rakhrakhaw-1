@@ -66,6 +66,10 @@ export async function adminLogin({ email, password }) {
   admin.lastLoginAt = new Date();
   await admin.save();
 
+  // Admin ka har login register me (platformAdmin.service.js — audit)
+  const { audit } = await import('./platformAdmin.service.js');
+  await audit({ adminId: admin._id }, { action: 'admin.login', targetType: 'PartnerAdmin', targetId: admin._id, targetLabel: admin.email });
+
   return {
     token: signAdminToken(admin),
     email: admin.email,
