@@ -22,10 +22,13 @@ import { t } from '@/lib/i18n';
 export default function BulkImportModal({ open, onClose, onDone }) {
   const toast = useToast();
   const fileRef = useRef(null);
+  // Phone me seedha camera khulta hai — gallery me dhoondhna nahi padta
+  const cameraRef = useRef(null);
 
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState(null);
   const [kaise, setKaise] = useState('');
+  const [markup, setMarkup] = useState('20');
 
   const reset = () => { setRows(null); setKaise(''); setBusy(false); };
   const band = () => { reset(); onClose(); };
@@ -40,7 +43,7 @@ export default function BulkImportModal({ open, onClose, onDone }) {
       setKaise(res.data.kaise);
       setRows(res.data.rows.map((r) => ({
         ...r,
-        salePrice: r.rate ? Math.round(r.rate * 1.2) : 0,
+        salePrice: r.rate ? Math.round(r.rate * (1 + (Number(markup) || 0) / 100)) : 0,
         kya: r.milaHua ? 'stock' : 'naya',
       })));
     } catch (e) {
@@ -48,14 +51,29 @@ export default function BulkImportModal({ open, onClose, onDone }) {
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
+      if (cameraRef.current) cameraRef.current.value = '';
     }
   }
 
   const set = (id, patch) => setRows((old) => old.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
+  // Sab line ka bechne ka rate ek saath: lagat + itna %
+  function sabPeMunafa() {
+    const pct = Number(markup) || 0;
+    setRows((old) => old.map((r) => (r.rate > 0 ? { ...r, salePrice: Math.round(r.rate * (1 + pct / 100)) } : r)));
+  }
+
+  // "Naya bana do" chuna par naam wahi chhoda — server mana karega, pehle hi bata do
+  const naamWahi = (r) => r.kya === 'naya' && r.milaHua
+    && r.name.trim().toLowerCase() === r.milaHua.name.trim().toLowerCase();
+
   async function daalo() {
     const chune = rows.filter((r) => r.kya !== 'chhodo');
     if (!chune.length) { toast.error(t('Ek bhi item chuna nahi gaya')); return; }
+    if (chune.some(naamWahi)) {
+      toast.error(t('Naya item banane ke liye naam badliye — ya "Isi ka stock badha do" chunein'));
+      return;
+    }
 
     setBusy(true);
     try {
@@ -103,18 +121,52 @@ export default function BulkImportModal({ open, onClose, onDone }) {
             onChange={(e) => padho(e.target.files?.[0])}
           />
 
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-            className="focus-ring flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-10 hover:border-brand-500 hover:bg-brand-50/40 disabled:opacity-60"
-          >
-            {busy ? <Spinner size={26} /> : <Upload size={26} className="text-slate-400" />}
-            <span className="font-semibold text-slate-700">
-              {busy ? t('Padha ja raha hai...') : t('File chunein ya photo lein')}
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => padho(e.target.files?.[0])}
+          />
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+              className="focus-ring flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-8 hover:border-brand-500 hover:bg-brand-50/40 disabled:opacity-60"
+            >
+              {busy ? <Spinner size={26} /> : <Upload size={26} className="text-slate-400" />}
+              <span className="font-semibold text-slate-700">
+                {busy ? t('Padha ja raha hai...') : t('File chunein')}
+              </span>
+              <span className="text-xs text-slate-500">{t('Excel, CSV, PDF ya photo — 10 MB tak')}</span>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => cameraRef.current?.click()}
+              className="focus-ring flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-8 hover:border-brand-500 hover:bg-brand-50/40 disabled:opacity-60"
+            >
+              {busy ? <Spinner size={26} /> : <Camera size={26} className="text-slate-400" />}
+              <span className="font-semibold text-slate-700">{t('Bill ki photo lein')}</span>
+              <span className="text-xs text-slate-500">{t('Camera khulega — bill seedha aur roshni me rakhein')}</span>
+            </button>
+          </div>
+
+          <label className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <span>{t('Bechne ka rate: lagat par kitna % munafa')}</span>
+            <span className="flex items-center gap-1">
+              <input
+                type="number" min="0" inputMode="decimal"
+                value={markup}
+                onChange={(e) => setMarkup(e.target.value)}
+                className="w-16 rounded-md border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-brand-600"
+              />
+              %
             </span>
-            <span className="text-xs text-slate-500">{t('Excel, CSV, PDF ya photo — 10 MB tak')}</span>
-          </button>
+          </label>
 
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             {[
@@ -146,6 +198,20 @@ export default function BulkImportModal({ open, onClose, onDone }) {
             </p>
             <button type="button" onClick={reset} className="text-sm font-semibold text-slate-600 underline">
               {t('Doosri file')}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            <span>{t('Sab ka bechne ka rate = lagat +')}</span>
+            <input
+              type="number" min="0" inputMode="decimal"
+              value={markup}
+              onChange={(e) => setMarkup(e.target.value)}
+              className="w-14 rounded-md border border-slate-300 px-2 py-1 text-right text-xs outline-none focus:border-brand-600"
+            />
+            <span>%</span>
+            <button type="button" onClick={sabPeMunafa} className="ml-auto font-semibold text-brand-700 underline">
+              {t('Sab pe lagayein')}
             </button>
           </div>
 
@@ -202,7 +268,7 @@ export default function BulkImportModal({ open, onClose, onDone }) {
                       ))}
                     </div>
                     {r.kya === 'naya' && (
-                      <p className="mt-1.5 text-[11px] text-sky-800">
+                      <p className={`mt-1.5 text-[11px] ${naamWahi(r) ? 'font-semibold text-red-700' : 'text-sky-800'}`}>
                         {t('Upar naam badal dijiye — wahi naam do baar nahi ho sakta.')}
                       </p>
                     )}

@@ -7,6 +7,8 @@ import ApiError from '../utils/ApiError.js';
 import { UNITS, STOCK_MOVEMENT_TYPES } from '../config/constants.js';
 import { Item, Category } from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
+import { createItem } from './item.service.js';
+import { khepBanao } from './lot.service.js';
 
 /**
  * EXCEL / PDF / PHOTO SE MAAL ADD KARNA.
@@ -279,8 +281,9 @@ export async function parseFile(file) {
  * Faisla aadmi ka: "isi ka stock badha do" ya "naam badal kar naya bana do".
  */
 export async function matchRows(businessId, rows) {
-  const items = await Item.find({ businessId })
-    .select('name unit purchasePrice salePrice stock').lean();
+  // Chhupaye (band) item se milan nahi — naya naam unse takraata bhi nahi
+  const items = await Item.find({ businessId, isActive: true })
+    .select('name unit purchasePrice salePrice stockQty').lean();
 
   const byKey = new Map(items.map((i) => [key(i.name), i]));
 
@@ -293,7 +296,7 @@ export async function matchRows(businessId, rows) {
       milaHua: hit ? {
         _id: hit._id,
         name: hit.name,
-        stock: hit.stock || 0,
+        stock: hit.stockQty || 0,
         purchasePrice: hit.purchasePrice || 0,
         salePrice: hit.salePrice || 0,
       } : null,
@@ -331,6 +334,8 @@ export async function commitRows(businessId, decisions, userId) {
 
       if (d.kya === 'stock') {
         if (!d.itemId) throw new Error('kaunsa item, ye nahi mila');
+        const item = await Item.findOne({ _id: d.itemId, businessId }).select('purchasePrice').lean();
+        if (!item) throw new Error('kaunsa item, ye nahi mila');
         if (qty > 0) {
           await applyStockChange({
             businessId,
@@ -339,6 +344,16 @@ export async function commitRows(businessId, decisions, userId) {
             qty,
             note: 'File se add kiya',
             userId,
+          });
+          /*
+            Khep bhi — warna ye maal FIFO me "bina lagat" ka reh jata aur bikne
+            pe munafa galat nikalta. Lagat wahi jo file me likhi thi, na ho to
+            item ki purani lagat.
+          */
+          await khepBanao({
+            businessId, itemId: d.itemId, qty,
+            unitCost: Number(d.rate) > 0 ? Number(d.rate) : (item.purchasePrice || 0),
+            source: 'ADJUSTMENT', refNo: 'File se', userId,
           });
         }
         // Rate bhara ho to lagat/bikri bhi taaza kar dete hain
@@ -354,22 +369,23 @@ export async function commitRows(businessId, decisions, userId) {
 
       const nm = clean(d.name).slice(0, 120);
       if (!nm) throw new Error('naam khali hai');
-      if (await Item.exists({ businessId, name: nm })) {
-        throw new Error(`"${nm}" is naam ka item pehle se hai`);
-      }
 
-      await Item.create({
-        businessId,
+      /*
+        Naya item usi raste se jisse ek item banta hai (`createItem`). Pehle
+        yahan seedha `Item.create({ stock })` tha — par model me khaana
+        `stockQty` hai, to file se aaya har naya item STOCK 0 ka banta tha, na
+        opening ki entry banti thi, na khep.
+      */
+      await createItem(businessId, {
         name: nm,
         unit: UNITS.includes(d.unit) ? d.unit : 'PCS',
         hsn: clean(d.hsn).slice(0, 10),
         purchasePrice: Number(d.rate) || 0,
         salePrice: Number(d.salePrice) || 0,
         mrp: Number(d.mrp) || 0,
-        stock: qty,
         openingStock: qty,
         categoryId: cat?._id || null,
-      });
+      }, userId);
       nateeja.naye += 1;
     } catch (err) {
       nateeja.gadbad.push({ name: d.name || '(bina naam)', kyun: err.message });

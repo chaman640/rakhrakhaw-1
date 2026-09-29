@@ -2181,6 +2181,22 @@ const DICT = {
   'Khate me jama karein': { hi: 'खाते में जमा करें', en: 'Keep as advance' },
   'Maal ke fayde me jodein': { hi: 'माल के फ़ायदे में जोड़ें', en: 'Add to item profit' },
   'Maal zyada daam pe bika hai — zyada paisa item ke rate me jud jayega aur item ke munafe me dikhega. Retailer ke khate me kuch jama nahi hoga.': { hi: 'माल ज़्यादा दाम पे बिका है — ज़्यादा पैसा आइटम के रेट में जुड़ जाएगा और आइटम के मुनाफ़े में दिखेगा। रिटेलर के खाते में कुछ जमा नहीं होगा।', en: 'The goods sold at a higher price — the extra goes into the item rate and shows as item profit. Nothing is kept as advance in the retailer\'s account.' },
+
+  /* ── Damage, file se maal ── */
+  'Internet nahi hai — purana data dikha rahe hain': { hi: 'इंटरनेट नहीं है — पुराना डेटा दिखा रहे हैं', en: 'No internet — showing saved data' },
+  'Dead ho sakte hain': { hi: 'बंद हो सकते हैं', en: 'May have gone inactive' },
+  'Naya item banane ke liye naam badliye — ya "Isi ka stock badha do" chunein': { hi: 'नया आइटम बनाने के लिए नाम बदलिए — या "इसी का स्टॉक बढ़ा दो" चुनें', en: 'Change the name to create a new item — or choose "Add to this item\'s stock"' },
+  'File chunein': { hi: 'फ़ाइल चुनें', en: 'Choose file' },
+  'Bill ki photo lein': { hi: 'बिल की फ़ोटो लें', en: 'Take a photo of the bill' },
+  'Camera khulega — bill seedha aur roshni me rakhein': { hi: 'कैमरा खुलेगा — बिल सीधा और रोशनी में रखें', en: 'Camera opens — keep the bill flat and well lit' },
+  'Bechne ka rate: lagat par kitna % munafa': { hi: 'बेचने का रेट: लागत पर कितना % मुनाफ़ा', en: 'Selling price: % margin on cost' },
+  'Sab ka bechne ka rate = lagat +': { hi: 'सब का बेचने का रेट = लागत +', en: 'Selling price for all = cost +' },
+  'Sab pe lagayein': { hi: 'सब पे लगाएँ', en: 'Apply to all' },
+  'Damage / kharab': { hi: 'डैमेज / ख़राब', en: 'Damaged' },
+  'Is maal ki lagat nuksan (kharch) me judegi aur fayde me se ghategi — Kharch page pe "Waste/Damaged Stock" me dikhegi.': { hi: 'इस माल की लागत नुकसान (खर्च) में जुड़ेगी और फ़ायदे में से घटेगी — खर्च पेज पे "Waste/Damaged Stock" में दिखेगी।', en: 'The cost of these goods is recorded as a loss (expense) and reduces profit — it shows under "Waste/Damaged Stock" on the Expenses page.' },
+  'Toot gaya / expiry / paani lag gaya': { hi: 'टूट गया / एक्सपायरी / पानी लग गया', en: 'Broken / expired / water damage' },
+  'Sample / ghar le gaya': { hi: 'सैंपल / घर ले गया', en: 'Sample / taken home' },
+  'Supplier se aaya / ginti sahi ki': { hi: 'सप्लायर से आया / गिनती सही की', en: 'Received from supplier / count corrected' },
 };
 
 export default DICT;

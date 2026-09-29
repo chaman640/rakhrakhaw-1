@@ -370,8 +370,9 @@ async function main() {
   check('bechne ka rate na ho to 0 hi maana jayega (rok service me hai)',
     decideLineSchema.safeParse({}).data?.sellingPrice === 0);
 
-  check('aakhri kadam bina kuch bataye bhi chal jata hai (poora udhaar)',
-    finishIntakeSchema.safeParse({}).data?.paidAmount === 0);
+  // Kuch na bataya to 0 NAHI maana jata — service bill pe aa chuka paisa uthati hai
+  check('aakhri kadam bina kuch bataye bhi chal jata hai (bill ka paisa maana jata hai)',
+    finishIntakeSchema.safeParse({}).success && finishIntakeSchema.safeParse({}).data?.paidAmount === undefined);
   check('minus me paisa reject hua', !finishIntakeSchema.safeParse({ paidAmount: -5 }).success);
 
   /*
@@ -1615,8 +1616,9 @@ async function main() {
     biSrc.includes('export async function parseFile') && biSrc.includes('export async function commitRows'));
   check('pehle se maujood naam par faisla aadmi ka hota hai',
     biSrc.includes("d.kya === 'stock'") && biSrc.includes("d.kya === 'chhodo'"));
+  // Naya item `createItem` se banta hai — wahi naam ki rok (assertUniqueName) wahin hai
   check('naya item banate waqt wahi naam dobara nahi ban sakta',
-    biSrc.includes('is naam ka item pehle se hai'));
+    biSrc.includes('await createItem(businessId'));
   check('ek line ki gadbad baaki lines ko nahi rokti',
     biSrc.includes('nateeja.gadbad.push'));
   check('ek baar me 500 se zyada nahi', biSrc.includes('500 se zyada nahi'));

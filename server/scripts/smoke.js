@@ -3884,6 +3884,36 @@ async function run() {
       Math.round(r.data?.hisaab?.advance || 0) === 0 && (r.data?.hisaab?.billsDue || 0) === 0,
       `advance ${r.data?.hisaab?.advance} · billsDue ${r.data?.hisaab?.billsDue}`);
 
+    /* ═════════════ File se maal (bulk commit) ═════════════ */
+    console.log(`\n${Y}File se maal — stock sahi chadhe${N}`);
+
+    r = await call('POST', '/items/bulk/commit', {
+      token: wToken,
+      body: { rows: [
+        { kya: 'naya', name: 'Bulk Test Naya', unit: 'PCS', qty: 7, rate: 40, salePrice: 55 },
+        { kya: 'stock', itemId: fItem, name: 'Fayda Test Item', qty: 5, rate: 60, salePrice: 120 },
+        { kya: 'naya', name: 'Fayda Test Item', qty: 1, rate: 1 },
+      ] },
+    });
+    check('bulk commit chala', r.status === 200 || r.status === 201, `status ${r.status} · ${r.message}`);
+    check('wahi naam dobara naya nahi bana (gadbad me gaya)', (r.data?.gadbad || []).length === 1,
+      JSON.stringify(r.data?.gadbad));
+
+    r = await call('GET', '/items?q=Bulk Test Naya', { token: wToken });
+    const bulkNew = (r.data || []).find((x) => x.name === 'Bulk Test Naya');
+    check('file se bana naya item ka STOCK sahi hai (pehle 0 aata tha)', bulkNew?.stockQty === 7,
+      `stock ${bulkNew?.stockQty}`);
+    check('...aur bechne ka rate bhi laga', bulkNew?.salePrice === 55, `${bulkNew?.salePrice}`);
+
+    r = await call('GET', `/items/${fItem}`, { token: wToken });
+    check('pehle wale item ka stock badha', r.data?.stockQty === 45, `stock ${r.data?.stockQty}`);
+    check('...aur uska rate taaza hua', r.data?.salePrice === 120 && r.data?.purchasePrice === 60,
+      `${r.data?.salePrice} / ${r.data?.purchasePrice}`);
+
+    r = await call('GET', `/items/${fItem}/lots`, { token: wToken });
+    check('naye maal ki khep ₹60 lagat pe bani', (r.data?.lots || []).some((l) => l.unitCost === 60 && l.qty === 5),
+      JSON.stringify((r.data?.lots || []).map((l) => [l.unitCost, l.qty])));
+
     /* ═════════════ Dono taraf ka rishta — Batch B ═════════════ */
     console.log(`\n${Y}Dono taraf ka rishta (Batch B)${N}`);
 

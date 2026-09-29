@@ -1,20 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Plus, Minus, Equal, History, Layers } from 'lucide-react';
+import { Plus, Minus, Equal, History, Layers, PackageX } from 'lucide-react';
 import api from '@/lib/api';
+import { bust } from '@/hooks/useQuery';
 import { formatDateTime, formatQty, formatMoney, formatDate } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Badge, Spinner, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
+/*
+  DAMAGE alag se kyun, "Stock gaya" kaafi kyun nahi?
+
+  "Stock gaya" sirf ginti ghatata hai — paisa kahin nahi dikhta. Toota/kharab
+  maal asli NUKSAN hai: uski lagat fayde me se ghatni chahiye. Damage chunne
+  par entry kharch me "Waste/Damaged Stock" ban kar jati hai (lagat FIFO se
+  server nikalta hai), isliye Profit & Loss me bhi sahi dikhta hai.
+*/
 const MODES = [
   { value: 'add', label: 'Stock aaya', icon: Plus, tone: 'emerald' },
   { value: 'remove', label: 'Stock gaya', icon: Minus, tone: 'red' },
+  { value: 'damage', label: 'Damage / kharab', icon: PackageX, tone: 'amber' },
   { value: 'set', label: 'Ginti karke set', icon: Equal, tone: 'slate' },
 ];
 
 const TYPE_LABEL = {
   OPENING: 'Opening', PURCHASE: 'Purchase', SALE: 'Sale',
   ADJUSTMENT: 'Adjustment', PURCHASE_RETURN: 'Purchase return', SALE_RETURN: 'Sale return',
+  WASTE: 'Damage / kharab',
 };
 
 export default function StockModal({ open, onClose, item, onSaved }) {
@@ -42,15 +53,26 @@ export default function StockModal({ open, onClose, item, onSaved }) {
 
   const current = Number(item.stockQty || 0);
   const n = Number(qty || 0);
-  const after = mode === 'add' ? current + n : mode === 'remove' ? current - n : n;
-  const wouldGoNegative = mode === 'remove' && after < 0;
+  const goesOut = mode === 'remove' || mode === 'damage';
+  const after = mode === 'add' ? current + n : goesOut ? current - n : n;
+  const wouldGoNegative = goesOut && after < 0;
 
   async function handleSubmit() {
     if (!qty && mode !== 'set') { toast.error('Quantity daalein'); return; }
     setSaving(true);
     try {
-      const res = await api.post(`/items/${item._id}/stock`, { mode, qty: Number(qty || 0), note });
+      const res = mode === 'damage'
+        ? await api.post('/expenses', {
+          category: 'waste-stock',
+          // sirf jagah bharne ko — asli nuksan server FIFO lagat se nikalta hai
+          amount: Math.max(0.01, Number(item.purchasePrice || 0) * n),
+          wasteItemId: item._id,
+          wasteQty: n,
+          note: note.trim() || t('Damage / kharab'),
+        })
+        : await api.post(`/items/${item._id}/stock`, { mode, qty: Number(qty || 0), note });
       toast.success(res.message);
+      if (mode === 'damage') bust('expenses', 'dashboard', 'reports');
       onSaved();
       onClose();
     } catch (err) {
@@ -86,7 +108,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
         </div>
 
         {/* Mode */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {MODES.map((m) => (
             <button
               key={m.value}
@@ -100,7 +122,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
               )}
             >
               <m.icon size={18} />
-              {m.label}
+              {t(m.label)}
             </button>
           ))}
         </div>
@@ -122,12 +144,18 @@ export default function StockModal({ open, onClose, item, onSaved }) {
           <strong className="tabular">{formatQty(after, item.unit)}</strong>
         </div>
 
+        {mode === 'damage' && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {t('Is maal ki lagat nuksan (kharch) me judegi aur fayde me se ghategi — Kharch page pe "Waste/Damaged Stock" me dikhegi.')}
+          </p>
+        )}
+
         <Textarea
           label={t('Kyun? (marzi)')}
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder={mode === 'remove' ? 'Damage / sample / ghar le gaya' : 'Supplier se aaya / ginti sahi ki'}
+          placeholder={mode === 'damage' ? t('Toot gaya / expiry / paani lag gaya') : goesOut ? t('Sample / ghar le gaya') : t('Supplier se aaya / ginti sahi ki')}
         />
 
         {/*

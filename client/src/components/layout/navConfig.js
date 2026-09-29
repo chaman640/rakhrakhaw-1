@@ -70,6 +70,8 @@ export const wholesalerNav = [
   {
     to: '/expenses', label: 'Kharch', icon: Receipt, part: 20, perm: 'expenses',
     desc: 'Chai, petrol, kiraya, tankhwah — maal ke alawa ka kharcha',
+    // Damage/kharab maal bhi yahin darj hota hai (Items page ke "Stock" se bhi)
+    alt: 'damage damaged kharab toota waste nuksan',
   },
   /*
     Kharid ke bilkul saath — kyunki ye uska hi doosra roop hai.
