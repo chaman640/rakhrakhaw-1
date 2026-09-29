@@ -108,7 +108,7 @@ export function TaskFormModal({ open, onClose, preset = {}, onSaved }) {
 
 /* ─────────────────────────────── ek kaam ki line ─────────────────────────────── */
 
-export function TaskRow({ task, showAssignee = false, onChanged }) {
+export function TaskRow({ task, showAssignee = false, onChanged, taskPath = '/crm/tasks' }) {
   const toast = useToast();
   const { user, isOwner } = useAuth();
   const [doneOpen, setDoneOpen] = useState(false);
@@ -120,7 +120,7 @@ export function TaskRow({ task, showAssignee = false, onChanged }) {
   async function markDone() {
     setBusy(true);
     try {
-      await api.put(`/crm/tasks/${task._id}`, { status: 'done', doneNote: note });
+      await api.put(`${taskPath}/${task._id}`, { status: 'done', doneNote: note });
       toast.success(t('Kaam poora'));
       bust('crm');
       setDoneOpen(false);
@@ -128,7 +128,7 @@ export function TaskRow({ task, showAssignee = false, onChanged }) {
     } catch (err) { toast.error(err.message); } finally { setBusy(false); }
   }
   async function reopen() {
-    try { await api.put(`/crm/tasks/${task._id}`, { status: 'pending' }); bust('crm'); onChanged?.(); } catch (err) { toast.error(err.message); }
+    try { await api.put(`${taskPath}/${task._id}`, { status: 'pending' }); bust('crm'); onChanged?.(); } catch (err) { toast.error(err.message); }
   }
   async function remove() {
     if (!window.confirm(t('Ye kaam mita dein?'))) return;
@@ -174,7 +174,7 @@ export function TaskRow({ task, showAssignee = false, onChanged }) {
           </div>
         )}
       </div>
-      {(isOwner || String(task.createdBy) === String(user?._id)) && (
+      {taskPath === '/crm/tasks' && (isOwner || String(task.createdBy) === String(user?._id)) && (
         <button type="button" onClick={remove} aria-label={t('Mitayein')} className="shrink-0 rounded p-1 text-slate-300 hover:text-red-600">
           <Trash2 size={14} />
         </button>

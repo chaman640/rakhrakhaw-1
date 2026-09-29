@@ -124,7 +124,8 @@ export function AuthProvider({ children }) {
      * hai "is module me kuch bhi kar sakta hai?" — menu dikhane ke liye wahi
      * chahiye hota hai.
      */
-    can: (permission) => {
+    can: function can(permission) {
+      if (Array.isArray(permission)) return permission.some((p) => can(p));
       if (user?.isOwner) return true;
       const list = user?.permissions || [];
       if (!permission) return false;

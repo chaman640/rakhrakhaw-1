@@ -45,6 +45,14 @@ import WholesalerChat from '@/pages/wholesaler/Chat';
 import WholesalerChatThread from '@/pages/wholesaler/ChatThread';
 import Autopay from '@/pages/wholesaler/Autopay';
 import Crm from '@/pages/wholesaler/Crm';
+import Hr from '@/pages/wholesaler/Hr';
+import EmployeeDetail from '@/pages/wholesaler/hr/EmployeeDetail';
+import EmpLayout from '@/pages/emp/EmpLayout';
+import {
+  EmpHome, EmpTasks, EmpAttendance, EmpSalary, EmpPerformance,
+} from '@/pages/emp/EmpPages';
+import EmpRequests from '@/pages/emp/EmpRequests';
+import { EmpMore, EmpProfile, EmpTeam } from '@/pages/emp/EmpMore';
 import CartPage from '@/pages/retailer/Cart';
 import MyOrders from '@/pages/retailer/MyOrders';
 import OrderDetail from '@/pages/retailer/OrderDetail';
@@ -161,6 +169,7 @@ function HomeRedirect() {
   */
   if (!user) return <Landing />;
   if (user.role === 'retailer') return <Navigate to={isApproved ? '/home' : '/pending'} replace />;
+  if (user.staffRole === 'employee') return <Navigate to="/emp" replace />;
   // Wholesaler ab seedha Menu pe — Odoo jaisa launcher, jahan se sab kuch milta hai (Part 35)
   return <Navigate to="/menu" replace />;
 }
@@ -233,6 +242,9 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/crm" element={<RequirePermission permission="parties"><FeatureGate feature="crm_basic"><Crm /></FeatureGate></RequirePermission>} />
         <Route path="/today" element={<FeatureGate feature="crm_basic"><Today /></FeatureGate>} />
+        <Route path="/hr" element={<RequirePermission permission={['hr', 'payroll']}><FeatureGate feature="hr_basic"><Hr /></FeatureGate></RequirePermission>} />
+        <Route path="/hr/employees/:id" element={<RequirePermission permission={['hr', 'payroll']}><FeatureGate feature="hr_basic"><EmployeeDetail /></FeatureGate></RequirePermission>} />
+        <Route path="/hr/requests" element={<Navigate to="/hr" replace />} />
         <Route path="/demand" element={<RequirePermission permission="items"><FeatureGate feature="demand"><Demand /></FeatureGate></RequirePermission>} />
         <Route path="/orders" element={<RequirePermission permission="orders"><Orders /></RequirePermission>} />
         <Route path="/orders/:id" element={<RequirePermission permission="orders"><WholesalerOrderDetail /></RequirePermission>} />
@@ -294,6 +306,19 @@ export default function AppRoutes() {
         */}
         <Route path="/staff" element={<RequirePermission permission="staff:view"><Staff /></RequirePermission>} />
         <Route path="/activity" element={<Navigate to="/staff?tab=record" replace />} />
+      </Route>
+
+      {/* ---- Employee App: har staff ka apna hissa ---- */}
+      <Route element={<RequireAuth roles={['wholesaler']}><EmpLayout /></RequireAuth>}>
+        <Route path="/emp" element={<EmpHome />} />
+        <Route path="/emp/tasks" element={<EmpTasks />} />
+        <Route path="/emp/attendance" element={<EmpAttendance />} />
+        <Route path="/emp/salary" element={<EmpSalary />} />
+        <Route path="/emp/more" element={<EmpMore />} />
+        <Route path="/emp/more/requests" element={<EmpRequests />} />
+        <Route path="/emp/more/profile" element={<EmpProfile />} />
+        <Route path="/emp/more/team" element={<EmpTeam />} />
+        <Route path="/emp/more/performance" element={<EmpPerformance />} />
       </Route>
 
       {/* ---- Khareedne wala (retailer, aur buy mode wala wholesaler) ---- */}

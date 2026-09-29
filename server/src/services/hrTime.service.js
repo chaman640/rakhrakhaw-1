@@ -126,14 +126,21 @@ export async function markAttendance(businessId, actor, { userId, day, status, n
 export async function monthSheet(businessId, userId, period) {
   const settings = await hrSettings(businessId);
   const { from, to, days } = monthOf(period);
-  const recs = await Attendance.find({ businessId, userId, day: { $gte: from, $lte: to } }).lean();
+  const [recs, first, emp] = await Promise.all([
+    Attendance.find({ businessId, userId, day: { $gte: from, $lte: to } }).lean(),
+    Attendance.findOne({ businessId, userId }).sort({ day: 1 }).select('day').lean(),
+    Employee.findOne({ businessId, userId }).select('joiningDate').lean(),
+  ]);
   const rm = new Map(recs.map((r) => [r.day, r]));
   const today = istDay();
+  // Attendance shuru hone / joining se pehle ke din "not marked" nahi gine jate
+  const trackFrom = [first?.day || today, emp?.joiningDate ? istDay(emp.joiningDate) : ''].sort().pop();
   const rows = days.map((day) => {
     const r = rm.get(day);
     if (r) return r;
     if (settings.weeklyOff.includes(weekdayOf(day))) return { day, status: 'weekly_off' };
-    return { day, status: day > today ? 'upcoming' : 'not_marked' };
+    if (day > today) return { day, status: 'upcoming' };
+    return { day, status: day < trackFrom ? 'not_tracked' : 'not_marked' };
   });
   const summary = countStatus(recs);
   summary.not_marked = rows.filter((r) => r.status === 'not_marked').length;

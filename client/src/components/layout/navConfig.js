@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
   House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart, CalendarCheck,
+  Briefcase, IdCard,
 } from 'lucide-react';
 
 /**
@@ -50,6 +51,16 @@ export const wholesalerNav = [
     to: '/today', label: 'Aaj ka kaam', icon: CalendarCheck,
     desc: 'Mujhe diye gaye kaam — call, visit, follow-up',
     alt: 'task kaam today aaj follow up todo',
+  },
+  {
+    to: '/hr', label: 'HR', icon: Briefcase, perm: ['hr', 'payroll'],
+    desc: 'Employees, attendance, leave and payroll',
+    alt: 'hr employee attendance leave chhutti salary payroll tankhwah team',
+  },
+  {
+    to: '/emp', label: 'My Work', icon: IdCard,
+    desc: 'Check-in, leave, salary slips and my tasks',
+    alt: 'attendance check in leave chhutti salary slip payslip my work employee app',
   },
   {
     to: '/demand', label: 'Maang', icon: Heart, perm: 'items',

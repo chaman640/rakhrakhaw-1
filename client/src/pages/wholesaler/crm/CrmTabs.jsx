@@ -174,7 +174,7 @@ function LeadModal({ id, onClose }) {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <p className="text-sm text-slate-600">{t('Andazan dhanda')}: <b>{formatMoney(lead.expectedValue || 0)}</b></p>
-          <AssigneeSelect value={lead.assignedToUserId} label="Kiske paas"
+          <AssigneeSelect value={lead.assignedToUserId} label={t('Kiske paas')}
             onChange={(v) => call(() => api.put(`/crm/leads/${id}`, { assignedToUserId: v }), t('Lead de diya'))} />
         </div>
 
