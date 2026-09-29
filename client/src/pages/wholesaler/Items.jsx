@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus, Package, IndianRupee, TriangleAlert, XCircle, Tag,
-  Upload, FileUp, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck } from
+  Upload, FileUp, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck, Share2 } from
 'lucide-react';
 import api from '@/lib/api';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
@@ -20,6 +20,7 @@ import CategoryModal from './items/CategoryModal';
 import ImportModal from './items/ImportModal';
 import BulkImportModal from './items/BulkImportModal';
 import ItemCard from './items/ItemCard';
+import ShareItemModal from '@/components/ShareItemModal';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -34,7 +35,8 @@ const SORTS = [
 
 export default function Items() {
   const toast = useToast();
-  const { gstEnabled } = useAuth();
+  const { gstEnabled, business } = useAuth();
+  const shareCode = business?.shareCode || '';
 
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
@@ -54,6 +56,7 @@ export default function Items() {
   const [formItem, setFormItem] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [stockItem, setStockItem] = useState(null);
+  const [shareItem, setShareItem] = useState(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -253,6 +256,13 @@ export default function Items() {
             <Boxes size={16} />
           </button>
           <button
+          onClick={() => setShareItem(row)}
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          title={t('Item bhejein')}>
+          
+            <Share2 size={16} />
+          </button>
+          <button
           onClick={() => {setFormItem(row);setFormOpen(true);}}
           className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           title={t('Edit')}>
@@ -413,7 +423,8 @@ export default function Items() {
               selected={selected.includes(item._id)}
               onSelect={toggleSelect}
               onEdit={(i) => {setFormItem(i);setFormOpen(true);}}
-              onStock={setStockItem} />
+              onStock={setStockItem}
+              onShare={setShareItem} />
 
             )
             }
@@ -434,6 +445,13 @@ export default function Items() {
         onSaved={refreshAll}
         onCategoryAdded={(c) => setCategories((list) => [...list, { ...c, itemCount: 0 }])} />
       
+
+      <ShareItemModal
+        open={Boolean(shareItem)}
+        onClose={() => setShareItem(null)}
+        item={shareItem}
+        inviteCode={shareCode}
+        withChat />
 
       <StockModal
         open={Boolean(stockItem)}

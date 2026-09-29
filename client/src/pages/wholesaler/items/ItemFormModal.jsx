@@ -6,6 +6,7 @@ import { formatMoney } from '@/lib/format';
 import { Modal, Button, Input, Select, Textarea, Switch, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import { shrinkImage } from '@/lib/shrinkImage';
 
 const UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', 'LTR', 'ML', 'MTR', 'FT', 'BAG', 'BUNDLE'];
 const GST_RATES = ['0', '0.25', '3', '5', '12', '18', '28'];
@@ -59,6 +60,12 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   const [newCategory, setNewCategory] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const [photo, setPhoto] = useState({ url: '', pendingFile: null });
+  /*
+    Camera se khichi photo pehle BADI dikhti hai — "yahi lagayein" ya "dobara
+    khichein". Chhote thumbnail me dhundhli/tedhi photo pakad me nahi aati, aur
+    wahi photo retailer ko dikhti.
+  */
+  const [preview, setPreview] = useState(null); // { file, url, target: 'cover' | 'gallery' }
 
   /*
     GALLERY — extra photos, product detail page ke slider ke liye. Cover
@@ -151,11 +158,32 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   { amount: sell - cost, percent: (sell - cost) / cost * 100 } :
   null;
 
-  function pickPhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function setCover(file) {
     if (file.size > 3 * 1024 * 1024) {toast.error('Image 3 MB se choti honi chahiye');return;}
     setPhoto({ url: URL.createObjectURL(file), pendingFile: file });
+  }
+
+  async function pickPhoto(e) {
+    const fromCamera = e.target === cameraRef.current;
+    const raw = e.target.files?.[0];
+    e.target.value = '';
+    if (!raw) return;
+    const file = await shrinkImage(raw);
+    if (fromCamera) setPreview({ file, url: URL.createObjectURL(file), target: 'cover' });
+    else setCover(file);
+  }
+
+  function acceptPreview() {
+    if (!preview) return;
+    if (preview.target === 'cover') setCover(preview.file);
+    else addGalleryFiles([preview.file]);
+    setPreview(null);
+  }
+
+  function retakePreview() {
+    const target = preview?.target;
+    setPreview(null);
+    (target === 'gallery' ? galleryCameraRef : cameraRef).current?.click();
   }
 
   async function uploadPhotoFor(itemId) {
@@ -181,9 +209,19 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   }
 
   async function pickGalleryPhotos(e) {
-    const files = Array.from(e.target.files || []);
+    const fromCamera = e.target === galleryCameraRef.current;
+    const raw = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!files.length) return;
+    if (!raw.length) return;
+    const files = await Promise.all(raw.map(shrinkImage));
+    if (fromCamera) {
+      setPreview({ file: files[0], url: URL.createObjectURL(files[0]), target: 'gallery' });
+      return;
+    }
+    addGalleryFiles(files);
+  }
+
+  async function addGalleryFiles(files) {
 
     const currentCount = isEdit ? gallery.length : pendingGalleryFiles.length;
     const room = MAX_GALLERY - currentCount;
@@ -726,6 +764,22 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           description={t('Off karne par ye item retailer ke catalog me nahi aayega')} />
         
       </form>
+      <Modal
+        open={!!preview}
+        onClose={() => setPreview(null)}
+        title={t('Photo dekh lein')}
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" icon={Camera} onClick={retakePreview}>{t('Dobara khichein')}</Button>
+            <Button onClick={acceptPreview}>{t('Yahi photo lagayein')}</Button>
+          </>
+        }
+      >
+        {preview && (
+          <img src={preview.url} alt="" className="mx-auto max-h-[60vh] w-auto rounded-lg object-contain" />
+        )}
+      </Modal>
     </Modal>);
 
 }

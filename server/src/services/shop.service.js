@@ -95,6 +95,12 @@ function shopCard(business, { membership = null, party = null, counts = null, is
     city: business.address?.city || '',
     state: business.address?.state || '',
     gstEnabled: Boolean(business.gstEnabled),
+    /*
+      Item share karne ka public link (`/s/CODE/item/ID`) isi se banta hai.
+      Wahi code jo dukaan ka apna public link hai — isliye sirf tab jab dukaan
+      ne wo link chalu rakha ho; band ho to share ka link bhi nahi.
+    */
+    shareCode: business.inviteEnabled ? (business.inviteCode || '') : '',
 
     itemCount: counts?.itemCount ?? null,
     categoryCount: counts?.categoryCount ?? null,
@@ -320,7 +326,7 @@ export async function getCurrentShopCard(user, businessId, partyId) {
   const mine = buyerFilter(user);
 
   const [business, membership, party, counts, stories] = await Promise.all([
-    Business.findById(businessId).select('name phone logoUrl coverPhotoUrl bio address gstEnabled').lean(),
+    Business.findById(businessId).select('name phone logoUrl coverPhotoUrl bio address gstEnabled inviteCode inviteEnabled').lean(),
     mine ? Membership.findOne({ ...mine, businessId }).lean() : null,
     partyId ? Party.findById(partyId).select('status balance').lean() : null,
     shopCounts(businessId),
@@ -362,7 +368,7 @@ export async function listSavedShops(user, { all = false } = {}) {
 
   const [businesses, parties] = await Promise.all([
     Business.find({ _id: { $in: memberships.map((m) => m.businessId) } })
-      .select('name phone logoUrl coverPhotoUrl bio address gstEnabled').lean(),
+      .select('name phone logoUrl coverPhotoUrl bio address gstEnabled inviteCode inviteEnabled').lean(),
     Party.find({ _id: { $in: memberships.map((m) => m.partyId) } })
       .select('status balance').lean(),
   ]);
@@ -399,7 +405,7 @@ export async function setShopSaved(user, businessId, saved) {
   if (!membership) throw ApiError.notFound('Aap is dukaan se jude nahi hain');
 
   const [business, party] = await Promise.all([
-    Business.findById(businessId).select('name phone logoUrl coverPhotoUrl bio address gstEnabled').lean(),
+    Business.findById(businessId).select('name phone logoUrl coverPhotoUrl bio address gstEnabled inviteCode inviteEnabled').lean(),
     Party.findById(membership.partyId).select('status balance').lean(),
   ]);
 

@@ -1,11 +1,11 @@
-import { Package, MoreVertical } from 'lucide-react';
+import { Package, MoreVertical, Share2 } from 'lucide-react';
 import { formatMoney, formatQty, expiryInfo } from '@/lib/format';
 import { Badge } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
 // Mobile ke liye — table ki jagah card
-export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) {
+export default function ItemCard({ item, selected, onSelect, onEdit, onStock, onShare }) {
   const exp = expiryInfo(item.expiryDate);
   // Byora sirf tab jab bhara ho — khali khaane ka koi matlab nahi
   const byora = [item.size, item.shape,
@@ -44,13 +44,24 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock }) 
               <p className="truncate text-xs text-slate-400">{byora.join(' · ')}</p>
             )}
           </button>
-          <button
-            onClick={() => onEdit(item)}
-            className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100"
-            aria-label={t('Edit')}
-          >
-            <MoreVertical size={16} />
-          </button>
+          <div className="flex shrink-0 items-center">
+            {onShare && (
+              <button
+                onClick={() => onShare(item)}
+                className="rounded p-1 text-slate-400 hover:bg-slate-100"
+                aria-label={t('Item bhejein')}
+              >
+                <Share2 size={16} />
+              </button>
+            )}
+            <button
+              onClick={() => onEdit(item)}
+              className="rounded p-1 text-slate-400 hover:bg-slate-100"
+              aria-label={t('Edit')}
+            >
+              <MoreVertical size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-2">

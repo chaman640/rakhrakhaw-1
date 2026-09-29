@@ -70,8 +70,15 @@ export function businessForUser(business, user) {
 
   if (user?.role === ROLES.RETAILER) return pick(plain, RETAILER_FIELDS);
 
-  if (!isOwnerUser(user)) return pick(plain, STAFF_FIELDS);
+  /*
+    Item share karne ka public link (`/s/CODE/item/ID`) — staff bhi item bhejta
+    hai, isliye use bhi chahiye. Ye wahi code hai jo dukaan ka public link hai,
+    aur sirf tab jab dukaan ne link chalu rakha ho.
+  */
+  const shareCode = plain.inviteEnabled ? (plain.inviteCode || '') : '';
+
+  if (!isOwnerUser(user)) return { ...pick(plain, STAFF_FIELDS), shareCode };
 
   // Malik ko sab kuch, invite link ke saath
-  return { ...plain, inviteLink: buildInviteLink(plain.inviteCode) };
+  return { ...plain, shareCode, inviteLink: buildInviteLink(plain.inviteCode) };
 }

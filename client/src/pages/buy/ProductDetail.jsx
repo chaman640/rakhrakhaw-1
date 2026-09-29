@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, Package, ShoppingCart, Check, ShieldCheck, MessageCircle, Images, Store,
+  ArrowLeft, Package, ShoppingCart, Check, ShieldCheck, MessageCircle, Images, Store, Share2,
 } from 'lucide-react';
+import { waLink } from '@/lib/share';
 import api from '@/lib/api';
 import { useCart } from '@/context/CartContext';
 import { useShop } from '@/context/ShopContext';
@@ -318,6 +319,25 @@ function ReelPanel({ item, shop, sectionRef, index }) {
     }
   }
 
+  /*
+    WhatsApp / phone ka share parda. Link public item page ka hai (bina login
+    ke khulta hai) — dukaan ne apna link band kiya ho to sirf naam aur rate.
+  */
+  async function shareItem() {
+    const link = shop?.shareCode ? `${window.location.origin}/s/${shop.shareCode}/item/${item._id}` : '';
+    const text = [item.name, `${formatMoney(item.rate)} / ${item.unit || 'PCS'}`, shop?.name, link]
+      .filter(Boolean).join('\n');
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: item.name, text, url: link || undefined });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+    window.open(waLink(text), '_blank', 'noopener');
+  }
+
   async function sendInChat() {
     if (!shop?._id || sendingChat) return;
     setSendingChat(true);
@@ -437,6 +457,18 @@ function ReelPanel({ item, shop, sectionRef, index }) {
             {sentChat ? <Check size={19} /> : <MessageCircle size={19} />}
           </span>
           <span className="mt-1 text-xs">{sentChat ? t('Bhej diya') : t('Chat')}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={shareItem}
+          aria-label={t('Share karein')}
+          className="flex flex-col items-center focus-ring"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+            <Share2 size={18} />
+          </span>
+          <span className="mt-1 text-xs">{t('Share')}</span>
         </button>
 
         {photos.length > 1 && (

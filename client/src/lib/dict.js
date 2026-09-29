@@ -2197,6 +2197,21 @@ const DICT = {
   'Toot gaya / expiry / paani lag gaya': { hi: 'टूट गया / एक्सपायरी / पानी लग गया', en: 'Broken / expired / water damage' },
   'Sample / ghar le gaya': { hi: 'सैंपल / घर ले गया', en: 'Sample / taken home' },
   'Supplier se aaya / ginti sahi ki': { hi: 'सप्लायर से आया / गिनती सही की', en: 'Received from supplier / count corrected' },
+
+  /* ── Item share, photo preview ── */
+  'Copy nahi hua — link khud select karke copy karein': { hi: 'कॉपी नहीं हुआ — लिंक ख़ुद सेलेक्ट करके कॉपी करें', en: 'Couldn\'t copy — select the link and copy it manually' },
+  'Item bhejein': { hi: 'आइटम भेजें', en: 'Share item' },
+  'WhatsApp / share karein': { hi: 'WhatsApp / शेयर करें', en: 'WhatsApp / Share' },
+  'Link copy ho gaya': { hi: 'लिंक कॉपी हो गया', en: 'Link copied' },
+  'Link copy karein': { hi: 'लिंक कॉपी करें', en: 'Copy link' },
+  'App chat me bhejein': { hi: 'ऐप चैट में भेजें', en: 'Send in app chat' },
+  'Retailer ka naam ya phone': { hi: 'रिटेलर का नाम या फ़ोन', en: 'Retailer name or phone' },
+  'Koi retailer nahi mila': { hi: 'कोई रिटेलर नहीं मिला', en: 'No retailer found' },
+  'Share karein': { hi: 'शेयर करें', en: 'Share' },
+  'Share': { hi: 'शेयर', en: 'Share' },
+  'Photo dekh lein': { hi: 'फ़ोटो देख लें', en: 'Check the photo' },
+  'Dobara khichein': { hi: 'दोबारा खींचें', en: 'Retake' },
+  'Yahi photo lagayein': { hi: 'यही फ़ोटो लगाएँ', en: 'Use this photo' },
 };
 
 export default DICT;

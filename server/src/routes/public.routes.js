@@ -60,7 +60,7 @@ router.get('/shop/:code/items', asyncHandler(async (req, res) => {
 
   const [items, total] = await Promise.all([
     Item.find(filter)
-      .select('name imageUrl unit salePrice mrp stock brand category minOrderQty')
+      .select('name imageUrl unit salePrice mrp stockQty brand category minOrderQty')
       .sort({ name: 1 }).skip((page - 1) * limit).limit(limit).lean(),
     Item.countDocuments(filter),
   ]);
@@ -74,7 +74,7 @@ router.get('/shop/:code/items', asyncHandler(async (req, res) => {
       rate: i.salePrice,
       mrp: i.mrp || 0,
       brand: i.brand || '',
-      inStock: (i.stock || 0) > 0,
+      inStock: (i.stockQty || 0) > 0,
       minOrderQty: i.minOrderQty || 1,
     })),
     total,
