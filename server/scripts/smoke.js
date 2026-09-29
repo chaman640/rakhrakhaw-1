@@ -15,7 +15,7 @@ import { round2 } from '../src/utils/money.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
   Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense, Membership, StockIntake, Otp,
-  PushSubscription, Subscription, BillingOrder, Wishlist,
+  PushSubscription, Subscription, BillingOrder, Wishlist, Lead, CrmTask,
 } from '../src/models/index.js';
 /*
   Ijazat ki ginti YAHAN SE aati hai, haath se likhi hui nahi.
@@ -103,6 +103,8 @@ async function cleanup() {
     Counter.deleteMany({ businessId: { $in: businessIds } }),
     Cart.deleteMany({ businessId: { $in: businessIds } }),
     Wishlist.deleteMany({ businessId: { $in: businessIds } }),
+    Lead.deleteMany({ businessId: { $in: businessIds } }),
+    CrmTask.deleteMany({ businessId: { $in: businessIds } }),
     Order.deleteMany({ businessId: { $in: businessIds } }),
     Notification.deleteMany({ businessId: { $in: businessIds } }),
     Invoice.deleteMany({ businessId: { $in: businessIds } }),
@@ -3344,6 +3346,74 @@ async function run() {
     r = await call('POST', '/auth/login', { body: { phone: SALES_PHONE, password: 'sales123' } });
     const salesToken17 = r.data?.token;
     check('salesman ko kharidne ka haq NAHI mila', r.data?.user?.canBuy === false, `${r.data?.user?.canBuy}`);
+
+    /* ═════════════ CRM: lead → staff → Aaj ka kaam → poora → team ═════════════ */
+    console.log(`\n${Y}CRM — leads, kaam aur staff${N}`);
+    r = await call('GET', '/crm/staff', { token: wToken });
+    const salesId = (r.data || []).find((u) => u.phone === SALES_PHONE)?._id;
+    check('assign ke liye staff ki list me salesman', Boolean(salesId), JSON.stringify(r.data));
+
+    const tomorrow = new Date(Date.now() + 86400000).toISOString();
+    r = await call('POST', '/crm/leads', {
+      token: wToken,
+      body: { name: 'Amit', shopName: 'Amit Mobile', phone: '9444400001', city: 'Lucknow', source: 'referral',
+        expectedValue: 25000, assignedToUserId: salesId, nextFollowUpAt: new Date().toISOString(), note: 'Charger chahiye' },
+    });
+    const leadId = r.data?._id;
+    check('malik ne lead banaya aur salesman ko diya', r.status === 201 && String(r.data?.assignedToUserId) === String(salesId),
+      `${r.status} ${r.message}`);
+    check('lead ke saath follow-up ka kaam bhi bana', (r.data?.tasks || []).length === 1, `${(r.data?.tasks || []).length}`);
+
+    r = await call('GET', '/crm/today', { token: salesToken17 });
+    const myTask = [...(r.data?.today || []), ...(r.data?.overdue || [])][0];
+    check('salesman ke "Aaj ka kaam" me wo kaam', Boolean(myTask) && myTask.lead?.name === 'Amit Mobile', JSON.stringify(r.data?.today));
+
+    r = await call('GET', '/crm/leads', { token: salesToken17 });
+    check('salesman ko apna lead dikha', (r.data || []).some((l) => String(l._id) === String(leadId)), `${(r.data || []).length}`);
+
+    r = await call('POST', '/crm/leads', { token: wToken, body: { name: 'Malik ka apna lead', phone: '9444400002' } });
+    const ownerLead = r.data?._id;
+    r = await call('GET', '/crm/leads', { token: salesToken17 });
+    check('salesman ko malik ka doosra lead NAHI dikha (sirf apna)', !(r.data || []).some((l) => String(l._id) === String(ownerLead)),
+      JSON.stringify((r.data || []).map((l) => l.name)));
+
+    r = await call('PUT', `/crm/tasks/${myTask?._id}`, { token: salesToken17, body: { status: 'done', doneNote: '500 pc ka order dene ko bola' } });
+    check('salesman ne apna kaam poora kiya', r.status === 200 && r.data?.status === 'done', `${r.status} ${r.message}`);
+    r = await call('GET', `/crm/leads/${leadId}`, { token: wToken });
+    check('kaam ka note lead ke itihaas me aaya', (r.data?.notes || []).some((n) => n.text.includes('500 pc')), JSON.stringify(r.data?.notes));
+    check('kaam poora -> lead ka follow-up saaf aur stage "baat hui"', !r.data?.nextFollowUpAt && r.data?.stage === 'contacted',
+      `${r.data?.nextFollowUpAt} ${r.data?.stage}`);
+
+    r = await call('PUT', `/crm/leads/${ownerLead}`, { token: salesToken17, body: { stage: 'won' } });
+    check('salesman doosre ka lead nahi badal saka', r.status === 403 || r.status === 404, `status ${r.status}`);
+
+    r = await call('POST', `/crm/leads/${leadId}/notes`, { token: salesToken17, body: { text: 'Quotation bheja', kind: 'call', nextFollowUpAt: tomorrow } });
+    check('call ka note + agla follow-up', r.status === 200 && r.data?.stage !== 'new', `${r.status} ${r.data?.stage}`);
+
+    r = await call('PUT', `/crm/leads/${leadId}`, { token: salesToken17, body: { stage: 'negotiation' } });
+    r = await call('GET', '/crm/pipeline', { token: wToken });
+    check('pipeline me stage ki ginti', (r.data || []).find((x) => x.stage === 'negotiation')?.count >= 1, JSON.stringify(r.data));
+
+    r = await call('POST', `/crm/leads/${leadId}/convert`, { token: wToken });
+    check('lead jeeta -> retailer ban gaya', r.status === 200 && r.data?.stage === 'won' && Boolean(r.data?.partyId), `${r.status} ${r.message}`);
+    r = await call('GET', `/parties/${r.data?.partyId}`, { token: wToken });
+    check('naye retailer ka naam/phone lead se aaya, salesman ke naam', r.data?.phone === '9444400001'
+      && String(r.data?.assignedToUserId) === String(salesId), `${r.data?.phone} ${r.data?.assignedToUserId}`);
+
+    r = await call('GET', '/crm/team', { token: wToken });
+    const salesRow = (r.data || []).find((x) => String(x._id) === String(salesId));
+    check('team ke hisaab me salesman ka kaam aur jeeta lead', salesRow?.tasksDone >= 1 && salesRow?.leadsWon >= 1, JSON.stringify(salesRow));
+    r = await call('GET', '/crm/team', { token: salesToken17 });
+    check('team ka hisaab salesman ko nahi', r.status === 403, `status ${r.status}`);
+
+    r = await call('POST', '/crm/auto-tasks', { token: wToken });
+    check('auto follow-up chala (crash nahi)', r.status === 200 && typeof r.data?.created === 'number', `${r.status} ${r.message}`);
+    const autoCount = r.data?.created;
+    r = await call('POST', '/crm/auto-tasks', { token: wToken });
+    check('dobara chalane pe dohra kaam nahi', r.data?.created === 0, `pehle ${autoCount}, phir ${r.data?.created}`);
+
+    r = await call('GET', '/notifications?type=TASK_ASSIGNED&limit=5', { token: salesToken17 });
+    check('salesman ko kaam milne ki khabar gayi', (r.data || []).length >= 1, `${(r.data || []).length}`);
 
     r = await call('GET', `/shops/lookup?phone=${BIG_PHONE}`, { token: salesToken17 });
     check('salesman dukaan nahi dhoondh saka', r.status === 403, `status ${r.status}`);

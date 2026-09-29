@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart,
+  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart, CalendarCheck,
 } from 'lucide-react';
 
 /**
@@ -41,6 +41,15 @@ export const wholesalerNav = [
   {
     to: '/crm', label: 'CRM', icon: Target, part: 46, perm: 'parties',
     desc: 'Naye lead, follow-up chahiye, aur gayab ho rahe retailer',
+  },
+  /*
+    Aaj ka kaam — har staff ke liye (koi alag ijazat nahi): sirf APNE kaam
+    dikhte hain, isliye kisi ka kuch dikh jane ka khatra nahi.
+  */
+  {
+    to: '/today', label: 'Aaj ka kaam', icon: CalendarCheck,
+    desc: 'Mujhe diye gaye kaam — call, visit, follow-up',
+    alt: 'task kaam today aaj follow up todo',
   },
   {
     to: '/demand', label: 'Maang', icon: Heart, perm: 'items',

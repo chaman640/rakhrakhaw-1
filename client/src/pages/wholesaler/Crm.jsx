@@ -5,9 +5,15 @@ import {
 import api from '@/lib/api';
 import { useQuery } from '@/hooks/useQuery';
 import { formatMoney, formatDate, formatPhone } from '@/lib/format';
-import { PageHeader, Card, StatCard, Button, EmptyState, Spinner, useToast } from '@/components/ui';
+import {
+  Card, StatCard, Button, EmptyState, Spinner, useToast, PageHeader, Tabs,
+} from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import { useSessionState } from '@/hooks/useSessionState';
+import { useFeature } from '@/hooks/useBilling';
+import { useAuth } from '@/context/AuthContext';
+import { LeadsTab, TasksTab, TeamTab } from './crm/CrmTabs';
 
 /**
  * CRM — "kaun abhi dekh raha hai, kaun chup ho gaya, kaun gaya hi gaya."
@@ -25,7 +31,7 @@ import { t } from '@/lib/i18n';
  * khol deta hai — order history sabse pehle, "detail" tab me dhoondhna nahi
  * padta.
  */
-export default function Crm() {
+export function RetailerCrm() {
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -57,11 +63,6 @@ export default function Crm() {
 
   return (
     <>
-      <PageHeader
-        title={t('CRM')}
-        subtitle={t('Kaun kharidne ke kareeb hai, kaun bhoolne laga hai — sab ek jagah')}
-      />
-
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label={t('Naye leads')} value={s.leadsCount} icon={ShoppingCart} tone="brand" />
         <StatCard label={t('Follow-up chahiye')} value={s.followUpCount} icon={Clock} tone="amber" />
@@ -199,5 +200,41 @@ function Section({ title, subtitle, icon: Icon, tone, rows, empty, renderMeta, r
 
       {footer}
     </Card>
+  );
+}
+
+
+/**
+ * CRM — chaar tab, ek jagah.
+ *
+ *   Retailers — kaun order ke kareeb, kaun chup, kaun gaya (upar wala hissa)
+ *   Leads     — naye sambhavit grahak aur unki pipeline (₹100+)
+ *   Kaam      — follow-up/call/visit ke kaam, staff ko dena (₹500+)
+ *   Team      — kaun staff kitna kaam kar raha hai (₹500+, malik/manager)
+ *
+ * Band tab bhi dikhte hain — kholne pe "ye kis plan me hai" (FeatureGate).
+ */
+export default function Crm() {
+  const [tab, setTab] = useSessionState('crm:tab', 'retailers');
+  const { isOwner, can } = useAuth();
+  const teamOn = useFeature('crm_assign').allowed && (isOwner || can('parties:edit'));
+  const tabs = [
+    { value: 'retailers', label: 'Retailers' },
+    { value: 'leads', label: 'Leads' },
+    { value: 'tasks', label: 'Kaam' },
+    ...(teamOn ? [{ value: 'team', label: 'Team' }] : []),
+  ];
+  return (
+    <>
+      <PageHeader
+        title={t('CRM')}
+        subtitle={t('Kaun kharidne ke kareeb hai, kaun bhoolne laga hai — sab ek jagah')}
+      />
+      <Tabs tabs={tabs} value={tab} onChange={setTab} />
+      {tab === 'retailers' && <RetailerCrm />}
+      {tab === 'leads' && <LeadsTab />}
+      {tab === 'tasks' && <TasksTab />}
+      {tab === 'team' && teamOn && <TeamTab />}
+    </>
   );
 }

@@ -146,6 +146,8 @@ export const NOTIFICATION_TYPES = {
   STOCK_INTAKE: 'STOCK_INTAKE',
   // Dukaan "permission ke baad hi" pe ho aur koi judna chahe — malik ka kaam
   RETAILER_REQUEST: 'RETAILER_REQUEST',
+  // CRM — staff ko kaam/lead diya gaya
+  TASK_ASSIGNED: 'TASK_ASSIGNED',
 };
 
 export const UNITS = [
