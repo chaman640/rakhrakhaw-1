@@ -38,6 +38,7 @@ import crmRoutes from './crm.routes.js';
 import { buyerWishlist, sellerDemand } from './wishlist.routes.js';
 import adminPlatformRoutes from './adminPlatform.routes.js';
 import announcementRoutes from './announcement.routes.js';
+import hrRoutes from './hr.routes.js';
 
 const router = Router();
 
@@ -135,5 +136,6 @@ router.use('/my/stories', myStoryRoutes);
 // Part 29 — Tutorial videos (onboarding tour)
 router.use('/tutorials', tutorialRoutes);
 router.use('/crm', crmRoutes);
+router.use('/hr', hrRoutes);
 
 export default router;

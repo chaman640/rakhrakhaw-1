@@ -411,6 +411,9 @@ export async function acceptInvite(token, payload) {
     throw ApiError.conflict('Is number se ek account pehle se hai. Doosra number use karein ya login karein.');
   }
 
+  // Invite se judna bhi ek seat leta hai
+  await assertSeat(invite.businessId);
+
   // ---- link ko pakad lo (ek hi baar chalegi) ----
   const claimed = await StaffInvite.findOneAndUpdate(
     { _id: invite._id, usedAt: null, cancelledAt: null, expiresAt: { $gt: new Date() } },
@@ -418,10 +421,6 @@ export async function acceptInvite(token, payload) {
     { new: true }
   );
   if (!claimed) {
-
-  // Invite manzoor hote hi ek seat lagti hai — pehle ye jaanch yahan thi hi
-  // nahi, isliye 2-seat plan pe 20 log account bana sakte the
-  await assertSeat(claimed.businessId);
     throw ApiError.badRequest('Ye link abhi abhi istemal ho gayi. Malik se nayi link mangwayein.');
   }
 

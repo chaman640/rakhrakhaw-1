@@ -31,6 +31,8 @@ export const MODULES = {
   REPORTS: 'reports',
   STAFF: 'staff',
   SETTINGS: 'settings',
+  HR: 'hr',
+  PAYROLL: 'payroll',
 };
 
 /* ─────────────────────────────── kaam ─────────────────────────────── */
@@ -78,6 +80,10 @@ export const MODULE_ACTIONS = {
   [MODULES.REPORTS]: ['view', 'export', 'profit'],
   [MODULES.STAFF]: ['view', 'create', 'edit', 'delete'],
   [MODULES.SETTINGS]: ['view', 'edit'],
+  // approve = chhutti/attendance correction manzoor karna
+  [MODULES.HR]: ['view', 'create', 'edit', 'approve'],
+  // Salary sabse private hai — alag module
+  [MODULES.PAYROLL]: ['view', 'create', 'approve'],
 };
 
 /** Saari mumkin ijazatein — ek lambi list */
@@ -96,6 +102,8 @@ export const STAFF_ROLES = {
   STOREKEEPER: 'storekeeper',
   CASHIER: 'cashier',
   CUSTOM: 'custom',
+  HR_MANAGER: 'hr',
+  EMPLOYEE: 'employee',
 };
 
 const M = MODULES;
@@ -183,6 +191,14 @@ export const ROLE_PERMISSIONS = {
 
   // Apni marzi se banaya hua — kuch bhi pehle se nahi
   [STAFF_ROLES.CUSTOM]: [],
+
+  [STAFF_ROLES.HR_MANAGER]: [
+    ...all(M.HR), ...all(M.PAYROLL),
+    ...only(M.STAFF, 'view'),
+  ],
+
+  // Sirf apna kaam, attendance, chhutti aur salary (Employee App) — koi module nahi
+  [STAFF_ROLES.EMPLOYEE]: [],
 };
 
 /* ─────────────────────────────── naam ─────────────────────────────── */
@@ -197,6 +213,8 @@ export const STAFF_ROLE_LABEL = {
   [STAFF_ROLES.STOREKEEPER]: 'Godown incharge',
   [STAFF_ROLES.CASHIER]: 'Cash counter',
   [STAFF_ROLES.CUSTOM]: 'Apni marzi se',
+  [STAFF_ROLES.HR_MANAGER]: 'HR Manager',
+  [STAFF_ROLES.EMPLOYEE]: 'Employee',
 };
 
 export const STAFF_ROLE_HINT = {
@@ -209,6 +227,8 @@ export const STAFF_ROLE_HINT = {
   [STAFF_ROLES.STOREKEEPER]: 'Maal andar-bahar. Paise ka kuch nahi dikhta',
   [STAFF_ROLES.CASHIER]: 'Sirf paisa lena-dena',
   [STAFF_ROLES.CUSTOM]: 'Aap khud tay karein ki kya kar sakta hai',
+  [STAFF_ROLES.HR_MANAGER]: 'Employee, attendance, chhutti aur salary sambhalta hai',
+  [STAFF_ROLES.EMPLOYEE]: 'Sirf apna kaam, attendance, chhutti aur salary dekhta hai',
 };
 
 export const MODULE_LABEL = {
@@ -223,6 +243,8 @@ export const MODULE_LABEL = {
   [MODULES.REPORTS]: 'Reports',
   [MODULES.STAFF]: 'Staff',
   [MODULES.SETTINGS]: 'Settings',
+  [MODULES.HR]: 'HR (employee, attendance, chhutti)',
+  [MODULES.PAYROLL]: 'Payroll (salary)',
 };
 
 export const ACTION_LABEL = {
@@ -249,6 +271,7 @@ export const SCOPE_LABEL = {
 /** Kis role ko shuruaat me kitna data dikhna chahiye */
 export const ROLE_SCOPE = {
   [STAFF_ROLES.SALESMAN]: SCOPES.OWN,
+  [STAFF_ROLES.EMPLOYEE]: SCOPES.OWN,
 };
 
 /* ───────────────────────── paise ki hadd ───────────────────────── */

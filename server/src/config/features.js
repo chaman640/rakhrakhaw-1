@@ -39,6 +39,24 @@ export const FEATURES = [
     plans: ['BADHTI', 'BADI', 'ASEEM'],
   },
   {
+    key: 'hr_basic',
+    name: 'HR — employee, attendance, chhutti, salary',
+    desc: 'Employee profile, attendance, chhutti aur mahine ki salary',
+    plans: ['CHOTI', 'BADHTI', 'BADI', 'ASEEM'],
+  },
+  {
+    key: 'hr_teams',
+    name: 'HR — department, team aur reports',
+    desc: 'Department, designation, team aur HR reports',
+    plans: ['BADHTI', 'BADI', 'ASEEM'],
+  },
+  {
+    key: 'hr_advanced',
+    name: 'HR — commission, performance, team target',
+    desc: 'Sales se commission, employee aur team performance',
+    plans: ['BADI', 'ASEEM'],
+  },
+  {
     key: 'bulk_import',
     name: 'File/photo se ek saath maal',
     desc: 'Excel, PDF ya bill ki photo se saara maal ek baar me',

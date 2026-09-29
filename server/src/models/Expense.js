@@ -58,6 +58,8 @@ const expenseSchema = new mongoose.Schema(
      */
     wasteItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
     wasteQty: { type: Number, default: 0, min: 0 },
+    // Salary ka kharch — kis payroll se bana (accounting se source kholne ke liye)
+    payrollId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payroll', default: null },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   },

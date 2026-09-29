@@ -86,6 +86,30 @@ const businessSchema = new mongoose.Schema(
     suspendedAt: { type: Date, default: null },
     suspendReason: { type: String, trim: true, maxlength: 300, default: '' },
 
+    // HR ki dukaan-wise setting (attendance ka time, chhutti ka kota)
+    hr: {
+      workStart: { type: String, default: '10:00' },
+      lateAfterMinutes: { type: Number, default: 15 },
+      halfDayHours: { type: Number, default: 4 },
+      fullDayHours: { type: Number, default: 8 },
+      weeklyOff: { type: [Number], default: [0] },
+      requirePhoto: { type: Boolean, default: false },
+      requireLocation: { type: Boolean, default: false },
+      leaveTypes: {
+        type: [{
+          name: { type: String, trim: true, maxlength: 40 },
+          paid: { type: Boolean, default: true },
+          yearlyQuota: { type: Number, min: 0, default: 0 },
+          active: { type: Boolean, default: true },
+        }],
+        default: [
+          { name: 'Casual Leave', paid: true, yearlyQuota: 12, active: true },
+          { name: 'Sick Leave', paid: true, yearlyQuota: 6, active: true },
+          { name: 'Unpaid Leave', paid: false, yearlyQuota: 0, active: true },
+        ],
+      },
+    },
+
     /*
      * ONBOARDING TOUR — pehli baar wala safar (Part 29).
      *

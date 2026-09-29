@@ -148,6 +148,8 @@ export const NOTIFICATION_TYPES = {
   RETAILER_REQUEST: 'RETAILER_REQUEST',
   // CRM — staff ko kaam/lead diya gaya
   TASK_ASSIGNED: 'TASK_ASSIGNED',
+  HR_REQUEST: 'HR_REQUEST',
+  HR_UPDATE: 'HR_UPDATE',
 };
 
 export const UNITS = [
