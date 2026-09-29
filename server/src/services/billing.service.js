@@ -5,11 +5,13 @@ import {
   createOrder, verifyCheckoutSignature, verifyWebhookSignature,
   createPlan, createSubscription, updateSubscriptionPlan,
   cancelSubscriptionAt, verifySubscriptionSignature, cancelScheduledChange,
+  fetchSubscription, fetchPayment,
 } from './razorpay.service.js';
 import { ROLES } from '../config/constants.js';
 import {
   BILLING_MODES, PLANS, PAID_PLANS, PLAN_BY_CODE, FREE_PLAN,
   SUB_STATUS, seatsOf, seatsAllow, rupees,
+  PERIODS, YEARLY_MONTHS_CHARGED, monthsOf, periodPricePaise,
 } from '../config/billing.js';
 import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
@@ -64,9 +66,11 @@ export function planCatalog() {
     */
     chargingNow: !isFreeMode(),
     graceDays: env.billing.graceDays,
+    yearlyMonthsCharged: YEARLY_MONTHS_CHARGED,
     plans: PLANS.map((p) => ({
       ...p,
       priceRupees: rupees(p.pricePaise),
+      yearlyRupees: rupees(periodPricePaise(p, PERIODS.YEARLY)),
       // "jitne chahein" ko number me badal kar bhejna sabse aasan galti hai
       unlimited: p.seats === null,
     })),
@@ -266,6 +270,8 @@ export async function extendSubscription(businessId, {
     planCode: plan.code,
     pricePaise: plan.pricePaise,
     seats: plan.seats,
+    // Ek saath saal bhar ka paisa = saal wala; warna mahina
+    period: Number(months) >= 12 ? PERIODS.YEARLY : PERIODS.MONTHLY,
     paidTill,
     autoRenew: true,
     cancelledAt: null,
@@ -297,15 +303,30 @@ export async function extendSubscription(businessId, {
  * Kunji me daam bhi hai. Daam badla to naya plan banega, aur purane grahak
  * apne purane daam pe chalte rahenge — jispe unhone haan kaha tha.
  */
-async function razorpayPlanId(plan) {
-  const found = await RazorpayPlan.findOne({
-    code: plan.code, pricePaise: plan.pricePaise,
-  }).lean();
+/*
+  Saal wala Razorpay plan alag hota hai (uska period 'yearly'). Hamari mapping
+  table me uska code `CHOTI@Y` jaisa likhte hain — isse na table ka unique
+  index badalna pada (code + daam), na webhook ko alag se kuch yaad rakhna:
+  plan_id se code mila, `@Y` hai to saal.
+*/
+const YEAR_SUFFIX = '@Y';
+const mapKey = (plan, period) => (period === PERIODS.YEARLY ? `${plan.code}${YEAR_SUFFIX}` : plan.code);
+
+/** Mapping ka code -> { code, period } */
+function unmapKey(key = '') {
+  return key.endsWith(YEAR_SUFFIX)
+    ? { code: key.slice(0, -YEAR_SUFFIX.length), period: PERIODS.YEARLY }
+    : { code: key, period: PERIODS.MONTHLY };
+}
+
+async function razorpayPlanId(plan, period = PERIODS.MONTHLY) {
+  const code = mapKey(plan, period);
+  const pricePaise = periodPricePaise(plan, period);
+
+  const found = await RazorpayPlan.findOne({ code, pricePaise }).lean();
   if (found) return found.planId;
 
-  const made = await createPlan({
-    code: plan.code, name: plan.name, pricePaise: plan.pricePaise,
-  });
+  const made = await createPlan({ code: plan.code, name: plan.name, pricePaise, period });
 
   /*
     Do request ek saath aayein to dono plan bana lengi — Razorpay dono banata
@@ -315,16 +336,32 @@ async function razorpayPlanId(plan) {
     plan pe chale jayein.
   */
   try {
-    await RazorpayPlan.create({
-      code: plan.code, pricePaise: plan.pricePaise, planId: made.id,
-    });
+    await RazorpayPlan.create({ code, pricePaise, planId: made.id });
     return made.id;
   } catch {
-    const again = await RazorpayPlan.findOne({
-      code: plan.code, pricePaise: plan.pricePaise,
-    }).lean();
+    const again = await RazorpayPlan.findOne({ code, pricePaise }).lean();
     return again?.planId || made.id;
   }
+}
+
+/** Mandate banane ke baad browser ko jo chahiye */
+function checkoutPayload(made, plan, period) {
+  const amountPaise = periodPricePaise(plan, period);
+  return {
+    // `needsCheckout` — client isi se tay karta hai ki Razorpay ka parda
+    // kholna hai. `autopay` naam ka khaana summary me bhi hota hai (object),
+    // isliye uspe bharosa karna galat tha — wo hamesha truthy nikalta tha.
+    needsCheckout: true,
+    autopay: true,
+    subscriptionId: made.id,
+    keyId: env.razorpay.keyId,
+    planCode: plan.code,
+    planName: plan.name,
+    period,
+    amountPaise,
+    amountRupees: rupees(amountPaise),
+    currency: 'INR',
+  };
 }
 
 /**
@@ -334,7 +371,7 @@ async function razorpayPlanId(plan) {
  * ya card se manzoor karta hai, aur uske baad Razorpay pehla paisa kaatta
  * hai. Uski khabar webhook se aati hai — plan wahin chalu hota hai.
  */
-export async function startAutopay(businessId, { planCode }) {
+export async function startAutopay(businessId, { planCode, period = PERIODS.MONTHLY }) {
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
@@ -361,7 +398,28 @@ export async function startAutopay(businessId, { planCode }) {
     HAMESHA KE LIYE plan nahi le paati.
   */
   if (sub?.providerSubId && ['active', 'authenticated'].includes(sub.mandateStatus)) {
-    return changePlan(businessId, { planCode: plan.code });
+    return changePlan(businessId, { planCode: plan.code, period });
+  }
+
+  /*
+    DB kehta hai "manzoori baaki", par ho sakta hai Razorpay pe manzoori mil
+    chuki ho aur webhook abhi raste me ho (ya aaya hi na ho). Aise me naya
+    mandate banana DOHRA paisa katwata. Isliye pehle Razorpay se sach poochh
+    lete hain — wahan chalu mila to wahi mandate apna lete hain.
+  */
+  // Sirf "manzoori baaki" wale pe — jo malik ne khud band kiya ('cancelling')
+  // wo Razorpay pe mahine ke aakhir tak 'active' dikhta hai, use apnana galat hoga
+  if (sub?.providerSubId && sub.mandateStatus === 'created') {
+    const live = await fetchSubscription(sub.providerSubId).catch(() => null);
+    if (live && ['authenticated', 'active'].includes(live.status)) {
+      await Subscription.updateOne({ _id: sub._id }, { $set: { mandateStatus: 'active' } });
+      const mapped = await RazorpayPlan.findOne({ planId: live.plan_id }).lean();
+      const { code: liveCode, period: livePeriod } = unmapKey(mapped?.code || '');
+      if (liveCode === plan.code && livePeriod === period) {
+        return { needsCheckout: false, alreadyActive: true, ...(await billingSummary(businessId)) };
+      }
+      return changePlan(businessId, { planCode: plan.code, period });
+    }
   }
 
   /*
@@ -376,10 +434,12 @@ export async function startAutopay(businessId, { planCode }) {
     await cancelSubscriptionAt(sub.providerSubId, false).catch(() => {});
   }
 
-  const planId = await razorpayPlanId(plan);
+  const planId = await razorpayPlanId(plan, period);
   const made = await createSubscription({
     planId,
-    notes: { businessId: String(businessId), planCode: plan.code },
+    // Saal wala mandate 10 saal chalega, mahine wala 120 mahine — dono ek jitna
+    totalCount: period === PERIODS.YEARLY ? 10 : 120,
+    notes: { businessId: String(businessId), planCode: plan.code, period },
   });
 
   await Subscription.findOneAndUpdate(
@@ -389,6 +449,7 @@ export async function startAutopay(businessId, { planCode }) {
         providerSubId: made.id,
         providerPlanId: planId,
         mandateStatus: made.status || 'created',
+        mandatePeriod: period,
         autoRenew: true,
         cancelledAt: null,
         /*
@@ -422,20 +483,7 @@ export async function startAutopay(businessId, { planCode }) {
     Ab har asli charge pe rasid banti hai — wahi sach hai.
   */
 
-  return {
-    // `needsCheckout` — client isi se tay karta hai ki Razorpay ka parda
-    // kholna hai. `autopay` naam ka khaana summary me bhi hota hai (object),
-    // isliye uspe bharosa karna galat tha — wo hamesha truthy nikalta tha.
-    needsCheckout: true,
-    autopay: true,
-    subscriptionId: made.id,
-    keyId: env.razorpay.keyId,
-    planCode: plan.code,
-    planName: plan.name,
-    amountPaise: plan.pricePaise,
-    amountRupees: rupees(plan.pricePaise),
-    currency: 'INR',
-  };
+  return checkoutPayload(made, plan, period);
 }
 
 /**
@@ -456,6 +504,29 @@ export async function confirmAutopay(businessId, { subscriptionId, paymentId, si
     { _id: sub._id },
     { $set: { mandateStatus: 'active' } },
   );
+
+  /*
+    PLAN ABHI CHALU — webhook ke bharose nahi.
+
+    Pehle yahan sirf "mandate chalu" likha jata tha aur plan webhook se hi
+    badalta tha. Webhook der se aaye, Render pe container so raha ho, ya
+    webhook secret hi na laga ho — to grahak ka paisa kat jata aur app purana
+    plan (ya "khatam") dikhata rehta. Ab Razorpay se hi payment poochh kar
+    wahi kaam turant kar dete hain jo webhook karta. Dono ek hi rasid
+    (payment id) pe tike hain, isliye do baar kabhi nahi chadhta.
+  */
+  try {
+    const [live, payment] = await Promise.all([
+      fetchSubscription(subscriptionId),
+      fetchPayment(paymentId),
+    ]);
+    if (payment?.status === 'captured' && Number(payment.amount) > 0) {
+      const fresh = await Subscription.findById(sub._id);
+      await applyCharge(fresh, live, payment);
+    }
+  } catch (err) {
+    console.warn(`[billing] turant chalu nahi hua, webhook karega (${subscriptionId}): ${err.message}`);
+  }
 
   return billingSummary(businessId);
 }
@@ -500,7 +571,7 @@ async function assertSeatsFitPlan(businessId, planCode) {
  * Dono me mandate WAHI rehta hai — grahak ko dobara manzoori nahi deni
  * padti. Har baar mandate maangne pe aadha aadmi wahin chhod deta hai.
  */
-export async function changePlan(businessId, { planCode }) {
+export async function changePlan(businessId, { planCode, period = PERIODS.MONTHLY }) {
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
@@ -509,8 +580,23 @@ export async function changePlan(businessId, { planCode }) {
   const sub = await Subscription.findOne({ businessId });
   if (!sub?.providerSubId) throw ApiError.badRequest('Pehle autopay chalu karein');
 
-  if (sub.planCode === plan.code && !sub.pendingPlanCode) {
+  const abhiPeriod = sub.period || PERIODS.MONTHLY;
+  if (sub.planCode === plan.code && abhiPeriod === period && !sub.pendingPlanCode) {
     throw ApiError.badRequest('Yahi plan to pehle se chalu hai');
+  }
+
+  /*
+    Mahine se saal (ya ulta) — ye PATCH se nahi hota: Razorpay ek mandate ka
+    period nahi badalne deta. Naya mandate chahiye; client ko ye nishaan milte
+    hi wo `switchMandate` wala rasta dikhata hai.
+  */
+  if (abhiPeriod !== period) {
+    throw ApiError.badRequest(
+      period === PERIODS.YEARLY
+        ? 'Saal wale plan ke liye naya autopay banana padega — purana apne aap band ho jayega.'
+        : 'Mahine wale plan ke liye naya autopay banana padega — purana apne aap band ho jayega.',
+      { reason: 'period_change', planCode: plan.code, period },
+    );
   }
 
   await assertSeatsFitPlan(businessId, plan.code);
@@ -526,7 +612,7 @@ export async function changePlan(businessId, { planCode }) {
   const abhiKaDaam = Number(sub.pricePaise || 0)
     || PLAN_BY_CODE[sub.planCode]?.pricePaise || 0;
   const bada = plan.pricePaise > abhiKaDaam;
-  const planId = await razorpayPlanId(plan);
+  const planId = await razorpayPlanId(plan, period);
 
   /*
     Pehle se koi badlav ruka ho to use hataana zaroori hai — warna Razorpay
@@ -617,7 +703,7 @@ export async function changePlan(businessId, { planCode }) {
  * Purana mandate turant band, naya usi (naye) plan ke liye bana kar checkout
  * khola jata hai — grahak ko sirf ek baar phir UPI se manzoori deni padti hai.
  */
-export async function switchMandate(businessId, { planCode }) {
+export async function switchMandate(businessId, { planCode, period = PERIODS.MONTHLY }) {
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
@@ -630,10 +716,11 @@ export async function switchMandate(businessId, { planCode }) {
     await cancelSubscriptionAt(sub.providerSubId, false).catch(() => {});
   }
 
-  const planId = await razorpayPlanId(plan);
+  const planId = await razorpayPlanId(plan, period);
   const made = await createSubscription({
     planId,
-    notes: { businessId: String(businessId), planCode: plan.code },
+    totalCount: period === PERIODS.YEARLY ? 10 : 120,
+    notes: { businessId: String(businessId), planCode: plan.code, period },
   });
 
   await Subscription.findOneAndUpdate(
@@ -646,6 +733,7 @@ export async function switchMandate(businessId, { planCode }) {
         autoRenew: true,
         cancelledAt: null,
         mandatePlanCode: plan.code,
+        mandatePeriod: period,
         pendingPlanCode: '',
         pendingFrom: null,
       },
@@ -654,17 +742,7 @@ export async function switchMandate(businessId, { planCode }) {
     { upsert: true },
   );
 
-  return {
-    needsCheckout: true,
-    autopay: true,
-    subscriptionId: made.id,
-    keyId: env.razorpay.keyId,
-    planCode: plan.code,
-    planName: plan.name,
-    amountPaise: plan.pricePaise,
-    amountRupees: rupees(plan.pricePaise),
-    currency: 'INR',
-  };
+  return checkoutPayload(made, plan, period);
 }
 
 /** Rukka hua badlav wapas lein — abhi tak laga nahi hai, isliye aasan hai */
@@ -772,6 +850,9 @@ export async function billingSummary(businessId) {
       seats: state.plan.seats,
       unlimited: state.plan.seats === null,
       priceRupees: rupees(state.plan.pricePaise),
+      // Mahina ya saal — aur us hisaab se kitna katta hai
+      period: state.sub?.period || PERIODS.MONTHLY,
+      periodPriceRupees: rupees(periodPricePaise(state.plan, state.sub?.period || PERIODS.MONTHLY)),
     },
     seatsUsed: used,
     seatsLeft: state.plan.seats === null ? null : Math.max(0, state.plan.seats - used),
@@ -796,6 +877,8 @@ export async function billingSummary(businessId) {
       */
       mangaGayaPlan: (!state.sub?.mandateStatus || state.sub?.mandateStatus !== 'active')
         ? (state.sub?.mandatePlanCode || '') : '',
+      mangaGayaPeriod: (!state.sub?.mandateStatus || state.sub?.mandateStatus !== 'active')
+        ? (state.sub?.mandatePeriod || '') : '',
       // paisa atak gaya — grahak ko abhi batana chahiye, agle mahine nahi
       atka: ['halted', 'pending'].includes(state.sub?.mandateStatus || ''),
     },
@@ -825,8 +908,9 @@ export async function startCheckout(businessId, { planCode, months = 1 }, userId
   const plan = PLAN_BY_CODE[planCode];
   if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
 
-  const m = Math.max(1, Math.min(12, Number(months) || 1));
-  const amountPaise = plan.pricePaise * m;
+  // Sirf mahina (1) ya saal (12) — beech ka kuch aaya to mahina
+  const m = Number(months) === 12 ? 12 : 1;
+  const amountPaise = periodPricePaise(plan, m === 12 ? PERIODS.YEARLY : PERIODS.MONTHLY);
 
   const doc = await BillingOrder.create({
     businessId, planCode: plan.code, months: m, amountPaise, createdBy: userId,
@@ -1018,6 +1102,168 @@ export async function handleWebhook(rawBody, signature) {
 
 
 /**
+ * PAISA KATA — plan chalu/aage. Webhook (`subscription.charged`) aur browser
+ * ka `sub-verify` dono yahi bulate hain; rasid (payment id) ki rok se ek
+ * payment kabhi do baar nahi chadhta, chahe dono ek saath aayein.
+ *
+ * `ent` = Razorpay ka subscription (plan_id ke liye), `payment` = uska payment.
+ */
+async function applyCharge(sub, ent, payment = {}, fallbackId = '') {
+  /*
+    EK PAYMENT KA EK HI MAHINA.
+
+    Razorpay har khabar kam se kam ek baar bhejta hai, aur jawab der se
+    pahunche ya container restart ho jaye to wo dobara bhejta hai. Dashboard
+    se haath se bhi dobara bheji ja sakti hai. Bina rok ke wahi ek payment
+    DO mahine chadha deta tha — yaani ek mahine ka paisa, do mahine ki
+    mohlat.
+  */
+  const payId = payment.id || fallbackId || '';
+
+  /*
+    POORE ITIHAAS SE MILAO, sirf aakhri payment se nahi.
+
+    Neeche `lastPayment.paymentId` wala filter sirf SABSE NAYE payment ko
+    rokta hai. Do mahine baad Razorpay pehle mahine wali khabar dobara bheje
+    (ya aap dashboard se dobara bhejein) to wo filter use nayi maan leta —
+    ek aur mahina muft. Har charge ki rasid banti hai, isliye wahi puchh
+    lena sabse pakka jawab hai.
+  */
+  if (payId && await BillingOrder.exists({ providerPaymentId: payId })) {
+    return { ok: true, alreadyDone: true };
+  }
+
+  /*
+    KAUN SA PLAN — Razorpay ke plan_id se, hamare record se nahi.
+
+    Chhota plan mahine ke aakhir me lagta hai, aur wo badlav Razorpay ke
+    paas hota hai. Agar hum apna purana planCode maan lein to grahak chhote
+    plan ka paisa deta rahega par bade plan ki seat paata rahega. Asli sach
+    wahi hai jispe paisa kata — yaani Razorpay ka plan_id.
+  */
+  const mapped = await RazorpayPlan.findOne({ planId: ent.plan_id }).lean();
+  // `CHOTI@Y` = saal wala CHOTI (razorpayPlanId me wajah)
+  const fromMap = mapped ? unmapKey(mapped.code) : null;
+  const code = fromMap?.code || sub.pendingPlanCode || sub.planCode;
+  const period = fromMap?.period || sub.mandatePeriod || sub.period || PERIODS.MONTHLY;
+  const months = monthsOf(period);
+  const plan = PLAN_BY_CODE[code] || PLAN_BY_CODE[sub.planCode];
+
+  /*
+    PAISA KATA HAI, TO PLAN FREE NAHI HO SAKTA.
+
+    Agar kisi wajah se plan pehchana na jaye (mapping na bani ho, ya plan
+    config se hat gaya ho) to purana code `FREE` par gir jata tha — yaani
+    ₹2000 dene wale grahak ko 3 seat wala free plan mil jata. Aisi halat me
+    kuch na karna behtar hai: khabar log me jayegi aur haath se theek ho
+    jayega. Chup-chaap galat plan likh dena sabse bura hai.
+  */
+  if (!plan || plan.pricePaise <= 0) {
+    console.error(`[billing] plan pehchana nahi gaya — sub ${ent.id}, plan_id ${ent.plan_id}`);
+    return { ignored: 'plan pehchana nahi gaya' };
+  }
+
+  const now = new Date();
+
+  /*
+    PLAN BADLA HO TO MAHINA AAJ SE.
+
+    Bada plan lete waqt Razorpay poora naya daam abhi kaat leta hai aur uska
+    apna cycle aaj se shuru hota hai. Purani `paidTill` me mahina jodte
+    rehne se hamari tareekh Razorpay se har upgrade pe aage khisakti jati —
+    aur aadmi ko wo din muft milte jinka paisa aaya hi nahi.
+  */
+  const planBadla = sub.providerPlanId && ent.plan_id && sub.providerPlanId !== ent.plan_id;
+  const from = (!planBadla && sub.paidTill && sub.paidTill > now) ? new Date(sub.paidTill) : now;
+  const paidTill = mahinaAage(from, months);
+
+  const claimed = await Subscription.findOneAndUpdate(
+    {
+      _id: sub._id,
+      // Wahi payment dobara aaye to yahan doc milta hi nahi
+      ...(payId ? { 'lastPayment.paymentId': { $ne: payId } } : {}),
+    },
+    {
+      $set: {
+        planCode: plan.code,
+        pricePaise: plan.pricePaise,
+        seats: plan.seats,
+        period,
+        mandatePeriod: '',
+        paidTill,
+        mandateStatus: 'active',
+        autoRenew: true,
+        cancelledAt: null,
+        pendingPlanCode: '',
+        pendingFrom: null,
+        mandatePlanCode: '',
+        providerPlanId: ent.plan_id || sub.providerPlanId,
+        lastPayment: {
+          provider: 'razorpay',
+          orderId: ent.id,
+          paymentId: payId,
+          amountPaise: payment.amount || periodPricePaise(plan, period),
+          at: now,
+        },
+      },
+    },
+    { new: true },
+  );
+
+  // Wahi khabar dobara aayi — pehle hi chadh chuka hai, kuch nahi karna
+  if (!claimed) return { ok: true, alreadyDone: true };
+
+  /*
+    Salesman ka commission — payment ke saath hi.
+
+    `sourceId` me PAYMENT ka id jata hai, subscription ka nahi. Subscription
+    id har mahine wahi rehta hai; use bhejne se doosre mahine se hi "pehle
+    chadh chuka" maan liya jata aur salesman ko poore saal me sirf ₹30
+    milte.
+
+    `.catch` isliye ki commission ki koi bhi gadbad grahak ke plan ko na
+    roke — uska paisa aa chuka hai.
+  */
+  creditReferral({
+    businessId: sub.businessId,
+    months,
+    sourceId: payId || `${ent.id}:${now.toISOString().slice(0, 10)}`,
+  }).catch(() => {});
+
+  /*
+    Har mahine ki rasid.
+
+    Bina iske "Payment ka record" me sirf pehla mahina dikhta aur uske baad
+    kuch nahi — jabki paisa har mahine kat raha hota. Grahak ko apna hisaab
+    dikhna chahiye, aur GST wale ko rasid chahiye.
+  */
+  BillingOrder.create({
+    businessId: sub.businessId,
+    planCode: plan.code,
+    months,
+    amountPaise: payment.amount || periodPricePaise(plan, period),
+    status: 'paid',
+    providerOrderId: payId || undefined,
+    providerPaymentId: payId || '',
+    paidAt: now,
+    receiptNo: `RR-${String(payId || ent.id).slice(-8).toUpperCase()}`,
+  }).catch((e) => console.warn('[billing] rasid nahi bani:', e.message));
+
+  /*
+   * "Is mahine paisa aaya" — Autopay page ke itihaas ke liye (Part 28).
+   * `BillingOrder` rasid ke liye hai (GST/hisaab), ye sirf "aaya ya nahi"
+   * ka seedha jawab dene ke liye — dono alag kaam hain, isliye alag rakhe.
+   */
+  logBillingCycle({
+    businessId: sub.businessId, subscriptionId: sub._id,
+    status: 'paid', amountPaise: payment.amount || periodPricePaise(plan, period),
+    planCode: plan.code, providerSubId: ent.id, paymentId: payId,
+  }).catch(() => {});
+
+  return { ok: true, charged: plan.code, paidTill };
+}
+
+/**
  * AUTOPAY KE EVENT — har mahine ka sach yahin se aata hai.
  *
  * Hum har mahine kuch nahi karte; Razorpay paisa kaat kar khabar bhejta hai.
@@ -1038,153 +1284,7 @@ async function handleSubscriptionEvent(kind, event) {
 
   if (kind === 'subscription.charged') {
     const payment = event?.payload?.payment?.entity || {};
-
-    /*
-      EK PAYMENT KA EK HI MAHINA.
-
-      Razorpay har khabar kam se kam ek baar bhejta hai, aur jawab der se
-      pahunche ya container restart ho jaye to wo dobara bhejta hai. Dashboard
-      se haath se bhi dobara bheji ja sakti hai. Bina rok ke wahi ek payment
-      DO mahine chadha deta tha — yaani ek mahine ka paisa, do mahine ki
-      mohlat.
-    */
-    const payId = payment.id || event?.payload?.invoice?.entity?.id || '';
-
-    /*
-      POORE ITIHAAS SE MILAO, sirf aakhri payment se nahi.
-
-      Neeche `lastPayment.paymentId` wala filter sirf SABSE NAYE payment ko
-      rokta hai. Do mahine baad Razorpay pehle mahine wali khabar dobara bheje
-      (ya aap dashboard se dobara bhejein) to wo filter use nayi maan leta —
-      ek aur mahina muft. Har charge ki rasid banti hai, isliye wahi puchh
-      lena sabse pakka jawab hai.
-    */
-    if (payId && await BillingOrder.exists({ providerPaymentId: payId })) {
-      return { ok: true, alreadyDone: true };
-    }
-
-    /*
-      KAUN SA PLAN — Razorpay ke plan_id se, hamare record se nahi.
-
-      Chhota plan mahine ke aakhir me lagta hai, aur wo badlav Razorpay ke
-      paas hota hai. Agar hum apna purana planCode maan lein to grahak chhote
-      plan ka paisa deta rahega par bade plan ki seat paata rahega. Asli sach
-      wahi hai jispe paisa kata — yaani Razorpay ka plan_id.
-    */
-    const mapped = await RazorpayPlan.findOne({ planId: ent.plan_id }).lean();
-    const code = mapped?.code || sub.pendingPlanCode || sub.planCode;
-    const plan = PLAN_BY_CODE[code] || PLAN_BY_CODE[sub.planCode];
-
-    /*
-      PAISA KATA HAI, TO PLAN FREE NAHI HO SAKTA.
-
-      Agar kisi wajah se plan pehchana na jaye (mapping na bani ho, ya plan
-      config se hat gaya ho) to purana code `FREE` par gir jata tha — yaani
-      ₹2000 dene wale grahak ko 3 seat wala free plan mil jata. Aisi halat me
-      kuch na karna behtar hai: khabar log me jayegi aur haath se theek ho
-      jayega. Chup-chaap galat plan likh dena sabse bura hai.
-    */
-    if (!plan || plan.pricePaise <= 0) {
-      console.error(`[billing] plan pehchana nahi gaya — sub ${ent.id}, plan_id ${ent.plan_id}`);
-      return { ignored: 'plan pehchana nahi gaya' };
-    }
-
-    const now = new Date();
-
-    /*
-      PLAN BADLA HO TO MAHINA AAJ SE.
-
-      Bada plan lete waqt Razorpay poora naya daam abhi kaat leta hai aur uska
-      apna cycle aaj se shuru hota hai. Purani `paidTill` me mahina jodte
-      rehne se hamari tareekh Razorpay se har upgrade pe aage khisakti jati —
-      aur aadmi ko wo din muft milte jinka paisa aaya hi nahi.
-    */
-    const planBadla = sub.providerPlanId && ent.plan_id && sub.providerPlanId !== ent.plan_id;
-    const from = (!planBadla && sub.paidTill && sub.paidTill > now) ? new Date(sub.paidTill) : now;
-    const paidTill = mahinaAage(from, 1);
-
-    const claimed = await Subscription.findOneAndUpdate(
-      {
-        _id: sub._id,
-        // Wahi payment dobara aaye to yahan doc milta hi nahi
-        ...(payId ? { 'lastPayment.paymentId': { $ne: payId } } : {}),
-      },
-      {
-        $set: {
-          planCode: plan.code,
-          pricePaise: plan.pricePaise,
-          seats: plan.seats,
-          paidTill,
-          mandateStatus: 'active',
-          autoRenew: true,
-          cancelledAt: null,
-          pendingPlanCode: '',
-          pendingFrom: null,
-          mandatePlanCode: '',
-          providerPlanId: ent.plan_id || sub.providerPlanId,
-          lastPayment: {
-            provider: 'razorpay',
-            orderId: ent.id,
-            paymentId: payId,
-            amountPaise: payment.amount || plan.pricePaise,
-            at: now,
-          },
-        },
-      },
-      { new: true },
-    );
-
-    // Wahi khabar dobara aayi — pehle hi chadh chuka hai, kuch nahi karna
-    if (!claimed) return { ok: true, alreadyDone: true };
-
-    /*
-      Salesman ka commission — payment ke saath hi.
-
-      `sourceId` me PAYMENT ka id jata hai, subscription ka nahi. Subscription
-      id har mahine wahi rehta hai; use bhejne se doosre mahine se hi "pehle
-      chadh chuka" maan liya jata aur salesman ko poore saal me sirf ₹30
-      milte.
-
-      `.catch` isliye ki commission ki koi bhi gadbad grahak ke plan ko na
-      roke — uska paisa aa chuka hai.
-    */
-    creditReferral({
-      businessId: sub.businessId,
-      months: 1,
-      sourceId: payId || `${ent.id}:${now.toISOString().slice(0, 10)}`,
-    }).catch(() => {});
-
-    /*
-      Har mahine ki rasid.
-
-      Bina iske "Payment ka record" me sirf pehla mahina dikhta aur uske baad
-      kuch nahi — jabki paisa har mahine kat raha hota. Grahak ko apna hisaab
-      dikhna chahiye, aur GST wale ko rasid chahiye.
-    */
-    BillingOrder.create({
-      businessId: sub.businessId,
-      planCode: plan.code,
-      months: 1,
-      amountPaise: payment.amount || plan.pricePaise,
-      status: 'paid',
-      providerOrderId: payId || undefined,
-      providerPaymentId: payId || '',
-      paidAt: now,
-      receiptNo: `RR-${String(payId || ent.id).slice(-8).toUpperCase()}`,
-    }).catch((e) => console.warn('[billing] rasid nahi bani:', e.message));
-
-    /*
-     * "Is mahine paisa aaya" — Autopay page ke itihaas ke liye (Part 28).
-     * `BillingOrder` rasid ke liye hai (GST/hisaab), ye sirf "aaya ya nahi"
-     * ka seedha jawab dene ke liye — dono alag kaam hain, isliye alag rakhe.
-     */
-    logBillingCycle({
-      businessId: sub.businessId, subscriptionId: sub._id,
-      status: 'paid', amountPaise: payment.amount || plan.pricePaise,
-      planCode: plan.code, providerSubId: ent.id, paymentId: payId,
-    }).catch(() => {});
-
-    return { ok: true, charged: plan.code, paidTill };
+    return applyCharge(sub, ent, payment, event?.payload?.invoice?.entity?.id || '');
   }
 
   if (kind === 'subscription.activated' || kind === 'subscription.authenticated') {

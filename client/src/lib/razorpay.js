@@ -74,7 +74,7 @@ export function openAutopay({ sub, business, user, onSuccess, onDismiss, onFail 
     key: sub.keyId,
     subscription_id: sub.subscriptionId,
     name: 'Rakh Rakhav',
-    description: `${sub.planName} — har mahine ₹${sub.amountRupees}`,
+    description: `${sub.planName} — ${sub.period === 'yearly' ? 'har saal' : 'har mahine'} ₹${sub.amountRupees}`,
     prefill: {
       name: user?.name || '',
       contact: user?.phone || '',

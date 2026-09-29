@@ -86,19 +86,21 @@ export function fetchPayment(paymentId) {
  * ye uska Razorpay wala jodidaar hai, jiska id mandate banate waqt chahiye.
  * Ek baar ban jaye to wahi chalta rehta hai (mapping DB me rakhi jati hai).
  */
-export function createPlan({ code, name, pricePaise }) {
+export function createPlan({ code, name, pricePaise, period = 'monthly' }) {
+  const yearly = period === 'yearly';
   return call('/plans', {
     method: 'POST',
     body: {
-      period: 'monthly',
+      // Saal wala plan: Razorpay saal me ek baar kaatta hai
+      period: yearly ? 'yearly' : 'monthly',
       interval: 1,
       item: {
-        name: `Rakh Rakhav — ${name}`,
+        name: `Rakh Rakhav — ${name}${yearly ? ' (saal)' : ''}`,
         amount: Math.round(pricePaise),
         currency: 'INR',
-        description: `${name} plan, har mahine`,
+        description: yearly ? `${name} plan, har saal` : `${name} plan, har mahine`,
       },
-      notes: { planCode: code },
+      notes: { planCode: code, period: yearly ? 'yearly' : 'monthly' },
     },
   });
 }

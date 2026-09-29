@@ -79,6 +79,9 @@ export default function Pricing() {
               <span className="text-2xl font-semibold text-slate-900">₹{p.priceRupees}</span>
               <span className="text-sm text-slate-500"> / {t('mahina')}</span>
             </p>
+            {p.yearlyRupees > 0 && (
+              <p className="text-xs text-slate-500">{t('ya ₹{amt} / saal', { amt: p.yearlyRupees })}</p>
+            )}
             <p className="mt-0.5 text-xs text-slate-500">
               {p.unlimited ? t('Jitne account chahein') : t('{n} account tak', { n: p.seats })}
             </p>

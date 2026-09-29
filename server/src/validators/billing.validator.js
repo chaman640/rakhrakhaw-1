@@ -5,8 +5,13 @@ const codes = PAID_PLANS.map((p) => p.code);
 
 export const checkoutSchema = z.object({
   planCode: z.enum(codes, { errorMap: () => ({ message: 'Aisa koi plan nahi hai' }) }),
-  // 12 se zyada nahi — ek galti se saal bhar ka paisa kat jana bahut mehnga hai
-  months: z.coerce.number().int().min(1).max(12).optional().default(1),
+  /*
+    Sirf DO raste — 1 (mahina) ya 12 (saal). Beech ka kuch nahi: "7 mahine"
+    jaisa sawal dukaandaar ko uljhata tha (config/billing.js — PERIODS).
+  */
+  months: z.coerce.number().int().refine((m) => m === 1 || m === 12, {
+    message: 'Sirf mahine ya saal ka plan le sakte hain',
+  }).optional().default(1),
 });
 
 export const verifySchema = z.object({
@@ -19,6 +24,8 @@ export const verifySchema = z.object({
 
 export const planOnlySchema = z.object({
   planCode: z.enum(codes, { errorMap: () => ({ message: 'Aisa koi plan nahi hai' }) }),
+  // Har mahine kate ya har saal — na bheja to mahina (purana client)
+  period: z.enum(['monthly', 'yearly']).optional().default('monthly'),
 });
 
 /*

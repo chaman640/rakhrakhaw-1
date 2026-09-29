@@ -2253,6 +2253,33 @@ const DICT = {
   'Chhupa hua': { hi: 'छुपा हुआ', en: 'Hidden' },
   'Retailer kya chahte hain — unki wishlist aur jo maal aapke paas nahi': { hi: 'रिटेलर क्या चाहते हैं — उनकी विशलिस्ट और जो माल आपके पास नहीं', en: 'What retailers want — wishlists and items you don\'t stock' },
   'Jo maal pasand hai ya dukaan me nahi mila': { hi: 'जो माल पसंद है या दुकान में नहीं मिला', en: 'Items you like or couldn\'t find' },
+
+  /* ── Mahina ya saal, subscription ── */
+  'Autopay chalu hai — har saal paisa apne aap kat jayega.': { hi: 'ऑटोपे चालू है — हर साल पैसा अपने आप कट जाएगा।', en: 'Autopay is on — you\'ll be charged automatically every year.' },
+  'Kitne waqt ka plan': { hi: 'कितने वक़्त का प्लान', en: 'Billing period' },
+  'Har mahine': { hi: 'हर महीने', en: 'Monthly' },
+  'Har saal': { hi: 'हर साल', en: 'Yearly' },
+  'saal': { hi: 'साल', en: 'year' },
+  '{n} mahine ka paisa, 12 mahine chalega': { hi: '{n} महीने का पैसा, 12 महीने चलेगा', en: 'Pay for {n} months, use for 12' },
+  'Manzoori dobara dein': { hi: 'मंज़ूरी दोबारा दें', en: 'Approve again' },
+  'Saal wala autopay lagayein': { hi: 'साल वाला ऑटोपे लगाएँ', en: 'Switch to yearly autopay' },
+  'Mahine wala autopay lagayein': { hi: 'महीने वाला ऑटोपे लगाएँ', en: 'Switch to monthly autopay' },
+  'Pichhli baar manzoori poori nahi hui thi — dobara dabaiye. Paisa pehle hi kat chuka ho to dobara nahi katega.': { hi: 'पिछली बार मंज़ूरी पूरी नहीं हुई थी — दोबारा दबाइए। पैसा पहले ही कट चुका हो तो दोबारा नहीं कटेगा।', en: 'Last approval wasn\'t completed — tap again. If you were already charged, you won\'t be charged twice.' },
+  'Naya autopay banega aur purana apne aap band ho jayega. Abhi ₹{amt} katega, naya period aaj se.': { hi: 'नया ऑटोपे बनेगा और पुराना अपने आप बंद हो जाएगा। अभी ₹{amt} कटेगा, नया पीरियड आज से।', en: 'A new autopay will be set up and the old one stops. ₹{amt} is charged now; the new period starts today.' },
+  'Autopay band kar diya': { hi: 'ऑटोपे बंद कर दिया', en: 'Autopay turned off' },
+  'Is din ke baad renew nahi hoga': { hi: 'इस दिन के बाद रिन्यू नहीं होगा', en: 'Won\'t renew after this date' },
+  'Is din agla paisa katega': { hi: 'इस दिन अगला पैसा कटेगा', en: 'Next charge on this date' },
+  'Is din tak paisa diya hua hai': { hi: 'इस दिन तक पैसा दिया हुआ है', en: 'Paid until this date' },
+  'Autopay chalu hai': { hi: 'ऑटोपे चालू है', en: 'Autopay is on' },
+  'Autopay band kiya hua': { hi: 'ऑटोपे बंद किया हुआ', en: 'Autopay turned off' },
+  'Autopay laga nahi hai': { hi: 'ऑटोपे लगा नहीं है', en: 'Autopay not set up' },
+  'Paisa apne aap katega — jab chahein band kar sakte hain': { hi: 'पैसा अपने आप कटेगा — जब चाहें बंद कर सकते हैं', en: 'Charged automatically — turn off anytime' },
+  'Neeche plan chun kar autopay dobara chalu kar sakte hain': { hi: 'नीचे प्लान चुन कर ऑटोपे दोबारा चालू कर सकते हैं', en: 'Pick a plan below to turn autopay back on' },
+  'Har payment ka hisaab dekhein': { hi: 'हर पेमेंट का हिसाब देखें', en: 'See every payment' },
+  'Plan badlein': { hi: 'प्लान बदलें', en: 'Change plan' },
+  'Bada plan turant lagta hai, chhota plan mahine ke aakhir se. Mahina ya saal — upar chun lijiye.': { hi: 'बड़ा प्लान तुरंत लगता है, छोटा प्लान महीने के आख़िर से। महीना या साल — ऊपर चुन लीजिए।', en: 'Upgrades apply now, downgrades at the end of the period. Choose monthly or yearly above.' },
+  'Subscription': { hi: 'सब्सक्रिप्शन', en: 'Subscription' },
+  'ya ₹{amt} / saal': { hi: 'या ₹{amt} / साल', en: 'or ₹{amt} / year' },
 };
 
 export default DICT;

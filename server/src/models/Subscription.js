@@ -90,6 +90,17 @@ const subscriptionSchema = new mongoose.Schema(
       hai jab paisa SACH ME kat jaye.
     */
     mandatePlanCode: { type: String, default: '' },
+    /*
+      MAHINA YA SAAL (config/billing.js — PERIODS).
+
+      `period`        — jo chal raha hai (paisa isi hisaab se kata tha)
+      `mandatePeriod` — jiski manzoori maangi gayi hai (mandatePlanCode jaisa)
+
+      `pricePaise` hamesha MAHINE ka daam hi rehta hai — bada/chhota plan
+      usi se tulta hai; saal ka daam period se nikalta hai.
+    */
+    period: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
+    mandatePeriod: { type: String, enum: ['', 'monthly', 'yearly'], default: '' },
 
     /*
       Mandate ki apni halat — hamare plan ki halat se ALAG hai.

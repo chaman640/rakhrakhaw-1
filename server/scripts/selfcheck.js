@@ -890,9 +890,11 @@ async function main() {
   check('order ka status FILTER me hai (verify aur webhook dono aayein to bhi ek hi baar chale)',
     billSrc.includes("{ _id: orderDoc._id, status: 'created' }"));
   check('rakam SERVER pe tay hoti hai, client se aayi rakam nahi',
-    billSrc.includes('plan.pricePaise * m'));
-  check('12 mahine se zyada ek baar me nahi',
-    srcOf('validators/billing.validator.js').includes('max(12)'));
+    billSrc.includes('const amountPaise = periodPricePaise(plan,'));
+  // Sirf mahina (1) ya saal (12) — beech ka kuch nahi (config/billing.js — PERIODS)
+  check('sirf mahina ya saal — 12 se zyada ek baar me nahi',
+    srcOf('validators/billing.validator.js').includes('m === 1 || m === 12')
+    && billSrc.includes('Number(months) === 12 ? 12 : 1'));
 
   const billRoutes2 = codeOf('billing.routes.js');
   check('webhook `protect` ke BAHAR hai (Razorpay ke paas token hota hi nahi)',

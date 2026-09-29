@@ -11,6 +11,7 @@ import {
   Spinner, useToast,
 } from '@/components/ui';
 import AccountTab from './settings/AccountTab';
+import SubscriptionManage from '@/components/billing/SubscriptionManage';
 import { t } from '@/lib/i18n';
 
 /**
@@ -34,7 +35,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
 
   const wanted = params.get('tab');
-  const [tab, setTab] = useState(() => (wanted && ['shop', 'pay', 'bill', 'me'].includes(wanted) ? wanted : 'shop'));
+  const [tab, setTab] = useState(() => (wanted && ['shop', 'pay', 'bill', 'plan', 'me'].includes(wanted) ? wanted : 'shop'));
 
   useEffect(() => { if (!isOwner) setTab('me'); }, [isOwner]);
 
@@ -71,6 +72,8 @@ export default function Profile() {
             { value: 'shop', label: 'Dukaan' },
             { value: 'pay', label: 'Paisa lena' },
             { value: 'bill', label: 'Bill' },
+            // Plan, autopay band/chalu, upgrade/downgrade — sab yahin se
+            { value: 'plan', label: 'Subscription' },
           ] : []),
           { value: 'me', label: 'Mera account' },
         ]}
@@ -85,6 +88,7 @@ export default function Profile() {
       {isOwner && business && tab === 'bill' && (
         <BillSection business={business} onSaved={setBusiness} />
       )}
+      {isOwner && tab === 'plan' && <SubscriptionManage />}
       {tab === 'me' && <AccountTab />}
 
       {!isOwner && authBusiness?.name && (

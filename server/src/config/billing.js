@@ -122,6 +122,29 @@ export const PLANS = [
 
 export const PLAN_BY_CODE = Object.fromEntries(PLANS.map((p) => [p.code, p]));
 
+/**
+ * PAISA KITNE WAQT KA — sirf DO raste: mahina ya saal.
+ *
+ * Pehle 1 se 12 mahine tak kuch bhi chuna ja sakta tha. Dukaandaar ke liye
+ * wo sawal hi uljhan tha ("7 mahine lun ya 8?"). Ab seedha: har mahine, ya
+ * ek saath poore saal ka.
+ *
+ * SAAL KA DAAM = mahine ka daam × `YEARLY_MONTHS_CHARGED`. Abhi 12 hai (koi
+ * chhoot nahi). Saal lene pe chhoot deni ho — jaise "2 mahine free" — to bas
+ * ise 10 kar dijiye; baaki sab (checkout, autopay, dikhane wala daam) isi se
+ * chalta hai.
+ */
+export const PERIODS = { MONTHLY: 'monthly', YEARLY: 'yearly' };
+export const YEARLY_MONTHS_CHARGED = 12;
+
+export const monthsOf = (period) => (period === PERIODS.YEARLY ? 12 : 1);
+
+/** Is plan ka is period ka daam, paise me */
+export function periodPricePaise(plan, period) {
+  const base = Number(plan?.pricePaise || 0);
+  return period === PERIODS.YEARLY ? base * YEARLY_MONTHS_CHARGED : base;
+}
+
 /** Free ko chhod kar wahi plan jo sach me kharide ja sakte hain */
 export const PAID_PLANS = PLANS.filter((p) => p.pricePaise > 0);
 

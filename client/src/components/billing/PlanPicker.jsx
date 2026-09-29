@@ -37,6 +37,11 @@ export default function PlanPicker({ onDone, compact = false }) {
   // UPI se bana mandate PATCH nahi hota — us plan ka code yahan rakh kar
   // "naya mandate banayein" wala button dikhaya jata hai (neeche `badlein`).
   const [upiStuck, setUpiStuck] = useState('');
+  /*
+    MAHINA YA SAAL — sirf yahi do raste. Pehli baar wahi dikhta hai jo abhi
+    chal raha hai; plan na ho to mahina.
+  */
+  const [period, setPeriod] = useState(null);
 
   const load = useCallback(async () => {
     const [plans, mine] = await Promise.all([
@@ -44,7 +49,10 @@ export default function PlanPicker({ onDone, compact = false }) {
       api.get('/billing/me').catch(() => null),
     ]);
     if (plans) setData(plans.data);
-    if (mine) setMe(mine.data);
+    if (mine) {
+      setMe(mine.data);
+      setPeriod((cur) => cur || mine.data?.plan?.period || 'monthly');
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -58,6 +66,7 @@ export default function PlanPicker({ onDone, compact = false }) {
 
   /** Pehli baar — mandate lena padta hai */
   async function shuruKarein(code) {
+    const chosen = period || 'monthly';
     setBusy(code);
     try {
       const okScript = await loadRazorpay();
@@ -67,7 +76,7 @@ export default function PlanPicker({ onDone, compact = false }) {
         return;
       }
 
-      const sub = (await api.post('/billing/subscribe', { planCode: code })).data;
+      const sub = (await api.post('/billing/subscribe', { planCode: code, period: chosen })).data;
 
       /*
         Mandate pehle se tha — server ne plan hi badal diya, checkout nahi
@@ -119,12 +128,17 @@ export default function PlanPicker({ onDone, compact = false }) {
     setBusy(code);
     setUpiStuck('');
     try {
-      const res = await api.post('/billing/change-plan', { planCode: code });
+      const res = await api.post('/billing/change-plan', { planCode: code, period: period || 'monthly' });
       toast.success(res.message);
       await refresh(res.data);
     } catch (err) {
       if (err.details?.reason === 'upi_mandate_immutable') {
         setUpiStuck(code);
+      } else if (err.details?.reason === 'period_change') {
+        // Mahina <-> saal: naya mandate hi rasta hai
+        setBusy('');
+        await nayaMandateBanao(code);
+        return;
       } else {
         toast.error(err.message);
       }
@@ -148,7 +162,7 @@ export default function PlanPicker({ onDone, compact = false }) {
         return;
       }
 
-      const sub = (await api.post('/billing/switch-mandate', { planCode: code })).data;
+      const sub = (await api.post('/billing/switch-mandate', { planCode: code, period: period || 'monthly' })).data;
 
       openAutopay({
         sub,
@@ -208,6 +222,11 @@ export default function PlanPicker({ onDone, compact = false }) {
     jata.
   */
   const manzooriBaaki = me?.autopay?.mangaGayaPlan || '';
+  const manzooriPeriod = me?.autopay?.mangaGayaPeriod || 'monthly';
+  const abhiKaPeriod = me?.plan?.period || 'monthly';
+  const saal = period === 'yearly';
+  // Chuna hua period abhi wale se alag — PATCH nahi, naya mandate lagega
+  const periodBadla = autopayOn && period !== abhiKaPeriod;
 
   const tareekh = (d) => (d ? new Date(d).toLocaleDateString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -257,16 +276,44 @@ export default function PlanPicker({ onDone, compact = false }) {
       {autopayOn && (
         <p className="flex items-center gap-1.5 text-sm text-emerald-700">
           <RefreshCw size={14} className="shrink-0" />
-          {t('Autopay chalu hai — har mahine paisa apne aap kat jayega.')}
+          {abhiKaPeriod === 'yearly'
+            ? t('Autopay chalu hai — har saal paisa apne aap kat jayega.')
+            : t('Autopay chalu hai — har mahine paisa apne aap kat jayega.')}
         </p>
       )}
 
+      <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" role="radiogroup" aria-label={t('Kitne waqt ka plan')}>
+        {[
+          ['monthly', t('Har mahine')],
+          ['yearly', t('Har saal')],
+        ].map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={period === v}
+            onClick={() => setPeriod(v)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors focus-ring ${
+              period === v ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className={`grid gap-4 ${compact ? '' : 'sm:grid-cols-2'}`}>
         {plans.map((p) => {
-          const yahi = p.code === abhiKaCode;
+          const yahi = p.code === abhiKaCode && period === abhiKaPeriod;
           const badaHai = p.priceRupees > abhiKaDaam;
-          const rukaHua = aage?.code === p.code;
-          const intezaar = manzooriBaaki === p.code;
+          const rukaHua = aage?.code === p.code && !periodBadla;
+          /*
+            Manzoori maangi thi par mili nahi (parda band kar diya). Pehle is
+            plan ka button HAMESHA ke liye band ho jata tha. Ab dobara manzoori
+            de sakte hain — server pehle Razorpay se poochh leta hai ki kahin
+            pichhli manzoori mil to nahi chuki (tab dohra paisa nahi katta).
+          */
+          const intezaar = manzooriBaaki === p.code && manzooriPeriod === period;
+          const daam = saal ? p.yearlyRupees : p.priceRupees;
 
           return (
             <Card
@@ -291,9 +338,14 @@ export default function PlanPicker({ onDone, compact = false }) {
               </div>
 
               <p className="mt-3">
-                <span className="text-2xl font-semibold text-slate-900">₹{p.priceRupees}</span>
-                <span className="text-sm text-slate-500"> / {t('mahina')}</span>
+                <span className="text-2xl font-semibold text-slate-900">₹{daam}</span>
+                <span className="text-sm text-slate-500"> / {saal ? t('saal') : t('mahina')}</span>
               </p>
+              {saal && data.yearlyMonthsCharged < 12 && (
+                <p className="text-xs font-medium text-emerald-700">
+                  {t('{n} mahine ka paisa, 12 mahine chalega', { n: data.yearlyMonthsCharged })}
+                </p>
+              )}
               <p className="mt-0.5 text-xs text-slate-500">
                 {p.unlimited ? t('Jitne account chahein') : t('{n} account tak', { n: p.seats })}
               </p>
@@ -311,21 +363,30 @@ export default function PlanPicker({ onDone, compact = false }) {
                 className="mt-4 w-full"
                 variant={yahi ? 'secondary' : p.popular ? 'primary' : 'secondary'}
                 loading={busy === p.code}
-                disabled={Boolean(busy) || !data.chargingNow || yahi || rukaHua || intezaar}
-                onClick={() => (autopayOn ? badlein(p.code) : shuruKarein(p.code))}
+                disabled={Boolean(busy) || !data.chargingNow || yahi || rukaHua}
+                onClick={() => (intezaar || !autopayOn ? shuruKarein(p.code)
+                  : periodBadla ? nayaMandateBanao(p.code)
+                    : badlein(p.code))}
               >
                 {yahi ? t('Abhi yahi chalu hai')
-                  : intezaar ? t('Manzoori baaki hai')
+                  : intezaar ? t('Manzoori dobara dein')
                     : rukaHua ? t('Mahine ke aakhir me lagega')
                       : !autopayOn ? t('Autopay chalu karein')
-                        : badaHai ? t('Abhi is plan pe jayein')
-                          : t('Mahine ke aakhir se is plan pe')}
+                        : periodBadla ? (saal ? t('Saal wala autopay lagayein') : t('Mahine wala autopay lagayein'))
+                          : badaHai ? t('Abhi is plan pe jayein')
+                            : t('Mahine ke aakhir se is plan pe')}
               </Button>
 
               {/* Button pe dabane se kya hoga — pehle hi saaf, baad me nahi */}
               {intezaar && (
                 <p className="mt-1.5 text-center text-[11px] text-amber-700">
-                  {t('Manzoori adhoori rah gayi thi — Autopay dobara chalu karne ke liye koi doosra plan chunein ya page refresh karein')}
+                  {t('Pichhli baar manzoori poori nahi hui thi — dobara dabaiye. Paisa pehle hi kat chuka ho to dobara nahi katega.')}
+                </p>
+              )}
+
+              {periodBadla && !yahi && (
+                <p className="mt-1.5 text-center text-[11px] text-slate-500">
+                  {t('Naya autopay banega aur purana apne aap band ho jayega. Abhi ₹{amt} katega, naya period aaj se.', { amt: daam })}
                 </p>
               )}
 
@@ -346,10 +407,10 @@ export default function PlanPicker({ onDone, compact = false }) {
                 </div>
               )}
 
-              {autopayOn && !yahi && !rukaHua && !intezaar && (
+              {autopayOn && !yahi && !rukaHua && !intezaar && !periodBadla && (
                 <p className="mt-1.5 text-center text-[11px] text-slate-500">
                   {badaHai
-                    ? t('Abhi ₹{amt} katega aur mahina aaj se shuru', { amt: p.priceRupees })
+                    ? t('Abhi ₹{amt} katega aur mahina aaj se shuru', { amt: daam })
                     : t('Abhi kuch nahi katega — bade plan ka fayda mahine ke aakhir tak')}
                 </p>
               )}

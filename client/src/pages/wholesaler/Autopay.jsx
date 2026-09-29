@@ -87,7 +87,9 @@ export default function Autopay() {
               <Badge tone={TONE[me.status] || 'slate'}>{t(LABEL[me.status] || me.status)}</Badge>
             </div>
             <p className="mt-0.5 text-sm text-slate-500">
-              {me.plan.priceRupees > 0 ? `₹${me.plan.priceRupees} / ${t('mahina')}` : t('Free')}
+              {me.plan.priceRupees > 0
+                ? `₹${me.plan.periodPriceRupees || me.plan.priceRupees} / ${me.plan.period === 'yearly' ? t('saal') : t('mahina')}`
+                : t('Free')}
             </p>
           </div>
 
