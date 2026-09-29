@@ -128,7 +128,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
         </div>
 
         <Input
-          label={mode === 'set' ? 'Naya stock kitna hai' : 'Kitni quantity'}
+          label={mode === 'set' ? t('Naya stock kitna hai') : t('Kitni quantity')}
           type="number" step="0.01" min="0" autoFocus
           suffix={item.unit}
           value={qty}
@@ -140,7 +140,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
           'flex items-center justify-between rounded-lg px-4 py-3 text-sm',
           wouldGoNegative ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-800'
         )}>
-          <span>{wouldGoNegative ? 'Itna stock hai hi nahi' : 'Iske baad stock hoga'}</span>
+          <span>{wouldGoNegative ? t('Itna stock hai hi nahi') : t('Iske baad stock hoga')}</span>
           <strong className="tabular">{formatQty(after, item.unit)}</strong>
         </div>
 

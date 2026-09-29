@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Printer, XCircle, Share2, ShoppingCart, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
+import { useQuery, prime } from '@/hooks/useQuery';
 import { formatMoney } from '@/lib/format';
 import { Card, Button, Badge, Spinner, Modal, Textarea, useToast } from '@/components/ui';
 import InvoicePrint from '@/components/invoice/InvoicePrint';
@@ -23,27 +24,27 @@ export default function InvoiceDetail() {
   const [params, setParams] = useSearchParams();
   const { shareBill, busyId } = useBillActions();
 
-  const [invoice, setInvoice] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/invoices/${id}`);
-      setInvoice(res.data);
-    } catch (err) {
-      toast.error(err.message);
-      navigate('/invoices', { replace: true });
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => { load(); }, [load]);
+  /*
+    Cache se (useQuery) — list se khol kar "back" aur dobara kholne pe turant
+    dikhta hai, server se dobara nahi mangwana padta. Kuch badla to
+    `setInvoice` wahi naya jawab cache me daal deta hai.
+  */
+  const { data: invoice, loading, refetch: load } = useQuery(
+    ['invoices', id],
+    () => api.get(`/invoices/${id}`).then((r) => r.data),
+    {
+      poll: false,
+      onError: (err) => {
+        toast.error(err.message);
+        navigate('/invoices', { replace: true });
+      },
+    },
+  );
+  const setInvoice = (v) => prime(['invoices', id], v);
 
   async function cancel() {
     setBusy(true);

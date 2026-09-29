@@ -2280,6 +2280,16 @@ const DICT = {
   'Bada plan turant lagta hai, chhota plan mahine ke aakhir se. Mahina ya saal — upar chun lijiye.': { hi: 'बड़ा प्लान तुरंत लगता है, छोटा प्लान महीने के आख़िर से। महीना या साल — ऊपर चुन लीजिए।', en: 'Upgrades apply now, downgrades at the end of the period. Choose monthly or yearly above.' },
   'Subscription': { hi: 'सब्सक्रिप्शन', en: 'Subscription' },
   'ya ₹{amt} / saal': { hi: 'या ₹{amt} / साल', en: 'or ₹{amt} / year' },
+
+  /* ── Stock modal ── */
+  'Naya stock kitna hai': { hi: 'नया स्टॉक कितना है', en: 'New stock count' },
+  'Kitni quantity': { hi: 'कितनी क्वांटिटी', en: 'Quantity' },
+  'Itna stock hai hi nahi': { hi: 'इतना स्टॉक है ही नहीं', en: 'Not enough stock' },
+  'Iske baad stock hoga': { hi: 'इसके बाद स्टॉक होगा', en: 'Stock after this' },
+
+  /* ── Profile tabs ── */
+  'Paisa lena': { hi: 'पैसा लेना', en: 'Payments' },
+  'Mera account': { hi: 'मेरा अकाउंट', en: 'My account' },
 };
 
 export default DICT;

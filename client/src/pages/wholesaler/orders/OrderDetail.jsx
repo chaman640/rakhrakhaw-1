@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Package, Phone, XCircle, CheckCircle2, Pencil, Save, X, Wallet,
   TriangleAlert, FileText, Printer, Store } from
 'lucide-react';
 import api from '@/lib/api';
+import { useQuery, prime } from '@/hooks/useQuery';
 import { formatMoney, formatQty, formatDateTime, formatPhone } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Spinner, ConfirmModal, Modal, Textarea,
@@ -27,8 +28,6 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -36,21 +35,23 @@ export default function OrderDetail() {
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/orders/${id}`);
-      setOrder(res.data);
-    } catch (err) {
-      toast.error(err.message);
-      navigate('/orders', { replace: true });
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => {load();}, [load]);
+  /*
+    Cache se (useQuery) — list se khol kar "back" aur dobara kholne pe turant
+    dikhta hai, server se dobara nahi mangwana padta. Kuch badla to
+    `setOrder` wahi naya jawab cache me daal deta hai.
+  */
+  const { data: order, loading, refetch: load } = useQuery(
+    ['orders', id],
+    () => api.get(`/orders/${id}`).then((r) => r.data),
+    {
+      poll: false,
+      onError: (err) => {
+        toast.error(err.message);
+        navigate('/orders', { replace: true });
+      },
+    },
+  );
+  const setOrder = (v) => prime(['orders', id], v);
 
   /*
     "Payment mili" — order pe paisa aa gaya.

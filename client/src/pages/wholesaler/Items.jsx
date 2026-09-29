@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Package, IndianRupee, TriangleAlert, XCircle, Tag,
   Upload, FileUp, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck, Share2 } from
 'lucide-react';
 import api from '@/lib/api';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useQuery, useListQuery, prime, bust } from '@/hooks/useQuery';
+import { useSessionState } from '@/hooks/useSessionState';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { downloadText } from '@/lib/download';
@@ -38,19 +39,18 @@ export default function Items() {
   const { gstEnabled, business } = useAuth();
   const shareCode = business?.shareCode || '';
 
-  const [items, setItems] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
-  const [stats, setStats] = useState({ totalItems: 0, stockValue: 0, lowStock: 0, outOfStock: 0 });
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const [q, setQ] = useState('');
+  /*
+    Filter aur page is tab me yaad rehte hain (useSessionState) — item khol kar
+    "back" aane pe wahi list, wahi page. Data `useQuery` ke cache se turant
+    aata hai; purana ho chuka ho to peeche-peeche taaza hota hai.
+  */
+  const [q, setQ] = useSessionState('items:q', '');
   const debouncedQ = useDebounce(q);
-  const [categoryId, setCategoryId] = useState('');
-  const [stock, setStock] = useState('all');
-  const [expiry, setExpiry] = useState('all');
-  const [sort, setSort] = useState('name');
-  const [page, setPage] = useState(1);
+  const [categoryId, setCategoryId] = useSessionState('items:category', '');
+  const [stock, setStock] = useSessionState('items:stock', 'all');
+  const [expiry, setExpiry] = useSessionState('items:expiry', 'all');
+  const [sort, setSort] = useSessionState('items:sort', 'name');
+  const [page, setPage] = useSessionState('items:page', 1);
 
   const [selected, setSelected] = useState([]);
   const [formItem, setFormItem] = useState(null);
@@ -63,45 +63,34 @@ export default function Items() {
   const [confirmBulk, setConfirmBulk] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const loadCategories = useCallback(async () => {
-    try {
-      const res = await api.get('/categories');
-      setCategories(res.data.categories);
-    } catch {/* chup-chaap */}
-  }, []);
+  const params = { q: debouncedQ, categoryId, stock, expiry, sort, page, limit: 25 };
+  const { rows: items, meta, loading } = useListQuery(
+    ['items', 'list', params],
+    () => api.get('/items', { params }),
+    { onError: (err) => toast.error(err.message) },
+  );
+  const { data: stats = { totalItems: 0, stockValue: 0, lowStock: 0, outOfStock: 0 } } = useQuery(
+    ['items', 'stats'],
+    () => api.get('/items/stats').then((r) => r.data),
+  );
+  const { data: categories = [] } = useQuery(
+    ['categories'],
+    () => api.get('/categories').then((r) => r.data.categories),
+    { poll: false },
+  );
+  const setCategories = (fn) => prime(['categories'], typeof fn === 'function' ? fn(categories) : fn);
 
-  const loadStats = useCallback(async () => {
-    try {
-      const res = await api.get('/items/stats');
-      setStats(res.data);
-    } catch {/* chup-chaap */}
-  }, []);
-
-  const loadItems = useCallback(async (chupChaap = false) => {
-    // `chupChaap` — apne aap taaza hote waqt skeleton mat dikhao (useAutoRefresh.js)
-    if (!chupChaap) setLoading(true);
-    try {
-      const res = await api.get('/items', {
-        params: { q: debouncedQ, categoryId, stock, expiry, sort, page, limit: 25 }
-      });
-      setItems(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
+  // Filter badla to pehla page — par pehli baar khulte waqt nahi (warna yaad
+  // rakha hua page back aate hi 1 ho jata)
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, categoryId, stock, expiry, sort, page]);
-
-  useEffect(() => {loadCategories();loadStats();}, [loadCategories, loadStats]);
-  useEffect(() => {loadItems();}, [loadItems]);
-  // Bina refresh dabaye screen khud taaza — wajah useAutoRefresh.js me
-  useAutoRefresh(loadItems);
-  useEffect(() => {setPage(1);}, [debouncedQ, categoryId, stock, expiry, sort]);
+  }, [debouncedQ, categoryId, stock, expiry, sort]);
 
   function refreshAll() {
-    loadItems();loadStats();loadCategories();setSelected([]);
+    bust('items', 'categories');setSelected([]);
   }
 
   const toggleSelect = (id) =>

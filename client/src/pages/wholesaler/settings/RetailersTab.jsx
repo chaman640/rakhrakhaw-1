@@ -43,8 +43,8 @@ function VisibilityCard() {
     if (value === current || saving !== null) return;
     setSaving(value);
     try {
-      const res = await api.put('/business/me', { requireApproval: value });
-      toast.success(res.message || t('Setting badal di'));
+      await api.put('/business/me', { requireApproval: value });
+      toast.success(t('Setting badal di'));
       await refresh?.();
     } catch (err) {
       toast.error(err.message);

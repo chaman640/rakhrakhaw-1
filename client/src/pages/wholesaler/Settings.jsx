@@ -88,7 +88,7 @@ export default function Settings() {
           { value: 'app', label: t('App') },
           // Dukaan ki detail, invite link, staff aur backup — sab malik ke haath me
           ...(isOwner ? [
-            { value: 'retailers', label: t('Invite link'), count: pendingCount },
+            { value: 'retailers', label: t('Retailers'), count: pendingCount },
             // "Log aur login" ab apne Staff page pe chala gaya — wo mahine me
             // kai baar chalne wala kaam hai, Settings saal me do baar khulti hai
             { value: 'backup', label: t('Backup') },

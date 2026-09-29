@@ -18,13 +18,18 @@ import { t } from '@/lib/i18n';
 export default function Wishlist() {
   const navigate = useNavigate();
   const toast = useToast();
+  /*
+    Dukaan `X-Shop-Id` header se jaati hai (api.js khud lagata hai); purane
+    retailer ki dukaan server khud jaanta hai. Isliye yahan dukaan ka object
+    zaroori nahi — sirf naam dikhane ke liye. Dukaan badalte hi poora cache
+    saaf hota hai (ShopContext), isliye chaabi me dukaan nahi.
+  */
   const { shop } = useShop();
-  const shopId = shop?._id || '';
 
-  const { data: rows, loading, refetch } = useQuery(
-    ['wishlist', shopId],
+  const { data: rows, loading, error, refetch } = useQuery(
+    ['wishlist'],
     () => api.get('/wishlist').then((r) => r.data),
-    { enabled: Boolean(shopId), poll: false, onError: (err) => toast.error(err.message) },
+    { poll: false },
   );
 
   const [text, setText] = useState('');
@@ -57,12 +62,12 @@ export default function Wishlist() {
     }
   }
 
-  if (!shopId) {
+  if (error && !rows) {
     return (
       <>
         <PageHeader title={t('Wishlist')} />
         <Card>
-          <EmptyState icon={Heart} title={t('Pehle dukaan chunein')}
+          <EmptyState icon={Heart} title={t('Pehle dukaan chunein')} message={error.message}
             action={<Button onClick={() => navigate('/buy')}>{t('Dukaan dhundhein')}</Button>} />
         </Card>
       </>

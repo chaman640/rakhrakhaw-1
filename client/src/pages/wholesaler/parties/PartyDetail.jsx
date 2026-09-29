@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Pencil, UserCheck, Ban, Trash2, Phone, MapPin, FileText,
   IndianRupee, ShoppingCart, Tag, LogIn,
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useQuery, prime } from '@/hooks/useQuery';
 import { formatMoney, formatPhone, formatDate, formatDateTime } from '@/lib/format';
 import {
   Card, CardHeader, Button, Badge, Tabs, Spinner, ConfirmModal, StatCard, useToast,
@@ -25,29 +26,29 @@ export default function PartyDetail({ type }) {
   const toast = useToast();
   const isRetailer = type === 'retailer';
 
-  const [party, setParty] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') || 'detail');
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/parties/${id}`);
-      setParty(res.data);
-    } catch (err) {
-      toast.error(err.message);
-      navigate(isRetailer ? '/retailers' : '/suppliers', { replace: true });
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => { load(); }, [load]);
+  /*
+    Cache se (useQuery) — list se khol kar "back" aur dobara kholne pe turant
+    dikhta hai, server se dobara nahi mangwana padta. Kuch badla to
+    `setParty` wahi naya jawab cache me daal deta hai.
+  */
+  const { data: party, loading, refetch: load } = useQuery(
+    ['parties', id],
+    () => api.get(`/parties/${id}`).then((r) => r.data),
+    {
+      poll: false,
+      onError: (err) => {
+        toast.error(err.message);
+        navigate(isRetailer ? '/retailers' : '/suppliers', { replace: true });
+      },
+    },
+  );
+  const setParty = (v) => prime(['parties', id], v);
 
   async function changeStatus(next) {
     try {

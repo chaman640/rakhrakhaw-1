@@ -307,9 +307,9 @@ function ReelPanel({ item, shop, sectionRef, index }) {
     baad me; fail ho to wapas.
   */
   const { data: wishIds } = useQuery(
-    ['wishlist-ids', shop?._id || ''],
+    ['wishlist-ids'],
     () => api.get('/wishlist/ids').then((r) => (r.data || []).map(String)),
-    { enabled: Boolean(shop?._id), poll: false },
+    { poll: false },
   );
   const [wishedNow, setWishedNow] = useState(null);
   const wished = wishedNow ?? (wishIds || []).includes(String(item._id));

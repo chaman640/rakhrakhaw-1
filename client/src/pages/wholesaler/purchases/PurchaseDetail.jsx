@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Trash2, Truck, Package, Printer, Undo2, FileText} from 'lucide-react';
 import api from '@/lib/api';
+import { useQuery, prime } from '@/hooks/useQuery';
 import { useAuth } from '@/context/AuthContext';
 import { formatMoney, formatQty, formatDate, formatDateTime, formatPhone } from '@/lib/format';
 import {
@@ -20,26 +21,26 @@ export default function PurchaseDetail() {
   const toast = useToast();
   const { gstEnabled } = useAuth();
 
-  const [p, setP] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/purchases/${id}`);
-      setP(res.data);
-    } catch (err) {
-      toast.error(err.message);
-      navigate('/purchases', { replace: true });
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => {load();}, [load]);
+  /*
+    Cache se (useQuery) — list se khol kar "back" aur dobara kholne pe turant
+    dikhta hai, server se dobara nahi mangwana padta. Kuch badla to
+    `setP` wahi naya jawab cache me daal deta hai.
+  */
+  const { data: p, loading, refetch: load } = useQuery(
+    ['purchases', id],
+    () => api.get(`/purchases/${id}`).then((r) => r.data),
+    {
+      poll: false,
+      onError: (err) => {
+        toast.error(err.message);
+        navigate('/purchases', { replace: true });
+      },
+    },
+  );
+  const setP = (v) => prime(['purchases', id], v);
 
   async function remove() {
     setBusy(true);
