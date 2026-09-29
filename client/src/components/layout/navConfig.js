@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
-  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target,
+  House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart,
 } from 'lucide-react';
 
 /**
@@ -41,6 +41,11 @@ export const wholesalerNav = [
   {
     to: '/crm', label: 'CRM', icon: Target, part: 46, perm: 'parties',
     desc: 'Naye lead, follow-up chahiye, aur gayab ho rahe retailer',
+  },
+  {
+    to: '/demand', label: 'Maang', icon: Heart, perm: 'items',
+    desc: 'Retailer kya chahte hain — unki wishlist aur jo maal aapke paas nahi',
+    alt: 'wishlist demand maang chahiye request',
   },
   {
     to: '/chat', label: 'Chat', icon: MessageCircle, part: 25, badgeKey: 'chatUnread',
@@ -154,6 +159,11 @@ export const buyerNav = [
   },
   { to: '/shop', label: 'Catalog', icon: Store, part: 6, desc: 'Chuni hui dukaan ka poora maal aur rate' },
   { to: '/cart', label: 'Cart', icon: ShoppingCart, part: 6, badgeKey: 'cartCount', desc: 'Jo maal aapne chuna hai' },
+  {
+    to: '/wishlist', label: 'Wishlist', icon: Heart,
+    desc: 'Jo maal pasand hai ya dukaan me nahi mila',
+    alt: 'wishlist pasand chahiye dil heart',
+  },
   {
     to: '/buy/chat', label: 'Chat', icon: MessageCircle, part: 25, badgeKey: 'chatUnread',
     desc: 'Dukaandaar se seedha baat',

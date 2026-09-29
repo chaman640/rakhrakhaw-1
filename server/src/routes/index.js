@@ -35,6 +35,7 @@ import storyRoutes from './story.routes.js';
 import myStoryRoutes from './myStory.routes.js';
 import tutorialRoutes from './tutorial.routes.js';
 import crmRoutes from './crm.routes.js';
+import { buyerWishlist, sellerDemand } from './wishlist.routes.js';
 
 const router = Router();
 
@@ -90,6 +91,8 @@ router.use('/shops', shopRoutes);
 router.use('/buy', buyRoutes);
 router.use('/catalog', catalogRoutes);
 router.use('/cart', cartRoutes);
+router.use('/wishlist', buyerWishlist);
+router.use('/wishlist-demand', sellerDemand);
 router.use('/my-orders', myOrderRoutes);
 
 // Part 7

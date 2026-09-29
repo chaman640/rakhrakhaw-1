@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, Package, ShoppingCart, Check, ShieldCheck, MessageCircle, Images, Store, Share2,
+  ArrowLeft, Package, ShoppingCart, Check, ShieldCheck, MessageCircle, Images, Store, Share2, Heart,
 } from 'lucide-react';
 import { waLink } from '@/lib/share';
 import api from '@/lib/api';
 import { useCart } from '@/context/CartContext';
 import { useShop } from '@/context/ShopContext';
-import { bust } from '@/hooks/useQuery';
+import { bust, useQuery } from '@/hooks/useQuery';
 import { formatMoney, formatQty } from '@/lib/format';
 import { Spinner, EmptyState, QtyStepper, Button, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -301,6 +301,33 @@ function ReelPanel({ item, shop, sectionRef, index }) {
   const [sendingChat, setSendingChat] = useState(false);
   const [sentChat, setSentChat] = useState(false);
 
+  /*
+    WISHLIST ka dil. Saare panel ek hi key se ids maangte hain — cache ek hi
+    request karta hai. Dabate hi dil turant bhar/khali (`wishedNow`), server
+    baad me; fail ho to wapas.
+  */
+  const { data: wishIds } = useQuery(
+    ['wishlist-ids', shop?._id || ''],
+    () => api.get('/wishlist/ids').then((r) => (r.data || []).map(String)),
+    { enabled: Boolean(shop?._id), poll: false },
+  );
+  const [wishedNow, setWishedNow] = useState(null);
+  const wished = wishedNow ?? (wishIds || []).includes(String(item._id));
+
+  async function toggleWish() {
+    const next = !wished;
+    setWishedNow(next);
+    try {
+      if (next) await api.post('/wishlist', { itemId: item._id });
+      else await api.delete(`/wishlist/item/${item._id}`);
+      bust('wishlist');
+      toast.success(next ? t('Wishlist me daal diya') : t('Wishlist se hata diya'));
+    } catch (err) {
+      setWishedNow(!next);
+      toast.error(err.message);
+    }
+  }
+
   const minQty = Math.max(1, Number(item.minOrderQty || 0));
 
   async function add() {
@@ -457,6 +484,19 @@ function ReelPanel({ item, shop, sectionRef, index }) {
             {sentChat ? <Check size={19} /> : <MessageCircle size={19} />}
           </span>
           <span className="mt-1 text-xs">{sentChat ? t('Bhej diya') : t('Chat')}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleWish}
+          aria-label={wished ? t('Wishlist se hatayein') : t('Wishlist me daalein')}
+          aria-pressed={wished}
+          className="flex flex-col items-center focus-ring"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+            <Heart size={19} className={wished ? 'fill-rose-500 text-rose-500' : ''} />
+          </span>
+          <span className="mt-1 text-xs">{t('Wishlist')}</span>
         </button>
 
         <button

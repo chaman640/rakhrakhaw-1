@@ -2226,6 +2226,33 @@ const DICT = {
   'Is dukaan ka maal sirf jude hue retailer dekh sakte hain. Judne ki request bhejiye — dukaan approve karegi to maal aur rate dikhne lagenge.': { hi: 'इस दुकान का माल सिर्फ़ जुड़े हुए रिटेलर देख सकते हैं। जुड़ने की रिक्वेस्ट भेजिए — दुकान अप्रूव करेगी तो माल और रेट दिखने लगेंगे।', en: 'Only connected retailers can see this shop\'s items. Send a request to connect — once the shop approves, items and rates will show.' },
   'Judne ki request bhejein': { hi: 'जुड़ने की रिक्वेस्ट भेजें', en: 'Request to connect' },
   'Judne ki request': { hi: 'जुड़ने की रिक्वेस्ट', en: 'Connect requests' },
+
+  /* ── Wishlist aur maang ── */
+  'Wishlist me daal diya': { hi: 'विशलिस्ट में डाल दिया', en: 'Added to wishlist' },
+  'Wishlist se hata diya': { hi: 'विशलिस्ट से हटा दिया', en: 'Removed from wishlist' },
+  'Wishlist se hatayein': { hi: 'विशलिस्ट से हटाएँ', en: 'Remove from wishlist' },
+  'Wishlist me daalein': { hi: 'विशलिस्ट में डालें', en: 'Add to wishlist' },
+  'Wishlist': { hi: 'विशलिस्ट', en: 'Wishlist' },
+  'Dukaan ko bata diya ki aapko ye chahiye': { hi: 'दुकान को बता दिया कि आपको ये चाहिए', en: 'Told the shop you want this' },
+  'Jo maal dukaan me nahi mila, yahan likhein': { hi: 'जो माल दुकान में नहीं मिला, यहाँ लिखें', en: 'Couldn\'t find something? Write it here' },
+  'Jaise: Redmi 13 ka back cover, 20 pc': { hi: 'जैसे: Redmi 13 का बैक कवर, 20 पीस', en: 'E.g. Redmi 13 back cover, 20 pcs' },
+  'Jodein': { hi: 'जोड़ें', en: 'Add' },
+  'Dukaandaar ko dikhega ki aap kya dhoondh rahe hain': { hi: 'दुकानदार को दिखेगा कि आप क्या ढूँढ रहे हैं', en: 'The shop will see what you\'re looking for' },
+  'Wishlist khali hai': { hi: 'विशलिस्ट ख़ाली है', en: 'Your wishlist is empty' },
+  'Kisi bhi maal pe ❤ dabaiye — wo yahan aa jayega': { hi: 'किसी भी माल पे ❤ दबाइए — वो यहाँ आ जाएगा', en: 'Tap ❤ on any item to save it here' },
+  'Ye maal ab dukaan me nahi dikh raha': { hi: 'ये माल अब दुकान में नहीं दिख रहा', en: 'This item is no longer listed by the shop' },
+  'Aapne maanga': { hi: 'आपने माँगा', en: 'You requested' },
+  'Maang': { hi: 'माँग', en: 'Demand' },
+  'Retailer kya chahte hain — unki wishlist se': { hi: 'रिटेलर क्या चाहते हैं — उनकी विशलिस्ट से', en: 'What retailers want — from their wishlists' },
+  'Jo maal dukaan me nahi hai': { hi: 'जो माल दुकान में नहीं है', en: 'Items you don\'t stock' },
+  'Retailer ne likh kar maanga — naya maal rakhne ka ishara': { hi: 'रिटेलर ने लिख कर माँगा — नया माल रखने का इशारा', en: 'Requested by retailers — a hint for new stock' },
+  'Abhi kisi ne kuch nahi maanga': { hi: 'अभी किसी ने कुछ नहीं माँगा', en: 'No requests yet' },
+  'Aapka maal jo wishlist me hai': { hi: 'आपका माल जो विशलिस्ट में है', en: 'Your items on wishlists' },
+  'Kitne retailers ne ❤ kiya — sabse zyada upar': { hi: 'कितने रिटेलर ने ❤ किया — सबसे ज़्यादा ऊपर', en: 'How many retailers saved it — most first' },
+  'Abhi kisi ne wishlist me kuch nahi rakha': { hi: 'अभी किसी ने विशलिस्ट में कुछ नहीं रखा', en: 'Nothing on wishlists yet' },
+  'Chhupa hua': { hi: 'छुपा हुआ', en: 'Hidden' },
+  'Retailer kya chahte hain — unki wishlist aur jo maal aapke paas nahi': { hi: 'रिटेलर क्या चाहते हैं — उनकी विशलिस्ट और जो माल आपके पास नहीं', en: 'What retailers want — wishlists and items you don\'t stock' },
+  'Jo maal pasand hai ya dukaan me nahi mila': { hi: 'जो माल पसंद है या दुकान में नहीं मिला', en: 'Items you like or couldn\'t find' },
 };
 
 export default DICT;

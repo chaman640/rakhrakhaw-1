@@ -35,6 +35,8 @@ import IntakeReview from '@/pages/wholesaler/intake/IntakeReview';
 import ShopSearch from '@/pages/buy/ShopSearch';
 import ShopPage from '@/pages/buy/ShopPage';
 import ProductDetail from '@/pages/buy/ProductDetail';
+import BuyWishlist from '@/pages/buy/Wishlist';
+import Demand from '@/pages/wholesaler/Demand';
 import BuyChat from '@/pages/buy/Chat';
 import BuyChatThread from '@/pages/buy/ChatThread';
 import WholesalerChat from '@/pages/wholesaler/Chat';
@@ -228,6 +230,7 @@ export default function AppRoutes() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/crm" element={<RequirePermission permission="parties"><Crm /></RequirePermission>} />
+        <Route path="/demand" element={<RequirePermission permission="items"><Demand /></RequirePermission>} />
         <Route path="/orders" element={<RequirePermission permission="orders"><Orders /></RequirePermission>} />
         <Route path="/orders/:id" element={<RequirePermission permission="orders"><WholesalerOrderDetail /></RequirePermission>} />
         <Route path="/items" element={<RequirePermission permission="items"><Items /></RequirePermission>} />
@@ -314,6 +317,7 @@ export default function AppRoutes() {
         <Route path="/buy/chat" element={<BuyChat />} />
         <Route path="/buy/chat/:businessId" element={<BuyChatThread />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/wishlist" element={<BuyWishlist />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/my-orders/:id" element={<OrderDetail />} />
         <Route path="/my-bills" element={<MyBills />} />

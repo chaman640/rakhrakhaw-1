@@ -15,7 +15,7 @@ import { round2 } from '../src/utils/money.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
   Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense, Membership, StockIntake, Otp,
-  PushSubscription, Subscription, BillingOrder,
+  PushSubscription, Subscription, BillingOrder, Wishlist,
 } from '../src/models/index.js';
 /*
   Ijazat ki ginti YAHAN SE aati hai, haath se likhi hui nahi.
@@ -102,6 +102,7 @@ async function cleanup() {
     Purchase.deleteMany({ businessId: { $in: businessIds } }),
     Counter.deleteMany({ businessId: { $in: businessIds } }),
     Cart.deleteMany({ businessId: { $in: businessIds } }),
+    Wishlist.deleteMany({ businessId: { $in: businessIds } }),
     Order.deleteMany({ businessId: { $in: businessIds } }),
     Notification.deleteMany({ businessId: { $in: businessIds } }),
     Invoice.deleteMany({ businessId: { $in: businessIds } }),
@@ -3189,6 +3190,34 @@ async function run() {
 
     r = await call('GET', '/cart/count', { token: wToken, shop: bigBizId });
     check('us dukaan ke cart me maal hai', r.data?.count === 1, `${r.data?.count}`);
+
+    // ---- wishlist (kharidaar) aur maang (malik) ----
+    r = await call('POST', '/wishlist', { token: wToken, shop: bigBizId, body: { itemId: bigItem } });
+    check('item wishlist me gaya', r.status === 201, `status ${r.status} · ${r.message}`);
+    r = await call('POST', '/wishlist', { token: wToken, shop: bigBizId, body: { itemId: bigItem } });
+    const wlAgain = await call('GET', '/wishlist', { token: wToken, shop: bigBizId });
+    check('dobara tap pe doosri line nahi bani',
+      (wlAgain.data || []).filter((x) => String(x.itemId) === String(bigItem)).length === 1,
+      `${(wlAgain.data || []).length}`);
+    r = await call('POST', '/wishlist', { token: wToken, shop: bigBizId, body: { text: 'Tubeless valve 10 pc' } });
+    check('jo maal dukaan me nahi, wo likh kar maanga', r.status === 201, `${r.message}`);
+    r = await call('GET', '/wishlist', { token: wToken, shop: bigBizId });
+    check('wishlist me item (rate ke saath) aur likha hua dono',
+      (r.data || []).some((x) => x.item?.rate > 0) && (r.data || []).some((x) => x.text === 'Tubeless valve 10 pc'),
+      JSON.stringify(r.data));
+    r = await call('GET', '/wishlist/ids', { token: wToken, shop: bigBizId });
+    check('dil bharne ke liye ids mili', (r.data || []).map(String).includes(String(bigItem)), JSON.stringify(r.data));
+
+    r = await call('GET', '/wishlist-demand', { token: bigToken });
+    check('malik ko item ki maang dikhi', (r.data?.items || []).some((x) => String(x.itemId) === String(bigItem) && x.count === 1),
+      JSON.stringify(r.data?.items));
+    check('...aur likh kar maanga maal bhi, kisne maanga uske saath',
+      (r.data?.asks || []).some((x) => x.text === 'Tubeless valve 10 pc' && x.partyName),
+      JSON.stringify(r.data?.asks));
+    r = await call('GET', '/wishlist', { token: rToken, shop: bigBizId });
+    check('jo dukaan se juda nahi uski wishlist nahi khuli', r.status === 403, `status ${r.status}`);
+    r = await call('DELETE', `/wishlist/item/${bigItem}`, { token: wToken, shop: bigBizId });
+    check('dil dobara dabane pe wishlist se hata', r.status === 200, `${r.message}`);
 
     /* ─────────── PURANA RASTA — retailer ka kuch bhi na toote ─────────── */
 
