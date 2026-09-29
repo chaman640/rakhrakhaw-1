@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Search, Store, ShoppingCart, ArrowRight, Package } from 'lucide-react';
+import { Search, Store, ShoppingCart, ArrowRight, Package, Lock } from 'lucide-react';
 import api from '@/lib/api';
 import { t } from '@/lib/i18n';
 import useSeo from '@/lib/useSeo';
@@ -21,6 +21,8 @@ export default function ShopPreview() {
 
   const [shop, setShop] = useState(null);
   const [items, setItems] = useState([]);
+  // Dukaan "permission ke baad hi" pe hai, ya list aayi hi nahi — "Ruko..." pe atakna nahi chahiye
+  const [locked, setLocked] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [more, setMore] = useState(false);
@@ -44,7 +46,10 @@ export default function ShopPreview() {
   }, [code]);
 
   useEffect(() => {
-    const id = setTimeout(() => { setPage(1); load(1, q).catch(() => {}); }, 300);
+    const id = setTimeout(() => {
+      setPage(1);
+      load(1, q).then(() => setLocked('')).catch((e) => setLocked(e.message || t('Maal abhi nahi dikh sakta')));
+    }, 300);
     return () => clearTimeout(id);
   }, [q, load]);
 
@@ -94,7 +99,23 @@ export default function ShopPreview() {
           />
         </div>
 
-        {items.length === 0 ? (
+        {shop?.requireApproval || locked ? (
+          <div className="mx-auto max-w-sm py-12 text-center">
+            <Lock className="mx-auto mb-3 text-slate-300" size={36} />
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              {shop?.requireApproval
+                ? t('Is dukaan ka maal sirf jude hue retailer dekh sakte hain. Judne ki request bhejiye — dukaan approve karegi to maal aur rate dikhne lagenge.')
+                : locked}
+            </p>
+            <button
+              type="button"
+              onClick={lenaHai}
+              className="mt-4 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              {t('Judne ki request bhejein')}
+            </button>
+          </div>
+        ) : items.length === 0 ? (
           <p className="py-16 text-center text-sm text-slate-500">
             {q ? t('Kuch nahi mila') : t('Ruko...')}
           </p>

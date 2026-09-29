@@ -70,14 +70,12 @@ export function businessForUser(business, user) {
 
   if (user?.role === ROLES.RETAILER) return pick(plain, RETAILER_FIELDS);
 
-  /*
-    Item share karne ka public link (`/s/CODE/item/ID`) — staff bhi item bhejta
-    hai, isliye use bhi chahiye. Ye wahi code hai jo dukaan ka public link hai,
-    aur sirf tab jab dukaan ne link chalu rakha ho.
-  */
-  const shareCode = plain.inviteEnabled ? (plain.inviteCode || '') : '';
+  // Staff ko dukaan ka code jaan-boojh kar nahi (smoke me pehra hai) — wo
+  // item WhatsApp pe naam-rate ke saath aur app chat se bhejta hai, link ke bina
+  if (!isOwnerUser(user)) return pick(plain, STAFF_FIELDS);
 
-  if (!isOwnerUser(user)) return { ...pick(plain, STAFF_FIELDS), shareCode };
+  // Item share ka public link (`/s/CODE/item/ID`) — sirf jab dukaan ka link chalu ho
+  const shareCode = plain.inviteEnabled ? (plain.inviteCode || '') : '';
 
   // Malik ko sab kuch, invite link ke saath
   return { ...plain, shareCode, inviteLink: buildInviteLink(plain.inviteCode) };

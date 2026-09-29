@@ -3214,6 +3214,42 @@ async function run() {
     check('header hataate hi wapas apni purani dukaan me',
       r.data?.name === w1Name, `${r.data?.name}`);
 
+    /* ─────────── "Meri permission ke baad hi" (requireApproval) ─────────── */
+    r = await call('PUT', '/business/me', { token: wToken, body: { requireApproval: true } });
+    check('malik ne dukaan "permission ke baad" pe ki', r.status === 200 && r.data?.requireApproval === true,
+      `status ${r.status} · ${r.message}`);
+    const w1Code = (await call('GET', '/business/me', { token: wToken })).data?.inviteCode;
+
+    r = await call('GET', `/public/shop/${w1Code}/items`);
+    check('bina login wala page ab maal nahi dikhata', r.status === 403, `status ${r.status}`);
+    r = await call('GET', `/public/shop/${w1Code}`);
+    check('...par dukaan ki pehchaan aur ye baat dikhti hai', r.status === 200 && r.data?.requireApproval === true,
+      `status ${r.status}`);
+
+    r = await call('POST', '/shops/connect', { token: bigToken, body: { phone: WHOLESALER_PHONE } });
+    check('naya judne wala PENDING me aaya', r.status === 201 && r.data?.partyStatus === 'pending',
+      `${r.data?.partyStatus} · ${r.message}`);
+    r = await call('GET', '/catalog', { token: bigToken, shop: String(r.data?._id || '') });
+    check('approve se pehle maal nahi dikha', r.status === 403, `status ${r.status}`);
+
+    r = await call('GET', '/notifications?type=RETAILER_REQUEST&limit=5', { token: wToken });
+    const reqNote = (r.data || [])[0];
+    check('malik ko judne ki request ki khabar gayi', Boolean(reqNote?.data?.partyId), `${(r.data || []).length}`);
+
+    r = await call('POST', `/parties/${reqNote?.data?.partyId}/status`, { token: wToken, body: { status: 'active' } });
+    check('malik ne approve kiya', r.status === 200, `status ${r.status} · ${r.message}`);
+    const w1Id = (await call('GET', '/business/me', { token: wToken })).data?._id;
+    r = await call('GET', '/catalog', { token: bigToken, shop: String(w1Id) });
+    check('approve ke baad maal dikhne laga', r.status === 200, `status ${r.status}`);
+
+    r = await call('GET', '/catalog', { token: rToken });
+    check('pehle se jude (active) retailer pe asar nahi — maal dikhta raha', r.status === 200, `status ${r.status}`);
+
+    r = await call('PUT', '/business/me', { token: wToken, body: { requireApproval: false } });
+    check('dukaan wapas sab ke liye khuli', r.data?.requireApproval === false, `${r.message}`);
+    r = await call('GET', `/public/shop/${w1Code}/items`);
+    check('public page pe maal wapas dikha', r.status === 200, `status ${r.status}`);
+
     r = await call('GET', '/dashboard', { token: rToken });
     check('retailer ka purana dashboard waise ka waisa', typeof r.data?.balance === 'number',
       `${JSON.stringify(Object.keys(r.data || {}))}`);

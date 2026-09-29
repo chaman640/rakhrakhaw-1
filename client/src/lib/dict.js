@@ -2212,6 +2212,20 @@ const DICT = {
   'Photo dekh lein': { hi: 'फ़ोटो देख लें', en: 'Check the photo' },
   'Dobara khichein': { hi: 'दोबारा खींचें', en: 'Retake' },
   'Yahi photo lagayein': { hi: 'यही फ़ोटो लगाएँ', en: 'Use this photo' },
+
+  /* ── Dukaan kaun dekh sakta hai ── */
+  'Setting badal di': { hi: 'सेटिंग बदल दी', en: 'Setting updated' },
+  'Dukaan kaun dekh sakta hai': { hi: 'दुकान कौन देख सकता है', en: 'Who can see your shop' },
+  'Pehle se jude hue retailers pe iska asar nahi padta': { hi: 'पहले से जुड़े हुए रिटेलर पे इसका असर नहीं पड़ता', en: 'Retailers already connected are not affected' },
+  'Ise sirf malik badal sakta hai': { hi: 'इसे सिर्फ़ मालिक बदल सकता है', en: 'Only the owner can change this' },
+  'Sab dekh sakein': { hi: 'सब देख सकें', en: 'Everyone can see' },
+  'Koi bhi dukaan se jud kar ya link khol kar seedha maal dekh aur order kar sake': { hi: 'कोई भी दुकान से जुड़ कर या लिंक खोल कर सीधा माल देख और ऑर्डर कर सके', en: 'Anyone who connects or opens your link can see items and order right away' },
+  'Meri permission ke baad hi': { hi: 'मेरी परमिशन के बाद ही', en: 'Only after my approval' },
+  'Naya aadmi request bhejega — aap approve karenge tabhi wo maal aur rate dekh payega': { hi: 'नया आदमी रिक्वेस्ट भेजेगा — आप अप्रूव करेंगे तभी वो माल और रेट देख पाएगा', en: 'New people send a request — they see items and rates only after you approve' },
+  'Maal abhi nahi dikh sakta': { hi: 'माल अभी नहीं दिख सकता', en: 'Items can\'t be shown right now' },
+  'Is dukaan ka maal sirf jude hue retailer dekh sakte hain. Judne ki request bhejiye — dukaan approve karegi to maal aur rate dikhne lagenge.': { hi: 'इस दुकान का माल सिर्फ़ जुड़े हुए रिटेलर देख सकते हैं। जुड़ने की रिक्वेस्ट भेजिए — दुकान अप्रूव करेगी तो माल और रेट दिखने लगेंगे।', en: 'Only connected retailers can see this shop\'s items. Send a request to connect — once the shop approves, items and rates will show.' },
+  'Judne ki request bhejein': { hi: 'जुड़ने की रिक्वेस्ट भेजें', en: 'Request to connect' },
+  'Judne ki request': { hi: 'जुड़ने की रिक्वेस्ट', en: 'Connect requests' },
 };
 
 export default DICT;

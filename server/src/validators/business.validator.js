@@ -47,6 +47,7 @@ export const updateBusinessSchema = z
     lowStockThreshold: z.coerce.number().min(0).max(100000).optional(),
     deliveryCharge: z.coerce.number().min(0).max(100000).optional(),
     autoApproveRetailers: z.boolean().optional(),
+    requireApproval: z.boolean().optional(),
     inviteEnabled: z.boolean().optional(),
   })
   .strict();

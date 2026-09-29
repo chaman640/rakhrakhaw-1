@@ -144,6 +144,8 @@ export const NOTIFICATION_TYPES = {
     kho nahi jata.
   */
   STOCK_INTAKE: 'STOCK_INTAKE',
+  // Dukaan "permission ke baad hi" pe ho aur koi judna chahe — malik ka kaam
+  RETAILER_REQUEST: 'RETAILER_REQUEST',
 };
 
 export const UNITS = [

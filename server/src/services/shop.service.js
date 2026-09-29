@@ -3,8 +3,9 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { normalizePhone } from '../utils/phone.js';
 import { buyerFilter, buyerFields } from '../utils/buyer.js';
-import { ROLES, PARTY_TYPES, PARTY_STATUS } from '../config/constants.js';
+import { ROLES, PARTY_TYPES, PARTY_STATUS, NOTIFICATION_TYPES } from '../config/constants.js';
 import { Business, Party, Membership, Item, User, Story } from '../models/index.js';
+import { notifyWholesaler } from './notification.service.js';
 
 /**
  * DUKAAN DHOONDHO, JUDO, SAVE KARO.
@@ -152,6 +153,28 @@ async function buyerIdentity(user) {
   };
 }
 
+/*
+  Naya aadmi approval ke intezaar me aaya — malik ko khabar. Bina iske request
+  chup-chaap "pending" me padi rehti aur retailer sochta dukaan ne mana kar diya.
+*/
+async function findOrCreateParty(business, ident, byUserId) {
+  const before = ident.phone
+    ? await Party.findOne({ businessId: business._id, type: PARTY_TYPES.RETAILER, phone: ident.phone })
+      .select('status').lean()
+    : null;
+  const party = await findOrCreatePartyInner(business, ident, byUserId);
+  if (party.status === PARTY_STATUS.PENDING && before?.status !== PARTY_STATUS.PENDING) {
+    notifyWholesaler(business._id, {
+      type: NOTIFICATION_TYPES.RETAILER_REQUEST,
+      title: `${party.shopName || party.name} aapki dukaan se judna chahte hain`,
+      body: 'Approve karne par hi wo aapka maal dekh payenge',
+      link: `/retailers/${party._id}`,
+      data: { partyId: party._id },
+    }).catch(() => {});
+  }
+  return party;
+}
+
 /**
  * Us dukaan ke andar kharidaar ki Party dhoondho ya banao.
  *
@@ -159,7 +182,7 @@ async function buyerIdentity(user) {
  * tha) to USI ko lete hain — nayi banane par uska poora purana khata, bill aur
  * return doosri party pe chhoot jate aur hisaab do jagah bat jata.
  */
-async function findOrCreateParty(business, ident, byUserId) {
+async function findOrCreatePartyInner(business, ident, byUserId) {
   /*
     Pehle yahan `business.autoApproveRetailers` dekh kar PENDING ya ACTIVE
     tay hota tha — retailer ko wholesaler ke "approve" karne ka intezaar
@@ -168,7 +191,11 @@ async function findOrCreateParty(business, ident, byUserId) {
     `autoApproveRetailers` field Business model me pada rehta hai (purana
     data), par ab kahin padha nahi jata.
   */
-  const wantStatus = PARTY_STATUS.ACTIVE;
+  /*
+    Haan, ek rasta wapas hai: malik ne "meri permission ke baad hi" chuna ho
+    (`requireApproval`) to naya judne wala PENDING me aata hai. Default khula.
+  */
+  const wantStatus = business.requireApproval ? PARTY_STATUS.PENDING : PARTY_STATUS.ACTIVE;
 
   let party = ident.phone
     ? await Party.findOne({ businessId: business._id, type: PARTY_TYPES.RETAILER, phone: ident.phone })

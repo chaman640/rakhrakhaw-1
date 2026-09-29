@@ -264,13 +264,14 @@ export async function signupRetailer({ inviteCode, name, shopName, phone, passwo
     phone: cleanPhone,
   });
 
-  // Approval ka intezaar hata diya gaya hai — dekho shop.service.js me poori wajah
-  const status = PARTY_STATUS.ACTIVE;
+  // Default me intezaar nahi (shop.service.js me wajah) — malik ne approval chuna ho tabhi
+  const status = business.requireApproval ? PARTY_STATUS.PENDING : PARTY_STATUS.ACTIVE;
 
   if (party) {
     party.name = party.name || name;
     party.shopName = shopName || party.shopName;
-    if (party.status !== PARTY_STATUS.BLOCKED) party.status = status;
+    // Pehle se ACTIVE ho to use PENDING mat karo — haq chheenna sabse bura hai
+    if (party.status !== PARTY_STATUS.BLOCKED && party.status !== PARTY_STATUS.ACTIVE) party.status = status;
   } else {
     party = new Party({
       businessId: business._id,

@@ -64,6 +64,21 @@ const businessSchema = new mongoose.Schema(
     autoApproveRetailers: { type: Boolean, default: false },
 
     /*
+     * DUKAAN KAUN DEKH SAKTA HAI.
+     *
+     *   false (default) — koi bhi dukaan se jud kar seedha maal dekh aur order
+     *                     kar sakta hai; public link bhi sabke liye khula.
+     *   true            — naya judne wala 'pending' me aata hai aur malik ke
+     *                     approve karne tak maal nahi dekh sakta; bina login
+     *                     wala public page bhi maal nahi dikhata.
+     *
+     * `autoApproveRetailers` purana field hai jiska default ulta (false =
+     * approval) tha — use dobara chalu karte to har purani dukaan ek din me
+     * band ho jati. Isliye naya naam, aur default wahi jo aaj chal raha hai.
+     */
+    requireApproval: { type: Boolean, default: false },
+
+    /*
      * ONBOARDING TOUR — pehli baar wala safar (Part 29).
      *
      * `null` = abhi tak na dekha na chhoda — isi wajah se pehla login hote

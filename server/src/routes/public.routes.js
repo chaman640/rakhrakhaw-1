@@ -20,7 +20,7 @@ import * as catalog from '../services/catalog.service.js';
 */
 const router = Router();
 
-const shopFields = 'name logoUrl address.city address.state phone gstEnabled inviteCode';
+const shopFields = 'name logoUrl address.city address.state phone gstEnabled inviteCode requireApproval';
 
 router.get('/shop/:code', asyncHandler(async (req, res) => {
   const code = String(req.params.code || '').trim().toUpperCase();
@@ -35,14 +35,24 @@ router.get('/shop/:code', asyncHandler(async (req, res) => {
     city: biz.address?.city || '',
     state: biz.address?.state || '',
     inviteCode: biz.inviteCode,
+    // Maal sirf jude hue (aur approve hue) log dekh sakte hain — page yahi batata hai
+    requireApproval: Boolean(biz.requireApproval),
   });
 }));
+
+/*
+  Malik ne "meri permission ke baad hi" chuna ho to bina login wala page maal
+  nahi dikhata — warna permission ka koi matlab hi nahi bachta, koi bhi link
+  khol kar poori list aur rate dekh leta.
+*/
+const PRIVATE_SHOP = 'Is dukaan ka maal dekhne ke liye dukaan se judein — malik ke approve karne ke baad dikhega';
 
 router.get('/shop/:code/items', asyncHandler(async (req, res) => {
   const code = String(req.params.code || '').trim().toUpperCase();
   const biz = await Business.findOne({ inviteCode: code, inviteEnabled: true })
-    .select('_id').lean();
+    .select('_id requireApproval').lean();
   if (!biz) throw ApiError.notFound('Ye dukaan nahi mili');
+  if (biz.requireApproval) throw ApiError.forbidden(PRIVATE_SHOP);
 
   const q = String(req.query.q || '').trim().slice(0, 60);
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -99,8 +109,9 @@ router.get('/shop/:code/items', asyncHandler(async (req, res) => {
 router.get('/shop/:code/item/:itemId', asyncHandler(async (req, res) => {
   const code = String(req.params.code || '').trim().toUpperCase();
   const biz = await Business.findOne({ inviteCode: code, inviteEnabled: true })
-    .select('_id').lean();
+    .select('_id requireApproval').lean();
   if (!biz) throw ApiError.notFound('Ye dukaan nahi mili');
+  if (biz.requireApproval) throw ApiError.forbidden(PRIVATE_SHOP);
 
   const item = await catalog.getCatalogItem(biz._id, null, req.params.itemId);
   return ok(res, item);

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, ShoppingCart, TruckIcon, Wallet, TriangleAlert, CheckCheck,
-  Trash2, BellOff, X, PackagePlus,
+  Trash2, BellOff, X, PackagePlus, UserPlus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useNotifications } from '@/context/NotificationContext';
@@ -23,6 +23,7 @@ const TYPES = [
   { value: 'PAYMENT_REMINDER', label: 'Yaad dilana' },
   { value: 'LOW_STOCK', label: 'Stock' },
   { value: 'STOCK_INTAKE', label: 'Maal aaya' },
+  { value: 'RETAILER_REQUEST', label: 'Judne ki request' },
 ];
 
 const ICONS = {
@@ -32,6 +33,7 @@ const ICONS = {
   PAYMENT_REMINDER: Wallet,
   LOW_STOCK: TriangleAlert,
   STOCK_INTAKE: PackagePlus,
+  RETAILER_REQUEST: UserPlus,
 };
 
 const TONE = {
@@ -41,6 +43,7 @@ const TONE = {
   PAYMENT_REMINDER: 'bg-amber-50 text-amber-700',
   LOW_STOCK: 'bg-red-50 text-red-700',
   STOCK_INTAKE: 'bg-amber-50 text-amber-700',
+  RETAILER_REQUEST: 'bg-blue-50 text-blue-700',
 };
 
 /** Aaj / Kal / uske pehle — date se zyada ye samajh aata hai */
