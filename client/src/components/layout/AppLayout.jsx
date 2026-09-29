@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import PlanNeeded from '@/pages/wholesaler/PlanNeeded';
 import OnboardingTour from '@/components/tutorial/OnboardingTour';
+import TrialBanner from '@/components/billing/TrialBanner';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
@@ -142,6 +143,7 @@ export default function AppLayout() {
           backTo={backTo}
         />
 
+        {!buying && <TrialBanner />}
         <main className={cn('px-4 pt-4 sm:px-5 lg:px-6 lg:pb-6', buying ? 'pb-20' : 'pb-6')}>
           {!buying && needsPlan ? <PlanNeeded /> : <Outlet />}
         </main>

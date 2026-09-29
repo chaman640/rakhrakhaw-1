@@ -15,6 +15,10 @@ import {
 } from '../config/billing.js';
 import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
+import {
+  platformConfig, featuresOfPlan, cheapestPlanFor,
+} from './platform.service.js';
+import { FEATURES } from '../config/features.js';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -67,7 +71,9 @@ export function planCatalog() {
     chargingNow: !isFreeMode(),
     graceDays: env.billing.graceDays,
     yearlyMonthsCharged: YEARLY_MONTHS_CHARGED,
-    plans: PLANS.map((p) => ({
+    trialDays: Number(platformConfig().trialDays || 0),
+    // Admin ne band kiya hua plan naye grahak ko nahi dikhta
+    plans: PLANS.filter((p) => p.active !== false).map((p) => ({
       ...p,
       priceRupees: rupees(p.pricePaise),
       yearlyRupees: rupees(periodPricePaise(p, PERIODS.YEARLY)),
@@ -89,6 +95,8 @@ export function planCatalog() {
  */
 export function statusOf(sub, now = new Date()) {
   if (!sub || !sub.paidTill) return SUB_STATUS.EXPIRED;
+  // Trial khatam = seedha khatam. Mohlat paisa dene walon ke liye hai.
+  if (sub.isTrial && sub.paidTill < now) return SUB_STATUS.EXPIRED;
   if (sub.cancelledAt && !sub.autoRenew && sub.paidTill < now) return SUB_STATUS.CANCELLED;
 
   if (sub.paidTill >= now) return SUB_STATUS.ACTIVE;
@@ -101,6 +109,59 @@ export function statusOf(sub, now = new Date()) {
 /** Dukaan ka chalu hona — grace me bhi sab chalta hai, bas yaad dilaya jata hai */
 export function isUsable(status) {
   return status === SUB_STATUS.ACTIVE || status === SUB_STATUS.GRACE;
+}
+
+/**
+ * NAYE SELLER KA FREE TRIAL.
+ *
+ * Signup pe hi shuru hota hai. Jis dukaan ka Subscription pehle se hai (kabhi
+ * trial ya paisa) uspe dobara KABHI nahi — warna har baar naya trial ek muft
+ * rasta ban jata. `$setOnInsert` + unique businessId ki wajah se do request ek
+ * saath aayein to bhi ek hi banta hai.
+ */
+export async function startTrial(businessId, planCode = null) {
+  const cfg = platformConfig();
+  const days = Number(cfg.trialDays || 0);
+  if (days <= 0) return null;
+
+  const chosen = PLAN_BY_CODE[planCode];
+  const plan = (chosen && chosen.pricePaise > 0 && chosen.active !== false)
+    ? chosen : (PLAN_BY_CODE[cfg.trialPlanCode] || PAID_PLANS[0]);
+
+  const now = new Date();
+  const till = new Date(now.getTime() + days * 86400000);
+  try {
+    return await Subscription.findOneAndUpdate(
+      { businessId },
+      {
+        $setOnInsert: {
+          businessId,
+          planCode: plan.code,
+          pricePaise: plan.pricePaise,
+          seats: plan.seats,
+          paidTill: till,
+          trialEndsAt: till,
+          isTrial: true,
+          startedAt: now,
+        },
+      },
+      { upsert: true, new: true },
+    ).lean();
+  } catch (err) {
+    if (err?.code === 11000) return Subscription.findOne({ businessId }).lean();
+    throw err;
+  }
+}
+
+/**
+ * Purani dukaan jiska Subscription bana hi nahi (paid mode chalu hone se pehle
+ * ki) — pehli baar zarurat padte hi usko bhi trial. Warna paid mode ka switch
+ * dabate hi har purani dukaan "plan khatam" pe atak jati.
+ */
+async function ensureTrial(businessId) {
+  if (isFreeMode()) return;
+  if (await Subscription.exists({ businessId })) return;
+  await startTrial(businessId);
 }
 
 export async function subscriptionOf(businessId) {
@@ -218,6 +279,7 @@ export async function assertSeat(businessId, { extra = 1 } = {}) {
 export async function assertCanSell(businessId, user = null) {
   if (isFreeMode()) return;
 
+  await ensureTrial(businessId);
   const state = await subscriptionOf(businessId);
   const usable = state.status === SUB_STATUS.ACTIVE;
   if (usable) return;
@@ -258,6 +320,7 @@ export async function extendSubscription(businessId, {
   planCode, months = 1, payment = null, note = '',
 }) {
   const plan = PLAN_BY_CODE[planCode];
+  // Band plan pe bhi chalta hai — paisa aa chuka hai, use rokna galat hoga
   if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
 
   const now = new Date();
@@ -272,6 +335,8 @@ export async function extendSubscription(businessId, {
     seats: plan.seats,
     // Ek saath saal bhar ka paisa = saal wala; warna mahina
     period: Number(months) >= 12 ? PERIODS.YEARLY : PERIODS.MONTHLY,
+    // Paisa aa gaya — ab trial nahi (trial ke bache din `from` me jud chuke hain)
+    isTrial: false,
     paidTill,
     autoRenew: true,
     cancelledAt: null,
@@ -375,7 +440,7 @@ export async function startAutopay(businessId, { planCode, period = PERIODS.MONT
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
-  if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
+  if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
 
   // Chhote plan me abhi ke log aayenge ya nahi — pehle hi rok dena behtar hai
   await assertSeatsFitPlan(businessId, plan.code);
@@ -575,7 +640,7 @@ export async function changePlan(businessId, { planCode, period = PERIODS.MONTHL
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
-  if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
+  if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
 
   const sub = await Subscription.findOne({ businessId });
   if (!sub?.providerSubId) throw ApiError.badRequest('Pehle autopay chalu karein');
@@ -707,7 +772,7 @@ export async function switchMandate(businessId, { planCode, period = PERIODS.MON
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
-  if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
+  if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
 
   await assertSeatsFitPlan(businessId, plan.code);
 
@@ -836,8 +901,10 @@ export async function cancelSubscription(businessId) {
 
 /** App ko dikhane ke liye poori halat — Settings ka billing wala hissa */
 export async function billingSummary(businessId) {
+  await ensureTrial(businessId);
   const state = await subscriptionOf(businessId);
   const used = await seatsUsed(businessId);
+  const onTrial = Boolean(state.sub?.isTrial) && state.status === SUB_STATUS.ACTIVE;
 
   return {
     mode: env.billing.mode,
@@ -854,6 +921,33 @@ export async function billingSummary(businessId) {
       period: state.sub?.period || PERIODS.MONTHLY,
       periodPriceRupees: rupees(periodPricePaise(state.plan, state.sub?.period || PERIODS.MONTHLY)),
     },
+    /*
+      TRIAL — client isi se "7/3/1 din baaki" ki patti dikhata hai.
+      `expired` = trial tha aur khatam ho gaya (paisa kabhi nahi aaya).
+    */
+    trial: {
+      on: onTrial,
+      expired: Boolean(state.sub?.isTrial) && state.status === SUB_STATUS.EXPIRED,
+      endsAt: state.sub?.trialEndsAt || null,
+      daysLeft: onTrial ? state.daysLeft : 0,
+    },
+
+    /*
+      FEATURE — is dukaan ke plan me kya kya hai (config/features.js).
+      Free mode me sab. `locked` me har band feature ka sabse sasta plan, taaki
+      "ye ₹500 wale plan me hai" seedha dikh sake.
+    */
+    features: isFreeMode() ? FEATURES.map((f) => f.key) : featuresOfPlan(state.plan.code),
+    locked: isFreeMode() ? {} : Object.fromEntries(FEATURES
+      .filter((f) => !featuresOfPlan(state.plan.code).includes(f.key))
+      .map((f) => {
+        const p = cheapestPlanFor(f.key);
+        return [f.key, {
+          name: f.name,
+          plan: p ? { code: p.code, name: p.name, priceRupees: rupees(p.pricePaise) } : null,
+        }];
+      })),
+
     seatsUsed: used,
     seatsLeft: state.plan.seats === null ? null : Math.max(0, state.plan.seats - used),
     paidTill: state.paidTill,
@@ -906,7 +1000,7 @@ export async function startCheckout(businessId, { planCode, months = 1 }, userId
   if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
 
   const plan = PLAN_BY_CODE[planCode];
-  if (!plan || plan.pricePaise <= 0) throw ApiError.badRequest('Aisa koi plan nahi hai');
+  if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
 
   // Sirf mahina (1) ya saal (12) — beech ka kuch aaya to mahina
   const m = Number(months) === 12 ? 12 : 1;
@@ -1191,6 +1285,7 @@ async function applyCharge(sub, ent, payment = {}, fallbackId = '') {
         period,
         mandatePeriod: '',
         paidTill,
+        isTrial: false,
         mandateStatus: 'active',
         autoRenew: true,
         cancelledAt: null,

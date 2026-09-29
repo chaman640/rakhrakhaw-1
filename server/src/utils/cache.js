@@ -51,3 +51,8 @@ export function cacheBust(prefix) {
 }
 
 export const cacheSize = () => store.size;
+
+/** Ek chaabi mita do — setting badli ho to purana jawab turant hate */
+export function cacheDel(key) {
+  store.delete(key);
+}

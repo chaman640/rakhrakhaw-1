@@ -37,6 +37,7 @@ import ShopPage from '@/pages/buy/ShopPage';
 import ProductDetail from '@/pages/buy/ProductDetail';
 import BuyWishlist from '@/pages/buy/Wishlist';
 import Demand from '@/pages/wholesaler/Demand';
+import FeatureGate from '@/components/billing/FeatureGate';
 import BuyChat from '@/pages/buy/Chat';
 import BuyChatThread from '@/pages/buy/ChatThread';
 import WholesalerChat from '@/pages/wholesaler/Chat';
@@ -229,8 +230,8 @@ export default function AppRoutes() {
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/crm" element={<RequirePermission permission="parties"><Crm /></RequirePermission>} />
-        <Route path="/demand" element={<RequirePermission permission="items"><Demand /></RequirePermission>} />
+        <Route path="/crm" element={<RequirePermission permission="parties"><FeatureGate feature="crm_basic"><Crm /></FeatureGate></RequirePermission>} />
+        <Route path="/demand" element={<RequirePermission permission="items"><FeatureGate feature="demand"><Demand /></FeatureGate></RequirePermission>} />
         <Route path="/orders" element={<RequirePermission permission="orders"><Orders /></RequirePermission>} />
         <Route path="/orders/:id" element={<RequirePermission permission="orders"><WholesalerOrderDetail /></RequirePermission>} />
         <Route path="/items" element={<RequirePermission permission="items"><Items /></RequirePermission>} />

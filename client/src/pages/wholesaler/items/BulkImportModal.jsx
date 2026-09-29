@@ -5,6 +5,8 @@ import {
 import api from '@/lib/api';
 import { Modal, Button, Spinner, useToast } from '@/components/ui';
 import { t } from '@/lib/i18n';
+import { useFeature } from '@/hooks/useBilling';
+import { UpgradeCard } from '@/components/billing/FeatureGate';
 
 /**
  * EXCEL / PDF / PHOTO SE EK SAATH MAAL ADD KARNA.
@@ -22,6 +24,7 @@ import { t } from '@/lib/i18n';
 export default function BulkImportModal({ open, onClose, onDone }) {
   const toast = useToast();
   const fileRef = useRef(null);
+  const { allowed, lockedInfo } = useFeature('bulk_import');
   // Phone me seedha camera khulta hai — gallery me dhoondhna nahi padta
   const cameraRef = useRef(null);
 
@@ -107,7 +110,9 @@ export default function BulkImportModal({ open, onClose, onDone }) {
 
   return (
     <Modal open={open} onClose={band} title={t('File se maal add karein')} size="xl">
-      {!rows ? (
+      {!allowed ? (
+        <UpgradeCard info={lockedInfo} compact />
+      ) : !rows ? (
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
             {t('Supplier ka bill Excel, PDF ya photo — jo bhi ho, yahan daal dijiye. App usme se maal ki list nikal dega, aur aap dekh kar add karenge.')}

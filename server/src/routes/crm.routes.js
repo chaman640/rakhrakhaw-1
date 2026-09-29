@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireFeature } from '../middleware/feature.js';
 import { protect, requireRole, requirePermission } from '../middleware/auth.js';
 import { withTenant, requirePaidSeller } from '../middleware/tenant.js';
 import { ROLES } from '../config/constants.js';
@@ -10,6 +11,6 @@ router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller
 // `parties:view` reuse kiya — CRM retailer data hi dikha raha hai, alag
 // permission banane se sirf ek aur cheez ho jaati jo admin ko staff-role
 // screen pe alag se on karni padti, bina kisi fayde ke.
-router.get('/overview', requirePermission('parties:view'), ctrl.overview);
+router.get('/overview', requirePermission('parties:view'), requireFeature('crm_basic'), ctrl.overview);
 
 export default router;

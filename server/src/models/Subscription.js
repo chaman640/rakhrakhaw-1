@@ -91,6 +91,15 @@ const subscriptionSchema = new mongoose.Schema(
     */
     mandatePlanCode: { type: String, default: '' },
     /*
+      FREE TRIAL — naye seller ko (PlatformConfig.trialDays, default 15 din).
+      Trial me `paidTill` = trial ka aakhri din, taaki poora app (seat, bechne
+      ka haq, feature) bina alag raste ke chalta rahe. `isTrial` sirf ye batata
+      hai ki paisa abhi tak nahi aaya — pehla payment aate hi false. Trial
+      khatam hone pe MOHLAT (grace) nahi milti; wo sirf paid grahak ke liye hai.
+    */
+    isTrial: { type: Boolean, default: false },
+    trialEndsAt: { type: Date, default: null },
+    /*
       MAHINA YA SAAL (config/billing.js — PERIODS).
 
       `period`        — jo chal raha hai (paisa isi hisaab se kata tha)

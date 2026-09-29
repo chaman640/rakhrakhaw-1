@@ -6,6 +6,7 @@ import { uploadImage, handleUploadError } from '../middleware/uploadImage.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/item.controller.js';
 import { uploadFile } from '../middleware/uploadFile.js';
+import { requireFeature } from '../middleware/feature.js';
 import {
   createItemSchema, updateItemSchema, listItemsQuerySchema,
   adjustStockSchema, bulkActionSchema, importSchema, idParamSchema,
@@ -30,8 +31,8 @@ router.post('/import', requirePermission('items:create'), validate({ body: impor
   phir aadmi har line dekh kar tay karta hai, phir `commit`. Ek hi kadam me
   karna sabse bura hota: OCR ek galti kare aur 200 item galat chadh jayein.
 */
-router.post('/bulk/parse', requirePermission('items:create'), uploadFile, ctrl.bulkParse);
-router.post('/bulk/commit', requirePermission('items:create'), ctrl.bulkCommit);
+router.post('/bulk/parse', requirePermission('items:create'), requireFeature('bulk_import'), uploadFile, ctrl.bulkParse);
+router.post('/bulk/commit', requirePermission('items:create'), requireFeature('bulk_import'), ctrl.bulkCommit);
 router.post('/bulk', requirePermission('items:edit'), validate({ body: bulkActionSchema }), ctrl.bulk);
 
 // `/gst-ready` ko `/:id` se PEHLE rakhna hai, warna "gst-ready" ek id samajh

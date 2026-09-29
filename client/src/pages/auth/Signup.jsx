@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Store, UserRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -6,6 +6,7 @@ import AuthShell from '@/components/auth/AuthShell';
 import OtpStep from '@/components/auth/OtpStep';
 import { Button, Input } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import api from '@/lib/api';
 import { t } from '@/lib/i18n';
 
 /**
@@ -43,6 +44,15 @@ export default function Signup() {
 
   const [role, setRole] = useState('wholesaler'); // 'wholesaler' | 'retailer'
   const [form, setForm] = useState({ businessName: '', name: '', phone: '', password: '' });
+  /*
+    TRIAL KIS PLAN PE — seller signup pe hi chunta hai (15 din free, uske saare
+    feature). Na chune to admin ka default. Daam aur din server se aate hain.
+  */
+  const [catalog, setCatalog] = useState(null);
+  const [trialPlan, setTrialPlan] = useState('');
+  useEffect(() => {
+    api.get('/billing/plans').then((r) => setCatalog(r.data)).catch(() => {});
+  }, []);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -86,7 +96,11 @@ export default function Signup() {
         // Koi dukaan abhi juda nahi — seedha Buy pe, wahin se number search hoga
         navigate(res.party ? '/shop' : '/buy', { replace: true });
       } else {
-        await signupWholesaler({ ...form, phone: cleanPhone, otpToken, ...(refCode ? { refCode } : {}) });
+        await signupWholesaler({
+          ...form, phone: cleanPhone, otpToken,
+          ...(refCode ? { refCode } : {}),
+          ...(trialPlan ? { planCode: trialPlan } : {}),
+        });
         navigate('/settings?welcome=1', { replace: true });
       }
     } catch (err) {
@@ -204,6 +218,31 @@ export default function Signup() {
               onChange={set('password')}
               error={fieldErrors.password}
             />
+
+            {!isRetailer && catalog?.chargingNow && catalog.trialDays > 0 && (
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-slate-700">
+                  {t('{n} din free trial — kaunsa plan aazmayenge?', { n: catalog.trialDays })}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(catalog.plans || []).filter((p) => p.priceRupees > 0).map((p) => (
+                    <button
+                      key={p.code}
+                      type="button"
+                      onClick={() => setTrialPlan(p.code)}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-left text-sm',
+                        trialPlan === p.code ? 'border-brand-500 bg-brand-50' : 'border-slate-200',
+                      )}
+                    >
+                      <span className="block font-medium text-slate-900">{p.name}</span>
+                      <span className="block text-xs text-slate-500">₹{p.priceRupees}/{t('mahina')} · {p.unlimited ? t('Jitne account chahein') : t('{n} account tak', { n: p.seats })}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{t('Trial me koi paisa nahi katega. Baad me plan badal sakte hain.')}</p>
+              </div>
+            )}
 
             {error && !Object.keys(fieldErrors).length && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

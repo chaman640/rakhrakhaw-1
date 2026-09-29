@@ -2290,6 +2290,23 @@ const DICT = {
   /* ── Profile tabs ── */
   'Paisa lena': { hi: 'पैसा लेना', en: 'Payments' },
   'Mera account': { hi: 'मेरा अकाउंट', en: 'My account' },
+
+  /* ── Trial aur feature ── */
+  'Ye {plan} (₹{amt}/mahina) ya usse upar ke plan me hai.': { hi: 'ये {plan} (₹{amt}/महीना) या उससे ऊपर के प्लान में है।', en: 'This is in the {plan} plan (₹{amt}/month) and above.' },
+  'Ye abhi band hai.': { hi: 'ये अभी बंद है।', en: 'This is turned off right now.' },
+  'Plan dekhein': { hi: 'प्लान देखें', en: 'See plans' },
+  'Free trial chal raha hai — {n} din baaki. Abhi plan lenge to trial ke bache din bhi saath judenge.': { hi: 'फ़्री ट्रायल चल रहा है — {n} दिन बाकी। अभी प्लान लेंगे तो ट्रायल के बचे दिन भी साथ जुड़ेंगे।', en: 'Free trial is on — {n} days left. If you take a plan now, the remaining trial days are added.' },
+  'Free trial khatam ho gaya — bechna chalu rakhne ke liye plan lein': { hi: 'फ़्री ट्रायल ख़त्म हो गया — बेचना चालू रखने के लिए प्लान लें', en: 'Free trial has ended — take a plan to keep selling' },
+  'Plan lein': { hi: 'प्लान लें', en: 'Get a plan' },
+  'Free trial aaj khatam ho raha hai': { hi: 'फ़्री ट्रायल आज ख़त्म हो रहा है', en: 'Free trial ends today' },
+  'Free trial ke {n} din baaki': { hi: 'फ़्री ट्रायल के {n} दिन बाकी', en: '{n} days left in your free trial' },
+  '{n} din free trial — kaunsa plan aazmayenge?': { hi: '{n} दिन फ़्री ट्रायल — कौनसा प्लान आज़माएँगे?', en: '{n}-day free trial — which plan do you want to try?' },
+  'Trial me koi paisa nahi katega. Baad me plan badal sakte hain.': { hi: 'ट्रायल में कोई पैसा नहीं कटेगा। बाद में प्लान बदल सकते हैं।', en: 'Nothing is charged during the trial. You can change the plan later.' },
+  'CRM — retailer follow-up': { hi: 'CRM — रिटेलर फ़ॉलो-अप', en: 'CRM — retailer follow-up' },
+  'CRM — leads, pipeline aur kaam (task)': { hi: 'CRM — लीड, पाइपलाइन और काम (टास्क)', en: 'CRM — leads, pipeline and tasks' },
+  'Staff ko lead/kaam dena': { hi: 'स्टाफ़ को लीड/काम देना', en: 'Assign leads/tasks to staff' },
+  'Maang (retailer wishlist)': { hi: 'माँग (रिटेलर विशलिस्ट)', en: 'Demand (retailer wishlists)' },
+  'File/photo se ek saath maal': { hi: 'फ़ाइल/फ़ोटो से एक साथ माल', en: 'Bulk add from file/photo' },
 };
 
 export default DICT;

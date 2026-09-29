@@ -25,6 +25,8 @@ export const wholesalerSignupSchema = z.object({
     bada nuksan hota.
   */
   refCode: z.string().trim().max(12).optional(),
+  // Trial kis plan pe — signup pe chuna ho to (na chuna to admin ka default)
+  planCode: z.string().trim().max(20).optional(),
 });
 
 export const loginSchema = z.object({

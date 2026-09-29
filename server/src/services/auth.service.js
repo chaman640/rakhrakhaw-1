@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { ROLES, PARTY_TYPES, PARTY_STATUS,  } from '../config/constants.js';
 import { ALL_PERMISSIONS, STAFF_ROLE_LABEL, userCan } from '../config/permissions.js';
+import { startTrial } from './billing.service.js';
 import ApiError from '../utils/ApiError.js';
 import { normalizePhone } from '../utils/phone.js';
 import { getStateCode } from '../config/states.js';
@@ -84,7 +85,9 @@ function publicUser(user) {
 }
 
 /** Wholesaler signup — User + Business dono ek saath bante hain */
-export async function signupWholesaler({ name, phone, password, businessName, otpToken, refCode }) {
+export async function signupWholesaler({
+  name, phone, password, businessName, otpToken, refCode, planCode,
+}) {
   const cleanPhone = normalizePhone(phone);
 
   /*
@@ -174,6 +177,14 @@ export async function signupWholesaler({ name, phone, password, businessName, ot
       ownerPhone: cleanPhone,
     });
   }
+
+  /*
+    15 din ka free trial — signup ke pal hi (billing.service.js — startTrial).
+    Free mode me bhi ban jata hai: jis din paid mode chalu ho, trial ki
+    tareekh pehle se sahi hogi. Fail ho to signup nahi rukta — pehli zarurat pe
+    (`ensureTrial`) dobara ban jayega.
+  */
+  await startTrial(business._id, planCode).catch((e) => console.warn('[trial] nahi bana:', e.message));
 
   // Abhi abhi signup kiya hai to ye khud malik hai — poora profile milega
   return { token: signToken(user), user: publicUser(user), business: businessForUser(business, user) };

@@ -3,9 +3,14 @@ import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { syncIndexes } from './config/indexes.js';
 import { runBackfills } from './config/backfill.js';
+import { loadPlatformConfig } from './services/platform.service.js';
 
 async function start() {
   await connectDB();
+
+  // Admin ki badli hui setting (plan ka daam, trial ke din, feature) — request
+  // aane se pehle hi lag jaye. Na mile to code wale default pe hi chalta hai.
+  await loadPlatformConfig().catch((e) => console.warn('[platform] setting nahi padhi:', e.message));
 
   // Purane project ke bache hue index hata dete hain (warna signup pe
   // "Ye email pehle se maujud hai" jaisi ajeeb error aati hai), aur purane

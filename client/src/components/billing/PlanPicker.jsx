@@ -209,7 +209,9 @@ export default function PlanPicker({ onDone, compact = false }) {
 
   const plans = (data.plans || []).filter((p) => p.priceRupees > 0);
   const autopayOn = Boolean(me?.autopay?.on);
-  const abhiKaCode = me?.plan?.code || '';
+  // Trial me koi plan "chalu" nahi maana jata — usi plan pe bhi autopay lena hai
+  const onTrial = Boolean(me?.trial?.on || me?.trial?.expired);
+  const abhiKaCode = onTrial ? '' : (me?.plan?.code || '');
   /*
     Grahak ka apna daam — server bhi yahi dekhta hai. Config ka daam badalne
     par purane grahak ke liye upgrade/downgrade ka faisla ulta pad jata tha.
@@ -237,6 +239,12 @@ export default function PlanPicker({ onDone, compact = false }) {
       {!data.chargingNow && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {t('Abhi poori app free chal rahi hai — plan lene ki zarurat nahi.')}
+        </p>
+      )}
+
+      {me?.trial?.on && (
+        <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          {t('Free trial chal raha hai — {n} din baaki. Abhi plan lenge to trial ke bache din bhi saath judenge.', { n: me.trial.daysLeft })}
         </p>
       )}
 

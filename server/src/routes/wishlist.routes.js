@@ -4,6 +4,7 @@ import { withBuyerTenant, requireActiveParty, withTenant, requirePaidSeller } fr
 import { validate } from '../middleware/validate.js';
 import { ROLES } from '../config/constants.js';
 import * as ctrl from '../controllers/wishlist.controller.js';
+import { requireFeature } from '../middleware/feature.js';
 import { addWishSchema, idParamSchema, itemIdParamSchema } from '../validators/wishlist.validator.js';
 
 /* Kharidaar ki wishlist — cart jaisa hi pehra (dukaan chuni ho, party active ho) */
@@ -18,4 +19,4 @@ buyerWishlist.delete('/:id', validate({ params: idParamSchema }), ctrl.remove);
 /* Malik/staff — "log kya maang rahe hain". Maal dekhne ki ijazat kaafi hai */
 export const sellerDemand = Router();
 sellerDemand.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
-sellerDemand.get('/', requirePermission('items:view'), ctrl.demand);
+sellerDemand.get('/', requirePermission('items:view'), requireFeature('demand'), ctrl.demand);
