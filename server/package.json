@@ -16,7 +16,8 @@
     "sms:test": "node scripts/sms-test.js",
     "billing:check": "node scripts/billing-check.js",
     "e2e": "node scripts/e2e.js",
-    "hr:check": "node scripts/hr-check.js"
+    "hr:check": "node scripts/hr-check.js",
+    "accounts:check": "node scripts/accounts-check.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

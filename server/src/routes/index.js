@@ -39,6 +39,7 @@ import { buyerWishlist, sellerDemand } from './wishlist.routes.js';
 import adminPlatformRoutes from './adminPlatform.routes.js';
 import announcementRoutes from './announcement.routes.js';
 import hrRoutes from './hr.routes.js';
+import accountsRoutes from './accounts.routes.js';
 
 const router = Router();
 
@@ -137,5 +138,6 @@ router.use('/my/stories', myStoryRoutes);
 router.use('/tutorials', tutorialRoutes);
 router.use('/crm', crmRoutes);
 router.use('/hr', hrRoutes);
+router.use('/accounts', accountsRoutes);
 
 export default router;

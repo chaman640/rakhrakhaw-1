@@ -46,6 +46,7 @@ import WholesalerChatThread from '@/pages/wholesaler/ChatThread';
 import Autopay from '@/pages/wholesaler/Autopay';
 import Crm from '@/pages/wholesaler/Crm';
 import Hr from '@/pages/wholesaler/Hr';
+import Accounts from '@/pages/wholesaler/Accounts';
 import EmployeeDetail from '@/pages/wholesaler/hr/EmployeeDetail';
 import EmpLayout from '@/pages/emp/EmpLayout';
 import {
@@ -299,6 +300,7 @@ export default function AppRoutes() {
         <Route path="/returns/:id" element={<RequirePermission permission="returns"><ReturnDetail /></RequirePermission>} />
         <Route path="/expenses" element={<RequirePermission permission="expenses"><Buying /></RequirePermission>} />
         <Route path="/reports" element={<RequirePermission permission="reports"><Reports /></RequirePermission>} />
+        <Route path="/accounts" element={<RequirePermission permission="reports:profit"><Accounts /></RequirePermission>} />
         {/*
           Staff aur "kisne kya kiya" ab ek hi page ke do tab hain.
           `/activity` purane link aur notification ke liye chalta rehta hai —

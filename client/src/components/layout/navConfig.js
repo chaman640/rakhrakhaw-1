@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
   House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart, CalendarCheck,
-  Briefcase, IdCard,
+  Briefcase, IdCard, Landmark,
 } from 'lucide-react';
 
 /**
@@ -139,6 +139,11 @@ export const wholesalerNav = [
   {
     to: '/reports', label: 'Reports', icon: BarChart3, part: 10, perm: 'reports',
     desc: 'Fayda-nuksan, GST, stock aur baaki hisaab',
+  },
+  {
+    to: '/accounts', label: 'Accounts', icon: Landmark, perm: 'reports:profit',
+    desc: 'Day book, ledgers, trial balance, balance sheet and GST returns',
+    alt: 'accounting hisaab kitab ledger trial balance balance sheet gstr gstr-1 gstr-3b cash flow journal day book',
   },
   // Part 15 step 5: staff aur "kisne kya kiya" ab ek hi page pe
   {

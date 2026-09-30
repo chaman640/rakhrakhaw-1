@@ -45,7 +45,7 @@ const Select = forwardRef(function Select(
             Ek jagah theek karne se app ke saare dropdown theek ho jate hain,
             aur kisi bulane wale ko kuch badalna nahi padta.
           */}
-          {placeholder && <option value="">{t(placeholder)}</option>}
+          {placeholder && !options.some((o) => (typeof o === 'string' ? o : o.value) === '') && <option value="">{t(placeholder)}</option>}
           {options.map((opt) => {
             const value = typeof opt === 'string' ? opt : opt.value;
             const labelText = typeof opt === 'string' ? opt : opt.label;
