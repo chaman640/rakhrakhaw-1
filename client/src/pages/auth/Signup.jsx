@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import HelpVideos from '@/components/help/HelpVideos';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Store, UserRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -135,6 +136,7 @@ export default function Signup() {
         </>
       }
     >
+      {step !== 'otp' && <HelpVideos placement={isRetailer ? 'signup,buyer_signup' : 'signup,seller_signup'} variant="inline" className="mb-4 w-full justify-center" />}
       {step === 'otp' ? (
         <OtpStep
           phone={cleanPhone}

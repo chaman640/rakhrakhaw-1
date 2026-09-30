@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  UserCircle, CalendarDays, TrendingUp, UsersRound, Bell, LifeBuoy, Settings, LogOut, ChevronRight, Camera, Phone, Briefcase,
+  UserCircle, CalendarDays, TrendingUp, UsersRound, Bell, LifeBuoy, Settings, LogOut, ChevronRight, Camera, Phone, Briefcase, PlayCircle,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useQuery, bust } from '@/hooks/useQuery';
@@ -23,7 +23,8 @@ export function EmpMore() {
     ['/emp/more/performance', TrendingUp, 'Performance'],
     ['/emp/more/team', UsersRound, 'My team'],
     ['/notifications', Bell, 'Notifications'],
-    ['/emp/more/requests?new=help', LifeBuoy, 'Help desk'],
+    ['/emp/more/requests?new=help', LifeBuoy, 'Ask HR'],
+    ['/help', PlayCircle, 'App help & support'],
     ['/settings', Settings, 'Settings'],
     ...(staffRole !== 'employee' && can(['hr', 'payroll']) ? [['/hr', Briefcase, 'HR admin']] : []),
   ];

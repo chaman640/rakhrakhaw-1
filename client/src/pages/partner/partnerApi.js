@@ -44,6 +44,10 @@ client.interceptors.response.use(
     const e = new Error(d?.message || 'Kuch gadbad ho gayi — dobara koshish karein');
     e.status = err.response?.status;
     e.fields = d?.errors || null;
+    e.details = d?.details || null;
+    if (e.status === 401 && String(err.config?.url || '').startsWith('/admin') && !String(err.config?.url).startsWith('/admin/login')) {
+      window.dispatchEvent(new CustomEvent('rr:admin-signed-out'));
+    }
     return Promise.reject(e);
   },
 );

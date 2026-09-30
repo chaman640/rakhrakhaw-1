@@ -38,7 +38,7 @@ export async function forPlacement(user, { placement, lang = 'en', platform = 'w
     status: { $in: ['published', null] },
     $and: [{ $or: [{ publishAt: null }, { publishAt: { $lte: now } }] }],
   };
-  if (placement) filter.placements = placement;
+  if (placement) filter.placements = { $in: placement.split(',').slice(0, 5) };
   if (kind) filter.kind = kind;
   const type = userTypeOf(user);
   let plan = '';

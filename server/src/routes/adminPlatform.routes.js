@@ -31,7 +31,13 @@ router.get('/dashboard', can('dashboard'), validate({
     range: z.enum(['today', 'yesterday', '7d', '30d', 'month', 'lastmonth', 'custom']).optional().default('30d'),
     from: z.string().optional(), to: z.string().optional(),
   }),
-}), asyncHandler(async (req, res) => ok(res, await svc.dashboard(req.query))));
+}), asyncHandler(async (req, res) => {
+  const d = await svc.dashboard(req.query);
+  // Kamai sirf unhe jinke role me payments hain
+  if (!req.admin.perms.includes('payments:view')) d.revenue = null;
+  if (!req.admin.perms.includes('audit:view')) d.recentAdminActions = [];
+  return ok(res, d);
+}));
 
 /* ── dukaanein ── */
 router.get('/businesses', can('businesses:view'), validate({

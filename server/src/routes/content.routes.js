@@ -17,7 +17,7 @@ router.use(optionalAuth);
 
 router.get('/', validate({
   query: z.object({
-    placement: z.string().trim().max(40).optional().default(''),
+    placement: z.string().trim().max(120).optional().default(''),
     lang: z.enum(['hi', 'en', 'hinglish']).optional().default('en'),
     platform: z.enum(['android', 'web', 'desktop']).optional().default('web'),
     kind: z.enum(['', 'video', 'article', 'faq']).optional().default(''),

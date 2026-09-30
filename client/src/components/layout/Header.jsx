@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
 import NotificationBell from './NotificationBell';
+import HelpVideos from '@/components/help/HelpVideos';
 import { t } from '@/lib/i18n';
 
 /**
@@ -147,6 +148,7 @@ export default function Header({ title, showBack, backTo }) {
         </button>
       )}
 
+      <HelpVideos />
       <NotificationBell />
 
       <div className="relative shrink-0">

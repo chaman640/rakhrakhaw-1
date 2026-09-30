@@ -47,6 +47,8 @@ import Autopay from '@/pages/wholesaler/Autopay';
 import Crm from '@/pages/wholesaler/Crm';
 import Hr from '@/pages/wholesaler/Hr';
 import Accounts from '@/pages/wholesaler/Accounts';
+import Help from '@/pages/Help';
+import Support from '@/pages/Support';
 import EmployeeDetail from '@/pages/wholesaler/hr/EmployeeDetail';
 import EmpLayout from '@/pages/emp/EmpLayout';
 import {
@@ -370,6 +372,9 @@ export default function AppRoutes() {
         }
       >
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/support/:id" element={<Support />} />
         {/*
           Settings bhi yahin, Notifications ki tarah — aur bilkul usi wajah se.
 

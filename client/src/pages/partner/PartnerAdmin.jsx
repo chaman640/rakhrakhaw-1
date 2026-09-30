@@ -1,27 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  LogOut, Search, IndianRupee, KeyRound, AlertTriangle, ArrowLeft, Ban, Check,
-  Video, Plus, Trash2,
+  LogOut, Search, AlertTriangle, ArrowLeft, Ban, ShieldCheck,
 } from 'lucide-react';
 import api, { getToken, setToken } from './partnerApi';
 import {
   AdminDashboard, AdminBusinesses, AdminUsers, AdminPayments, AdminPlans, AdminAnnouncements, AdminAuditLog,
 } from './PlatformAdmin';
+import { AdminLogin, SecurityPanel } from './AdminSecurity';
+import { AdminAdmins, AdminSupport, AdminContent } from './AdminExtras';
 
 /*
   Admin ki navigation — desktop pe upar ek line, phone pe khisakne wali.
-  Platform wale tab (PlatformAdmin.jsx) + purane do (salesman, video).
 */
+// [tab, label, permission] — role me ijazat na ho to tab dikhta hi nahi (backend bhi rokta hai)
 const ADMIN_TABS = [
-  ['dashboard', 'Dashboard'],
-  ['businesses', 'Dukaanein'],
-  ['users', 'Users'],
-  ['payments', 'Payments'],
-  ['plans', 'Plans & Features'],
-  ['tutorials', 'Tutorial videos'],
-  ['announcements', 'Soochna'],
-  ['salesmen', 'Salesman'],
-  ['audit', 'Register'],
+  ['dashboard', 'Dashboard', 'dashboard'],
+  ['businesses', 'Businesses', 'businesses:view'],
+  ['users', 'Users', 'businesses:view'],
+  ['payments', 'Payments', 'payments:view'],
+  ['plans', 'Plans & features', 'plans:manage'],
+  ['support', 'Support', 'support:manage'],
+  ['content', 'Tutorials & help', 'content:manage'],
+  ['announcements', 'Announcements', 'announcements:manage'],
+  ['salesmen', 'Salesmen', 'partners:manage'],
+  ['admins', 'Admins', 'admins:manage'],
+  ['audit', 'Audit log', 'audit:view'],
 ];
 
 /*
@@ -34,54 +37,6 @@ const ADMIN_TABS = [
 
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const dt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : '—');
-
-function Login({ onDone }) {
-  const [f, setF] = useState({ email: '', password: '' });
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function go(e) {
-    e.preventDefault();
-    setErr(''); setBusy(true);
-    try {
-      const res = await api.post('/admin/login', f);
-      setToken(res.data.token, true);
-      onDone(res.data);
-    } catch (e2) { setErr(e2.message); } finally { setBusy(false); }
-  }
-
-  return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white">
-          <KeyRound size={20} />
-        </div>
-        <h1 className="text-xl font-bold text-slate-900">Admin</h1>
-        <p className="text-sm text-slate-500">Salesman ka hisaab</p>
-      </div>
-
-      <form onSubmit={go} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
-        <input
-          type="email" placeholder="Email" required value={f.email}
-          onChange={(e) => setF((p) => ({ ...p, email: e.target.value }))}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-slate-900"
-        />
-        <input
-          type="password" placeholder="Password" required value={f.password}
-          onChange={(e) => setF((p) => ({ ...p, password: e.target.value }))}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-slate-900"
-        />
-        {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{err}</p>}
-        <button
-          type="submit" disabled={busy}
-          className="w-full rounded-lg bg-slate-900 py-2.5 font-semibold text-white disabled:opacity-60"
-        >
-          {busy ? 'Ruko...' : 'Login'}
-        </button>
-      </form>
-    </div>
-  );
-}
 
 /** Ek salesman ka poora byora + "de diya" */
 function One({ id, onBack }) {
@@ -197,216 +152,79 @@ function One({ id, onBack }) {
   );
 }
 
-/**
- * TUTORIAL VIDEOS — har page/kadam ka YouTube link yahin se lagta hai
- * (Part 29). Naya "key" bana kar naya video jodo, ya purane ka URL badlo.
- *
- * Video khud yahan nahi aata — sirf YouTube ka URL. Iska poora karan
- * `TutorialVideo.js` model me likha hai.
- */
-function EditableTutorial({ row, onSaved }) {
-  const [f, setF] = useState({
-    key: row?.key || '', title: row?.title || '', order: row?.order ?? 0,
-    inOnboardingTour: row?.inOnboardingTour || false,
-    hi: row?.videos?.hi || '', en: row?.videos?.en || '',
-  });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const isNew = !row;
-
-  async function save() {
-    if (!f.key.trim() || !f.title.trim()) { setErr('Key aur naam dono chahiye'); return; }
-    setErr(''); setBusy(true);
-    try {
-      const res = await api.post('/admin/tutorials', {
-        key: f.key.trim(), title: f.title.trim(), order: Number(f.order) || 0,
-        inOnboardingTour: f.inOnboardingTour,
-        videos: { hi: f.hi.trim(), en: f.en.trim() },
-      });
-      onSaved(res.data);
-      if (isNew) setF({ key: '', title: '', order: 0, inOnboardingTour: false, hi: '', en: '' });
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
-  }
-
-  async function remove() {
-    if (!window.confirm(`"${row.title}" hata dein?`)) return;
-    setBusy(true);
-    try { await api.delete(`/admin/tutorials/${row.key}`); onSaved(null, row.key); }
-    catch (e) { setErr(e.message); } finally { setBusy(false); }
-  }
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_80px]">
-        <input
-          placeholder="key — jaise page:/items"
-          value={f.key} disabled={!isNew}
-          onChange={(e) => setF((p) => ({ ...p, key: e.target.value }))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500"
-        />
-        <input
-          placeholder="Naam — jaise Items page"
-          value={f.title}
-          onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        />
-        <input
-          type="number" placeholder="Kram"
-          value={f.order}
-          onChange={(e) => setF((p) => ({ ...p, order: e.target.value }))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        />
-      </div>
-
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <input
-          placeholder="Hindi wala YouTube URL"
-          value={f.hi}
-          onChange={(e) => setF((p) => ({ ...p, hi: e.target.value }))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        />
-        <input
-          placeholder="English wala YouTube URL"
-          value={f.en}
-          onChange={(e) => setF((p) => ({ ...p, en: e.target.value }))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        />
-      </div>
-
-      <div className="mt-2 flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input
-            type="checkbox" checked={f.inOnboardingTour}
-            onChange={(e) => setF((p) => ({ ...p, inOnboardingTour: e.target.checked }))}
-          />
-          Onboarding tour me shaamil ho
-        </label>
-
-        <div className="flex gap-2">
-          {!isNew && (
-            <button type="button" onClick={remove} disabled={busy}
-              className="rounded-lg px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
-              <Trash2 size={14} />
-            </button>
-          )}
-          <button type="button" onClick={save} disabled={busy}
-            className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60">
-            {isNew ? 'Jodein' : 'Save karein'}
-          </button>
-        </div>
-      </div>
-
-      {err && <p className="mt-2 text-sm text-red-700">{err}</p>}
-    </div>
-  );
-}
-
-function Tutorials() {
-  const [rows, setRows] = useState(null);
-  const [err, setErr] = useState('');
-
-  const load = useCallback(async () => {
-    try { setRows((await api.get('/admin/tutorials')).data); } catch (e) { setErr(e.message); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  function handleSaved(updated, deletedKey) {
-    setRows((cur) => {
-      if (deletedKey) return cur.filter((r) => r.key !== deletedKey);
-      const exists = cur.some((r) => r.key === updated.key);
-      const next = exists ? cur.map((r) => (r.key === updated.key ? updated : r)) : [...cur, updated];
-      return next.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-    });
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-        <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-          <Plus size={14} /> Naya video jodein
-        </p>
-        <EditableTutorial onSaved={handleSaved} />
-      </div>
-
-      {err && <p className="text-sm text-red-700">{err}</p>}
-      {!rows ? (
-        <p className="py-12 text-center text-slate-400">Ruko...</p>
-      ) : rows.length === 0 ? (
-        <p className="py-12 text-center text-slate-500">Abhi tak koi video nahi laga</p>
-      ) : (
-        <div className="space-y-3">
-          {rows.map((row) => <EditableTutorial key={row.key} row={row} onSaved={handleSaved} />)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function Panel({ onLogout, warnPassword }) {
+function Panel({ me, reloadMe, onLogout }) {
   const [d, setD] = useState(null);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
-  const [pw, setPw] = useState(null);
-  const [tab, setTab] = useState('dashboard');
+  const perms = me.perms || [];
+  const tabs = ADMIN_TABS.filter(([, , perm]) => perms.includes(perm));
+  const [tab, setTab] = useState(me.mustSetup2fa ? 'security' : (tabs[0]?.[0] || 'security'));
   const [bizId, setBizId] = useState(null);
   // Plan ki list — dropdown (plan dena, filter, soochna) ke liye ek baar
   const [plans, setPlans] = useState([]);
   const loadPlans = useCallback(async () => {
     try { setPlans((await api.get('/admin/platform/plans')).data.plans); } catch { /* dikh jayega */ }
   }, []);
-  useEffect(() => { loadPlans(); }, [loadPlans]);
+  useEffect(() => { if (!me.mustSetup2fa) loadPlans(); }, [loadPlans, me.mustSetup2fa]);
   const go = (t, id = null) => { setTab(t); setBizId(id); setOpen(null); };
 
   const load = useCallback(async () => {
     try { setD((await api.get(`/admin/list?q=${encodeURIComponent(q)}`)).data); } catch { /* dikh jayega */ }
   }, [q]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (tab === 'salesmen') load(); }, [load, tab]);
+  const locked = me.mustSetup2fa;
 
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <p className="font-bold text-slate-900">RakhRakhav Admin</p>
+          <div>
+            <p className="font-bold text-slate-900">RakhRakhav Admin</p>
+            <p className="text-xs text-slate-500">{me.name || me.email} · {me.roleLabel}</p>
+          </div>
           <div className="flex gap-1">
-            <button type="button" onClick={() => setPw({})} className="rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-100">
-              <KeyRound size={15} />
+            <button type="button" onClick={() => go('security')} title="Security" aria-label="Security" className={`rounded-lg px-2.5 py-2 text-sm hover:bg-slate-100 ${me.totpEnabled ? 'text-slate-600' : 'text-amber-600'}`}>
+              <ShieldCheck size={15} />
             </button>
-            <button type="button" onClick={onLogout} className="rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-100">
+            <button type="button" onClick={onLogout} title="Sign out" aria-label="Sign out" className="rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-100">
               <LogOut size={15} />
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
-          {ADMIN_TABS.map(([v, label]) => (
-            <button
-              key={v} type="button" onClick={() => go(v)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium ${tab === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              {v === 'tutorials' && <Video size={14} className="mr-1 inline" />}{label}
-            </button>
-          ))}
-        </nav>
+        {!locked && (
+          <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
+            {tabs.map(([v, label]) => (
+              <button
+                key={v} type="button" onClick={() => go(v)}
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium ${tab === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
       </header>
 
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-5">
-        {pw && <PasswordBox onClose={() => setPw(null)} />}
+        {tab === 'security' && <SecurityPanel me={me} onChanged={reloadMe} onSignedOut={onLogout} />}
+        {!locked && <>
         {tab === 'dashboard' && <AdminDashboard go={go} />}
         {tab === 'businesses' && <AdminBusinesses openId={bizId} plans={plans} />}
         {tab === 'users' && <AdminUsers />}
         {tab === 'payments' && <AdminPayments />}
         {tab === 'plans' && <AdminPlans onChanged={loadPlans} />}
+        {tab === 'support' && <AdminSupport />}
+        {tab === 'content' && <AdminContent plans={plans} />}
         {tab === 'announcements' && <AdminAnnouncements plans={plans} />}
+        {tab === 'admins' && <AdminAdmins meId={me._id} />}
         {tab === 'audit' && <AdminAuditLog />}
-        {tab === 'tutorials' ? <Tutorials /> : tab !== 'salesmen' ? null : (
+        </>}
+        {tab !== 'salesmen' || locked ? null : (
         <>
-        {warnPassword && (
+        {!me.passwordChanged && (
           <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-            <span>
-              Aap abhi bhi wahi password use kar rahe hain jo setting me likha tha.
-              Ye panel me sabka paisa dikhata hai — <button type="button" onClick={() => setPw({})} className="font-semibold underline">abhi badal lijiye</button>.
-            </span>
+            <span>You are still using the initial password. <button type="button" onClick={() => go('security')} className="font-semibold underline">Change it now</button>.</span>
           </div>
         )}
 
@@ -479,53 +297,25 @@ function Panel({ onLogout, warnPassword }) {
   );
 }
 
-function PasswordBox({ onClose }) {
-  const [f, setF] = useState({ currentPassword: '', newPassword: '' });
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function go(e) {
-    e.preventDefault();
-    setErr(''); setMsg('');
-    try {
-      await api.post('/admin/password', f);
-      setMsg('Password badal gaya. Ab purana password nahi chalega.');
-      setF({ currentPassword: '', newPassword: '' });
-    } catch (e2) { setErr(e2.message); }
-  }
-
-  return (
-    <form onSubmit={go} className="rounded-xl border border-slate-300 bg-white p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-900">Password badlein</p>
-        <button type="button" onClick={onClose} className="text-sm text-slate-500">Band karein</button>
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="password" placeholder="Purana password" required value={f.currentPassword}
-          onChange={(e) => setF((p) => ({ ...p, currentPassword: e.target.value }))}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 outline-none"
-        />
-        <input
-          type="password" placeholder="Naya (8+ akshar)" required value={f.newPassword}
-          onChange={(e) => setF((p) => ({ ...p, newPassword: e.target.value }))}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 outline-none"
-        />
-        <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white">Badlein</button>
-      </div>
-      {msg && <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-700"><Check size={14} />{msg}</p>}
-      {err && <p className="mt-2 text-sm text-red-700">{err}</p>}
-    </form>
-  );
-}
-
 export default function PartnerAdmin() {
+  const [me, setMe] = useState(null);
   const [logged, setLogged] = useState(() => Boolean(getToken(true)));
-  const [warn, setWarn] = useState(false);
 
-  const logout = () => { setToken('', true); setLogged(false); };
+  const logout = useCallback(() => {
+    api.post('/admin/logout', {}).catch(() => {});
+    setToken('', true); setLogged(false); setMe(null);
+  }, []);
+  const reloadMe = useCallback(async () => {
+    try { setMe((await api.get('/admin/me')).data); } catch { setToken('', true); setLogged(false); }
+  }, []);
+  useEffect(() => { if (logged) reloadMe(); }, [logged, reloadMe]);
+  useEffect(() => {
+    const out = () => { setToken('', true); setLogged(false); setMe(null); };
+    window.addEventListener('rr:admin-signed-out', out);
+    return () => window.removeEventListener('rr:admin-signed-out', out);
+  }, []);
 
-  return logged
-    ? <Panel onLogout={logout} warnPassword={warn} />
-    : <Login onDone={(d) => { setWarn(!d.passwordChanged); setLogged(true); }} />;
+  if (!logged) return <AdminLogin onDone={() => setLogged(true)} />;
+  if (!me) return <p className="py-20 text-center text-slate-400">Loading…</p>;
+  return <Panel key={me._id} me={me} reloadMe={reloadMe} onLogout={logout} />;
 }

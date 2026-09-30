@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
   House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart, CalendarCheck,
-  Briefcase, IdCard, Landmark,
+  Briefcase, IdCard, Landmark, LifeBuoy,
 } from 'lucide-react';
 
 /**
@@ -158,6 +158,11 @@ export const wholesalerNav = [
     to: '/settings', label: 'Settings', icon: Settings, part: 2,
     desc: 'Bhasha, roshni, akshar ka size aur backup',
   },
+  {
+    to: '/help', label: 'Help & support', icon: LifeBuoy,
+    desc: 'Videos, guides, FAQs and contact our team',
+    alt: 'help support madad tutorial video faq ticket shikayat complaint',
+  },
 ];
 
 /**
@@ -208,6 +213,7 @@ export const buyerNav = [
   */
   { to: '/profile', label: 'Profile', icon: UserCircle, part: 2, desc: 'Aapka account' },
   { to: '/settings', label: 'Settings', icon: Settings, part: 2, desc: 'Bhasha, roshni aur akshar ka size' },
+  { to: '/help', label: 'Help & support', icon: LifeBuoy, desc: 'Videos, guides, FAQs and contact our team' },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────

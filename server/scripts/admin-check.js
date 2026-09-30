@@ -85,6 +85,9 @@ async function run() {
 
     r = await call('GET', P('/businesses'), { token: supTok });
     check('support admin can view businesses', r.status === 200, `${r.status}`);
+    r = await call('GET', P('/dashboard'), { token: supTok });
+    const r0 = await call('GET', P('/dashboard'), { token: sTok });
+    check('revenue hidden from support admin, shown to super', r.status === 200 && r.data?.revenue === null && r0.data?.revenue?.total !== undefined, JSON.stringify(r.data?.revenue));
     r = await call('PUT', P('/plans'), { token: supTok, body: {} });
     check('support admin cannot change plans', r.status === 403, `${r.status}`);
     r = await call('GET', P('/content'), { token: supTok });

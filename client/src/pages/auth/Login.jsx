@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import HelpVideos from '@/components/help/HelpVideos';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
@@ -63,6 +64,7 @@ export default function Login() {
         </>
       }
     >
+      <HelpVideos placement="login" variant="inline" className="mb-4 w-full justify-center" />
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label={t('Phone number')}

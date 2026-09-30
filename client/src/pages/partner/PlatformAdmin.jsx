@@ -120,12 +120,14 @@ export function AdminDashboard({ go }) {
               Abhi BILLING_MODE=free hai — koi paisa nahi liya ja raha. Trial ki tareekh phir bhi likhi ja rahi hai.
             </p>
           )}
+          {d.revenue && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Aaj ki kamai" value={inr(d.revenue.today.rupees)} sub={`${d.revenue.today.count} payment`} icon={IndianRupee} tone="text-emerald-700" />
             <Stat label="Is mahine" value={inr(d.revenue.month.rupees)} sub={`${d.revenue.month.count} payment`} icon={IndianRupee} />
             <Stat label="Chuni hui avdhi" value={inr(d.revenue.range.rupees)} sub={`Fail: ${d.revenue.failedInRange} · Refund: ${d.revenue.refunded}`} icon={IndianRupee} />
             <Stat label="Kul kamai" value={inr(d.revenue.total.rupees)} icon={IndianRupee} />
           </div>
+          )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Sellers" value={d.users.sellers} sub={`+${d.users.newSellers} naye`} icon={Store} />
             <Stat label="Buyers / Retailers" value={d.users.buyers} sub={`+${d.users.newBuyers} naye`} icon={Users} />
@@ -155,6 +157,7 @@ export function AdminDashboard({ go }) {
               </table>
               <p className="mt-3 text-xs text-slate-500">
                 Videos: {d.content.videos} (lagi hui {d.content.publishedVideos}, baaki {d.content.draftVideos})
+                {d.support && <> · Support: {d.support.open} khule{d.support.urgent ? `, ${d.support.urgent} zaroori` : ''}</>}
               </p>
             </Card>
             <Card>

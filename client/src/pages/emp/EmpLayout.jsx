@@ -5,6 +5,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
 import NotificationBell from '@/components/layout/NotificationBell';
+import HelpVideos from '@/components/help/HelpVideos';
 import AnnouncementBar from '@/components/AnnouncementBar';
 import FeatureGate from '@/components/billing/FeatureGate';
 import { cn } from '@/lib/cn';
@@ -34,6 +35,7 @@ export default function EmpLayout() {
             <p className="truncate text-sm font-semibold text-slate-900">{business?.name || t('My Work')}</p>
             <p className="text-[11px] text-slate-500">{t('Employee App')}</p>
           </div>
+          <HelpVideos placement="employee_app" />
           <NotificationBell />
         </div>
       </header>
