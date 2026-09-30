@@ -10,6 +10,12 @@ import { t } from '@/lib/i18n';
 import {
   Amt, DateRange, PresetChips, ExportButton, Toolbar, today, fyStart, dateLabel,
 } from './accShared';
+import { VerifyModal } from './AuditTab';
+
+const VERIFY_TYPE = {
+  Sale: 'Invoice', Purchase: 'Purchase', Receipt: 'Payment', Payment: 'Payment', Expense: 'Expense', Salary: 'Expense',
+  'Sales return': 'ReturnNote', 'Purchase return': 'ReturnNote', Journal: 'JournalVoucher', Contra: 'JournalVoucher',
+};
 
 const Loading = () => <div className="flex justify-center py-12"><Spinner size={24} /></div>;
 const GROUP_LABEL = { asset: 'Assets', liability: 'Liabilities', equity: 'Capital', income: 'Income', expense: 'Expenses' };
@@ -18,6 +24,7 @@ export function DayBook() {
   const [r, setR] = useState({ from: today(), to: today() });
   const [type, setType] = useState('');
   const [open, setOpen] = useState(null);
+  const [verify, setVerify] = useState(null);
   const { data, loading } = useQuery(['acc', 'daybook', r.from, r.to, type], () => api.get('/accounts/day-book', { params: { ...r, type } }).then((x) => x.data));
   const rows = data?.rows || [];
   return (
@@ -42,6 +49,9 @@ export function DayBook() {
                     <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{[v.no, v.party, v.narration].filter(Boolean).join(' · ')}</span>
                     <Amt v={v.amount} strong />
                   </button>
+                  {isOpen && VERIFY_TYPE[v.type] && /^[a-f\d]{24}$/i.test(v.id) && (
+                    <button type="button" onClick={() => setVerify({ type: VERIFY_TYPE[v.type], id: v.id })} className="mb-1 ml-8 text-xs font-medium text-brand-700 hover:underline">{t('Verify this entry')}</button>
+                  )}
                   {isOpen && (
                     <table className="mb-2 ml-8 w-[calc(100%-2rem)] text-xs">
                       <tbody>
@@ -61,6 +71,7 @@ export function DayBook() {
           </ul>
         </>
       )}
+      <VerifyModal target={verify} onClose={() => setVerify(null)} />
     </Card>
   );
 }

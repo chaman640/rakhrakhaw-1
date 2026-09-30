@@ -45,6 +45,7 @@ const expenseSchema = new mongoose.Schema(
 
     // Paisa kaise gaya — cash ghata to golak se, UPI/bank se to account se
     mode: { type: String, enum: EXPENSE_MODES, default: 'CASH' },
+    bankAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'BankAccount', default: null },
 
     // Kisko diya — "Ramu", "Bharat Petrol Pump". Sirf yaad ke liye, koi rishta nahi.
     paidTo: { type: String, trim: true, default: '' },

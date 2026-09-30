@@ -7,6 +7,7 @@ import { formatMoney, formatQty } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Combobox, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import BankSelect from '@/components/BankSelect';
 
 /**
  * KHARCH LIKHNE KA PARDA.
@@ -49,7 +50,7 @@ export default function ExpenseFormModal({ open, onClose, expense, categories, o
 
   function blank() {
     return {
-      amount: '', category: '', date: today(), mode: 'CASH', paidTo: '', note: '',
+      amount: '', category: '', date: today(), mode: 'CASH', bankAccountId: null, paidTo: '', note: '',
     };
   }
 
@@ -72,6 +73,7 @@ export default function ExpenseFormModal({ open, onClose, expense, categories, o
         category: expense.category || '',
         date: (expense.date || '').slice(0, 10) || today(),
         mode: expense.mode || 'CASH',
+        bankAccountId: expense.bankAccountId || null,
         paidTo: expense.paidTo || '',
         note: expense.note || '',
       });
@@ -138,6 +140,7 @@ export default function ExpenseFormModal({ open, onClose, expense, categories, o
       const shared = {
         date: form.date,
         mode: form.mode,
+        bankAccountId: form.mode === 'CASH' ? null : form.bankAccountId,
         paidTo: form.paidTo.trim(),
         note: form.note.trim(),
       };
@@ -345,6 +348,8 @@ export default function ExpenseFormModal({ open, onClose, expense, categories, o
             </div>
           </div>
         </div>
+
+        {form.mode !== 'CASH' && <BankSelect value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />}
 
         <Input label={t('Kisko diya (marzi se)')} value={form.paidTo} onChange={set('paidTo')}
           placeholder={t('Ramu / Bharat Petrol Pump')} />

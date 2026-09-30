@@ -15,6 +15,7 @@ export const createExpenseSchema = z.object({
   category: z.string().trim().min(1, 'Kharch kis cheez ka hai, ye chunein').max(60),
   amount: money,
   mode: z.enum(EXPENSE_MODES).optional().default('CASH'),
+  bankAccountId: objectId.nullable().optional(),
   paidTo: z.string().trim().max(120).optional(),
   note: z.string().trim().max(500).optional(),
   wasteItemId: objectId.optional(),
@@ -26,6 +27,7 @@ export const updateExpenseSchema = z.object({
   category: z.string().trim().min(1).max(60).optional(),
   amount: money.optional(),
   mode: z.enum(EXPENSE_MODES).optional(),
+  bankAccountId: objectId.nullable().optional(),
   paidTo: z.string().trim().max(120).optional(),
   note: z.string().trim().max(500).optional(),
 }).strict();

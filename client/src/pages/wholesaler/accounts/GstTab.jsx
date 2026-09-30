@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Recon2b from './Recon2b';
 import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import api from '@/lib/api';
 import { useQuery } from '@/hooks/useQuery';
@@ -175,11 +176,12 @@ export default function GstTab() {
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <MonthPicker value={period} onChange={setPeriod} />
-        <Chips value={view} onChange={setView} options={[{ value: '3b', label: 'GSTR-3B' }, { value: '1', label: 'GSTR-1' }, { value: 'itc', label: 'Purchase GST (ITC)' }, { value: 'checks', label: 'Checks' }]} />
+        <Chips value={view} onChange={setView} options={[{ value: '3b', label: 'GSTR-3B' }, { value: '1', label: 'GSTR-1' }, { value: 'itc', label: 'Purchase GST (ITC)' }, { value: '2b', label: '2B reconciliation' }, { value: 'checks', label: 'Checks' }]} />
       </div>
       {view === '3b' && <Gstr3b period={period} />}
       {view === '1' && <Gstr1 period={period} />}
       {view === 'itc' && <PurchaseGst period={period} />}
+      {view === '2b' && <Recon2b period={period} />}
       {view === 'checks' && <GstChecks period={period} />}
       <p className="mt-3 text-xs text-slate-500">{t('Figures are prepared from your bills, purchases and returns. File them on the GST portal or share the CSV with your CA.')}</p>
     </>

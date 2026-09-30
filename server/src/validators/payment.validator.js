@@ -12,6 +12,7 @@ export const createPaymentSchema = z.object({
   date: z.coerce.date().optional(),
   reference: z.string().trim().max(60).optional().default(''),
   note: z.string().trim().max(300).optional().default(''),
+  bankAccountId: objectId.nullable().optional(),
   /*
     "Haan, jama kar dein" wala haan.
 

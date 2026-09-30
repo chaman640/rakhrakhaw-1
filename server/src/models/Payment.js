@@ -14,6 +14,7 @@ const paymentSchema = new mongoose.Schema(
     mode: { type: String, enum: Object.values(PAYMENT_MODES), default: PAYMENT_MODES.CASH },
 
     reference: { type: String, default: '' },  // UPI txn id / cheque number
+    bankAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'BankAccount', default: null },
 
     // UPI se retailer ne "paid" mark kiya -> pending. Wholesaler confirm kare -> confirmed.
     status: { type: String, enum: Object.values(PAYMENT_STATUS), default: PAYMENT_STATUS.CONFIRMED },

@@ -6,7 +6,7 @@ import { categoryLabel, WASTE_STOCK_CATEGORY } from '../config/expenseCategories
 import { istDay, istStart } from '../utils/istDay.js';
 import {
   LedgerEntry, Party, Invoice, Purchase, ReturnNote, Payment, Expense, Payroll, SalaryAdvance,
-  JournalVoucher, AccountHead, StockLot, StockMovement, Item, Counter, User,
+  JournalVoucher, AccountHead, StockLot, StockMovement, Item, Counter, User, BankAccount,
 } from '../models/index.js';
 
 /**
@@ -52,7 +52,18 @@ export const SYSTEM_ACCOUNTS = {
 const JOURNAL_ALLOWED = ['cash', 'bank', 'capital', 'drawings', 'loans', 'fixed_assets', 'other_income', 'other_expense',
   'employee_advance', 'opening_equity', 'output_gst', 'input_gst'];
 
-const moneyAcct = (mode) => (String(mode || 'CASH').toUpperCase() === 'CASH' ? 'cash' : 'bank');
+export const isMoneyAcct = (a) => a === 'cash' || a === 'bank' || String(a).startsWith('bank:');
+
+/** Cash, the chosen bank account, else the default bank account */
+function moneyResolver(banks) {
+  const ids = new Set(banks.map((b) => String(b._id)));
+  const def = banks.find((b) => b.isDefault) || (banks.length === 1 ? banks[0] : null);
+  const fallback = def ? `bank:${def._id}` : 'bank';
+  return (mode, bankAccountId) => {
+    if (String(mode || 'CASH').toUpperCase() === 'CASH') return 'cash';
+    return bankAccountId && ids.has(String(bankAccountId)) ? `bank:${bankAccountId}` : fallback;
+  };
+}
 const dateRange = (field, { from, to }) => {
   if (!from && !to) return {};
   return { [field]: { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) } };
@@ -94,14 +105,16 @@ async function byIds(Model, ids, select) {
 /** Saari double-entry lines — `from`/`to` diya ho to sirf us beech ki */
 export async function journalLines(businessId, { from = null, to = null } = {}) {
   const bid = oid(businessId);
-  const [entries, parties, expenses, advances, journals, lots] = await Promise.all([
+  const [entries, parties, expenses, advances, journals, lots, banks] = await Promise.all([
     LedgerEntry.find({ businessId: bid, ...dateRange('date', { from, to }) }).select('partyId date type debit credit refType refId refNo note').lean(),
     Party.find({ businessId: bid }).select('name type').lean(),
-    Expense.find({ businessId: bid, ...dateRange('date', { from, to }) }).select('date expenseNo category amount mode paidTo note payrollId').lean(),
+    Expense.find({ businessId: bid, ...dateRange('date', { from, to }) }).select('date expenseNo category amount mode bankAccountId paidTo note payrollId').lean(),
     SalaryAdvance.find({ businessId: bid, ...dateRange('date', { from, to }) }).select('userId date amount mode note').lean(),
     JournalVoucher.find({ businessId: bid, cancelled: false, ...dateRange('date', { from, to }) }).lean(),
     StockLot.find({ businessId: bid, source: 'OPENING', ...dateRange('date', { from, to }) }).select('date qty unitCost').lean(),
+    BankAccount.find({ businessId: bid }).select('name isDefault openingBalance openingDate createdAt').lean(),
   ]);
+  const moneyAcct = moneyResolver(banks);
 
   const pm = new Map(parties.map((p) => [String(p._id), p]));
   const ids = (rt) => entries.filter((e) => e.refType === rt && e.refId).map((e) => e.refId);
@@ -110,12 +123,12 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
     byIds(Invoice, ids('Invoice'), 'taxableTotal cgstTotal sgstTotal igstTotal grandTotal'),
     byIds(Purchase, ids('Purchase'), 'taxableTotal taxTotal grandTotal'),
     byIds(ReturnNote, ids('ReturnNote'), 'type taxableTotal cgstTotal sgstTotal igstTotal grandTotal'),
-    byIds(Payment, ids('Payment'), 'mode'),
+    byIds(Payment, ids('Payment'), 'mode bankAccountId'),
     byIds(Payroll, expenses.filter((e) => e.payrollId).map((e) => e.payrollId), 'net advanceAdjusted paymentMode payrollNo period'),
     byIds(User, advances.map((a) => a.userId), 'name'),
-    Payment.find({ businessId: bid, sourcePurchaseId: { $in: moneyEntries.filter((e) => e.refType === 'Purchase').map((e) => e.refId) } }).select('sourcePurchaseId mode').lean(),
+    Payment.find({ businessId: bid, sourcePurchaseId: { $in: moneyEntries.filter((e) => e.refType === 'Purchase').map((e) => e.refId) } }).select('sourcePurchaseId mode bankAccountId').lean(),
   ]);
-  const purPayMode = new Map(purPays.map((p) => [String(p.sourcePurchaseId), p.mode]));
+  const purPayMode = new Map(purPays.map((p) => [String(p.sourcePurchaseId), p]));
 
   const lines = [];
   for (const e of entries) {
@@ -129,7 +142,8 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
     let type = 'Adjustment';
     const tax = (d) => (d.cgstTotal || 0) + (d.sgstTotal || 0) + (d.igstTotal || 0);
     if (e.type === 'PAYMENT_IN' || e.type === 'PAYMENT_OUT') {
-      parts = [[moneyAcct(e.refType === 'Purchase' ? purPayMode.get(key) : pays.get(key)?.mode), Math.abs(x)]];
+      const pay = e.refType === 'Purchase' ? purPayMode.get(key) : pays.get(key);
+      parts = [[moneyAcct(pay?.mode, pay?.bankAccountId), Math.abs(x)]];
       type = x > 0 ? 'Receipt' : 'Payment';
     } else if (e.refType === 'Invoice' && invs.get(key)) {
       const d = invs.get(key);
@@ -166,7 +180,7 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
       push(lines, ex.date, 'employee_advance', -pr.advanceAdjusted, v);
       push(lines, ex.date, 'round_off', -round2(ex.amount - pr.net - pr.advanceAdjusted), v);
     } else {
-      push(lines, ex.date, moneyAcct(ex.mode), -ex.amount, v);
+      push(lines, ex.date, moneyAcct(ex.mode, ex.bankAccountId), -ex.amount, v);
     }
   }
 
@@ -179,6 +193,14 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
   for (const j of journals) {
     const v = { type: j.kind === 'contra' ? 'Contra' : 'Journal', no: j.voucherNo, id: String(j._id), party: '', narration: j.narration };
     for (const l of j.lines) push(lines, j.date, l.account, (l.debit || 0) - (l.credit || 0), v);
+  }
+
+  for (const b of banks) {
+    const at = b.openingDate || b.createdAt;
+    if (!b.openingBalance || (from && at < from) || (to && at > to)) continue;
+    const v = { type: 'Opening balance', no: '', id: `bo-${b._id}`, party: '', narration: `Opening balance of ${b.name}` };
+    push(lines, at, `bank:${b._id}`, b.openingBalance, v);
+    push(lines, at, 'opening_equity', -b.openingBalance, v);
   }
 
   const byDay = new Map();
@@ -200,11 +222,16 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
 /* ─────────────────────────────── names & balances ─────────────────────────────── */
 
 async function namer(businessId, parties) {
-  const heads = await AccountHead.find({ businessId }).select('name group').lean();
+  const [heads, banks] = await Promise.all([
+    AccountHead.find({ businessId }).select('name group').lean(),
+    BankAccount.find({ businessId }).select('name').lean(),
+  ]);
   const hm = new Map(heads.map((h) => [String(h._id), h]));
+  const bm = new Map(banks.map((b) => [String(b._id), b.name]));
   return (key) => {
     if (SYSTEM_ACCOUNTS[key]) return { key, ...SYSTEM_ACCOUNTS[key] };
     const [kind, id] = key.split(':');
+    if (kind === 'bank') return { key, name: bm.get(id) || 'Deleted bank account', group: 'asset', money: true };
     if (kind === 'exp') return { key, name: categoryLabel(id), group: 'expense' };
     if (kind === 'head') { const h = hm.get(id); return { key, name: h?.name || 'Deleted account', group: h?.group || 'expense' }; }
     if (kind === 'party') { const p = parties.get(id); return { key, name: p?.name || 'Deleted party', group: 'party', partyType: p?.type }; }
@@ -407,7 +434,7 @@ export async function cashFlow(businessId, q = {}) {
     journalLines(businessId, { to: new Date(from.getTime() - 1) }),
     journalLines(businessId, { from, to }),
   ]);
-  const isMoney = (a) => a === 'cash' || a === 'bank';
+  const isMoney = isMoneyAcct;
   const openBal = round2(before.filter((l) => isMoney(l.acct)).reduce((s, l) => s + l.dr - l.cr, 0));
   const vo = new Map();
   for (const l of lines) {
@@ -475,12 +502,20 @@ export async function ageing(businessId, { side = 'receivable' } = {}) {
 
 export async function overview(businessId) {
   const today = new Date();
-  const [tb, pl] = await Promise.all([trialBalance(businessId, { to: today }), profitLoss(businessId, {})]);
+  const day0 = istStart(istDay());
+  const [tb, pl, sold, bought, spent] = await Promise.all([
+    trialBalance(businessId, { to: today }),
+    profitLoss(businessId, {}),
+    Invoice.aggregate([{ $match: { businessId: oid(businessId), isCancelled: { $ne: true }, invoiceDate: { $gte: day0 } } }, { $group: { _id: null, total: { $sum: '$grandTotal' }, n: { $sum: 1 } } }]),
+    Purchase.aggregate([{ $match: { businessId: oid(businessId), purchaseDate: { $gte: day0 } } }, { $group: { _id: null, total: { $sum: '$grandTotal' }, n: { $sum: 1 } } }]),
+    Expense.aggregate([{ $match: { businessId: oid(businessId), date: { $gte: day0 } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+  ]);
   const get = (k) => tb.rows.find((r) => r.key === k);
   const net = (k) => { const r = get(k); return r ? round2(r.dr - r.cr) : 0; };
   return {
     cash: net('cash'),
-    bank: net('bank'),
+    bank: round2(tb.rows.filter((r) => isMoneyAcct(r.key) && r.key !== 'cash').reduce((a, r) => a + r.dr - r.cr, 0)),
+    bankAccounts: tb.rows.filter((r) => isMoneyAcct(r.key) && r.key !== 'cash').map((r) => ({ key: r.key, name: r.name, balance: round2(r.dr - r.cr) })),
     receivable: get('debtors')?.dr || 0,
     payable: get('creditors')?.cr || 0,
     gstPayable: round2(-(net('output_gst') + net('input_gst'))),
@@ -488,18 +523,24 @@ export async function overview(businessId) {
     fy: { from: pl.from, to: pl.to, netSales: pl.trading.netSales, grossProfit: pl.trading.grossProfit, expenses: pl.totalExpenses, netProfit: pl.netProfit },
     balanced: tb.totals.difference === 0,
     suspense: net('suspense'),
+    today: { sales: round2(sold[0]?.total || 0), bills: sold[0]?.n || 0, purchases: round2(bought[0]?.total || 0), purchaseCount: bought[0]?.n || 0, expenses: round2(spent[0]?.total || 0) },
+    inputGst: round2(Math.max(0, net('input_gst'))),
+    outputGst: round2(Math.max(0, -net('output_gst'))),
+    valuation: 'FIFO — each sale uses the cost of the oldest stock lot first',
   };
 }
 
 /* ─────────────────────────────── journal & accounts ─────────────────────────────── */
 
 export async function accountOptions(businessId) {
-  const [heads, cats] = await Promise.all([
+  const [heads, cats, banks] = await Promise.all([
     AccountHead.find({ businessId, active: true }).select('name group').sort({ name: 1 }).lean(),
     Expense.distinct('category', { businessId }),
+    BankAccount.find({ businessId, active: true }).select('name').sort({ name: 1 }).lean(),
   ]);
   return [
-    ...JOURNAL_ALLOWED.map((k) => ({ key: k, name: SYSTEM_ACCOUNTS[k].name, group: SYSTEM_ACCOUNTS[k].group })),
+    ...JOURNAL_ALLOWED.filter((k) => k !== 'bank' || !banks.length).map((k) => ({ key: k, name: SYSTEM_ACCOUNTS[k].name, group: SYSTEM_ACCOUNTS[k].group })),
+    ...banks.map((b) => ({ key: `bank:${b._id}`, name: b.name, group: 'asset', money: true })),
     ...heads.map((h) => ({ key: `head:${h._id}`, name: h.name, group: h.group, custom: true })),
     ...[...new Set(['rent', 'bijli', 'salary', 'other', ...cats])].filter((c) => c !== WASTE_STOCK_CATEGORY).map((c) => ({ key: `exp:${c}`, name: categoryLabel(c), group: 'expense' })),
   ];
@@ -507,10 +548,14 @@ export async function accountOptions(businessId) {
 
 async function assertAccounts(businessId, keys) {
   const headIds = keys.filter((k) => k.startsWith('head:')).map((k) => k.slice(5));
-  const found = headIds.length ? await AccountHead.countDocuments({ businessId, _id: { $in: headIds } }) : 0;
-  if (found !== new Set(headIds).size) throw ApiError.badRequest('One of the selected accounts does not exist');
+  const bankIds = keys.filter((k) => k.startsWith('bank:')).map((k) => k.slice(5));
+  const [found, banks] = await Promise.all([
+    headIds.length ? AccountHead.countDocuments({ businessId, _id: { $in: headIds } }) : 0,
+    bankIds.length ? BankAccount.countDocuments({ businessId, _id: { $in: bankIds } }) : 0,
+  ]);
+  if (found !== new Set(headIds).size || banks !== new Set(bankIds).size) throw ApiError.badRequest('One of the selected accounts does not exist');
   for (const k of keys) {
-    if (!JOURNAL_ALLOWED.includes(k) && !k.startsWith('head:') && !k.startsWith('exp:')) {
+    if (!JOURNAL_ALLOWED.includes(k) && !k.startsWith('head:') && !k.startsWith('exp:') && !k.startsWith('bank:')) {
       throw ApiError.badRequest('Customer, supplier, sales and purchase accounts are updated from their own pages, not by journal');
     }
   }
@@ -536,7 +581,7 @@ export async function createJournal(businessId, actor, body) {
   const cr = round2(lines.reduce((s, l) => s + l.credit, 0));
   if (dr !== cr) throw ApiError.badRequest(`Debit (₹${dr}) and credit (₹${cr}) must be equal`);
   await assertAccounts(businessId, lines.map((l) => l.account));
-  if (body.kind === 'contra' && lines.some((l) => !['cash', 'bank'].includes(l.account))) {
+  if (body.kind === 'contra' && lines.some((l) => !isMoneyAcct(l.account))) {
     throw ApiError.badRequest('Contra is only for moving money between cash and bank');
   }
   const date = new Date(body.date);
@@ -595,4 +640,62 @@ export async function bookChecks(businessId) {
     { key: 'stock', ok: !negStock.length, title: 'No item has negative stock', detail: negStock.map((i) => `${i.name} (${i.stockQty})`).join(', '), count: negStock.length },
   ];
   return checks;
+}
+
+/* ─────────────────────────────── bank accounts ─────────────────────────────── */
+
+export async function listBanks(businessId) {
+  const [banks, tb] = await Promise.all([
+    BankAccount.find({ businessId }).sort({ isDefault: -1, name: 1 }).lean(),
+    trialBalance(businessId, {}),
+  ]);
+  const bal = new Map(tb.rows.map((r) => [r.key, round2(r.dr - r.cr)]));
+  return {
+    rows: banks.map((b) => ({ ...b, balance: bal.get(`bank:${b._id}`) || 0 })),
+    unassigned: bal.get('bank') || 0,
+  };
+}
+
+async function assertBankUnique(businessId, name, id) {
+  const rx = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+  const clash = await BankAccount.findOne({ businessId, name: rx, ...(id ? { _id: { $ne: id } } : {}) }).lean();
+  if (clash) throw ApiError.conflict('An account with this name already exists');
+}
+
+export async function saveBank(businessId, id, body) {
+  if (body.name) await assertBankUnique(businessId, body.name, id);
+  let doc;
+  if (id) {
+    doc = await BankAccount.findOne({ _id: id, businessId });
+    if (!doc) throw ApiError.notFound('Bank account not found');
+    Object.assign(doc, body);
+  } else {
+    const first = !(await BankAccount.exists({ businessId }));
+    doc = new BankAccount({ ...body, businessId, isDefault: first || Boolean(body.isDefault) });
+  }
+  if (doc.isDefault) await BankAccount.updateMany({ businessId, _id: { $ne: doc._id } }, { $set: { isDefault: false } });
+  if (!doc.active && doc.isDefault) throw ApiError.badRequest('Choose another default account before closing this one');
+  await doc.save();
+  return doc.toObject();
+}
+
+export async function deleteBank(businessId, id) {
+  const doc = await BankAccount.findOne({ _id: id, businessId }).lean();
+  if (!doc) throw ApiError.notFound('Bank account not found');
+  const used = await Promise.all([
+    Payment.exists({ businessId, bankAccountId: id }),
+    Expense.exists({ businessId, bankAccountId: id }),
+    JournalVoucher.exists({ businessId, cancelled: false, 'lines.account': `bank:${id}` }),
+  ]);
+  if (used.some(Boolean) || doc.openingBalance) throw ApiError.badRequest('This account has entries — mark it closed instead of deleting');
+  if (doc.isDefault && await BankAccount.exists({ businessId, _id: { $ne: id } })) throw ApiError.badRequest('Make another account the default first');
+  await BankAccount.deleteOne({ _id: id });
+  return { deleted: true };
+}
+
+export async function assertBankAccount(businessId, id) {
+  if (!id) return null;
+  const ok = await BankAccount.exists({ _id: id, businessId, active: true });
+  if (!ok) throw ApiError.badRequest('Bank account not found');
+  return id;
 }

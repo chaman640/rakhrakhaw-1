@@ -1,3 +1,4 @@
+import { assertBankAccount } from './accounts.service.js';
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { COUNTER_KEYS, STOCK_MOVEMENT_TYPES } from '../config/constants.js';
@@ -229,6 +230,7 @@ export async function createExpense(businessId, payload, userId) {
       category,
       amount,
       mode: payload.mode || 'CASH',
+      bankAccountId: (payload.mode || 'CASH') === 'CASH' ? null : await assertBankAccount(businessId, payload.bankAccountId),
       paidTo: payload.paidTo || '',
       note: payload.note || '',
       wasteItemId,
@@ -279,6 +281,8 @@ export async function updateExpense(businessId, id, payload, viewer = null) {
   if (payload.category !== undefined) expense.category = slugifyCategory(payload.category) || 'other';
   if (payload.date !== undefined) expense.date = new Date(payload.date);
   if (payload.mode !== undefined) expense.mode = payload.mode;
+  if (payload.bankAccountId !== undefined) expense.bankAccountId = await assertBankAccount(businessId, payload.bankAccountId);
+  if (expense.mode === 'CASH') expense.bankAccountId = null;
   if (payload.paidTo !== undefined) expense.paidTo = payload.paidTo;
   if (payload.note !== undefined) expense.note = payload.note;
 

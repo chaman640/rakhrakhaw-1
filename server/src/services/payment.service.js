@@ -1,3 +1,4 @@
+import { assertBankAccount } from './accounts.service.js';
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import {
@@ -476,6 +477,7 @@ export async function createPayment(businessId, payload, userId) {
     date: payload.date || new Date(),
     direction, amount,
     mode: payload.mode || 'CASH',
+    bankAccountId: (payload.mode || 'CASH') === 'CASH' ? null : await assertBankAccount(businessId, payload.bankAccountId),
     reference: payload.reference || '',
     status: PAYMENT_STATUS.CONFIRMED,
     confirmedAt: new Date(),

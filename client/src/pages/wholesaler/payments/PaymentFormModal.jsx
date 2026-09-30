@@ -5,6 +5,7 @@ import { formatMoney } from '@/lib/format';
 import { Modal, Button, Input, Combobox, Textarea, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import BankSelect from '@/components/BankSelect';
 
 const MODES = [
 { value: 'CASH', label: 'Cash', icon: Banknote },
@@ -34,6 +35,7 @@ export default function PaymentFormModal({
   const [party, setParty] = useState(null);
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState('CASH');
+  const [bankAccountId, setBankAccountId] = useState(null);
   const [date, setDate] = useState(todayStr());
   const [reference, setReference] = useState('');
   const [note, setNote] = useState('');
@@ -94,7 +96,7 @@ export default function PaymentFormModal({
     setError('');
     try {
       const res = await api.post('/payments', {
-        partyId: party.value, direction, amount: Number(amount), mode, date,
+        partyId: party.value, direction, amount: Number(amount), mode, date, bankAccountId: mode === 'CASH' ? null : bankAccountId,
         reference: reference.trim(), note: note.trim(),
         ...(allowAdvance ? { allowAdvance: true } : {})
       });
@@ -227,6 +229,7 @@ export default function PaymentFormModal({
           </div>
           }
 
+        {mode !== 'CASH' && <BankSelect value={bankAccountId} onChange={setBankAccountId} />}
         {mode !== 'CASH' &&
           <Input
             label={mode === 'CHEQUE' ? 'Cheque number' : 'Transaction / UTR number'}

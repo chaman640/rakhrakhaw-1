@@ -53,7 +53,7 @@ async function cleanup() {
     M.User.deleteMany({ $or: [{ phone: { $in: Object.values(PH) } }, b] }),
     M.Business.deleteMany({ _id: b.businessId }),
     ...['Subscription', 'Counter', 'Party', 'Item', 'StockMovement', 'StockLot', 'Invoice', 'Purchase', 'Payment', 'ReturnNote',
-      'LedgerEntry', 'Expense', 'JournalVoucher', 'AccountHead', 'Notification', 'AuditLog', 'Membership'].map((m) => M[m].deleteMany(b)),
+      'LedgerEntry', 'Expense', 'JournalVoucher', 'AccountHead', 'BankAccount', 'Notification', 'AuditLog', 'Membership'].map((m) => M[m].deleteMany(b)),
   ]);
 }
 
@@ -180,6 +180,60 @@ async function run() {
     check('GSTR-3B ITC 180 + 180, nothing payable, 99 + 99 carried forward', eq(g3?.table4?.net?.cgst, 180) && g3.totalPayable === 0 && eq(g3.carryForward.cgst, 99) && eq(g3.carryForward.sgst, 99), JSON.stringify({ t4: g3?.table4?.net, p: g3?.totalPayable, cf: g3?.carryForward }));
     r = await call('GET', `/accounts/gst/checks?period=${period}`, { token: tok });
     check('GST checks: GSTIN set, HSN present, supplier registered', ['gstin', 'hsn', 'itc'].every((k) => r.data?.find((c) => c.key === k)?.ok), JSON.stringify(r.data));
+
+    step('5b. Bank accounts');
+    r = await call('POST', '/accounts/banks', { token: tok, body: { name: 'HDFC Current', bankName: 'HDFC', accountNo: '50100123456', ifsc: 'HDFC0001234', openingBalance: 5000 } });
+    const hdfc = r.data?._id;
+    check('first bank account becomes default', r.status === 201 && r.data?.isDefault, r.message);
+    r = await call('POST', '/accounts/banks', { token: tok, body: { name: 'hdfc current' } });
+    check('duplicate account name blocked', r.status === 409, `${r.status}`);
+    r = await call('POST', '/accounts/banks', { token: tok, body: { name: 'SBI Savings' } });
+    const sbi = r.data?._id;
+    r = await call('POST', '/payments', { token: tok, body: { partyId: ret, amount: 100, mode: 'UPI', bankAccountId: sbi } });
+    check('receipt into SBI', r.status === 201, r.message);
+    r = await call('POST', '/accounts/journals', { token: tok, body: { kind: 'contra', date: new Date(), narration: 'HDFC to SBI', lines: [{ account: `bank:${sbi}`, debit: 1000 }, { account: `bank:${hdfc}`, credit: 1000 }] } });
+    check('contra between two bank accounts', r.status === 201, r.message);
+    r = await call('GET', '/accounts/banks', { token: tok });
+    const bal = (id) => r.data?.rows?.find((b) => String(b._id) === String(id))?.balance;
+    check('HDFC = 5000 opening + 354 + 200 − 500 − 1000 = 4054', eq(bal(hdfc), 4054), `${bal(hdfc)}`);
+    check('SBI = 100 + 1000', eq(bal(sbi), 1100), `${bal(sbi)}`);
+    r = await call('GET', '/accounts/trial-balance', { token: tok });
+    check('trial balance still tallies', r.data?.totals?.difference === 0, JSON.stringify(r.data?.totals));
+    r = await call('GET', '/accounts/overview', { token: tok });
+    check('overview: bank total 13154 + today figures', eq(r.data?.bank, 13154) && r.data?.bankAccounts?.length >= 2 && eq(r.data?.today?.sales, 1239) && eq(r.data?.today?.purchases, 2360), JSON.stringify({ b: r.data?.bank, t: r.data?.today }));
+    r = await call('DELETE', `/accounts/banks/${hdfc}`, { token: tok });
+    check('used bank account cannot be deleted', r.status === 400, `${r.status}`);
+
+    step('5c. CA tools');
+    r = await call('GET', `/accounts/verify/Invoice/${inv1}`, { token: tok });
+    check('verify bill: creator, postings balanced, stock, profit', r.status === 200 && r.data?.createdBy?.name === 'Acc Owner' && r.data.balanced && r.data.postings.length >= 3 && r.data.stock.length === 1 && eq(r.data.profit?.gross, 250), JSON.stringify({ s: r.status, p: r.data?.profit, st: r.data?.stock?.length }));
+    check('verify bill: payment and history shown', r.data?.payments?.length >= 1 && r.data?.history?.some((h) => h.action === 'invoice.create'), JSON.stringify(r.data?.history?.map((h) => h.action)));
+    const invNo = r.data?.no;
+    r = await call('GET', `/accounts/search?q=${encodeURIComponent(invNo)}`, { token: tok });
+    check('search by bill number', r.data?.documents?.some((d) => String(d._id) === String(inv1)), JSON.stringify(r.data?.documents?.map((d) => d.no)));
+    r = await call('GET', '/accounts/search?q=Retail B2B', { token: tok });
+    const hit = r.data?.parties?.[0];
+    check('search by party: sales, payments, outstanding', hit && eq(hit.sales, 885) && eq(hit.outstanding, 408) && hit.payments >= 2, JSON.stringify(hit));
+    await M.Invoice.updateOne({ _id: inv1 }, { $set: { invoiceDate: new Date(Date.now() - 10 * 86400000) } });
+    r = await call('POST', '/purchases', { token: tok, body: { supplierId: sup, supplierBillNo: 'SB/77', items: [{ itemId: item, qty: 1, rate: 100, gstRate: 18 }] } });
+    r = await call('POST', '/purchases', { token: tok, body: { supplierId: sup, supplierBillNo: 'sb-77', items: [{ itemId: item, qty: 1, rate: 100, gstRate: 18 }] } });
+    r = await call('GET', '/accounts/audit-checks', { token: tok });
+    const ck = (k) => r.data?.find((c) => c.key === k);
+    check('backdated bill flagged', ck('backdated')?.count === 1 && ck('backdated').items[0].no === invNo, JSON.stringify(ck('backdated')));
+    check('duplicate supplier bill flagged', ck('dup_supplier_bill')?.count === 1 && ck('dup_supplier_bill').items[0].count === 2, JSON.stringify(ck('dup_supplier_bill')));
+
+    step('5d. GSTR-2B reconciliation');
+    const supGstin = gstin('AAACS1111B');
+    const twoB = { data: { docdata: { b2b: [{ ctin: supGstin, trdnm: 'Acc Supplier', inv: [
+      { inum: 'SB77', dt: '01-09-2026', val: 118, itcavl: 'Y', items: [{ txval: 100, cgst: 9, sgst: 9 }] },
+      { inum: 'X-999', dt: '02-09-2026', val: 590, items: [{ txval: 500, cgst: 45, sgst: 45 }] },
+    ] }] } } };
+    r = await call('POST', '/accounts/gst/2b', { token: tok, body: { period, json: twoB } });
+    const s2 = r.data?.summary;
+    check('2B: one matched, one not in books, rest not in 2B', r.status === 200 && s2?.matched === 1 && s2?.notInBooks === 1 && s2?.notIn2b === 2, JSON.stringify(s2));
+    check('2B: safe ITC 18, at risk 378', eq(s2?.safeItc, 18) && eq(s2?.atRisk, 378), JSON.stringify(s2));
+    r = await call('POST', '/accounts/gst/2b', { token: tok, body: { period, json: { foo: 1 } } });
+    check('bad 2B file handled', r.status === 200 ? r.data?.summary?.in2b === 0 : r.status === 400, `${r.status}`);
 
     step('6. Permission');
     await call('POST', '/staff', { token: tok, body: { name: 'Acc Cashier', phone: PH.cashier, password: 'acc12345', staffRole: 'cashier' } });
