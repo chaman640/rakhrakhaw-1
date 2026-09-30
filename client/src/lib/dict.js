@@ -3456,6 +3456,12 @@ const DICT = {
   'They will be signed out and must set their own password at next sign-in.': { hi: 'वे लॉग आउट हो जाएँगे और अगली बार अपना पासवर्ड बनाना होगा।', en: 'They will be signed out and must set their own password at next sign-in.' },
   'Set temporary password': { hi: 'अस्थायी पासवर्ड लगाएँ', en: 'Set temporary password' },
   'Please set your own password to continue': { hi: 'आगे बढ़ने के लिए अपना पासवर्ड बनाएँ', en: 'Please set your own password to continue' },
+
+  /* ── Seller / Buyer mode in Settings ── */
+  'Seller / Buyer mode': { hi: 'Seller / Buyer मोड', en: 'Seller / Buyer mode' },
+  'Abhi aap Seller mode me hain — apni dukaan chala rahe hain': { hi: 'अभी आप Seller मोड में हैं — अपनी दुकान चला रहे हैं', en: 'You are in Seller mode — running your own shop' },
+  'Abhi aap Buyer mode me hain — {n} se maal le rahe hain': { hi: 'अभी आप Buyer मोड में हैं — {n} से माल ले रहे हैं', en: 'You are in Buyer mode — buying from {n}' },
+  'doosri dukaan': { hi: 'दूसरी दुकान', en: 'another shop' },
 };
 
 export default DICT;

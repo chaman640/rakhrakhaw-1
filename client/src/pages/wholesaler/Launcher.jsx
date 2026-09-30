@@ -11,7 +11,6 @@ import { wholesalerNav } from '@/components/layout/navConfig';
 import {
   visibleApps, QUICK_ACTIONS, DEFAULT_SHORTCUTS,
 } from '@/components/layout/appsConfig';
-import ModeSwitch from '@/components/layout/ModeSwitch';
 import {
   Card, Button, Modal, ConfirmModal, useToast,
 } from '@/components/ui';
@@ -85,8 +84,6 @@ export default function Launcher() {
           <p className="text-sm text-slate-500">{t('Welcome, {n}', { n: user?.name?.split(' ')[0] || '' })}</p>
         </div>
       </div>
-
-      <ModeSwitch />
 
       <section className="mb-6">
         <div className="mb-2 flex items-center justify-between px-1">

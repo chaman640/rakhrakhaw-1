@@ -1,6 +1,6 @@
 import Logo from '@/components/Logo';
 import { useState } from 'react';
-import { ArrowLeft, LogOut, ChevronDown, UserCircle, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, LogOut, ChevronDown, UserCircle, LayoutGrid, Settings as SettingsIcon } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/cn';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -199,6 +199,12 @@ export default function Header({ title, showBack, backTo, app = null, badges = {
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 <UserCircle size={15} /> {t('Profile')}
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); navigate('/settings'); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <SettingsIcon size={15} /> {t('Settings')}
               </button>
               <button
                 onClick={handleLogout}

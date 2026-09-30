@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { PageHeader, Tabs, Spinner, Card, Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import AppTab from './settings/AppTab';
+import ModeSwitch from '@/components/layout/ModeSwitch';
 import RetailersTab from './settings/RetailersTab';
 import BackupTab from './settings/BackupTab';
 import PlanTab from './settings/PlanTab';
@@ -97,6 +98,7 @@ export default function Settings() {
         ]}
       />
 
+      {tab === 'app' && <ModeSwitch className="mb-5" />}
       {tab === 'app' && <AppTab />}
       {tab === 'retailers' && isOwner && <RetailersTab />}
       {tab === 'backup' && isOwner && <BackupTab />}

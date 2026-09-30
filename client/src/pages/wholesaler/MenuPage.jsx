@@ -7,7 +7,6 @@ import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { useIntakeBadge } from '@/hooks/useIntakeBadge';
 import { wholesalerNav, buyerNav } from '@/components/layout/navConfig';
-import ModeSwitch from '@/components/layout/ModeSwitch';
 import Launcher from './Launcher';
 import { Card, Button, ConfirmModal, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -137,14 +136,6 @@ function ClassicMenu() {
           {(isBuyMode && shop?.name) || business?.name} · {filtered.length} {t('jagah')}
         </p>
       </div>
-
-      {/*
-        Seller ⇄ Buyer — ab yahan (Part 52), Profile se hata kar. Wahan
-        settings ke beech mein confuse karta tha. Yahan aadmi "kya karna
-        hai" soch kar aata hai — sahi jagah. Confirmation khud ModeSwitch
-        ke andar hai (Menu bahut baar khulta hai, isliye ek tap kaafi nahi).
-      */}
-      <ModeSwitch />
 
       {/* ---- Quick Links — jo pin kiye hain, sabse upar ---- */}
       {pinnedRows.length > 0 && (
