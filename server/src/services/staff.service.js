@@ -163,6 +163,7 @@ export async function addStaff(businessId, payload, actor) {
     permissions: cleanPermissions(payload.permissions, payload.staffRole),
     scope: payload.scope || scopeForRole(payload.staffRole),
     createdByUserId: actor?._id || null,
+    mustChangePassword: true,
   });
   applyLimits(user, payload.limits, payload.staffRole);
 
@@ -261,7 +262,9 @@ export async function changeOwnPassword(userId, { currentPassword, newPassword }
   if (!okPass) throw ApiError.badRequest('Purana password galat hai');
 
   await user.setPassword(newPassword);
+  user.mustChangePassword = false;
   await user.save();
+  cacheBust(`u:${user._id}`);
   return { changed: true };
 }
 

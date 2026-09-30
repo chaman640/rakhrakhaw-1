@@ -237,6 +237,7 @@ async function run() {
 
     step('6. Permission');
     await call('POST', '/staff', { token: tok, body: { name: 'Acc Cashier', phone: PH.cashier, password: 'acc12345', staffRole: 'cashier' } });
+    await M.User.updateOne({ phone: PH.cashier }, { $set: { mustChangePassword: false } });
     const cTok = (await call('POST', '/auth/login', { body: { phone: PH.cashier, password: 'acc12345' } })).data?.token;
     r = await call('GET', '/accounts/balance-sheet', { token: cTok });
     check('cashier cannot open books', r.status === 403, `${r.status}`);

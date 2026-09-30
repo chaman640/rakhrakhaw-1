@@ -293,7 +293,6 @@ export async function createEmployee(businessId, actor, body) {
   const profile = {};
   for (const k of PROFILE_FIELDS) if (body[k] !== undefined) profile[k] = body[k];
   if (body.salary) profile.salary = { ...body.salary, effectiveFrom: body.salary.effectiveFrom || new Date() };
-  await User.updateOne({ _id: staff._id }, { $set: { mustChangePassword: true } });
   const e = await Employee.create({ businessId, userId: staff._id, code: await nextEmployeeCode(businessId), ...profile });
   await hrLog(businessId, staff._id, actor, 'created', `Employee ${staff.name} (${e.code}) added`);
   return getEmployee(businessId, actor, staff._id);

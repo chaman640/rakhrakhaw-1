@@ -83,6 +83,10 @@ async function call(method, path, { body, token, raw, shop } = {}) {
   });
   let json = null;
   try { json = await res.json(); } catch { /* ignore */ }
+  // Staff made here keep working without the first-login password change (covered in e2e)
+  if (method === 'POST' && path === '/staff' && res.status === 201 && json?.data?._id) {
+    await User.updateOne({ _id: json.data._id }, { $set: { mustChangePassword: false } });
+  }
   return { status: res.status, ...json };
 }
 

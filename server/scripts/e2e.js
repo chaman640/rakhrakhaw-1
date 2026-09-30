@@ -213,6 +213,11 @@ async function run() {
     check('BADI me salesman juda', r.status === 201, r.message);
     r = await call('POST', '/auth/login', { body: { phone: PH.salesman, password: 'sales123' } });
     const smTok = r.data?.token;
+    check('first login asks staff to set own password', r.data?.user?.mustChangePassword === true, JSON.stringify(r.data?.user?.mustChangePassword));
+    r = await call('GET', '/crm/today', { token: smTok });
+    check('nothing opens until password is changed', r.status === 403 && r.details?.reason === 'must_change_password', `${r.status}`);
+    r = await call('POST', '/auth/change-password', { token: smTok, body: { currentPassword: 'sales123', newPassword: 'sales456' } });
+    check('staff sets own password', r.status === 200, r.message);
     r = await call('GET', '/crm/staff', { token: sTok });
     const smId = (r.data || []).find((u) => u.phone === PH.salesman)?._id;
     r = await call('POST', '/crm/leads', { token: sTok, body: { name: 'E2E Lead', phone: '9300000088', assignedToUserId: smId, nextFollowUpAt: new Date().toISOString() } });

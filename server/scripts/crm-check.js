@@ -74,6 +74,7 @@ async function run() {
     const salesId = r.data?._id || r.data?.user?._id;
     r = await call('POST', '/staff', { token: tok, body: { name: 'Amit Sales', phone: PH.sales2, password: 'crm12345', staffRole: 'salesman' } });
     const sales2Id = r.data?._id || r.data?.user?._id;
+    await M.User.updateMany({ phone: { $in: [PH.sales, PH.sales2] } }, { $set: { mustChangePassword: false } });
     const sTok = await login(PH.sales);
     check('two salesmen created', Boolean(salesId && sales2Id && sTok), r.message);
 
