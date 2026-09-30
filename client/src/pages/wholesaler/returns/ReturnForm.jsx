@@ -278,7 +278,7 @@ export default function ReturnForm() {
                       {r.maxQty != null &&
                     <p className="mt-1 text-xs text-slate-400">{t("Bill me {a0}{a1}", { a0:
                         formatQty(r.soldQty, r.unit), a1:
-                        r.returnedQty > 0 && ` · ${formatQty(r.returnedQty, r.unit)} pehle wapas` })}
+                        r.returnedQty > 0 && t(' · {q} pehle wapas', { q: formatQty(r.returnedQty, r.unit) }) })}
                     </p>
                     }
                     </div>

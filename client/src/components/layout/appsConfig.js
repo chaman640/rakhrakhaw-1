@@ -17,7 +17,7 @@ export const APPS = [
   },
   {
     key: 'purchase', label: 'Purchase', icon: Truck, tone: 'from-amber-500 to-orange-600',
-    menu: [['/purchases', 'Purchases'], ['/suppliers', 'Suppliers', 'parties'], ['/expenses', 'Expenses'], ['/stock-intake', 'Stock intake']],
+    menu: [['/purchases', 'Purchases'], ['/suppliers', 'Suppliers', 'purchases'], ['/expenses', 'Expenses'], ['/stock-intake', 'Stock intake']],
   },
   {
     key: 'inventory', label: 'Inventory', icon: Package, tone: 'from-emerald-500 to-teal-600',

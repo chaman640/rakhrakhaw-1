@@ -424,7 +424,7 @@ export default function InvoiceForm() {
                           {r.itemId &&
                           <p className={cn('mt-1 text-xs', short ? 'font-medium text-red-600' : 'text-slate-400')}>{t("Stock: {a0}{a1}", { a0:
                               formatQty(r.stockQty, r.unit), a1:
-                              short && ' — itna hai hi nahi' })}
+                              short && t(' — itna hai hi nahi') })}
                           </p>
                           }
                         </td>
@@ -506,7 +506,7 @@ export default function InvoiceForm() {
                     <>
                       <p className={cn('mt-1.5 text-xs', short ? 'font-medium text-red-600' : 'text-slate-400')}>{t("Stock: {a0}{a1}", { a0:
                           formatQty(r.stockQty, r.unit), a1:
-                          short && ' — itna hai hi nahi' })}
+                          short && t(' — itna hai hi nahi') })}
                       </p>
                       {hint && <p className={cn('mt-1 text-xs', hint.tone)}>{hint.text}</p>}
                     </>

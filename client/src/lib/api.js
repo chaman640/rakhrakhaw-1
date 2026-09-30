@@ -88,10 +88,19 @@ api.interceptors.response.use(
   (res) => res.data,
   (error) => {
     const status = error.response?.status;
-    const message =
+    let message =
       error.response?.data?.message ||
       error.message ||
       'Kuch gadbad ho gayi, dobara koshish karein';
+
+    // "Validation failed" alone doesn't say what to fix — show the field reasons instead
+    const fieldErrors = error.response?.data?.details;
+    if (message === 'Validation failed' && Array.isArray(fieldErrors) && fieldErrors.length) {
+      message = fieldErrors.slice(0, 3).map(({ field, message: m }) => (
+        /^(Required|Expected|Invalid|String must|Number must|Array must)/.test(m || '') && field
+          ? `${field.split('.').pop()}: ${m}` : m
+      )).filter(Boolean).join(' · ') || message;
+    }
 
     /*
       ─────────── PLAN KHATAM (Step 1) ───────────

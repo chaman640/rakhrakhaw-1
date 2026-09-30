@@ -9,7 +9,9 @@ const NotificationContext = createContext({ count: 0, refresh: () => {} });
  * websocket Part 10 me dekhenge, abhi polling kaafi hai.
  */
 export function NotificationProvider({ children }) {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  // Nothing else opens until a temporary password is changed, so don't poll then either
+  const user = authUser && !authUser.mustChangePassword ? authUser : null;
   const [count, setCount] = useState(0);
 
   const refresh = useCallback(async () => {

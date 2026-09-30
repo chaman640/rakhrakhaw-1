@@ -2,7 +2,7 @@ import { forwardRef, useId } from 'react';
 import { cn } from '@/lib/cn';
 
 const Textarea = forwardRef(function Textarea(
-  { label, error, hint, rows = 3, className, containerClassName, id, ...props },
+  { label, error, hint, required, rows = 3, className, containerClassName, id, ...props },
   ref
 ) {
   const autoId = useId();
@@ -14,11 +14,15 @@ const Textarea = forwardRef(function Textarea(
   return (
     <div className={cn('w-full', containerClassName)}>
       {label && (
-        <label htmlFor={areaId} className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
+        <div className="mb-1.5 flex items-baseline">
+          <label htmlFor={areaId} className="block text-sm font-medium text-slate-700">{label}</label>
+          {required && <span aria-hidden="true" className="ml-0.5 text-red-500">*</span>}
+        </div>
       )}
       <textarea
         ref={ref}
         id={areaId}
+        aria-required={required || undefined}
         rows={rows}
         className={cn(
           'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus-ring',

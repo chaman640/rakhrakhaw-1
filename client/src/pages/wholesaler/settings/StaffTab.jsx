@@ -185,7 +185,7 @@ export default function StaffTab() {
                   </p>
                   <p className="text-xs text-slate-500">{t("{a0}{a1}{a2}{a3} tak", { a0:
                   inv.staffRoleLabel, a1:
-                  inv.phone && ` · sirf ${formatPhone(inv.phone)} ke liye`, a2:
+                  inv.phone && t(' · sirf {p} ke liye', { p: formatPhone(inv.phone) }), a2:
                   ' · ', a3:
                   new Date(inv.expiresAt).toLocaleDateString('en-IN') })}
               </p>

@@ -10,9 +10,11 @@ import { AttBadge, timeOf, hoursOf } from '@/pages/wholesaler/hr/hrShared';
 function getLocation() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null);
+    // The browser's own timeout only starts after permission is granted; an unanswered prompt would hang forever
+    const giveUp = setTimeout(() => resolve(null), 12000);
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => resolve(null),
+      (p) => { clearTimeout(giveUp); resolve({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+      () => { clearTimeout(giveUp); resolve(null); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
   });

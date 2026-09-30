@@ -81,7 +81,7 @@ export function t(key, vars) {
 
   if (vars) {
     out = String(out).replace(/\{(\w+)\}/g, (whole, name) => (
-      Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : whole
+      Object.prototype.hasOwnProperty.call(vars, name) ? (vars[name] == null || vars[name] === false ? '' : String(vars[name])) : whole
     ));
   }
 

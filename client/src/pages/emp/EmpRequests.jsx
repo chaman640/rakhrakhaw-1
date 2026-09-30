@@ -69,7 +69,7 @@ export function RequestForm({ open, kind, day = '', onClose }) {
             <Input label={t('Subject')} value={f.subject} onChange={set('subject')} />
           </>
         )}
-        <Textarea label={kind === 'help' ? t('Details') : t('Reason')} rows={3} value={f.reason} onChange={set('reason')} />
+        <Textarea label={kind === 'help' ? t('Details') : t('Reason')} required rows={3} value={f.reason} onChange={set('reason')} />
       </div>
     </Modal>
   );

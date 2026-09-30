@@ -3462,6 +3462,11 @@ const DICT = {
   'Abhi aap Seller mode me hain — apni dukaan chala rahe hain': { hi: 'अभी आप Seller मोड में हैं — अपनी दुकान चला रहे हैं', en: 'You are in Seller mode — running your own shop' },
   'Abhi aap Buyer mode me hain — {n} se maal le rahe hain': { hi: 'अभी आप Buyer मोड में हैं — {n} से माल ले रहे हैं', en: 'You are in Buyer mode — buying from {n}' },
   'doosri dukaan': { hi: 'दूसरी दुकान', en: 'another shop' },
+
+  /* ── Inline fragments ── */
+  ' — itna hai hi nahi': { hi: ' — इतना है ही नहीं', en: ' — not enough in stock' },
+  ' · sirf {p} ke liye': { hi: ' · सिर्फ {p} के लिए', en: ' · only for {p}' },
+  ' · {q} pehle wapas': { hi: ' · {q} पहले वापस', en: ' · {q} returned earlier' },
 };
 
 export default DICT;
