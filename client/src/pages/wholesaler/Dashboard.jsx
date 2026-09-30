@@ -299,7 +299,7 @@ export default function Dashboard() {
       </div>
 
       {/* ---- Chart + orders/stock ---- */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+      <div className="mb-4 grid gap-4 lg:grid-cols-3 *:min-w-0">
         {d.trend && (
           <Card className="lg:col-span-2">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
+import PageFallback from '@/components/PageFallback';
 import {
   House, ListTodo, Fingerprint, Wallet, Menu, ArrowLeft,
 } from 'lucide-react';
@@ -41,7 +43,7 @@ export default function EmpLayout() {
       </header>
       <AnnouncementBar />
       <main className="mx-auto max-w-2xl px-4 pb-28 pt-4">
-        <FeatureGate feature="hr_basic"><Outlet /></FeatureGate>
+        <FeatureGate feature="hr_basic"><Suspense fallback={<PageFallback />}><Outlet /></Suspense></FeatureGate>
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto grid max-w-2xl grid-cols-5">

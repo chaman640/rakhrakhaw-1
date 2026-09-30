@@ -1,4 +1,6 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import PageFallback from '@/components/PageFallback';
 import AppLayout from '@/components/layout/AppLayout';
 import RequireAuth from './RequireAuth';
 import RequirePermission from './RequirePermission';
@@ -6,17 +8,17 @@ import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
 
 import Login from '@/pages/auth/Login';
-import Privacy from '@/pages/public/Privacy';
-import Terms from '@/pages/public/Terms';
-import Refund from '@/pages/public/Refund';
-import Delivery from '@/pages/public/Delivery';
-import Contact from '@/pages/public/Contact';
+const Privacy = lazy(() => import('@/pages/public/Privacy'));
+const Terms = lazy(() => import('@/pages/public/Terms'));
+const Refund = lazy(() => import('@/pages/public/Refund'));
+const Delivery = lazy(() => import('@/pages/public/Delivery'));
+const Contact = lazy(() => import('@/pages/public/Contact'));
 import Pricing from '@/pages/public/Pricing';
 import Landing from '@/pages/public/Landing';
 import ShopPreview from '@/pages/public/ShopPreview';
 import PublicProductDetail from '@/pages/public/PublicProductDetail';
-import PartnerHome from '@/pages/partner/PartnerHome';
-import PartnerAdmin from '@/pages/partner/PartnerAdmin';
+const PartnerHome = lazy(() => import('@/pages/partner/PartnerHome'));
+const PartnerAdmin = lazy(() => import('@/pages/partner/PartnerAdmin'));
 import Signup from '@/pages/auth/Signup';
 import Join from '@/pages/auth/Join';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
@@ -30,8 +32,8 @@ import Orders from '@/pages/wholesaler/Orders';
 import WholesalerOrderDetail from '@/pages/wholesaler/orders/OrderDetail';
 import PurchaseForm from '@/pages/wholesaler/purchases/PurchaseForm';
 import PurchaseDetail from '@/pages/wholesaler/purchases/PurchaseDetail';
-import StockIntakePage from '@/pages/wholesaler/StockIntake';
-import IntakeReview from '@/pages/wholesaler/intake/IntakeReview';
+const StockIntakePage = lazy(() => import('@/pages/wholesaler/StockIntake'));
+const IntakeReview = lazy(() => import('@/pages/wholesaler/intake/IntakeReview'));
 import ShopSearch from '@/pages/buy/ShopSearch';
 import ShopPage from '@/pages/buy/ShopPage';
 import ProductDetail from '@/pages/buy/ProductDetail';
@@ -43,24 +45,28 @@ import BuyChat from '@/pages/buy/Chat';
 import BuyChatThread from '@/pages/buy/ChatThread';
 import WholesalerChat from '@/pages/wholesaler/Chat';
 import WholesalerChatThread from '@/pages/wholesaler/ChatThread';
-import Autopay from '@/pages/wholesaler/Autopay';
-import Crm from '@/pages/wholesaler/Crm';
-import CustomerProfile from '@/pages/wholesaler/crm/CustomerProfile';
-import { ComplaintDetail } from '@/pages/wholesaler/crm/Complaints';
-import Quotations from '@/pages/wholesaler/Quotations';
-import QuoteForm from '@/pages/wholesaler/quotations/QuoteForm';
-import QuoteDetail from '@/pages/wholesaler/quotations/QuoteDetail';
-import Hr from '@/pages/wholesaler/Hr';
-import Accounts from '@/pages/wholesaler/Accounts';
-import Help from '@/pages/Help';
-import Support from '@/pages/Support';
-import EmployeeDetail from '@/pages/wholesaler/hr/EmployeeDetail';
-import EmpLayout from '@/pages/emp/EmpLayout';
-import {
-  EmpHome, EmpTasks, EmpAttendance, EmpSalary, EmpPerformance,
-} from '@/pages/emp/EmpPages';
-import EmpRequests from '@/pages/emp/EmpRequests';
-import { EmpMore, EmpProfile, EmpTeam } from '@/pages/emp/EmpMore';
+const Autopay = lazy(() => import('@/pages/wholesaler/Autopay'));
+const Crm = lazy(() => import('@/pages/wholesaler/Crm'));
+const CustomerProfile = lazy(() => import('@/pages/wholesaler/crm/CustomerProfile'));
+const ComplaintDetail = lazy(() => import('@/pages/wholesaler/crm/Complaints').then((m) => ({ default: m.ComplaintDetail })));
+const Quotations = lazy(() => import('@/pages/wholesaler/Quotations'));
+const QuoteForm = lazy(() => import('@/pages/wholesaler/quotations/QuoteForm'));
+const QuoteDetail = lazy(() => import('@/pages/wholesaler/quotations/QuoteDetail'));
+const Hr = lazy(() => import('@/pages/wholesaler/Hr'));
+const Accounts = lazy(() => import('@/pages/wholesaler/Accounts'));
+const Help = lazy(() => import('@/pages/Help'));
+const Support = lazy(() => import('@/pages/Support'));
+const EmployeeDetail = lazy(() => import('@/pages/wholesaler/hr/EmployeeDetail'));
+const EmpLayout = lazy(() => import('@/pages/emp/EmpLayout'));
+const EmpHome = lazy(() => import('@/pages/emp/EmpPages').then((m) => ({ default: m.EmpHome })));
+const EmpTasks = lazy(() => import('@/pages/emp/EmpPages').then((m) => ({ default: m.EmpTasks })));
+const EmpAttendance = lazy(() => import('@/pages/emp/EmpPages').then((m) => ({ default: m.EmpAttendance })));
+const EmpSalary = lazy(() => import('@/pages/emp/EmpPages').then((m) => ({ default: m.EmpSalary })));
+const EmpPerformance = lazy(() => import('@/pages/emp/EmpPages').then((m) => ({ default: m.EmpPerformance })));
+const EmpRequests = lazy(() => import('@/pages/emp/EmpRequests'));
+const EmpMore = lazy(() => import('@/pages/emp/EmpMore').then((m) => ({ default: m.EmpMore })));
+const EmpProfile = lazy(() => import('@/pages/emp/EmpMore').then((m) => ({ default: m.EmpProfile })));
+const EmpTeam = lazy(() => import('@/pages/emp/EmpMore').then((m) => ({ default: m.EmpTeam })));
 import CartPage from '@/pages/retailer/Cart';
 import MyOrders from '@/pages/retailer/MyOrders';
 import OrderDetail from '@/pages/retailer/OrderDetail';
@@ -72,11 +78,11 @@ import Khata from '@/pages/wholesaler/Khata';
 import Payments from '@/pages/wholesaler/Payments';
 import MyKhata from '@/pages/retailer/MyKhata';
 import Dashboard from '@/pages/wholesaler/Dashboard';
-import Reports from '@/pages/wholesaler/Reports';
+const Reports = lazy(() => import('@/pages/wholesaler/Reports'));
 import RetailerHome from '@/pages/retailer/Home';
 import Notifications from '@/pages/Notifications';
 import MenuPage from '@/pages/wholesaler/MenuPage';
-import Staff from '@/pages/wholesaler/Staff';
+const Staff = lazy(() => import('@/pages/wholesaler/Staff'));
 import Returns from '@/pages/wholesaler/Returns';
 import Buying from '@/pages/wholesaler/Buying';
 import ReturnForm from '@/pages/wholesaler/returns/ReturnForm';
@@ -184,6 +190,7 @@ function HomeRedirect() {
 
 export default function AppRoutes() {
   return (
+    <Suspense fallback={<PageFallback />}>
     <Routes>
       {/* ---- Public ---- */}
       <Route path="/login" element={<Login />} />
@@ -424,5 +431,6 @@ export default function AppRoutes() {
       <Route path="/" element={<HomeRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

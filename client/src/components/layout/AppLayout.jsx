@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import PlanNeeded from '@/pages/wholesaler/PlanNeeded';
+import PageFallback from '@/components/PageFallback';
 import OnboardingTour from '@/components/tutorial/OnboardingTour';
 import TrialBanner from '@/components/billing/TrialBanner';
 import AnnouncementBar from '@/components/AnnouncementBar';
@@ -157,7 +158,7 @@ export default function AppLayout() {
         {!buying && <TrialBanner />}
         <AnnouncementBar />
         <main className={cn('px-4 pt-4 sm:px-5 lg:px-6 lg:pb-6', buying ? 'pb-20' : 'mx-auto max-w-7xl pb-6')}>
-          {!buying && needsPlan ? <PlanNeeded /> : <Outlet />}
+          {!buying && needsPlan ? <PlanNeeded /> : <Suspense fallback={<PageFallback />}><Outlet /></Suspense>}
         </main>
       </div>
 

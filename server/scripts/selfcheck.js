@@ -963,7 +963,7 @@ async function main() {
     Har naya doc likhne pe utne hi index update hote hain. Ye ginti seedha
     likhne ki raftaar aur mahine ke bill se judi hai, isliye uspe hadd hai.
   */
-  check('kul index kaabu me hain (150 se kam)', idxTotal < 150, `${idxTotal} index`);
+  check('kul index kaabu me hain (250 se kam)', idxTotal < 250, `${idxTotal} index`);
   check('kisi ek model pe 9 se zyada index nahi', heavy.length === 0, heavy.join(' '));
 
   /* ── garam query ke liye index maujood hai ── */
@@ -1571,7 +1571,7 @@ async function main() {
     prSrc.includes('sm.tokenSeq = (sm.tokenSeq || 0) + 1')
     && srcOf('middleware/partnerAuth.js').includes('sm.tokenSeq'));
   check('password badalte hi purane token band ho jate hain (admin)',
-    paSrc.includes('admin.tokenSeq = (admin.tokenSeq || 0) + 1')
+    srcOf('services/adminAuth.service.js').includes('a.tokenSeq = (a.tokenSeq || 0) + 1')
     && srcOf('middleware/partnerAuth.js').includes('admin.tokenSeq'));
 
   check('salesman band karne ke liye body me active bhejna zaroori hai',

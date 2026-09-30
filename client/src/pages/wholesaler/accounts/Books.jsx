@@ -44,9 +44,13 @@ export function DayBook() {
                 <li key={k}>
                   <button type="button" onClick={() => setOpen(isOpen ? null : k)} className="flex w-full items-center gap-3 py-2.5 text-left hover:bg-slate-50">
                     {isOpen ? <ChevronDown size={15} className="shrink-0 text-slate-400" /> : <ChevronRight size={15} className="shrink-0 text-slate-400" />}
-                    <span className="w-20 shrink-0 text-xs text-slate-500">{dateLabel(v.date).slice(0, 6)}</span>
-                    <Badge tone="slate" className="shrink-0">{t(v.type)}</Badge>
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{[v.no, v.party, v.narration].filter(Boolean).join(' · ')}</span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                      <span className="flex shrink-0 items-center gap-2 sm:gap-3">
+                        <span className="text-xs text-slate-500 sm:w-20">{dateLabel(v.date).slice(0, 6)}</span>
+                        <Badge tone="slate" className="shrink-0">{t(v.type)}</Badge>
+                      </span>
+                      <span className="min-w-0 truncate text-sm text-slate-800">{[v.no, v.party, v.narration].filter(Boolean).join(' · ')}</span>
+                    </span>
                     <Amt v={v.amount} strong />
                   </button>
                   {isOpen && VERIFY_TYPE[v.type] && /^[a-f\d]{24}$/i.test(v.id) && (

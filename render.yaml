@@ -18,7 +18,7 @@ services:
 
       # Node ka version pakka kar dete hain — Render ka default badalta rehta hai
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
 
       # Ye Render dashboard me khud bharni hai (MongoDB Atlas ka connection string).
       # sync:false ka matlab — ye value repo me nahi jayegi.
@@ -39,6 +39,27 @@ services:
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      - key: BILLING_MODE
+        value: free
+
+      # OTP ka SMS (signup / forgot password) — bina iske OTP nahi jayega
+      - key: SMS_PROVIDER
+        value: apitxt
+      - key: APITXT_API_KEY
+        sync: false
+
+      # Admin panel ka pehla login (baad me panel se password badal sakte hain)
+      - key: PARTNER_ADMIN_EMAIL
+        sync: false
+      - key: PARTNER_ADMIN_PASSWORD
+        sync: false
+
+      # Phone notification — ek baar `npm run vapid --prefix server` se banayein
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
         sync: false
 
       # CLIENT_URL / SERVER_URL jaan-boojh kar nahi diye —
