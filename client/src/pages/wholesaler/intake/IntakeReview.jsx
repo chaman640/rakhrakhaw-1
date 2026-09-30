@@ -616,7 +616,7 @@ function LineStep({ intakeId, index, line, gstEnabled, saving, canGoBack, onBack
       </Card>
 
       {/* ─── button ─── */}
-      <div className="sticky bottom-20 flex flex-wrap items-center gap-2 lg:bottom-4">
+      <div className="sticky bottom-20 mb-20 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50/90 p-2 backdrop-blur lg:bottom-4 lg:mb-4">
         {canGoBack && (
           <Button variant="ghost" icon={ArrowLeft} onClick={onBack} disabled={saving}>
             {t('Peeche')}
@@ -746,7 +746,7 @@ function FinishStep({ intake, gstEnabled, paidAmount, setPaidAmount, finishing, 
         </Card>
       )}
 
-      <div className="sticky bottom-20 flex flex-wrap items-center gap-2 lg:bottom-4">
+      <div className="sticky bottom-20 mb-20 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50/90 p-2 backdrop-blur lg:bottom-4 lg:mb-4">
         <Button variant="ghost" icon={ArrowLeft} onClick={onBack} disabled={finishing}>
           {t('Peeche')}
         </Button>

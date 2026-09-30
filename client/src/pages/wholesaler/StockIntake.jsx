@@ -26,7 +26,7 @@ import { t } from '@/lib/i18n';
 const TABS = [
   { value: 'PENDING', label: 'Baaki hai' },
   { value: 'DONE', label: 'Ho gaya' },
-  { value: 'CANCELLED', label: 'Cancel' },
+  { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
 export default function StockIntake() {

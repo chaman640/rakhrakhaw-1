@@ -141,7 +141,12 @@ function Run() {
 
   async function run(key, fn) {
     setBusy(key);
-    try { const res = await fn(); toast.success(res.message); bust('hr'); } catch (err) { toast.error(err.message); } finally { setBusy(''); }
+    try {
+      const res = await fn();
+      // Nothing generated is a heads-up, not a success
+      (res.data?.created === 0 ? toast.info : toast.success)(res.message);
+      bust('hr');
+    } catch (err) { toast.error(err.message); } finally { setBusy(''); }
   }
 
   const columns = [

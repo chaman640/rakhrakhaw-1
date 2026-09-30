@@ -215,7 +215,13 @@ async function run() {
     check('target set', r.status === 200, r.message);
     r = await call('GET', '/crm/targets', { token: tok });
     const t1 = r.data?.rows?.find((x) => String(x.userId) === String(salesId));
-    check('target progress = this month’s sales of assigned customers', t1?.target === 50000 && t1?.achieved === 21200 && t1?.pct === 42, JSON.stringify(t1));
+    // Expected = this IST month's bills of customers assigned to the salesman (the fixture back-dates bills, so on the 1st this is 0)
+    const { monthOf, currentPeriod } = await import('../src/utils/istDay.js');
+    const { start: mStart, end: mEnd } = monthOf(currentPeriod());
+    const mine = await M.Party.find({ businessId: bizId, assignedToUserId: salesId }).select('_id').lean();
+    const expAchieved = (await M.Invoice.find({ businessId: bizId, isCancelled: { $ne: true }, invoiceDate: { $gte: mStart, $lt: mEnd }, partyId: { $in: mine.map((x) => x._id) } }).lean())
+      .reduce((a, x) => a + (x.grandTotal || 0), 0);
+    check('target progress = this month’s sales of assigned customers', t1?.target === 50000 && Math.abs((t1?.achieved || 0) - expAchieved) < 0.01 && t1?.pct === Math.round((expAchieved / 50000) * 100), `${JSON.stringify(t1)} expected ${expAchieved}`);
     r = await call('GET', '/crm/performance', { token: tok });
     const p1 = r.data?.rows?.find((x) => String(x.userId) === String(salesId));
     check('salesman scorecard', r.status === 200 && p1?.leads >= 1 && typeof p1?.sales === 'number', JSON.stringify(p1));

@@ -1,6 +1,22 @@
-import { lazy, Suspense } from 'react';
+import { lazy as reactLazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import PageFallback from '@/components/PageFallback';
+
+/*
+  After a new deploy the old page files are gone. A tab opened before the deploy then fails to
+  load the next page — reload once so it picks up the new version.
+*/
+const lazy = (load) => reactLazy(() => load().catch((err) => {
+  const KEY = 'rr_chunk_reload';
+  let last = 0;
+  try { last = Number(sessionStorage.getItem(KEY)) || 0; } catch { /* storage blocked */ }
+  if (Date.now() - last > 30000) {
+    try { sessionStorage.setItem(KEY, String(Date.now())); } catch { /* storage blocked */ }
+    window.location.reload();
+    return new Promise(() => {});
+  }
+  throw err;
+}));
 import AppLayout from '@/components/layout/AppLayout';
 import RequireAuth from './RequireAuth';
 import RequirePermission from './RequirePermission';

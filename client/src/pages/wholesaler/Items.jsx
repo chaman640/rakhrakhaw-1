@@ -146,7 +146,7 @@ export default function Items() {
         checked={selected.includes(row._id)}
         onChange={() => toggleSelect(row._id)}
         className="h-4 w-4 rounded border-slate-300 text-brand-600 focus-ring"
-        aria-label={`${row.name} chunein`} />
+        aria-label={t('{a} chunein', { a: row.name })} />
 
 
     },

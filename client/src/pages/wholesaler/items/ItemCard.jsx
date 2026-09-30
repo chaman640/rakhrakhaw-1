@@ -21,7 +21,7 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock, on
         checked={selected}
         onChange={() => onSelect(item._id)}
         className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus-ring"
-        aria-label={`${item.name} chunein`}
+        aria-label={t('{a} chunein', { a: item.name })}
       />
 
       {item.imageUrl ? (

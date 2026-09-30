@@ -25,8 +25,9 @@ export default function Card({ children, className, padding = true, onClick, ...
 
 export function CardHeader({ title, subtitle, action, className }) {
   return (
-    <div className={cn('mb-4 flex items-start justify-between gap-4', className)}>
-      <div>
+    <div className={cn('mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3', className)}>
+      {/* basis-48: on narrow cards the action drops below instead of squeezing the title */}
+      <div className="min-w-0 flex-1 basis-48">
         <h3 className="text-base font-semibold text-slate-900">{tx(title)}</h3>
         {subtitle && <p className="mt-0.5 text-sm text-slate-500">{tx(subtitle)}</p>}
       </div>

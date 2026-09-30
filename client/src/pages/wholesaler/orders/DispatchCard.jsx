@@ -39,7 +39,7 @@ export default function DispatchCard({ order, onSaved, onPrint }) {
   const has = d.challanNo;
   return (
     <Card className="mb-5 no-print">
-      <CardHeader title={<span className="flex items-center gap-2"><Truck size={16} className="text-brand-700" />{t('Dispatch & delivery challan')}</span>}
+      <CardHeader title={<span className="flex items-center gap-2"><Truck size={16} className="shrink-0 text-brand-700" />{t('Dispatch & delivery challan')}</span>}
         subtitle={has ? `${t('Challan')} ${d.challanNo}` : t('Add vehicle and transporter details to issue a delivery challan')}
         action={!closed && (
           <div className="flex gap-2">

@@ -86,7 +86,7 @@ export default function HrSettingsTab() {
       </Card>
 
       {editable && f && (
-        <div className="sticky bottom-20 flex justify-end gap-2 lg:bottom-4">
+        <div className="sticky bottom-20 mb-20 flex justify-end gap-2 lg:bottom-4 lg:mb-4">
           <Button variant="secondary" onClick={() => setF(null)}>{t('Discard')}</Button>
           <Button loading={saving} onClick={save}>{t('Save settings')}</Button>
         </div>

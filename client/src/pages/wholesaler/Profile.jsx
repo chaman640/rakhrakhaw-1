@@ -130,7 +130,7 @@ function useBusinessSave(onSaved) {
 
 function SaveBar({ saving }) {
   return (
-    <div className="sticky bottom-20 flex justify-end lg:bottom-4">
+    <div className="sticky bottom-20 mb-20 flex justify-end lg:bottom-4 lg:mb-4">
       <Button type="submit" icon={Save} loading={saving} size="lg" className="shadow-lg">
         {t('Save karein')}
       </Button>

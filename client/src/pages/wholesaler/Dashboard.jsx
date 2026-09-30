@@ -341,7 +341,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 *:min-w-0">
           {d.orders && (
           <Card>
             <CardHeader title={t('Orders')}
@@ -401,7 +401,7 @@ export default function Dashboard() {
       )}
 
       {/* ---- Top items / retailers / activity ---- */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3 *:min-w-0">
         {d.topItems && (
         <Card>
           <CardHeader title={t('Sabse zyada bike')} subtitle={t('Is mahine')} />

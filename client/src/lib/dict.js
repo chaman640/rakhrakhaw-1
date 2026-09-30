@@ -4059,6 +4059,20 @@ const DICT = {
   '{a} tak ka bill': { hi: '{a} तक का बिल', en: 'Bills up to {a}' },
   'Udhaar pe bill nahi': { hi: 'उधार पर बिल नहीं', en: 'No credit bills' },
   'Zyada se zyada {a} photo lag sakti hain': { hi: 'ज़्यादा से ज़्यादा {a} फ़ोटो लग सकती हैं', en: 'Up to {a} photos allowed' },
+
+  /* ── Misc labels ── */
+  'Haan': { hi: 'हाँ', en: 'Yes' },
+  'Dhundhein...': { hi: 'ढूंढें...', en: 'Search...' },
+  'Padh lijiye': { hi: 'पढ़ लीजिए', en: 'Read them' },
+  'Kul retailers': { hi: 'कुल रिटेलर', en: 'Total retailers' },
+  'Kul suppliers': { hi: 'कुल सप्लायर', en: 'Total suppliers' },
+  'Naam, phone, address, balance': { hi: 'नाम, फ़ोन, पता, बैलेंस', en: 'Name, phone, address, balance' },
+  'Log': { hi: 'लोग', en: 'People' },
+  'Suresh Auto Store': { hi: 'सुरेश ऑटो स्टोर', en: 'Suresh Auto Store' },
+  'Sharma Traders': { hi: 'शर्मा ट्रेडर्स', en: 'Sharma Traders' },
+
+  /* ── Selection ── */
+  '{a} chunein': { hi: '{a} चुनें', en: 'Select {a}' },
 };
 
 export default DICT;

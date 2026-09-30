@@ -9,7 +9,7 @@ export default function SearchInput({ value, onChange, placeholder = 'Dhundhein.
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={t(placeholder)}
         className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-9 text-sm
                    placeholder:text-slate-400 hover:border-slate-400 focus-ring"
       />
