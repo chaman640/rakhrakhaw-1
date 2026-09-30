@@ -148,7 +148,7 @@ export default function InvoiceDetail() {
               <p className="text-xs font-medium text-amber-900">
                 {t('Is bill pe kharidaar ki poori detail nahi hai')}
                 {' — '}
-                {invoice.partyMissing.map((k) => MISSING_LABEL[k] || k).join(', ')}
+                {invoice.partyMissing.map((k) => t(MISSING_LABEL[k] || k)).join(', ')}
               </p>
               <p className="mt-0.5 text-xs text-amber-800">
                 {invoice.gstEnabled
@@ -205,7 +205,7 @@ export default function InvoiceDetail() {
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
         size="sm"
-        title={`${invoice.invoiceNo} cancel karein?`}
+        title={t('{a0} cancel karein?', { a0: invoice.invoiceNo })}
         description={t('Bill delete nahi hoga — number record me rahega, par stock wapas aa jayega aur khata ulta ho jayega.')}
         footer={
           <>

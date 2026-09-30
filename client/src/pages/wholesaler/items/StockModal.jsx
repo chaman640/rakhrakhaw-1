@@ -219,7 +219,7 @@ export default function StockModal({ open, onClose, item, onSaved }) {
                   </Badge>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-slate-700">
-                      {TYPE_LABEL[m.type] || m.type}
+                      {t(TYPE_LABEL[m.type] || m.type)}
                       {m.note && <span className="text-slate-500"> · {m.note}</span>}
                     </p>
                     <p className="text-xs text-slate-400">{formatDateTime(m.createdAt)}</p>

@@ -293,8 +293,8 @@ function UpiPayModal({ open, onClose, upi, due, onSent }) {
     <Modal
       open={open}
       onClose={onClose}
-      title={step === 1 ? 'UPI se paisa bhejein' : 'Bhej diya?'}
-      description={step === 1 ? `${upi.name} ko` : 'Wholesaler ko bata dete hain, wo confirm karega'}
+      title={step === 1 ? t('UPI se paisa bhejein') : t('Bhej diya?')}
+      description={step === 1 ? t('{a0} ko', { a0: upi.name }) : t('Wholesaler ko bata dete hain, wo confirm karega')}
       footer={step === 1 ?
       <>
           <Button variant="secondary" onClick={onClose}>{t("Rehne dein")}</Button>
@@ -314,7 +314,7 @@ function UpiPayModal({ open, onClose, upi, due, onSent }) {
           <Input
           label={t("Kitna bhejna hai")} required type="number" min="0" step="0.01" prefix="₹"
           value={amount} onChange={(e) => setAmount(e.target.value)}
-          hint={due > 0 ? `Poora ${formatMoney(due)} baaki hai` : undefined} />
+          hint={due > 0 ? t('Poora {a0} baaki hai', { a0: formatMoney(due) }) : undefined} />
         
 
           {qr &&

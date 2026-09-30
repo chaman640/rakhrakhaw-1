@@ -22,7 +22,7 @@ export function UpgradeCard({ info, compact = false }) {
         <p className="text-base font-semibold text-slate-900">{t(info.name)}</p>
         <p className="mt-1 text-sm text-slate-600">
           {info.plan
-            ? t('Ye {plan} (₹{amt}/mahina) ya usse upar ke plan me hai.', { plan: info.plan.name, amt: info.plan.priceRupees })
+            ? t('Ye {plan} (₹{amt}/mahina) ya usse upar ke plan me hai.', { plan: t(info.plan.name), amt: info.plan.priceRupees })
             : t('Ye abhi band hai.')}
         </p>
         {info.plan && (

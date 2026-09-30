@@ -49,7 +49,7 @@ export default function Staff() {
         }}
         tabs={[
           { value: 'log', label: 'Log' },
-          { value: 'record', label: 'Kaam ka record' },
+          { value: 'record', label: t('Kaam ka record') },
         ]}
       />
 

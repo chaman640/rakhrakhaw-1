@@ -7,7 +7,7 @@ import { useShop } from '@/context/ShopContext';
 import { formatDateTime } from '@/lib/format';
 import { Spinner } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 const ICONS = {
   NEW_ORDER: ShoppingCart,
@@ -79,7 +79,7 @@ export default function NotificationBell() {
       <button
         onClick={() => { setOpen((v) => !v); refresh(); }}
         className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-ring"
-        aria-label={count > 0 ? `${count} nayi notification` : 'Notifications'}
+        aria-label={count > 0 ? t('{a0} nayi notification', { a0: count }) : 'Notifications'}
       >
         <Bell size={19} />
         {count > 0 && (
@@ -136,9 +136,9 @@ export default function NotificationBell() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className={cn('truncate text-sm', n.isRead ? 'text-slate-700' : 'font-medium text-slate-900')}>
-                          {n.title}
+                          {tDyn(n.title)}
                         </p>
-                        {n.body && <p className="truncate text-xs text-slate-500">{n.body}</p>}
+                        {n.body && <p className="truncate text-xs text-slate-500">{tDyn(n.body)}</p>}
                         <p className="mt-0.5 text-xs text-slate-400">{formatDateTime(n.createdAt)}</p>
                       </div>
                       {!n.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-600" />}

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import PushToggle from '@/components/PushToggle';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 const TYPES = [
   { value: 'all', label: 'Sab' },
@@ -211,10 +211,10 @@ export default function Notifications() {
         ) : !rows.length ? (
           <EmptyState
             icon={BellOff}
-            title={onlyUnread ? 'Sab padh liya' : 'Abhi koi notification nahi'}
+            title={onlyUnread ? t('Sab padh liya') : t('Abhi koi notification nahi')}
             message={onlyUnread
-              ? 'Koi nayi notification nahi bachi.'
-              : 'Naya order aaye, payment mile ya stock kam ho — yahan alert aa jayega.'}
+              ? t('Koi nayi notification nahi bachi.')
+              : t('Naya order aaye, payment mile ya stock kam ho — yahan alert aa jayega.')}
           />
         ) : (
           <>
@@ -248,9 +248,9 @@ export default function Notifications() {
 
                     <div className="min-w-0 flex-1">
                       <p className={cn('text-sm', n.isRead ? 'text-slate-700' : 'font-medium text-slate-900')}>
-                        {n.title}
+                        {tDyn(n.title)}
                       </p>
-                      {n.body && <p className="mt-0.5 text-sm text-slate-500">{n.body}</p>}
+                      {n.body && <p className="mt-0.5 text-sm text-slate-500">{tDyn(n.body)}</p>}
                       <p className="mt-1 text-xs text-slate-400">{formatDateTime(n.createdAt)}</p>
                     </div>
 

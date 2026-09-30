@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Search, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import Spinner from './Spinner';
-import { t } from '@/lib/i18n';
+import { t, tx } from '@/lib/i18n';
 
 /**
  * Search karke chunne wala dropdown.
@@ -14,8 +14,8 @@ import { t } from '@/lib/i18n';
  */
 export default function Combobox({
   value, display, onChange, fetchOptions, placeholder = 'Dhundhein...',
-  label, required, error, emptyText = 'Kuch nahi mila', className, autoFocus, id,
-  onCreateNew, createNewLabel = 'Naya banayein', disabled = false,
+  label, required, error, emptyText = t('Kuch nahi mila'), className, autoFocus, id,
+  onCreateNew, createNewLabel = t('Naya banayein'), disabled = false,
 }) {
   const autoId = useId();
   const fieldId = id || autoId;
@@ -99,7 +99,7 @@ export default function Combobox({
       {label && (
         <div className="mb-1.5 flex items-center">
           <label htmlFor={fieldId} className="block text-sm font-medium text-slate-700">
-            {label}
+            {tx(label)}
           </label>
           {required && <span aria-hidden="true" className="ml-0.5 text-red-500">*</span>}
         </div>
@@ -116,7 +116,7 @@ export default function Combobox({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={placeholder}
+              placeholder={tx(placeholder)}
               className="h-10 w-full rounded-lg border border-brand-400 bg-white pl-9 pr-8 text-sm focus-ring"
             />
             {/* p-2 (36px ghera) — p-1 pe ye 22px ka tha aur ungli se chookta tha */}
@@ -144,7 +144,7 @@ export default function Combobox({
             )}
           >
             <span className={cn('truncate', display ? 'text-slate-900' : 'text-slate-400')}>
-              {display || placeholder}
+              {display || tx(placeholder)}
             </span>
             {!disabled && <ChevronDown size={16} className="shrink-0 text-slate-400" />}
           </button>
@@ -157,7 +157,7 @@ export default function Combobox({
         <div
           data-combobox-list
           role="listbox"
-          aria-label={label ? `${label} ke options` : 'Options'}
+          aria-label={label ? t('{x} ke options', { x: tx(label) }) : t('Options')}
           style={{ left: coords.left, top: coords.top, width: coords.width }}
           className="fixed z-[70] max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
         >
@@ -167,11 +167,11 @@ export default function Combobox({
             </div>
           ) : !options.length ? (
             <div className="px-3 py-6 text-center text-sm text-slate-500">
-              {emptyText}
+              {tx(emptyText)}
               {onCreateNew && (
                 <button type="button" onClick={() => { onCreateNew(query); setOpen(false); }}
                   className="mt-2 block w-full rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700">
-                  {createNewLabel}
+                  {tx(createNewLabel)}
                 </button>
               )}
             </div>

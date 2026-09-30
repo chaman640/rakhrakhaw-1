@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tx } from '@/lib/i18n';
 
 const sizes = {
   sm: 'max-w-sm',
@@ -40,8 +40,8 @@ export default function Modal({ open, onClose, title, description, children, foo
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-            {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+            <h2 className="text-base font-semibold text-slate-900">{tx(title)}</h2>
+            {description && <p className="mt-0.5 text-sm text-slate-500">{tx(description)}</p>}
           </div>
           <button
             onClick={onClose}
@@ -85,12 +85,12 @@ export function ConfirmModal({ open, onClose, onConfirm, title, message, confirm
             disabled={loading}
             className="h-9 rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60 focus-ring"
           >
-            {confirmLabel}
+            {tx(confirmLabel)}
           </button>
         </>
       }
     >
-      <p className="text-sm text-slate-600">{message}</p>
+      <p className="text-sm text-slate-600">{tx(message)}</p>
     </Modal>
   );
 }

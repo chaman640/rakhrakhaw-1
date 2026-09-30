@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { tx } from '@/lib/i18n';
 import Spinner from './Spinner';
 
 const variants = {
@@ -39,7 +40,7 @@ export default function Button({
     >
       {/* icon kabhi squeeze na ho — chhote card me button tight ho jata hai */}
       {loading ? <Spinner size={16} className="shrink-0" /> : Icon ? <Icon size={16} className="shrink-0" /> : null}
-      <span className="truncate">{children}</span>
+      <span className="truncate">{tx(children)}</span>
     </button>
   );
 }

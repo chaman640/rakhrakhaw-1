@@ -159,7 +159,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
   null;
 
   function setCover(file) {
-    if (file.size > 3 * 1024 * 1024) {toast.error('Image 3 MB se choti honi chahiye');return;}
+    if (file.size > 3 * 1024 * 1024) {toast.error(t('Image 3 MB se choti honi chahiye'));return;}
     setPhoto({ url: URL.createObjectURL(file), pendingFile: file });
   }
 
@@ -361,7 +361,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       setForm((f) => ({ ...f, categoryId: res.data._id }));
       setNewCategory('');
       setAddingCategory(false);
-      toast.success(`"${name}" category ban gayi`);
+      toast.success(t('"{a0}" category ban gayi', { a0: name }));
     } catch (err) {
       toast.error(err.message);
     }
@@ -418,7 +418,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       await uploadPhotoFor(res.data._id);
       if (!isEdit) await uploadPendingGalleryFor(res.data._id);
 
-      toast.success(isEdit ? 'Item save ho gaya' : `${payload.name} add ho gaya`);
+      toast.success(isEdit ? t('Item save ho gaya') : t('{a0} add ho gaya', { a0: payload.name }));
       onSaved();
       onClose();
     } catch (err) {
@@ -434,13 +434,13 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
       open={open}
       onClose={onClose}
       size="lg"
-      title={isEdit ? 'Item edit karein' : 'Naya item'}
+      title={isEdit ? t('Item edit karein') : t('Naya item')}
       description={isEdit ? item?.name : 'Stock, price aur category bharein'}
       footer={
       <>
           <Button variant="secondary" onClick={onClose} type="button">{t('Cancel')}</Button>
           <Button onClick={handleSubmit} loading={saving || uploading} type="button">
-            {isEdit ? 'Save karein' : 'Add karein'}
+            {isEdit ? t('Save karein') : t('Add karein')}
           </Button>
         </>
       }>
@@ -474,7 +474,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             </Button>
             <Button type="button" variant="secondary" size="sm" icon={Upload}
             onClick={() => fileRef.current?.click()}>
-              {photo.url ? 'Photo badlein' : 'Gallery se chunein'}
+              {photo.url ? t('Photo badlein') : t('Gallery se chunein')}
             </Button>
             {photo.url &&
             <Button type="button" variant="ghost" size="sm" icon={Trash2} onClick={removePhoto}>
@@ -721,9 +721,9 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
           expiryDin <= 30 ? 'bg-amber-50 text-amber-900' :
           'bg-slate-50 text-slate-600')}>
               {expiryDin < 0 ?
-            `Ye maal ${Math.abs(expiryDin)} din pehle expire ho chuka hai` :
-            expiryDin === 0 ? 'Ye maal aaj expire ho raha hai' :
-            `Expiry me ${expiryDin} din bache hain`}
+            t('Ye maal {a0} din pehle expire ho chuka hai', { a0: Math.abs(expiryDin) }) :
+            expiryDin === 0 ? t('Ye maal aaj expire ho raha hai') :
+            t('Expiry me {a0} din bache hain', { a0: expiryDin })}
             </p>
           }
         </details>
@@ -740,7 +740,7 @@ export default function ItemFormModal({ open, onClose, item, categories, onSaved
             <Input label={t('Warranty ki shart')} placeholder={t('Company warranty, bill ke saath')}
             value={form.warrantyNote} onChange={set('warrantyNote')}
             disabled={form.warrantyMonths === '0'}
-            hint={form.warrantyMonths === '0' ? 'Pehle warranty chunein' : 'Bill pe chhapegi'} />
+            hint={form.warrantyMonths === '0' ? t('Pehle warranty chunein') : t('Bill pe chhapegi')} />
           </div>
           {form.warrantyMonths !== '0' &&
           <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">

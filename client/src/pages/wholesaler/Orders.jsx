@@ -149,7 +149,7 @@ export default function Orders() {
         {!loading && !rows.length ? (
           <EmptyState
             icon={ShoppingCart}
-            title={status === 'open' ? 'Koi chalu order nahi' : 'Is filter me koi order nahi'}
+            title={status === 'open' ? t('Koi chalu order nahi') : t('Is filter me koi order nahi')}
             message={t('Retailers apne app se order bhejenge to yahan turant dikh jayenge — aur bell bhi bajegi.')}
           />
         ) : (

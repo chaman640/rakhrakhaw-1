@@ -96,10 +96,10 @@ export default function MyOrders() {
           <Chips value={status} onChange={setStatus}
           options={[
           { value: 'all', label: 'Sab' },
-          { value: 'PLACED', label: 'Bheja gaya' },
-          { value: 'PACKED', label: 'Pack ho raha' },
+          { value: 'PLACED', label: t('Bheja gaya') },
+          { value: 'PACKED', label: t('Pack ho raha') },
           { value: 'READY', label: 'Tayyar' },
-          { value: 'DELIVERED', label: 'Mil gaya' }]
+          { value: 'DELIVERED', label: t('Mil gaya') }]
           } />
         </div>
       </Card>
@@ -108,7 +108,7 @@ export default function MyOrders() {
         {!loading && !rows.length ?
         <EmptyState
           icon={ShoppingCart}
-          title={status === 'all' ? 'Abhi koi order nahi kiya' : 'Is status me koi order nahi'}
+          title={status === 'all' ? t('Abhi koi order nahi kiya') : t('Is status me koi order nahi')}
           message={t("Catalog se saman chun kar apna pehla order bhej dein.")}
           action={<Button icon={Store} onClick={() => navigate('/shop')}>{t("Catalog kholein")}</Button>} /> :
 

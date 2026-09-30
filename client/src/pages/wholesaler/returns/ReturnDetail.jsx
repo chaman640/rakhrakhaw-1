@@ -135,7 +135,7 @@ export default function ReturnDetail() {
             a: formatMoney(refundInfo.alreadyRefunded),
           })}
           {refundInfo.refundable > 0
-            && ` · ${t('{a} aur wapas ho sakta hai', { a: formatMoney(refundInfo.refundable) })}`}
+            && t(' · {a0}', { a0: t('{a} aur wapas ho sakta hai', { a: formatMoney(refundInfo.refundable) }) })}
         </p>
       )}
 
@@ -176,7 +176,7 @@ export default function ReturnDetail() {
 
         <div className="border-b border-slate-300 py-3">
           <p className="text-xs uppercase tracking-wide text-slate-500">
-            {isSale ? 'Maal wapas karne wale' : 'Maal wapas bhejne wale'}
+            {isSale ? t('Maal wapas karne wale') : t('Maal wapas bhejne wale')}
           </p>
           <p className="font-semibold text-slate-900">{party.shopName || party.name}</p>
           {party.shopName && party.name && <p className="text-xs text-slate-600">{party.name}</p>}
@@ -267,8 +267,8 @@ export default function ReturnDetail() {
 
         <p className="mt-4 border-t border-slate-200 pt-3 text-[10px] text-slate-500">
           {isSale ?
-          'Ye credit note hai — itni raqam aapke khate se kam kar di gayi hai.' :
-          'Ye debit note hai — itni raqam supplier ke khate se kam kar di gayi hai.'}
+          t('Ye credit note hai — itni raqam aapke khate se kam kar di gayi hai.') :
+          t('Ye debit note hai — itni raqam supplier ke khate se kam kar di gayi hai.')}
         </p>
 
         <div className="mt-8 flex justify-end">
@@ -323,7 +323,7 @@ export default function ReturnDetail() {
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
         loading={busy}
-        title={`${note.returnNo} delete karein?`}
+        title={t('{a0} delete karein?', { a0: note.returnNo })}
         message={isSale ?
         'Stock wapas ghat jayega aur retailer ka udhaar dobara badh jayega. Ye wapas nahi hota.' :
         'Stock wapas badh jayega aur supplier ko dena dobara badh jayega. Ye wapas nahi hota.'}

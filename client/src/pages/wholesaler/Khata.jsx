@@ -59,7 +59,7 @@ export default function Khata() {
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Lena hai (retailers se)')} value={formatMoney(summary.receivable || 0)}
         icon={TrendingUp} tone={summary.receivable > 0 ? 'amber' : 'green'}
-        sub={`${summary.retailersWithDue || 0} dukaan pe udhaar`} />
+        sub={t('{a0} dukaan pe udhaar', { a0: summary.retailersWithDue || 0 })} />
         <StatCard label={t('Dena hai (suppliers ko)')} value={formatMoney(summary.payable || 0)}
         icon={TrendingDown} tone={summary.payable > 0 ? 'red' : 'green'} />
         <StatCard label={t('Net')} value={formatMoney(summary.net || 0)} icon={BookOpen}
@@ -107,7 +107,7 @@ export default function Khata() {
         {!loading && !rows.length ?
         <EmptyState
           icon={BookOpen}
-          title={filter === 'due' ? 'Kisi pe udhaar nahi' : 'Koi party nahi mili'}
+          title={filter === 'due' ? t('Kisi pe udhaar nahi') : t('Koi party nahi mili')}
           message={filter === 'due' ?
           'Sabka hisaab barabar hai. Bill banega tab yahan udhaar dikhega.' :
           'Pehle retailer ya supplier add karein.'} /> :

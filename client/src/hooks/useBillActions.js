@@ -4,6 +4,7 @@ import { formatMoney } from '@/lib/format';
 import { billPdfBlob, billFileName } from '@/lib/billCanvas';
 import { shareFile } from '@/lib/share';
 import { useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 /**
  * "Bhejo" aur "Chhapo" — ek hi jagah, taaki har page pe ek jaisa chale.
@@ -34,7 +35,7 @@ export function useBillActions() {
       const lines = [
         `${b.name || ''} — Bill ${invoice.invoiceNo}`,
         `Kul: ${formatMoney(invoice.grandTotal)}`,
-        invoice.dueAmount > 0 ? `Baaki: ${formatMoney(invoice.dueAmount)}` : 'Poora mil gaya',
+        invoice.dueAmount > 0 ? t('Baaki: {a0}', { a0: formatMoney(invoice.dueAmount) }) : t('Poora mil gaya'),
       ];
       if (invoice.dueAmount > 0 && b.upiId) lines.push(`UPI: ${b.upiId}`);
 
@@ -45,13 +46,13 @@ export function useBillActions() {
       });
 
       if (result === 'downloaded') {
-        toast.info('Bill download ho gaya — WhatsApp me clip wale button se laga dein');
+        toast.info(t('Bill download ho gaya — WhatsApp me clip wale button se laga dein'));
       } else if (result === 'shared') {
-        toast.success('Bill bhej diya');
+        toast.success(t('Bill bhej diya'));
       }
       // 'cancelled' pe kuch nahi — aadmi ne khud band kiya hai
     } catch (err) {
-      toast.error(err.message || 'Bill bhej nahi paye');
+      toast.error(err.message || t('Bill bhej nahi paye'));
     } finally {
       setBusyId(null);
     }

@@ -110,14 +110,14 @@ export default function RetailerHome() {
       {/* ---- Quick tiles ---- */}
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile label={t("Chalu orders")} value={d.orders.running} icon={ShoppingCart} tone="brand"
-        sub={d.orders.ready ? `${d.orders.ready} tayyar hai` : 'Sab theek'}
+        sub={d.orders.ready ? t('{a0} tayyar hai', { a0: d.orders.ready }) : t('Sab theek')}
         onClick={() => navigate('/my-orders')} />
         <Tile label={t("Is mahine kharida")} value={formatMoney(d.monthSpend)} icon={Receipt} tone="brand"
         sub={`${d.monthBills} bill`} onClick={() => navigate('/my-bills')} />
         <Tile label={t("Kul order")} value={d.orders.delivered} icon={CircleCheck} tone="green"
         sub={t("Mil chuke")} onClick={() => navigate('/my-orders')} />
         <Tile label={t("Naye alert")} value={d.unread} icon={Bell} tone={d.unread ? 'amber' : 'brand'}
-        sub={d.unread ? 'Padh lijiye' : 'Kuch naya nahi'} onClick={() => navigate('/notifications')} />
+        sub={d.unread ? 'Padh lijiye' : t('Kuch naya nahi')} onClick={() => navigate('/notifications')} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">

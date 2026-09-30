@@ -29,8 +29,8 @@ export default function ShopPreview() {
   const [err, setErr] = useState('');
 
   useSeo({
-    title: shop ? `${shop.name} — Rakh Rakhav` : 'Dukaan — Rakh Rakhav',
-    description: shop ? `${shop.name} ka poora maal aur daam dekhein. Order karne ke liye free account banayein.` : '',
+    title: shop ? `${shop.name} — Rakh Rakhav` : t('Dukaan — Rakh Rakhav'),
+    description: shop ? t('{a0} ka poora maal aur daam dekhein. Order karne ke liye free account banayein.', { a0: shop.name }) : '',
     path: `/s/${code}`,
   });
 

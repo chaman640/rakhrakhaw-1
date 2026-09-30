@@ -126,9 +126,9 @@ export default function PartyDetail({ type }) {
 
       {/* ---- Stats ---- */}
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label={isRetailer ? 'Udhaar baaki' : 'Dena hai'} value={formatMoney(party.balance)}
+        <StatCard label={isRetailer ? t('Udhaar baaki') : t('Dena hai')} value={formatMoney(party.balance)}
           icon={IndianRupee} tone={party.balance > 0 ? 'amber' : 'green'}
-          sub={party.creditLimit ? `Limit ${formatMoney(party.creditLimit)}` : 'Koi limit nahi'} />
+          sub={party.creditLimit ? `Limit ${formatMoney(party.creditLimit)}` : t('Koi limit nahi')} />
         <StatCard label={t('Orders')} value={party.orderCount || 0} icon={ShoppingCart} tone="brand" />
         <StatCard label={t('Bills')} value={party.invoiceCount || 0} icon={FileText} tone="brand" />
         {isRetailer && (
@@ -176,7 +176,7 @@ export default function PartyDetail({ type }) {
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
         loading={busy}
-        title={`${party.name} ko delete karein?`}
+        title={t('{a0} ko delete karein?', { a0: party.name })}
         message={t('Agar iska koi order, bill ya payment hai to delete nahi hoga — sirf block ho jayega, taaki purane record kharab na hon.')}
         confirmLabel={t("Haan, delete karein")}
       />
@@ -195,7 +195,7 @@ function DetailTab({ party, isRetailer }) {
     ['State', party.address?.state ? `${party.address.state} (${party.address.stateCode})` : '—'],
     ['Pincode', party.address?.pincode || '—'],
     ['Purana hisaab', formatMoney(party.openingBalance || 0)],
-    ['Credit limit', party.creditLimit ? formatMoney(party.creditLimit) : 'Koi limit nahi'],
+    ['Credit limit', party.creditLimit ? formatMoney(party.creditLimit) : t('Koi limit nahi')],
     ['Juda', formatDate(party.createdAt)],
   ];
 
@@ -206,7 +206,7 @@ function DetailTab({ party, isRetailer }) {
         <dl className="divide-y divide-slate-100">
           {rows.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 py-2.5 text-sm">
-              <dt className="text-slate-500">{k}</dt>
+              <dt className="text-slate-500">{t(k)}</dt>
               <dd className="text-right font-medium text-slate-900">{v}</dd>
             </div>
           ))}
@@ -229,7 +229,7 @@ function DetailTab({ party, isRetailer }) {
               <div className="flex justify-between gap-4 py-2.5 text-sm">
                 <dt className="text-slate-500">{t('Aakhri baar aaya')}</dt>
                 <dd className="font-medium text-slate-900">
-                  {party.linkedUser.lastLoginAt ? formatDateTime(party.linkedUser.lastLoginAt) : 'Abhi tak nahi'}
+                  {party.linkedUser.lastLoginAt ? formatDateTime(party.linkedUser.lastLoginAt) : t('Abhi tak nahi')}
                 </dd>
               </div>
               <div className="flex justify-between gap-4 py-2.5 text-sm">

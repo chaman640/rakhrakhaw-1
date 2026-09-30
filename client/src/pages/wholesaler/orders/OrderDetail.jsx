@@ -17,7 +17,7 @@ import DocSheet from '@/components/sales/DocSheet';
 import { useAuth } from '@/context/AuthContext';
 import { useFeature } from '@/hooks/useBilling';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 const FLOW = ['PLACED', 'PACKED', 'READY', 'DELIVERED'];
 
@@ -377,7 +377,7 @@ export default function OrderDetail() {
                 <div className="pb-1">
                   <p className="text-sm font-medium text-slate-900">{t(STATUS_LABEL[h.status])}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(h.at)}</p>
-                  {h.note && <p className="mt-0.5 text-xs text-slate-500">{h.note}</p>}
+                  {h.note && <p className="mt-0.5 text-xs text-slate-500">{tDyn(h.note)}</p>}
                 </div>
               </li>
             )}
@@ -414,7 +414,7 @@ export default function OrderDetail() {
         onClose={() => setConfirmCancel(false)}
         onConfirm={cancel}
         loading={busy}
-        title={`${order.orderNo} cancel karein?`}
+        title={t('{a0} cancel karein?', { a0: order.orderNo })}
         message={t('Retailer ko turant khabar chali jayegi. Cancel kiya hua order wapas nahi aata.')}
         confirmLabel={t("Haan, cancel karein")} />
       

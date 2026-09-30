@@ -54,7 +54,7 @@ export default function PartyOrdersTab({ partyId, partyName }) {
         <EmptyState
           icon={ShoppingCart}
           title={t('Abhi koi order nahi')}
-          message={`${partyName} ne apne app se abhi tak koi order nahi bheja.`}
+          message={t('{a0} ne apne app se abhi tak koi order nahi bheja.', { a0: partyName })}
         />
       ) : (
         <div className="border-t border-slate-200">

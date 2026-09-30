@@ -1,9 +1,11 @@
+import { tx } from '@/lib/i18n';
+
 export default function PageHeader({ title, subtitle, action }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{tx(title)}</h1>
+        {subtitle && <p className="mt-1 text-sm text-slate-500">{tx(subtitle)}</p>}
       </div>
       {/* flex-wrap: phone pe do-teen button ek line me nahi aate to neeche
           chale jayein — pehle wo screen se bahar nikal jate the */}

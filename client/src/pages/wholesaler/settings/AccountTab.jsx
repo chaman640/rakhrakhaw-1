@@ -23,7 +23,7 @@ export default function AccountTab() {
     e.preventDefault();
     setError('');
     if (form.newPassword !== form.confirmPassword) {
-      setError('Dono naye password same nahi hain');
+      setError(t('Dono naye password same nahi hain'));
       return;
     }
     setLoading(true);
@@ -33,7 +33,7 @@ export default function AccountTab() {
         newPassword: form.newPassword,
       });
       setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      toast.success('Password badal gaya');
+      toast.success(t('Password badal gaya'));
     } catch (err) {
       setError(err.message);
     } finally {

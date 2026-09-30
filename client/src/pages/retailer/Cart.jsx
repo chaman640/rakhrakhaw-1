@@ -374,7 +374,7 @@ export default function Cart() {
     <>
       <PageHeader
         title={t('Cart')}
-        subtitle={`${t('{n} dukaan', { n: data.shopCount })} · ${t('{n} item', { n: data.itemCount })}`}
+        subtitle={t('{a0} · {a1}', { a0: t('{n} dukaan', { n: data.shopCount }), a1: t('{n} item', { n: data.itemCount }) })}
       />
 
       {/*

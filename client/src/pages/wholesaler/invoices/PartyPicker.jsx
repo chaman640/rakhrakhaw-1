@@ -96,7 +96,7 @@ export default function PartyPicker({ value, onChange, disabled }) {
       setState('found');
       // Retailer ki list bhi taaza — warna naya banda wahan turant nahi dikhta
       bust('parties', 'khata');
-      toast.success(`${party.name} jud gaya`);
+      toast.success(t('{a0} jud gaya', { a0: party.name }));
     } catch (err) {
       toast.error(err.message);
     } finally {

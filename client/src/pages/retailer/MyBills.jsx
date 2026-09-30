@@ -88,9 +88,9 @@ export function MyBills() {
           <Chips value={paymentStatus} onChange={setPaymentStatus}
           options={[
           { value: 'all', label: 'Sab' },
-          { value: 'unpaid', label: 'Dena hai' },
-          { value: 'partial', label: 'Kuch diya' },
-          { value: 'paid', label: 'Poora diya' }]
+          { value: 'unpaid', label: t('Dena hai') },
+          { value: 'partial', label: t('Kuch diya') },
+          { value: 'paid', label: t('Poora diya') }]
           } />
         </div>
       </Card>

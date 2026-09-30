@@ -41,13 +41,13 @@ export default function PendingApproval() {
         </div>
 
         <h2 className="text-base font-semibold text-slate-900">
-          {blocked ? 'Aapka access band hai' : 'Approval ka intezaar'}
+          {blocked ? t('Aapka access band hai') : t('Approval ka intezaar')}
         </h2>
 
         <p className="mt-2 max-w-xs text-sm text-slate-500">
           {blocked ?
-          `${business?.name || 'Wholesaler'} ne aapka access rok diya hai. Unse baat karein.` :
-          `${business?.name || 'Wholesaler'} ne abhi aapki dukaan approve nahi ki. Approve hote hi catalog apne aap khul jayega.`}
+          t('{a0} ne aapka access rok diya hai. Unse baat karein.', { a0: business?.name || 'Wholesaler' }) :
+          t('{a0} ne abhi aapki dukaan approve nahi ki. Approve hote hi catalog apne aap khul jayega.', { a0: business?.name || 'Wholesaler' })}
         </p>
 
         {party?.shopName &&

@@ -371,7 +371,7 @@ export default function Items() {
         {!loading && !items.length ?
         <EmptyState
           icon={Package}
-          title={hasFilters ? 'Is filter me kuch nahi mila' : 'Abhi koi item nahi hai'}
+          title={hasFilters ? t('Is filter me kuch nahi mila') : t('Abhi koi item nahi hai')}
           message={
           hasFilters ?
           'Filter hata kar dobara dekhein.' :
@@ -460,7 +460,7 @@ export default function Items() {
         onClose={() => setConfirmBulk(null)}
         onConfirm={() => runBulk('delete')}
         loading={busy}
-        title={`${selected.length} item delete karein?`}
+        title={t('{a0} item delete karein?', { a0: selected.length })}
         message={t('Jo item kisi purane bill ya purchase me hain wo delete nahi honge — sirf hide ho jayenge, taaki purane record kharab na hon.')}
         confirmLabel={t("Haan, delete karein")} />
       

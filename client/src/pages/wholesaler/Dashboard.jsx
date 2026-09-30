@@ -14,7 +14,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import ExpenseFormModal from './expenses/ExpenseFormModal';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 const ACTIVITY_ICON = { invoice: Receipt, order: ShoppingCart, payment: Wallet };
 
@@ -467,7 +467,7 @@ export default function Dashboard() {
                         <Icon size={13} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-slate-900">{a.title}</p>
+                        <p className="truncate text-sm text-slate-900">{tDyn(a.title)}</p>
                         <p className="truncate text-xs text-slate-500">{a.subtitle}</p>
                         <p className="text-xs text-slate-400">{formatDateTime(a.at)}</p>
                       </div>

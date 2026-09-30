@@ -27,7 +27,7 @@ export default function LineItemCard({ index, picker, note, total, onRemove, chi
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`Item ${index + 1} hatayein`}
+          aria-label={t('Item {a0} hatayein', { a0: index + 1 })}
           // -my/-mr se dikhne me chipka nahi lagta, par dabne ka ghera 44px
           className="-my-1.5 -mr-1.5 rounded-lg p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600 focus-ring">
           

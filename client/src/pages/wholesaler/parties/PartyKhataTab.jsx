@@ -50,7 +50,7 @@ export default function PartyKhataTab({ party, onChanged }) {
       <Card className="mb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-slate-500">{isSupplier ? 'Inko dena hai' : 'Inse lena hai'}</p>
+            <p className="text-sm text-slate-500">{isSupplier ? t('Inko dena hai') : t('Inse lena hai')}</p>
             <p className="mt-1 text-2xl">
               <BalanceLine balance={data?.party?.balance ?? party.balance} type={party.type} />
             </p>

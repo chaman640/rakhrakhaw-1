@@ -44,7 +44,7 @@ export default function Profile() {
     try {
       await api.put('/auth/profile', form);
       await refresh();
-      toast.success('Profile save ho gaya');
+      toast.success(t('Profile save ho gaya'));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -58,7 +58,7 @@ export default function Profile() {
     try {
       await api.post('/auth/change-password', pw);
       setPw({ currentPassword: '', newPassword: '' });
-      toast.success('Password badal gaya');
+      toast.success(t('Password badal gaya'));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -91,7 +91,7 @@ export default function Profile() {
               <p className="truncate font-medium text-slate-900">{business?.name}</p>
             </div>
             <Badge tone={party?.status === 'active' ? 'green' : 'amber'}>
-              {party?.status === 'active' ? 'Active' : 'Approval baaki'}
+              {party?.status === 'active' ? 'Active' : t('Approval baaki')}
             </Badge>
           </div>
 

@@ -47,7 +47,7 @@ export default function PlanTab() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-lg font-semibold text-slate-900">{me.plan.name}</p>
+              <p className="text-lg font-semibold text-slate-900">{t(me.plan.name)}</p>
               {me.chargingNow && (
                 <Badge tone={TONE[me.status] || 'slate'}>{t(LABEL[me.status] || me.status)}</Badge>
               )}
@@ -137,7 +137,7 @@ export default function PlanTab() {
                     {formatMoney(r.amountRupees)}
                   </p>
                   <Badge tone={r.status === 'paid' ? 'green' : r.status === 'failed' ? 'red' : 'slate'}>
-                    {t(r.status === 'paid' ? 'Mil gaya' : r.status === 'failed' ? 'Nahi hua' : 'Chalu')}
+                    {t(r.status === 'paid' ? t('Mil gaya') : r.status === 'failed' ? t('Nahi hua') : 'Chalu')}
                   </Badge>
                 </div>
               </li>

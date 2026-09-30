@@ -78,7 +78,7 @@ export default function ImportModal({ open, onClose, onImported }) {
           <Button variant="secondary" onClick={() => {onClose();reset();}}>{t('Cancel')}</Button>
           {preview &&
         <Button onClick={commit} loading={committing} disabled={!canImport}>
-              {canImport ? `${s.willCreate + s.willUpdate} item import karein` : 'Kuch import nahi ho sakta'}
+              {canImport ? t('{a0} item import karein', { a0: s.willCreate + s.willUpdate }) : t('Kuch import nahi ho sakta')}
             </Button>
         }
         </>

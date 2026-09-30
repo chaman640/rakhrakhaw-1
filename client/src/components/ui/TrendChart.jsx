@@ -59,9 +59,9 @@ export default function TrendChart({
 
     Ab bulane wala apna asli arsa khud bhejta hai.
   */
-  title = 'Bikri ka chart',
+  title = t('Bikri ka chart'),
   height = 168,
-  emptyText = 'Abhi tak koi bill nahi bana',
+  emptyText = t('Abhi tak koi bill nahi bana'),
 }) {
   const tableId = useId();
   const [hover, setHover] = useState(null);

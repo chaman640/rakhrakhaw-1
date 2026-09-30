@@ -1,7 +1,7 @@
 import { forwardRef, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tx } from '@/lib/i18n';
 
 const Select = forwardRef(function Select(
   { label, error, hint, required, options = [], placeholder = 'Choose...', className, children, id, ...props },
@@ -16,7 +16,7 @@ const Select = forwardRef(function Select(
         // "*" label ke bahar — label ka text saaf rehta hai
         <div className="mb-1.5 flex items-center">
           <label htmlFor={selectId} className="block text-sm font-medium text-slate-700">
-            {label}
+            {tx(label)}
           </label>
           {required && <span aria-hidden="true" className="ml-0.5 text-red-500">*</span>}
         </div>
@@ -60,7 +60,7 @@ const Select = forwardRef(function Select(
       </div>
 
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      {!error && hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {!error && hint && <p className="mt-1 text-xs text-slate-500">{tx(hint)}</p>}
     </div>
   );
 });

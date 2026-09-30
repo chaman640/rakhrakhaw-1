@@ -24,12 +24,12 @@ export default function InviteCard({ compact = false }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Copy nahi hua — link select karke khud copy kar lein');
+      toast.error(t('Copy nahi hua — link select karke khud copy kar lein'));
     }
   }
 
   function shareOnWhatsapp() {
-    const text = `Namaste! ${biz.name} ka poora maal aur daam yahan dekhein — order karne ke liye account bana lijiye:\n${inviteLink}`;
+    const text = t('Namaste! {a0} ka poora maal aur daam yahan dekhein — order karne ke liye account bana lijiye:\n{a1}', { a0: biz.name, a1: inviteLink });
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
 
@@ -90,7 +90,7 @@ export default function InviteCard({ compact = false }) {
 
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" icon={copied ? Check : Copy} onClick={copyLink} variant={copied ? 'success' : 'primary'}>
-            {copied ? 'Copy ho gaya' : 'Copy karein'}
+            {copied ? t('Copy ho gaya') : t('Copy karein')}
           </Button>
           <Button size="sm" variant="secondary" icon={MessageCircle} onClick={shareOnWhatsapp}>
             {t('WhatsApp pe bhejein')}

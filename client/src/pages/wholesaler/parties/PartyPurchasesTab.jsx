@@ -59,7 +59,7 @@ export default function PartyPurchasesTab({ supplierId, supplierName }) {
         <EmptyState
           icon={Truck}
           title={t('Abhi koi purchase nahi')}
-          message={`${supplierName} se maal aaye to yahan entry karein \u2014 stock apne aap badh jayega.`}
+          message={t('{a0} se maal aaye to yahan entry karein \u2014 stock apne aap badh jayega.', { a0: supplierName })}
           action={
             <Button icon={Plus} onClick={() => navigate(`/purchases/new?supplier=${supplierId}`)}>
               {t('Pehli purchase')}

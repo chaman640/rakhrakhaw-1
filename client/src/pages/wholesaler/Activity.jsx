@@ -10,7 +10,7 @@ import {
   PageHeader, Card, Badge, Spinner, EmptyState, Chips, Select, Input,
   Pagination, useToast,
 } from '@/components/ui';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 /**
  * KISNE KYA KIYA.
@@ -107,8 +107,8 @@ export default function Activity({ embedded = false }) {
         <PageHeader
           title={t('Kaam ka record')}
           subtitle={isScoped
-            ? 'Aapka kiya hua kaam'
-            : 'Kisne kya kiya, kab kiya — sab yahan likha jata hai'}
+            ? t('Aapka kiya hua kaam')
+            : t('Kisne kya kiya, kab kiya — sab yahan likha jata hai')}
         />
       )}
 
@@ -156,7 +156,7 @@ export default function Activity({ embedded = false }) {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-slate-800">{r.summary || r.action}</p>
+                      <p className="text-sm text-slate-800">{tDyn(r.summary) || r.action}</p>
 
                       <p className="mt-0.5 text-xs text-slate-500">
                         <span className="font-medium text-slate-700">{r.userName || 'Koi'}</span>

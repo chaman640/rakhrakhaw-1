@@ -83,7 +83,7 @@ export default function Autopay() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-lg font-semibold text-slate-900">{me.plan.name}</p>
+              <p className="text-lg font-semibold text-slate-900">{t(me.plan.name)}</p>
               <Badge tone={TONE[me.status] || 'slate'}>{t(LABEL[me.status] || me.status)}</Badge>
             </div>
             <p className="mt-0.5 text-sm text-slate-500">
@@ -201,7 +201,7 @@ export default function Autopay() {
                 <div className="shrink-0 text-right">
                   <p className="tabular text-sm font-semibold text-slate-900">{formatMoney(c.amountRupees)}</p>
                   <Badge tone={c.status === 'paid' ? 'green' : 'red'}>
-                    {t(c.status === 'paid' ? 'Aaya' : 'Nahi aaya')}
+                    {t(c.status === 'paid' ? 'Aaya' : t('Nahi aaya'))}
                   </Badge>
                 </div>
               </li>

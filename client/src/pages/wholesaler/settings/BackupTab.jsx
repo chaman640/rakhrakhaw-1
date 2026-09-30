@@ -50,7 +50,7 @@ export default function BackupTab() {
       // api interceptor JSON parse kar chuka hai — wapas string bana kar file bana do
       const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       downloadText(`rakhrakhav-backup-${todayStr()}.json`, text, 'application/json');
-      toast.success('Backup download ho gaya — sambhal kar rakhein');
+      toast.success(t('Backup download ho gaya — sambhal kar rakhein'));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -64,7 +64,7 @@ export default function BackupTab() {
       const text = await api.get(`/backup/csv/${kind}`, { responseType: 'text' });
       // Server BOM laga chuka hai, downloadText dobara lagata hai — ek hata do
       downloadText(`${kind}-${todayStr()}.csv`, String(text ?? '').replace(/^﻿/, ''));
-      toast.success(`${label} download ho gaya`);
+      toast.success(t('{a0} download ho gaya', { a0: label }));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -90,7 +90,7 @@ export default function BackupTab() {
             {Object.entries(summary).map(([key, count]) => (
               <div key={key} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <p className="tabular text-lg font-semibold text-slate-900">{count}</p>
-                <p className="text-xs text-slate-500">{COUNT_LABEL[key] || key}</p>
+                <p className="text-xs text-slate-500">{t(COUNT_LABEL[key] || key)}</p>
               </div>
             ))}
           </div>
@@ -123,11 +123,11 @@ export default function BackupTab() {
                 <FileSpreadsheet size={16} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900">{c.label}</p>
-                <p className="truncate text-xs text-slate-500">{c.note}</p>
+                <p className="truncate text-sm font-medium text-slate-900">{t(c.label)}</p>
+                <p className="truncate text-xs text-slate-500">{t(c.note)}</p>
               </div>
               <Button size="sm" variant="secondary" icon={Download}
-                loading={busy === c.kind} onClick={() => downloadCsv(c.kind, c.label)}>
+                loading={busy === c.kind} onClick={() => downloadCsv(c.kind, t(c.label))}>
                 CSV
               </Button>
             </div>

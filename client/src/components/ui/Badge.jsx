@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { tx } from '@/lib/i18n';
 
 const tones = {
   slate: 'bg-slate-100 text-slate-700 ring-slate-200',
@@ -18,7 +19,7 @@ export default function Badge({ children, tone = 'slate', className }) {
         className
       )}
     >
-      {children}
+      {tx(children)}
     </span>
   );
 }

@@ -127,8 +127,8 @@ export default function Purchases({ embedded = false }) {
             setParams(params, { replace: true });
           }}
           tabs={[
-            { value: 'list', label: 'Maal aaya' },
-            { value: 'dena', label: 'Dena hai' },
+            { value: 'list', label: t('Maal aaya') },
+            { value: 'dena', label: t('Dena hai') },
           ]}
         />
       )}
@@ -420,7 +420,7 @@ function DueList({ onPay, onOpen }) {
 function SupplierDueRow({ p, onPay, onOpen }) {
   const name = p.shopName || p.name;
   const age = ageOf(p.oldestDue);
-  const msg = `Namaste ${p.name}, aapka ₹${Math.round(p.balance)} baaki hai. Bhej raha hoon. Dhanyawaad.`;
+  const msg = t('Namaste {a0}, aapka ₹{a1} baaki hai. Bhej raha hoon. Dhanyawaad.', { a0: p.name, a1: Math.round(p.balance) });
 
   return (
     <li className="border-b border-slate-100 last:border-0">

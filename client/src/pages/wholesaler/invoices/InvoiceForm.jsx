@@ -317,7 +317,7 @@ export default function InvoiceForm() {
       const res = await api.post('/invoices', payload);
       toast.success(res.message);
       if (res.data?.usedAdvance > 0) {
-        toast.success(`Jama me se ${formatMoney(res.data.usedAdvance)} kat gaya`);
+        toast.success(t('Jama me se {a0} kat gaya', { a0: formatMoney(res.data.usedAdvance) }));
       }
       // Home, bill ki list, khata aur dashboard — sab isi bill se badle hain
       bust('invoices', 'khata', 'dashboard', 'parties', 'payments');
@@ -338,8 +338,8 @@ export default function InvoiceForm() {
     // request bina `partyId` ke chali gayi aur server ne "Retailer nahi mila"
     // bola — jo dekhne wale ko bilkul samajh nahi aata, kyunki retailer to
     // saamne likha hai.
-    if (!party?.value) {toast.error('Pehle retailer chunein');return;}
-    if (!filled.length) {toast.error('Kam se kam ek item daalein');return;}
+    if (!party?.value) {toast.error(t('Pehle retailer chunein'));return;}
+    if (!filled.length) {toast.error(t('Kam se kam ek item daalein'));return;}
 
     return send();
   }
@@ -350,7 +350,7 @@ export default function InvoiceForm() {
     <>
       <PageHeader
         title={t('Naya bill')}
-        subtitle={[preview && `Number: ${preview}`, orderNo && `Order ${orderNo} ke against`].
+        subtitle={[preview && `Number: ${preview}`, orderNo && t('Order {a0} ke against', { a0: orderNo })].
         filter(Boolean).join(' · ')} />
       
 
@@ -465,7 +465,7 @@ export default function InvoiceForm() {
                         </td>
                         <td className="px-2 py-2">
                           <button type="button" onClick={() => removeRow(r.key)}
-                          aria-label={`Row ${idx + 1} hatayein`}
+                          aria-label={t('Row {a0} hatayein', { a0: idx + 1 })}
                           // h-9 w-9 = 36px. p-1.5 pe ye 28px ka tha aur tablet pe ungli se
                           // chookta tha (mobile-audit ne pakda)
                           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600">

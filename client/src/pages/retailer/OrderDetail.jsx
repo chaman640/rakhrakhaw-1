@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Package, XCircle, Store, Clock, Receipt } from 'lucide-react';
 import api from '@/lib/api';
@@ -188,7 +188,7 @@ export default function OrderDetail() {
                 <div className="pb-1">
                   <p className="text-sm font-medium text-slate-900">{t(STATUS_LABEL[h.status])}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(h.at)}</p>
-                  {h.note && <p className="mt-0.5 text-xs text-slate-500">{h.note}</p>}
+                  {h.note && <p className="mt-0.5 text-xs text-slate-500">{tDyn(h.note)}</p>}
                 </div>
               </li>
             )}
@@ -199,7 +199,7 @@ export default function OrderDetail() {
               <Clock size={13} className="mt-0.5 shrink-0" />
               {order.invoiceId ?
               'Is order ka bill ban chuka hai — upar "Bill dekhein" dabaein.' :
-              `Bill order ke saath nahi banta — ${business?.name || 'wholesaler'} maal dete waqt banayenge.`}
+              t('Bill order ke saath nahi banta — {a0} maal dete waqt banayenge.', { a0: business?.name || 'wholesaler' })}
             </p>
           </div>
         </Card>

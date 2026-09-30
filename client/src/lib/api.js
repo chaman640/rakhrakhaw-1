@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { t } from './i18n';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -85,7 +86,11 @@ api.interceptors.request.use((config) => {
 
 // Error ko ek jaisa banao — har page pe err.message seedha dikha sakein
 api.interceptors.response.use(
-  (res) => res.data,
+  (res) => {
+    // Server messages are written in Hinglish; show them in the user's language
+    if (typeof res.data?.message === 'string') res.data.message = t(res.data.message);
+    return res.data;
+  },
   (error) => {
     const status = error.response?.status;
     let message =
@@ -98,9 +103,10 @@ api.interceptors.response.use(
     if (message === 'Validation failed' && Array.isArray(fieldErrors) && fieldErrors.length) {
       message = fieldErrors.slice(0, 3).map(({ field, message: m }) => (
         /^(Required|Expected|Invalid|String must|Number must|Array must)/.test(m || '') && field
-          ? `${field.split('.').pop()}: ${m}` : m
+          ? `${field.split('.').pop()}: ${m}` : t(m)
       )).filter(Boolean).join(' · ') || message;
     }
+    message = t(message);
 
     /*
       ─────────── PLAN KHATAM (Step 1) ───────────

@@ -1,8 +1,9 @@
 import { forwardRef, useId } from 'react';
+import { tx } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 
 const Input = forwardRef(function Input(
-  { label, error, hint, required, prefix, suffix, className, containerClassName, id, ...props },
+  { label, error, hint, required, prefix, suffix, placeholder, className, containerClassName, id, ...props },
   ref
 ) {
   const autoId = useId();
@@ -16,7 +17,7 @@ const Input = forwardRef(function Input(
         // (screen reader aur test dono ko sirf "Kitna" mile, "Kitna*" nahi)
         <div className="mb-1.5 flex items-center">
           <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
-            {label}
+            {tx(label)}
           </label>
           {required && <span aria-hidden="true" className="ml-0.5 text-red-500">*</span>}
         </div>
@@ -31,6 +32,7 @@ const Input = forwardRef(function Input(
         <input
           ref={ref}
           id={inputId}
+          placeholder={tx(placeholder)}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={describedBy}
           className={cn(
@@ -52,7 +54,7 @@ const Input = forwardRef(function Input(
       </div>
 
       {error && <p id={`${inputId}-error`} className="mt-1 text-xs text-red-600">{error}</p>}
-      {!error && hint && <p id={`${inputId}-hint`} className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {!error && hint && <p id={`${inputId}-hint`} className="mt-1 text-xs text-slate-500">{tx(hint)}</p>}
     </div>
   );
 });

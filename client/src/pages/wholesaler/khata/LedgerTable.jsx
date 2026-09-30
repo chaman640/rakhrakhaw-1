@@ -32,7 +32,7 @@ export function BalanceLine({ balance, type = 'retailer', className = '' }) {
   if (balance > 0) {
     return (
       <span className={`tabular font-semibold text-red-600 ${className}`}>
-        {abs} <span className="text-xs font-normal">{type === 'supplier' ? 'dena hai' : 'lena hai'}</span>
+        {abs} <span className="text-xs font-normal">{type === 'supplier' ? t('dena hai') : t('lena hai')}</span>
       </span>);
 
   }

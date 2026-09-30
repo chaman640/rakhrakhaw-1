@@ -70,7 +70,7 @@ export default function Profile() {
         tabs={[
           ...(isOwner ? [
             { value: 'shop', label: 'Dukaan' },
-            { value: 'pay', label: 'Paisa lena' },
+            { value: 'pay', label: t('Paisa lena') },
             { value: 'bill', label: 'Bill' },
             // Plan, autopay band/chalu, upgrade/downgrade — sab yahin se
             { value: 'plan', label: 'Subscription' },
@@ -107,7 +107,7 @@ function useBusinessSave(onSaved) {
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const save = async (payload, message = 'Save ho gaya') => {
+  const save = async (payload, message = t('Save ho gaya')) => {
     setSaving(true);
     setFieldErrors({});
     try {
@@ -275,7 +275,7 @@ function ShopSection({ business, onSaved }) {
       gstEnabled: form.gstEnabled,
     };
     if (form.gstEnabled) payload.gstin = form.gstin;
-    await save(payload, 'Dukaan ki detail save ho gayi');
+    await save(payload, t('Dukaan ki detail save ho gayi'));
   }
 
   async function handleLogo(e) {
@@ -288,7 +288,7 @@ function ShopSection({ business, onSaved }) {
       const res = await api.post('/business/logo', fd);
       onSaved({ ...business, logoUrl: res.data.logoUrl });
       await refresh();
-      toast.success('Logo lag gaya');
+      toast.success(t('Logo lag gaya'));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -302,7 +302,7 @@ function ShopSection({ business, onSaved }) {
       await api.delete('/business/logo');
       onSaved({ ...business, logoUrl: '' });
       await refresh();
-      toast.info('Logo hata diya');
+      toast.info(t('Logo hata diya'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -473,9 +473,9 @@ function ShopSection({ business, onSaved }) {
         {form.gstEnabled && gstReady && !gstReady.ready && (
           <div className="mt-4 rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-900">
             <p className="font-medium">
-              {gstReady.zeroRate > 0 && `${gstReady.zeroRate} item pe GST rate nahi hai`}
+              {gstReady.zeroRate > 0 && t('{a0} item pe GST rate nahi hai', { a0: gstReady.zeroRate })}
               {gstReady.zeroRate > 0 && gstReady.noHsn > 0 && ' · '}
-              {gstReady.noHsn > 0 && `${gstReady.noHsn} pe HSN nahi hai`}
+              {gstReady.noHsn > 0 && t('{a0} pe HSN nahi hai', { a0: gstReady.noHsn })}
             </p>
             <p className="mt-1">
               {t('Un item ka bill 0% tax ka banega. Items page se rate bhar lein.')}
@@ -570,7 +570,7 @@ function PaySection({ business, onSaved }) {
       bankAccountName: form.bankAccountName.trim(),
       bankAccountNumber: form.bankAccountNumber.trim(),
       bankIfsc: form.bankIfsc.trim().toUpperCase(),
-    }, 'Paisa lene ka tarika save ho gaya');
+    }, t('Paisa lene ka tarika save ho gaya'));
   }
 
   return (
@@ -687,7 +687,7 @@ function BillSection({ business, onSaved }) {
       lowStockThreshold: Number(form.lowStockThreshold),
       deliveryCharge: Number(form.deliveryCharge || 0),
       termsAndConditions: form.termsAndConditions,
-    }, 'Bill ki setting save ho gayi');
+    }, t('Bill ki setting save ho gayi'));
   }
 
   return (

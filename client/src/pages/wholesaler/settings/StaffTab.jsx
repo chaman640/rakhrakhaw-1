@@ -66,7 +66,7 @@ export default function StaffTab() {
   async function toggleActive(row) {
     try {
       await api.put(`/staff/${row._id}`, { isActive: !row.isActive });
-      toast.success(row.isActive ? `${row.name} ka login band kar diya` : `${row.name} ka login chalu`);
+      toast.success(row.isActive ? t('{a0} ka login band kar diya', { a0: row.name }) : t('{a0} ka login chalu', { a0: row.name }));
       load();
     } catch (e) {toast.error(e.message);}
   }
@@ -128,7 +128,7 @@ export default function StaffTab() {
                 <p className="mt-0.5 text-xs text-slate-500">
                   {formatPhone(row.phone)}
                   {' · '}
-                  {row.isOwner ? 'Sab kuch' : `${row.permissions.length} kaam ki ijazat`}
+                  {row.isOwner ? t('Sab kuch') : t('{a0} kaam ki ijazat', { a0: row.permissions.length })}
                   {row.lastLoginAt && ` · aakhri baar ${formatDateTime(row.lastLoginAt)}`}
                 </p>
                 {row.limitsSummary?.hasLimits &&
@@ -142,22 +142,22 @@ export default function StaffTab() {
             <div className="flex shrink-0 items-center gap-1">
                   <button
                 onClick={() => toggleActive(row)}
-                aria-label={row.isActive ? 'Login band karein' : 'Login chalu karein'}
+                aria-label={row.isActive ? t('Login band karein') : t('Login chalu karein')}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                title={row.isActive ? 'Login band karein' : 'Login chalu karein'}>
+                title={row.isActive ? t('Login band karein') : t('Login chalu karein')}>
                 
                     {row.isActive ? <Ban size={16} /> : <CheckCircle2 size={16} />}
                   </button>
                   <button
                 onClick={() => {setEditing(row);setFormOpen(true);}}
-                aria-label={`${row.name} ko badlein`}
+                aria-label={t('{a0} ko badlein', { a0: row.name })}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
                 
                     <Pencil size={16} />
                   </button>
                   <button
                 onClick={() => setRemoving(row)}
-                aria-label={`${row.name} ko hatayein`}
+                aria-label={t('{a0} ko hatayein', { a0: row.name })}
                 className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600">
                 
                     <Trash2 size={16} />
@@ -256,7 +256,7 @@ export default function StaffTab() {
         open={Boolean(removing)}
         onClose={() => setRemoving(null)}
         onConfirm={doRemove}
-        title={`${removing?.name || ''} ko hatayein?`}
+        title={t('{a0} ko hatayein?', { a0: removing?.name || '' })}
         message={t('Inka login turant band ho jayega. Inke naam wale retailer sabke ho jayenge — data kuch nahi mitega.')}
         confirmText={t('Haan, hatayein')}
         danger />
@@ -486,10 +486,10 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
 
       if (staff) {
         await api.put(`/staff/${staff._id}`, body);
-        toast.success('Save ho gaya');
+        toast.success(t('Save ho gaya'));
       } else {
         await api.post('/staff', body);
-        toast.success(`${form.name} ka login ban gaya`);
+        toast.success(t('{a0} ka login ban gaya', { a0: form.name }));
       }
       onSaved();
     } catch (e) {
@@ -506,7 +506,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
 
 
   return (
-    <Modal open={open} onClose={onClose} title={staff ? `${staff.name} ki setting` : 'Naya aadmi'} size="lg">
+    <Modal open={open} onClose={onClose} title={staff ? t('{a0} ki setting', { a0: staff.name }) : t('Naya aadmi')} size="lg">
       <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
         {tabs.map((tb) =>
         <button
@@ -535,7 +535,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
           </div>
 
           <Input
-          label={staff ? 'Naya password (khali chhodein to wahi rahega)' : 'Password'}
+          label={staff ? t('Naya password (khali chhodein to wahi rahega)') : 'Password'}
           type="password" value={form.password}
           onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
           required={!staff} />
@@ -603,7 +603,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
         <Button variant="secondary" onClick={onClose}>{t('Rehne dein')}</Button>
         <Button loading={busy} onClick={save}
         disabled={!form.name || !form.phone || !staff && !form.password}>
-          {staff ? 'Save karein' : 'Login banayein'}
+          {staff ? t('Save karein') : t('Login banayein')}
         </Button>
       </div>
     </Modal>);
@@ -728,7 +728,7 @@ function ChangePasswordModal({ open, onClose }) {
     setError('');
     try {
       await api.post('/staff/change-password', form);
-      toast.success('Password badal gaya');
+      toast.success(t('Password badal gaya'));
       onClose();
     } catch (e) {
       setError(e.message);

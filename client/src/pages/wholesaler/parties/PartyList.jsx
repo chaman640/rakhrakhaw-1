@@ -82,7 +82,7 @@ export default function PartyList({ type, embedded = false }) {
   }] : []),
   {
     key: 'balance',
-    header: isRetailer ? 'Udhaar' : 'Dena hai',
+    header: isRetailer ? 'Udhaar' : t('Dena hai'),
     align: 'right',
     render: (r) =>
     <span className={cn('tabular', r.balance > 0 ? 'font-medium text-amber-700' : 'text-slate-400')}>
@@ -139,7 +139,7 @@ export default function PartyList({ type, embedded = false }) {
       {embedded ?
       <div className="mb-4 flex justify-end">
           <Button icon={Plus} onClick={() => {setFormParty(null);setFormOpen(true);}}>
-            {isRetailer ? 'Naya retailer' : 'Naya supplier'}
+            {isRetailer ? t('Naya retailer') : t('Naya supplier')}
           </Button>
         </div> :
 
@@ -150,7 +150,7 @@ export default function PartyList({ type, embedded = false }) {
         'Jinse aap maal khareedte hain'}
         action={
         <Button icon={Plus} onClick={() => {setFormParty(null);setFormOpen(true);}}>
-              {isRetailer ? 'Naya retailer' : 'Naya supplier'}
+              {isRetailer ? t('Naya retailer') : t('Naya supplier')}
             </Button>
         } />
 
@@ -161,7 +161,7 @@ export default function PartyList({ type, embedded = false }) {
         icon={isRetailer ? Users : Truck} tone="brand" />
         {isRetailer && <StatCard label={t('Approval baaki')} value={stats.pending} icon={Clock} tone="amber" />}
         <StatCard label={t('Active')} value={stats.active} icon={UserCheck} tone="green" />
-        <StatCard label={isRetailer ? 'Kul udhaar' : 'Kul dena hai'} value={formatMoney(stats.totalDue)}
+        <StatCard label={isRetailer ? t('Kul udhaar') : t('Kul dena hai')} value={formatMoney(stats.totalDue)}
         icon={IndianRupee} tone={stats.totalDue > 0 ? 'amber' : 'green'} />
       </div>
 
@@ -194,13 +194,13 @@ export default function PartyList({ type, embedded = false }) {
         {!loading && !rows.length ?
         <EmptyState
           icon={isRetailer ? Users : Truck}
-          title={debouncedQ || status !== 'all' ? 'Kuch nahi mila' : isRetailer ? 'Abhi koi retailer nahi juda' : 'Abhi koi supplier nahi'}
+          title={debouncedQ || status !== 'all' ? t('Kuch nahi mila') : isRetailer ? t('Abhi koi retailer nahi juda') : t('Abhi koi supplier nahi')}
           message={isRetailer ?
           'Upar wala invite link WhatsApp pe bhejein — jo register karega wo yahan dikhega. Ya khud add kar lein.' :
-          'Jinse aap maal khareedte hain unhe add karein — Part 5 me purchase entry me kaam aayenge.'}
+          'Jinse aap maal khareedte hain unhe add karein — purchase entry me kaam aayenge.'}
           action={
           <Button icon={Plus} onClick={() => {setFormParty(null);setFormOpen(true);}}>
-                {isRetailer ? 'Retailer add karein' : 'Supplier add karein'}
+                {isRetailer ? t('Retailer add karein') : t('Supplier add karein')}
               </Button>
           } /> :
 

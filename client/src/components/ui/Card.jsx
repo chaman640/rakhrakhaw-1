@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { tx } from '@/lib/i18n';
 
 export default function Card({ children, className, padding = true, onClick, ...props }) {
   // onClick diya ho to poora card clickable ho — pehle wo chup-chaap gir jata tha,
@@ -26,8 +27,8 @@ export function CardHeader({ title, subtitle, action, className }) {
   return (
     <div className={cn('mb-4 flex items-start justify-between gap-4', className)}>
       <div>
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+        <h3 className="text-base font-semibold text-slate-900">{tx(title)}</h3>
+        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{tx(subtitle)}</p>}
       </div>
       {action}
     </div>
@@ -59,9 +60,9 @@ export function StatCard({ label, value, sub, icon: Icon, tone = 'brand' }) {
         </div>
       )}
       <div className="min-w-0 w-full">
-        <p className="text-sm leading-snug text-slate-500 sm:truncate">{label}</p>
+        <p className="text-sm leading-snug text-slate-500 sm:truncate">{tx(label)}</p>
         <p className="tabular mt-0.5 truncate text-lg font-semibold text-slate-900 sm:text-xl">{value}</p>
-        {sub && <p className="mt-0.5 truncate text-xs text-slate-400">{sub}</p>}
+        {sub && <p className="mt-0.5 truncate text-xs text-slate-400">{tx(sub)}</p>}
       </div>
     </Card>
   );

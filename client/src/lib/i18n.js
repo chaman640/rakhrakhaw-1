@@ -88,6 +88,44 @@ export function t(key, vars) {
   return out;
 }
 
+/** Translate only plain strings — for components that accept text or elements as props */
+export const tx = (v) => (typeof v === 'string' ? t(v) : v);
+
+/*
+  Text the server builds with names and numbers inside (notifications, activity log):
+  "Bill ban gaya — INV/26-27/0001". Each shape is listed once; the variable parts are kept.
+*/
+const DYNAMIC = [
+  'Bill ban gaya — {a}', 'Bill cancel — {a}', 'Naya order — {a}', 'Order cancel — {a}', 'Order me badlav — {a}',
+  'Payment confirm ho gaya — {a}', 'Payment mil gaya — {a}', 'Payment reject — {a}',
+  '{a} ne yaad dilaya hai', '{a} ne bill cancel kar diya', '{a} aapki dukaan se judna chahte hain', '{a} ka maal aa gaya',
+  'Kul {a}, baaki {b}', 'Kul {a} — poora ho gaya', '{a} {b} se',
+  '{a} ka maal aap stock me daal chuke hain — apni purchase dekh lijiye', '{a} — wo maal ab stock me daalne ki zarurat nahi',
+  '{a} item · {b} — apne stock me daal lijiye', '{a} bheja hai, confirm karein', '{a} khate me lag gaya',
+  '"{a}" ka stock haath se badla — ab {b}', '"{a}" me {b} badla', '"{a}" hataya', '"{a}" ko {b} kiya',
+  '{a} ke liye invite link banayi', '{a} banaya — ₹{b} ({c})', '{a} — ₹{b} (maal wapas aaya)', '{a} — ₹{b} (maal wapas bheja)',
+  '{a} ka maal badla — ab {b} item, ₹{c}', '{a} confirm kiya — ₹{b} khate me laga', '{a} — ₹{b} diya ({c})', '{a} — ₹{b} liya ({c})',
+  '{a} item pe ek saath "{b}" kiya', '{a} mitaya — stock wapas ghata', '{a} (₹{b}) mitaya', '{a} ki setting badli',
+  'Item "{a}" hataya', 'Naya retailer "{a}" jodha', 'Naya supplier "{a}" jodha', 'Naya item "{a}" jodha',
+  '{a} cancel kiya — {b}', '{a} reject kiya — {b}', '{a} cancel kiya', '{a} reject kiya', '{a} — {b} kiya', '{a} ko {b} banaya',
+  '{a} ko hataya', '{a} me {b} badla', '{a} mitaya', 'Paisa aaya {a}', 'Paisa diya {a}',
+].map((key) => {
+  const names = [];
+  const src = key.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\w+)\}/g, (_, n) => { names.push(n); return '(.+?)'; });
+  return { key, names, re: new RegExp(`^${src}$`) };
+});
+
+/** Like t(), but also understands server text that has names or numbers mixed in */
+export function tDyn(text) {
+  if (typeof text !== 'string' || !text) return text;
+  if (current === BASE_LANG || DICT[text]) return t(text);
+  for (const { key, names, re } of DYNAMIC) {
+    const m = text.match(re);
+    if (m && DICT[key]) return t(key, Object.fromEntries(names.map((n, i) => [n, m[i + 1]])));
+  }
+  return text;
+}
+
 /**
  * Kaunse shabd abhi anuvaad se bache hain — sirf banane walon ke liye.
  * Browser ke console me `__i18nMissing()` chala kar dekh sakte hain.

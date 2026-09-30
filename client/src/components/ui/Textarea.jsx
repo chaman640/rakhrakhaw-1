@@ -1,8 +1,9 @@
 import { forwardRef, useId } from 'react';
+import { tx } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 
 const Textarea = forwardRef(function Textarea(
-  { label, error, hint, required, rows = 3, className, containerClassName, id, ...props },
+  { label, error, hint, required, placeholder, rows = 3, className, containerClassName, id, ...props },
   ref
 ) {
   const autoId = useId();
@@ -15,7 +16,7 @@ const Textarea = forwardRef(function Textarea(
     <div className={cn('w-full', containerClassName)}>
       {label && (
         <div className="mb-1.5 flex items-baseline">
-          <label htmlFor={areaId} className="block text-sm font-medium text-slate-700">{label}</label>
+          <label htmlFor={areaId} className="block text-sm font-medium text-slate-700">{tx(label)}</label>
           {required && <span aria-hidden="true" className="ml-0.5 text-red-500">*</span>}
         </div>
       )}
@@ -23,6 +24,7 @@ const Textarea = forwardRef(function Textarea(
         ref={ref}
         id={areaId}
         aria-required={required || undefined}
+        placeholder={tx(placeholder)}
         rows={rows}
         className={cn(
           'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus-ring',
@@ -33,7 +35,7 @@ const Textarea = forwardRef(function Textarea(
         {...props}
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      {!error && hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {!error && hint && <p className="mt-1 text-xs text-slate-500">{tx(hint)}</p>}
     </div>
   );
 });

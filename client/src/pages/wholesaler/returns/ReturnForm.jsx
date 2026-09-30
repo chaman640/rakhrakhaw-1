@@ -79,7 +79,7 @@ export default function ReturnForm() {
         maxQty: i.qty, soldQty: i.soldQty, returnedQty: i.returnedQty
       })));
       if (d.fullyReturned) {
-        toast.error('Is bill ka poora maal pehle hi wapas ho chuka hai');
+        toast.error(t('Is bill ka poora maal pehle hi wapas ho chuka hai'));
       }
     }).
     catch((err) => {toast.error(err.message);navigate('/returns', { replace: true });}).
@@ -161,12 +161,12 @@ export default function ReturnForm() {
   const filled = rows.filter((r) => r.itemId && Number(r.qty) > 0);
 
   async function save() {
-    if (!party?.value) return toast.error('Pehle party chunein');
-    if (!filled.length) return toast.error('Kam se kam ek item daalein');
+    if (!party?.value) return toast.error(t('Pehle party chunein'));
+    if (!filled.length) return toast.error(t('Kam se kam ek item daalein'));
 
     const tooMuch = filled.find((r) => r.maxQty != null && Number(r.qty) > r.maxQty);
     if (tooMuch) {
-      return toast.error(`${tooMuch.name}: sirf ${tooMuch.maxQty} ${tooMuch.unit} wapas ho sakta hai`);
+      return toast.error(t('{a0}: sirf {a1} {a2} wapas ho sakta hai', { a0: tooMuch.name, a1: tooMuch.maxQty, a2: tooMuch.unit }));
     }
 
     setSaving(true);
@@ -207,8 +207,8 @@ export default function ReturnForm() {
           <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{t('Naya return')}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {isSale ?
-            'Maal wapas aayega — stock badhega aur retailer ka udhaar kam hoga' :
-            'Maal wapas jayega — stock ghatega aur supplier ko dena kam hoga'}
+            t('Maal wapas aayega — stock badhega aur retailer ka udhaar kam hoga') :
+            t('Maal wapas jayega — stock ghatega aur supplier ko dena kam hoga')}
           </p>
         </div>
         <Badge tone={isSale ? 'amber' : 'blue'}>{cfg.note}</Badge>
@@ -236,7 +236,7 @@ export default function ReturnForm() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Combobox
-                label={isSale ? 'Kis retailer se' : 'Kis supplier ko'}
+                label={isSale ? t('Kis retailer se') : t('Kis supplier ko')}
                 required
                 value={party?.value}
                 display={party?.label}
@@ -303,7 +303,7 @@ export default function ReturnForm() {
                     <div className="flex items-end justify-end sm:col-span-1">
                       <button type="button" onClick={() => removeRow(r.key)}
                     className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 focus-ring"
-                    aria-label={`${r.name || 'Row'} hatayein`}>
+                    aria-label={t('{a0} hatayein', { a0: r.name || 'Row' })}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -328,11 +328,11 @@ export default function ReturnForm() {
             <CardHeader title={t('Karan')} subtitle={t('Note pe chhapega — baad me yaad rehta hai ki kyun wapas hua')} />
             <div className="flex flex-wrap gap-2">
               {REASONS.map((rr) =>
-              <button key={rr} type="button" onClick={() => setReason(rr)}
+              <button key={rr} type="button" onClick={() => setReason(t(rr))}
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-ring ${
-              reason === rr ? 'border-brand-500 bg-brand-50 text-brand-700' :
+              reason === t(rr) ? 'border-brand-500 bg-brand-50 text-brand-700' :
               'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                  {rr}
+                  {t(rr)}
                 </button>
               )}
             </div>
@@ -363,8 +363,8 @@ export default function ReturnForm() {
 
             <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
               {isSale ?
-              'Save karte hi stock wapas badhega aur retailer ka udhaar itna kam ho jayega.' :
-              'Save karte hi stock ghatega aur supplier ko dena itna kam ho jayega.'}
+              t('Save karte hi stock wapas badhega aur retailer ka udhaar itna kam ho jayega.') :
+              t('Save karte hi stock ghatega aur supplier ko dena itna kam ho jayega.')}
             </p>
 
             <Button className="mt-4 w-full" size="lg" icon={Save} loading={saving} onClick={save}>{t("{a0} banayein", { a0:

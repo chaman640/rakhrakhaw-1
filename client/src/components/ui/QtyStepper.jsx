@@ -1,5 +1,6 @@
 import { Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 /** − 2 +  — catalog aur cart dono me */
 export default function QtyStepper({ value, onChange, min = 0, max = Infinity, unit, size = 'md', label }) {
@@ -15,7 +16,7 @@ export default function QtyStepper({ value, onChange, min = 0, max = Infinity, u
         type="button"
         onClick={() => step(-1)}
         disabled={n <= min}
-        aria-label={`${label || 'Quantity'} kam karein`}
+        aria-label={t('{a0} kam karein', { a0: label || 'Quantity' })}
         className={cn(btn, 'flex items-center justify-center rounded-l-lg text-slate-600',
           'hover:bg-slate-50 disabled:opacity-30 focus-ring')}
       >

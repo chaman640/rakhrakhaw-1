@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { tx } from '@/lib/i18n';
 
 export default function Switch({ checked, onChange, label, description, disabled, id }) {
   return (
@@ -6,10 +7,10 @@ export default function Switch({ checked, onChange, label, description, disabled
       <div className="min-w-0">
         {label && (
           <label htmlFor={id} className="block text-sm font-medium text-slate-900">
-            {label}
+            {tx(label)}
           </label>
         )}
-        {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+        {description && <p className="mt-0.5 text-sm text-slate-500">{tx(description)}</p>}
       </div>
 
       {/*

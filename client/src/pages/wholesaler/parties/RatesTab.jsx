@@ -61,7 +61,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
     const raw = String(value).trim();
     const rate = raw === '' ? null : Number(raw);
     if (rate !== null && (Number.isNaN(rate) || rate < 0)) {
-      toast.error('Rate sahi number hona chahiye');
+      toast.error(t('Rate sahi number hona chahiye'));
       return;
     }
     if (rate === row.customRate) return;
@@ -101,7 +101,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
   },
   {
     key: 'customRate',
-    header: `${partyName} ka rate`,
+    header: t('{a0} ka rate', { a0: partyName }),
     align: 'right',
     width: 170,
     // Phone pe ye bharne wala dabba apni poori line leta hai — chhoti jodi
@@ -119,7 +119,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
       onChange={(e) => setDrafts((d) => ({ ...d, [r._id]: e.target.value }))}
       onBlur={(e) => saveRate(r, e.target.value)}
       onKeyDown={(e) => {if (e.key === 'Enter') e.currentTarget.blur();}}
-      aria-label={`${r.name} ka rate`}
+      aria-label={t('{a0} ka rate', { a0: r.name })}
       className={cn(
         // Phone pe poori chaudai aur 44px uncha (ungli ke liye),
         // badi screen pe pehle jaisa chhota dabba
@@ -204,7 +204,7 @@ export default function RatesTab({ partyId, partyName, onRatesChanged }) {
         {!loading && !data.rows.length ?
         <EmptyState
           icon={Tag}
-          title={onlyCustom === 'true' ? 'Koi khaas rate set nahi hai' : 'Koi item nahi mila'}
+          title={onlyCustom === 'true' ? t('Koi khaas rate set nahi hai') : t('Koi item nahi mila')}
           message={onlyCustom === 'true' ?
           'Kisi item ke saamne rate daal dein, wo yahan dikhega.' :
           'Pehle Items page se maal add karein.'} /> :
@@ -269,7 +269,7 @@ function BulkRateModal({ open, onClose, partyId, partyName, categories, onDone }
       <>
           <Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button>
           <Button onClick={apply} loading={busy} variant={isClear ? 'danger' : 'primary'}>
-            {isClear ? 'Khaas rate hatayein' : 'Rate lagayein'}
+            {isClear ? t('Khaas rate hatayein') : 'Rate lagayein'}
           </Button>
         </>
       }>
@@ -291,7 +291,7 @@ function BulkRateModal({ open, onClose, partyId, partyName, categories, onDone }
         {!isClear &&
         <div className="grid gap-4 sm:grid-cols-2">
             <Input
-            label={mode === 'percentOnPurchase' ? 'Kitne % jyada' : 'Kitne % kam'}
+            label={mode === 'percentOnPurchase' ? t('Kitne % jyada') : t('Kitne % kam')}
             type="number" step="0.5" suffix="%"
             value={value} onChange={(e) => setValue(e.target.value)} />
           

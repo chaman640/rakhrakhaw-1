@@ -199,7 +199,7 @@ export default function PurchaseDetail() {
               <Row label={t('Diya')} value={formatMoney(p.paidAmount)} tone="green" />
               <div className={cn('flex items-center justify-between rounded-lg px-3 py-2 text-sm',
               p.dueAmount > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900')}>
-                <span>{p.dueAmount > 0 ? 'Baaki' : 'Poora ho gaya'}</span>
+                <span>{p.dueAmount > 0 ? 'Baaki' : t('Poora ho gaya')}</span>
                 <strong className="tabular">{formatMoney(p.dueAmount)}</strong>
               </div>
             </dl>
@@ -231,7 +231,7 @@ export default function PurchaseDetail() {
         onClose={() => setConfirm(false)}
         onConfirm={remove}
         loading={busy}
-        title={`${p.purchaseNo} delete karein?`}
+        title={t('{a0} delete karein?', { a0: p.purchaseNo })}
         message={t('Stock utna hi wapas ghat jayega aur supplier ka khata bhi ulta ho jayega. Agar wo maal bik chuka hai to delete nahi hoga.')}
         confirmLabel={t("Haan, delete karein")} />
       

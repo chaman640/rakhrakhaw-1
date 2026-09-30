@@ -45,7 +45,7 @@ export default function PublicProductDetail() {
 
   useSeo({
     title: items?.[startIndex] ? `${items[startIndex].name} — ${shop?.name || 'Rakh Rakhav'}` : 'Rakh Rakhav',
-    description: shop ? `${shop.name} ka poora maal aur daam dekhein.` : '',
+    description: shop ? t('{a0} ka poora maal aur daam dekhein.', { a0: shop.name }) : '',
     path: `/s/${code}/item/${itemId}`,
   });
 

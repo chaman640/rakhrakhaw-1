@@ -39,7 +39,7 @@ export default function Table({
   columns = [],
   rows = [],
   loading = false,
-  emptyTitle = 'Kuch nahi mila',
+  emptyTitle = t('Kuch nahi mila'),
   emptyMessage,
   emptyAction,
   onRowClick,

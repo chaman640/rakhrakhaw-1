@@ -71,12 +71,12 @@ export default function PartyFormModal({ open, onClose, party, type, onSaved }) 
     try {
       if (isEdit) {
         await api.put(`/parties/${party._id}`, payload);
-        toast.success('Save ho gaya');
+        toast.success(t('Save ho gaya'));
       } else {
         await api.post('/parties', {
           ...payload, type, openingBalance: Number(form.openingBalance || 0),
         });
-        toast.success(`${payload.name} add ho gaya`);
+        toast.success(t('{a0} add ho gaya', { a0: payload.name }));
       }
       onSaved();
       onClose();
@@ -93,14 +93,14 @@ export default function PartyFormModal({ open, onClose, party, type, onSaved }) 
       open={open}
       onClose={onClose}
       size="lg"
-      title={isEdit ? `${label} edit karein` : `Naya ${label.toLowerCase()}`}
+      title={isEdit ? t('{a0} edit karein', { a0: label }) : t('Naya {a0}', { a0: label.toLowerCase() })}
       description={isEdit ? party?.name : (isRetailer
-        ? 'Jo retailer khud link se nahi juda, use yahan se add kar sakte hain'
-        : 'Jinse aap maal khareedte hain')}
+        ? t('Jo retailer khud link se nahi juda, use yahan se add kar sakte hain')
+        : t('Jinse aap maal khareedte hain'))}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button>
-          <Button onClick={submit} loading={saving}>{isEdit ? 'Save karein' : 'Add karein'}</Button>
+          <Button onClick={submit} loading={saving}>{isEdit ? t('Save karein') : t('Add karein')}</Button>
         </>
       }
     >
@@ -152,7 +152,7 @@ export default function PartyFormModal({ open, onClose, party, type, onSaved }) 
             {!isEdit && (
               <Input label={t('Purana hisaab')} type="number" step="0.01" prefix="₹"
                 value={form.openingBalance} onChange={set('openingBalance')}
-                hint={isRetailer ? 'Inka kitna udhaar pehle se hai' : 'Inka kitna paisa dena hai'} />
+                hint={isRetailer ? t('Inka kitna udhaar pehle se hai') : t('Inka kitna paisa dena hai')} />
             )}
             <Input label={t('Credit limit')} type="number" step="1" min="0" prefix="₹"
               value={form.creditLimit} onChange={set('creditLimit')}

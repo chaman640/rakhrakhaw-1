@@ -136,6 +136,7 @@ let risky = 0;
 for (const file of files) {
   currentFile = file;
   const src = fs.readFileSync(file, 'utf8');
+  if (file.endsWith('lib/i18n.js')) continue; // defines t itself
   if (!src.includes("from '@/lib/i18n'") && !/\bt\(/.test(src)) continue;
 
   let ast;
@@ -286,7 +287,7 @@ for (const m of dictSrc.matchAll(/export const NO_TRANSLATE = new Set\(\[([\s\S]
   apne shabdon ki hai; kanooni kagaz ki halat NEECHE alag se chhapti hai,
   chhupti nahi.
 */
-const LEGAL_DIRS = ['src/pages/public/'];
+const LEGAL_DIRS = ['src/pages/public/Privacy', 'src/pages/public/Terms', 'src/pages/public/Refund', 'src/pages/public/Delivery'];
 const legalUsed = new Set();
 for (const [key, files] of usedIn.entries()) {
   if ([...files].every((f) => LEGAL_DIRS.some((d) => f.startsWith(d)))) legalUsed.add(key);

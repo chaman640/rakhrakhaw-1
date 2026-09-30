@@ -442,7 +442,7 @@ function FilterSheet({
           <Chips
             value={stock}
             onChange={setStock}
-            options={[{ value: 'all', label: 'Sab' }, { value: 'in', label: 'Jo available hai' }]}
+            options={[{ value: 'all', label: 'Sab' }, { value: 'in', label: t('Jo available hai') }]}
           />
         </div>
 

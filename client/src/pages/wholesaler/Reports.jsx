@@ -150,7 +150,7 @@ export default function Reports() {
       // Server BOM laga chuka hai, downloadText dobara lagata hai — ek hata do
       const clean = String(text ?? '').replace(/^﻿/, '');
       downloadText(`${tab}-report-${todayStr()}.csv`, clean);
-      toast.success('CSV download ho gayi');
+      toast.success(t('CSV download ho gayi'));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -407,10 +407,10 @@ function GstSummary({ meta }) {
   return (
     <Card className="mb-5">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {box('B2B (GSTIN wale)', formatMoney(meta.split.b2b.total), `${meta.split.b2b.bills} bill`)}
-        {box('B2C (bina GSTIN)', formatMoney(meta.split.b2c.total), `${meta.split.b2c.bills} bill`)}
-        {box('Sale pe GST liya', formatMoney(meta.outputTax), 'Output tax')}
-        {box('Kharid pe GST diya', formatMoney(meta.inputTax), `${meta.purchaseBills} purchase`, 'green')}
+        {box(t('B2B (GSTIN wale)'), formatMoney(meta.split.b2b.total), `${meta.split.b2b.bills} bill`)}
+        {box(t('B2C (bina GSTIN)'), formatMoney(meta.split.b2c.total), `${meta.split.b2c.bills} bill`)}
+        {box(t('Sale pe GST liya'), formatMoney(meta.outputTax), 'Output tax')}
+        {box(t('Kharid pe GST diya'), formatMoney(meta.inputTax), `${meta.purchaseBills} purchase`, 'green')}
       </div>
       <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <p className="text-sm text-slate-600">

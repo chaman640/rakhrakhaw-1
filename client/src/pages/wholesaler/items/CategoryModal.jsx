@@ -38,7 +38,7 @@ export default function CategoryModal({ open, onClose, onChanged }) {
       setNewName('');
       await load();
       onChanged?.();
-      toast.success(`"${name}" ban gayi`);
+      toast.success(t('"{a0}" ban gayi', { a0: name }));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -162,10 +162,10 @@ export default function CategoryModal({ open, onClose, onChanged }) {
         onClose={() => setConfirmDelete(null)}
         onConfirm={remove}
         loading={busy}
-        title={`"${confirmDelete?.name}" hatayein?`}
+        title={t('"{a0}" hatayein?', { a0: confirmDelete?.name })}
         message={
         confirmDelete?.itemCount ?
-        `Iske ${confirmDelete.itemCount} item delete NAHI honge — wo "bina category" me chale jayenge.` :
+        t('Iske {a0} item delete NAHI honge — wo "bina category" me chale jayenge.', { a0: confirmDelete.itemCount }) :
         'Ye category hat jayegi.'
         }
         confirmLabel={t("Haan, hatayein")} />

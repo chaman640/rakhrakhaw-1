@@ -43,7 +43,7 @@ export function useAssignable() {
   return { canAssign: allowed && Boolean(manager), staff: data || [] };
 }
 
-export function AssigneeSelect({ value, onChange, label = 'Kisko dena hai' }) {
+export function AssigneeSelect({ value, onChange, label = t('Kisko dena hai') }) {
   const { canAssign, staff } = useAssignable();
   const { user } = useAuth();
   if (!canAssign) return null;

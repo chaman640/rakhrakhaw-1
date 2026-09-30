@@ -279,7 +279,7 @@ export default function Payments() {
         onClose={() => setReminding(null)}
         onConfirm={doRemind}
         loading={busy}
-        title={reminding ? `${reminding.shopName || reminding.name} ko yaad dilayein?` : ''}
+        title={reminding ? t('{a0} ko yaad dilayein?', { a0: reminding.shopName || reminding.name }) : ''}
         message={t('Inke app me alert chala jayega ki itna paisa baaki hai. WhatsApp bhejna ho to uske bagal wala button dabaein.')}
         confirmLabel={t("Haan, yaad dilayein")}
       />
@@ -289,7 +289,7 @@ export default function Payments() {
         onClose={() => setDeleting(null)}
         onConfirm={doDelete}
         loading={busy}
-        title={deleting ? `${deleting.paymentNo} delete karein?` : ''}
+        title={deleting ? t('{a0} delete karein?', { a0: deleting.paymentNo }) : ''}
         message={t('Khata wapas pehle jaisa ho jayega aur bill dobara udhaar dikhne lagega. Ye wapas nahi hota.')}
         confirmLabel={t("Haan, delete karein")}
       />
@@ -376,7 +376,7 @@ function DueList({ onCollect, onRemind, onOpen }) {
 function DueRow({ p, onCollect, onRemind, onOpen }) {
   const name = p.shopName || p.name;
   const age = ageOf(p.oldestDue);
-  const msg = `Namaste ${p.name}, ${name} pe ₹${Math.round(p.amount)} baaki hai. Jab suvidha ho bhej dijiyega. Dhanyawaad.`;
+  const msg = t('Namaste {a0}, {a1} pe ₹{a2} baaki hai. Jab suvidha ho bhej dijiyega. Dhanyawaad.', { a0: p.name, a1: name, a2: Math.round(p.amount) });
 
   return (
     <li className="border-b border-slate-100 last:border-0">
@@ -616,19 +616,19 @@ function History({ searchParams, setSearchParams, onReject, onDelete, onConfirm,
             <>
               <button onClick={() => onConfirm(r)} disabled={busy}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
-                aria-label={`${r.paymentNo} confirm karein`}>
+                aria-label={t('{a0} confirm karein', { a0: r.paymentNo })}>
                 <Check size={16} />
               </button>
               <button onClick={() => onReject(r)}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
-                aria-label={`${r.paymentNo} reject karein`}>
+                aria-label={t('{a0} reject karein', { a0: r.paymentNo })}>
                 <X size={16} />
               </button>
             </>
           )}
           <button onClick={() => onDelete(r)}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600"
-            aria-label={`${r.paymentNo} delete karein`}>
+            aria-label={t('{a0} delete karein', { a0: r.paymentNo })}>
             <Trash2 size={16} />
           </button>
         </div>

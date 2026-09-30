@@ -126,7 +126,7 @@ export default function PurchaseForm() {
 
   async function save() {
     // Supplier ab zaroori nahi — nakad kharid bhi entry ho sakti hai
-    if (!filledRows.length) {toast.error('Kam se kam ek item daalein');return;}
+    if (!filledRows.length) {toast.error(t('Kam se kam ek item daalein'));return;}
 
     setSaving(true);
     try {
@@ -175,7 +175,7 @@ export default function PurchaseForm() {
     <>
       <PageHeader
         title={t('Nayi purchase')}
-        subtitle={preview ? `Number: ${preview}` : 'Supplier se aaya maal'} />
+        subtitle={preview ? `Number: ${preview}` : t('Supplier se aaya maal')} />
       
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -306,7 +306,7 @@ export default function PurchaseForm() {
                         </td>
                         <td className="px-2 py-2">
                           <button type="button" onClick={() => removeRow(r.key)}
-                          aria-label={`Row ${idx + 1} hatayein`}
+                          aria-label={t('Row {a0} hatayein', { a0: idx + 1 })}
                           // h-9 w-9 = 36px. p-1.5 pe ye 28px ka tha aur tablet pe ungli se
                           // chookta tha (mobile-audit ne pakda)
                           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600">
@@ -420,7 +420,7 @@ export default function PurchaseForm() {
                 'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm',
                 due > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'
               )}>
-                  <span>{due > 0 ? 'Baaki dena hai' : 'Poora ho gaya'}</span>
+                  <span>{due > 0 ? t('Baaki dena hai') : t('Poora ho gaya')}</span>
                   <strong className="tabular">{formatMoney(due)}</strong>
                 </div>
               </div> :
@@ -451,8 +451,8 @@ export default function PurchaseForm() {
             <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">
               <Info size={13} className="mt-0.5 shrink-0" />
               {supplier ?
-              `Save karte hi ${filledRows.length || 0} item ka stock badh jayega aur supplier ke khate me ${formatMoney(totals.grandTotal)} chadh jayega.` :
-              `Save karte hi ${filledRows.length || 0} item ka stock badh jayega. Kisi ka khata nahi banega.`}
+              t('Save karte hi {a0} item ka stock badh jayega aur supplier ke khate me {a1} chadh jayega.', { a0: filledRows.length || 0, a1: formatMoney(totals.grandTotal) }) :
+              t('Save karte hi {a0} item ka stock badh jayega. Kisi ka khata nahi banega.', { a0: filledRows.length || 0 })}
             </p>
           </Card>
         </div>

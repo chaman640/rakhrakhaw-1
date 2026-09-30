@@ -119,7 +119,7 @@ export default function PaymentFormModal({
   }
 
   async function save() {
-    if (!party?.value) return setError('Pehle party chunein');
+    if (!party?.value) return setError(t('Pehle party chunein'));
     if (!(Number(amount) > 0)) return setError('Amount daaliye');
     return send(false);
   }
@@ -132,7 +132,7 @@ export default function PaymentFormModal({
         title={refund ? t('Jama paisa wapas') : isSupplier ? t('Paisa diya') : t('Paisa aaya')}
         description={selected ?
         jama > 0 ?
-        `${selected.shopName || selected.name} — ${formatMoney(jama)} jama pada hai` :
+        t('{a0} — {a1} jama pada hai', { a0: selected.shopName || selected.name, a1: formatMoney(jama) }) :
         `${selected.shopName || selected.name} — ${isSupplier ? t('inko dena tha') : t('inse lena tha')} ${formatMoney(due)}` :
         t('Kisse paisa mila ya kisko diya, wo entry karein')}
         footer={
@@ -210,7 +210,7 @@ export default function PaymentFormModal({
                 hisaab ban jata.
               */
               hint={hadd > 0 ?
-              refund ? `Poora ${formatMoney(hadd)} jama hai` : `Poora ${formatMoney(hadd)} baaki hai` :
+              refund ? t('Poora {a0} jama hai', { a0: formatMoney(hadd) }) : t('Poora {a0} baaki hai', { a0: formatMoney(hadd) }) :
               undefined} />
             
           <Input label={t('Kab')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
