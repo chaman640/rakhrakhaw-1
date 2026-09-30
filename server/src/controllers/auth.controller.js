@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok, created } from '../utils/response.js';
 import * as authService from '../services/auth.service.js';
 import * as otpService from '../services/otp.service.js';
+import User from '../models/User.js';
 
 export const signupWholesaler = asyncHandler(async (req, res) => {
   const result = await authService.signupWholesaler(req.body);
@@ -24,7 +25,9 @@ export const signupRetailer = asyncHandler(async (req, res) => {
 });
 
 export const me = asyncHandler(async (req, res) => {
-  const result = await authService.buildSession(req.user);
+  // Read fresh: the cached req.user can predate a change the app is reloading for
+  const fresh = await User.findById(req.user._id).lean();
+  const result = await authService.buildSession(fresh || req.user);
   return ok(res, result);
 });
 

@@ -23,7 +23,7 @@
        (`offlineQueue.js`) — service worker inhe chhuta tak nahi.
 */
 
-const SHELL_CACHE = 'rr-shell-v1';
+const SHELL_CACHE = 'rr-shell-v2'; // v2 drops /api/auth responses the old version cached by mistake
 const API_CACHE = 'rr-api-v1';
 
 self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
@@ -64,10 +64,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API GET — network pehle, cache dusra sahara. Login/session wali API
-  // (/api/auth/*) yahan se bahar — warna isi phone pe koi doosra login kare
-  // to offline me thodi der ke liye PURANE user ka data dikh sakta hai.
-  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')) {
+  // Session/login API: always live, never cached (it is per-user)
+  if (url.pathname.startsWith('/api/auth/')) return;
+
+  // API GET — network pehle, cache dusra sahara (offline ke liye)
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith((async () => {
       const cache = await caches.open(API_CACHE);
       try {
