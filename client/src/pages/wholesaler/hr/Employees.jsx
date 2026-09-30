@@ -152,7 +152,7 @@ export default function Employees() {
           <Avatar name={e.name} url={e.photoUrl} />
           <span className="min-w-0">
             <span className="block truncate font-medium text-slate-900">{e.name}</span>
-            <span className="block truncate text-xs text-slate-500">{e.code} · {e.designation || e.staffRoleLabel}</span>
+            <span className="block truncate text-xs text-slate-500">{e.code} · {e.designation || t(e.staffRoleLabel)}</span>
           </span>
         </span>
       ),

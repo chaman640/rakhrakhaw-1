@@ -81,7 +81,7 @@ function ProfileTab({ e, tempPassword }) {
         <CardHeader title={t('Job')} />
         <div className="grid grid-cols-2 gap-x-4">
           <Field label={t('Employee code')} value={e.code} />
-          <Field label={t('App role')} value={e.staffRoleLabel} />
+          <Field label={t('App role')} value={t(e.staffRoleLabel)} />
           <Field label={t('Department')} value={e.department} />
           <Field label={t('Designation')} value={e.designation} />
           <Field label={t('Reports to')} value={e.reportingManagerName} />
@@ -270,7 +270,7 @@ export default function EmployeeDetail() {
               <h1 className="text-xl font-semibold text-slate-900">{e.name}</h1>
               <Badge tone={e.status === 'active' ? 'green' : e.status === 'left' ? 'red' : 'slate'}>{Cap(e.status)}</Badge>
             </div>
-            <p className="text-sm text-slate-500">{e.code} · {e.designation || e.staffRoleLabel}{e.department ? ` · ${e.department}` : ''}</p>
+            <p className="text-sm text-slate-500">{e.code} · {e.designation || t(e.staffRoleLabel)}{e.department ? ` · ${e.department}` : ''}</p>
             <a href={`tel:${e.phone}`} className="mt-1 inline-flex items-center gap-1 text-sm text-brand-700 hover:underline"><Phone size={13} />{formatPhone(e.phone)}</a>
           </div>
           <div className="flex flex-wrap gap-2">

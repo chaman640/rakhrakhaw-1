@@ -123,7 +123,7 @@ export default function Activity({ embedded = false }) {
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 placeholder={t('Sab log')}
-                options={staff.map((s) => ({ value: s._id, label: `${s.name} (${s.staffRoleLabel})` }))}
+                options={staff.map((s) => ({ value: s._id, label: `${s.name} (${t(s.staffRoleLabel)})` }))}
               />
             )}
             <Input label={t('Kab se')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} />

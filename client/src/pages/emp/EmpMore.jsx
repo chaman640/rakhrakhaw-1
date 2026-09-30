@@ -95,7 +95,7 @@ export function EmpProfile() {
         </div>
         <div className="min-w-0">
           <p className="text-lg font-semibold text-slate-900">{p.name}</p>
-          <p className="text-sm text-slate-500">{p.code} · {p.designation || p.staffRoleLabel}</p>
+          <p className="text-sm text-slate-500">{p.code} · {p.designation || t(p.staffRoleLabel)}</p>
         </div>
       </Card>
       <Card>

@@ -65,8 +65,8 @@ export default function Pricing() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-semibold text-slate-900">{p.name}</p>
-                <p className="text-xs text-slate-500">{p.tagline}</p>
+                <p className="font-semibold text-slate-900">{t(p.name)}</p>
+                <p className="text-xs text-slate-500">{t(p.tagline)}</p>
               </div>
               {p.popular && (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-medium text-white">
@@ -90,7 +90,7 @@ export default function Pricing() {
               {(p.features || []).map((f, i) => (
                 <li key={i} className="flex gap-2 text-xs text-slate-600">
                   <Check size={13} className="mt-0.5 shrink-0 text-emerald-600" />
-                  <span>{f}</span>
+                  <span>{t(f)}</span>
                 </li>
               ))}
             </ul>

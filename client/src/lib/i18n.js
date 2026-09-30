@@ -109,6 +109,7 @@ const DYNAMIC = [
   'Item "{a}" hataya', 'Naya retailer "{a}" jodha', 'Naya supplier "{a}" jodha', 'Naya item "{a}" jodha',
   '{a} cancel kiya — {b}', '{a} reject kiya — {b}', '{a} cancel kiya', '{a} reject kiya', '{a} — {b} kiya', '{a} ko {b} banaya',
   '{a} ko hataya', '{a} me {b} badla', '{a} mitaya', 'Paisa aaya {a}', 'Paisa diya {a}',
+  'Zyada se zyada {a}% discount', '{a} tak ka bill', 'Zyada se zyada {a} photo lag sakti hain',
 ].map((key) => {
   const names = [];
   const src = key.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\w+)\}/g, (_, n) => { names.push(n); return '(.+?)'; });
@@ -123,6 +124,9 @@ export function tDyn(text) {
     const m = text.match(re);
     if (m && DICT[key]) return t(key, Object.fromEntries(names.map((n, i) => [n, m[i + 1]])));
   }
+  // "<known phrase> — <number or name>"
+  const cut = text.indexOf(' — ');
+  if (cut > 0 && DICT[text.slice(0, cut)]) return `${t(text.slice(0, cut))}${text.slice(cut)}`;
   return text;
 }
 

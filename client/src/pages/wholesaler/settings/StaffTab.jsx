@@ -11,7 +11,7 @@ import {
   Spinner, EmptyState, Switch, CopyBox, useToast } from
 '@/components/ui';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 /**
  * SUB-ACCOUNT — dukaan ke log aur unke haq.
@@ -120,7 +120,7 @@ export default function StaffTab() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium text-slate-900">{row.name}</p>
                   <Badge tone={row.isOwner ? 'brand' : row.staffRole === 'admin' ? 'blue' : 'slate'}>
-                    {row.staffRoleLabel}
+                    {t(row.staffRoleLabel)}
                   </Badge>
                   {!row.isActive && <Badge tone="red">{t('Band')}</Badge>}
                   {row.scope === 'own' && <Badge tone="amber">{t('Sirf apna kaam')}</Badge>}
@@ -133,7 +133,7 @@ export default function StaffTab() {
                 </p>
                 {row.limitsSummary?.hasLimits &&
               <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-amber-700">
-                    <Wallet size={11} /> {row.limitsSummary.lines.join(' · ')}
+                    <Wallet size={11} /> {row.limitsSummary.lines.map(tDyn).join(' · ')}
                   </p>
               }
               </div>
@@ -181,7 +181,7 @@ export default function StaffTab() {
           <div key={inv._id} className={STATUS_ROW}>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900">
-                    {inv.label || inv.staffRoleLabel}
+                    {inv.label || t(inv.staffRoleLabel)}
                   </p>
                   <p className="text-xs text-slate-500">{t("{a0}{a1}{a2}{a3} tak", { a0:
                   inv.staffRoleLabel, a1:
@@ -501,7 +501,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
 
   const tabs = [
   { key: 'role', label: t('Kaun hai') },
-  { key: 'perms', label: `Ijazat (${form.permissions.length})` },
+  { key: 'perms', label: t('Ijazat ({n})', { n: form.permissions.length }) },
   { key: 'limits', label: t('Hadd') }];
 
 
@@ -562,7 +562,7 @@ function StaffFormModal({ open, onClose, staff, meta, me, onSaved }) {
                   )}>
                   
                     <p className="text-sm font-medium text-slate-900">{t(r.label)}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{r.hint}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{t(r.hint)}</p>
                     {locked &&
                   <p className="mt-1 text-xs text-amber-700">{t('Sirf malik bana sakta hai')}</p>
                   }
@@ -679,7 +679,7 @@ function InviteModal({ open, onClose, meta, onCreated }) {
             value={form.staffRole}
             onChange={(e) => pickRole(e.target.value)}
             placeholder=""
-            options={roles.map((r) => ({ value: r.value, label: r.label }))} />
+            options={roles.map((r) => ({ value: r.value, label: t(r.label) }))} />
           
           <p className="mt-1 text-xs text-slate-500">
             {roles.find((r) => r.value === form.staffRole)?.hint}
