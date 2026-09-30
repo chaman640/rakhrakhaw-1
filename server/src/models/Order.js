@@ -70,6 +70,23 @@ const orderSchema = new mongoose.Schema(
     */
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment', default: null },
 
+    source: { type: String, enum: ['retailer', 'seller', 'quotation'], default: 'retailer' },
+    quotationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quotation', default: null },
+    expectedDeliveryAt: { type: Date, default: null },
+    dispatch: {
+      challanNo: { type: String, default: '' },
+      vehicleNo: { type: String, default: '' },
+      transporter: { type: String, default: '' },
+      lrNo: { type: String, default: '' },
+      driverName: { type: String, default: '' },
+      driverPhone: { type: String, default: '' },
+      packages: { type: Number, default: 0 },
+      note: { type: String, default: '' },
+      dispatchedAt: { type: Date, default: null },
+      deliveredTo: { type: String, default: '' },
+      deliveredAt: { type: Date, default: null },
+    },
+
     retailerNote: { type: String, default: '' },
     wholesalerNote: { type: String, default: '' },
     cancelReason: { type: String, default: '' },

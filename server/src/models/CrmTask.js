@@ -23,6 +23,7 @@ const crmTaskSchema = new mongoose.Schema(
     leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', default: null },
     // Kahan se bana: haath se, ya CRM ne khud (follow-up/automation)
     source: { type: String, enum: ['manual', 'auto'], default: 'manual' },
+    autoKey: { type: String, default: '' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     doneAt: { type: Date, default: null },
     doneNote: { type: String, trim: true, maxlength: 1000, default: '' },

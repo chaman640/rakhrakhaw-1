@@ -35,6 +35,7 @@ import storyRoutes from './story.routes.js';
 import myStoryRoutes from './myStory.routes.js';
 import tutorialRoutes from './tutorial.routes.js';
 import crmRoutes from './crm.routes.js';
+import quotationRoutes from './quotation.routes.js';
 import { buyerWishlist, sellerDemand } from './wishlist.routes.js';
 import adminPlatformRoutes from './adminPlatform.routes.js';
 import announcementRoutes from './announcement.routes.js';
@@ -140,6 +141,7 @@ router.use('/my/stories', myStoryRoutes);
 // Part 29 — Tutorial videos (onboarding tour)
 router.use('/tutorials', tutorialRoutes);
 router.use('/crm', crmRoutes);
+router.use('/quotations', quotationRoutes);
 router.use('/hr', hrRoutes);
 router.use('/accounts', accountsRoutes);
 router.use('/support', supportRoutes);

@@ -4,6 +4,7 @@ import { connectDB } from './config/db.js';
 import { syncIndexes } from './config/indexes.js';
 import { runBackfills } from './config/backfill.js';
 import { loadPlatformConfig } from './services/platform.service.js';
+import { sweepAutomation } from './services/crmOps.service.js';
 
 async function start() {
   await connectDB();
@@ -24,6 +25,8 @@ async function start() {
     }, 20000)),
   ]);
   // 0.0.0.0 — Render/Docker ke andar sirf localhost pe sunne se bahar se koi nahi pahunch pata
+  // CRM follow-up automation; each business is claimed atomically so extra instances are harmless
+  setInterval(() => { sweepAutomation().catch((e) => console.warn('[crm] sweep:', e.message)); }, 3600000).unref();
   app.listen(env.port, '0.0.0.0', () => {
     if (env.isProd) {
       console.log(`[server] production mode, port ${env.port} — client aur API dono ek hi URL pe`);

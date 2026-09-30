@@ -10,6 +10,9 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok, created } from '../utils/response.js';
 import * as ctrl from '../controllers/crm.controller.js';
 import * as work from '../services/crmWork.service.js';
+import * as ins from '../services/crmInsight.service.js';
+import * as ops from '../services/crmOps.service.js';
+import { COMPLAINT_STATUS, COMPLAINT_PRIORITY, COMPLAINT_CATEGORY } from '../models/Complaint.js';
 
 const router = Router();
 router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
@@ -38,7 +41,7 @@ const list = (fn) => asyncHandler(async (req, res) => {
 });
 
 router.get('/staff', requirePermission('parties:view'), h((req) => work.assignableStaff(req.businessId)));
-router.get('/today', h((req) => work.today(req.businessId, req.user)));
+router.get('/today', h((req) => { ops.kickAutomation(req.businessId); return work.today(req.businessId, req.user); }));
 
 router.get('/pipeline', requirePermission('parties:view'), h((req) => work.pipeline(req.businessId, req.user)));
 router.get('/leads', requirePermission('parties:view'), validate({
@@ -57,6 +60,9 @@ const leadBody = z.object({
   city: z.string().trim().max(60).optional().default(''),
   source: z.enum(LEAD_SOURCES).optional().default('other'),
   expectedValue: z.coerce.number().min(0).max(1e9).optional().default(0),
+  probability: z.coerce.number().int().min(0).max(100).nullable().optional(),
+  expectedCloseAt: date,
+  interest: z.string().trim().max(200).optional(),
   assignedToUserId: oid.nullable().optional(),
   nextFollowUpAt: date,
   note: z.string().trim().max(1000).optional().default(''),
@@ -121,6 +127,99 @@ router.get('/team', requirePermission('parties:view'), validate({
   query: z.object({ days: z.coerce.number().int().min(1).max(365).optional().default(30) }),
 }), h((req) => work.teamStats(req.businessId, req.user, req.query)));
 router.post('/auto-tasks', requirePermission('parties:edit'),
-  h((req) => work.generateFollowUpTasks(req.businessId, req.user)));
+  h(async (req) => { await work.assertFeature(req.businessId, 'crm_smart'); return ops.runAutomation(req.businessId, { force: true, actor: req.user._id }); }));
+
+/* ── customers 360 ── */
+const num = z.coerce.number().min(0).max(1e10).optional();
+router.get('/customers', requirePermission('parties:view'), validate({
+  query: z.object({
+    q: z.string().trim().max(60).optional().default(''),
+    city: z.string().trim().max(60).optional().default(''),
+    tag: z.string().trim().max(30).optional().default(''),
+    segment: z.enum(['', ...ins.SEGMENTS]).optional().default(''),
+    minSale: num, inactiveDays: z.coerce.number().int().min(0).max(3650).optional(),
+    overdue: z.enum(['', '0', '1']).optional().transform((v) => v === '1'),
+    minScore: z.coerce.number().int().min(0).max(100).optional(),
+    assigned: z.string().trim().max(24).optional().default(''),
+    sort: z.enum(['sale', 'outstanding', 'recent', 'idle', 'score', 'name']).optional().default('sale'),
+    page, limit: z.coerce.number().int().min(5).max(100).optional().default(25),
+  }),
+}), list((req) => ins.listCustomers(req.businessId, req.user, req.query)));
+router.get('/customers/:id', requirePermission('parties:view'), validate({ params: idP }), h((req) => ins.customerProfile(req.businessId, req.user, req.params.id)));
+router.put('/customers/:id/tags', requirePermission('parties:view'), validate({
+  params: idP, body: z.object({ tags: z.array(z.string().trim().min(1).max(30)).max(10) }),
+}), h((req) => ins.setTags(req.businessId, req.user, req.params.id, req.body.tags)));
+router.put('/customers/:id/assign', requirePermission('parties:edit'), validate({
+  params: idP, body: z.object({ userId: oid.nullable() }),
+}), h((req) => ins.assignCustomer(req.businessId, req.user, req.params.id, req.body.userId)));
+router.post('/customers/:id/notes', requirePermission('parties:view'), validate({
+  params: idP,
+  body: z.object({ kind: z.enum(['note', 'call', 'meeting', 'visit']).optional().default('note'), text: z.string().trim().min(1).max(1000), nextFollowUpAt: date }),
+}), asyncHandler(async (req, res) => created(res, await ins.addCustomerNote(req.businessId, req.user, req.params.id, req.body), 'Note saved')));
+router.get('/insights', requirePermission('parties:view'), h((req) => { ops.kickAutomation(req.businessId); return ins.insights(req.businessId, req.user); }));
+
+/* ── complaints ── */
+router.get('/complaints', requirePermission('parties:view'), validate({
+  query: z.object({
+    status: z.enum(['', 'open', ...COMPLAINT_STATUS]).optional().default('open'),
+    priority: z.enum(['', ...COMPLAINT_PRIORITY]).optional().default(''),
+    partyId: z.string().trim().max(24).optional().default(''),
+    assigned: z.string().trim().max(24).optional().default(''),
+    page,
+  }),
+}), list((req) => ops.listComplaints(req.businessId, req.user, req.query)));
+router.post('/complaints', requirePermission('parties:view'), validate({
+  body: z.object({
+    partyId: oid, invoiceId: oid.nullable().optional(),
+    subject: z.string().trim().min(3).max(160), detail: z.string().trim().max(2000).optional().default(''),
+    category: z.enum(COMPLAINT_CATEGORY).optional().default('other'), priority: z.enum(COMPLAINT_PRIORITY).optional().default('normal'),
+    assignedToUserId: oid.nullable().optional(),
+  }),
+}), asyncHandler(async (req, res) => created(res, await ops.createComplaint(req.businessId, req.user, req.body), 'Complaint registered')));
+router.get('/complaints/:id', requirePermission('parties:view'), validate({ params: idP }), h((req) => ops.getComplaint(req.businessId, req.user, req.params.id)));
+router.put('/complaints/:id', requirePermission('parties:view'), validate({
+  params: idP,
+  body: z.object({
+    status: z.enum(COMPLAINT_STATUS).optional(), priority: z.enum(COMPLAINT_PRIORITY).optional(), category: z.enum(COMPLAINT_CATEGORY).optional(),
+    assignedToUserId: oid.nullable().optional(), resolution: z.string().trim().max(2000).optional(), note: z.string().trim().max(500).optional(),
+  }),
+}), h((req) => ops.updateComplaint(req.businessId, req.user, req.params.id, req.body)));
+
+/* ── targets, performance, settings ── */
+const period = z.string().regex(/^\d{4}-\d{2}$/).optional();
+router.get('/targets', requirePermission('parties:view'), validate({ query: z.object({ period }) }), h((req) => ops.targets(req.businessId, req.user, { period: req.query.period || undefined })));
+router.put('/targets/:id', requirePermission('parties:edit'), validate({ params: idP, body: z.object({ amount: z.coerce.number().min(0).max(1e10) }) }),
+  h((req) => ops.setTarget(req.businessId, req.user, req.params.id, req.body.amount), 'Target saved'));
+router.get('/performance', requirePermission('parties:view'), validate({
+  query: z.object({ days: z.coerce.number().int().min(1).max(365).optional().default(30) }),
+}), h((req) => ops.salesmanPerformance(req.businessId, req.user, req.query)));
+router.get('/settings', requirePermission('parties:view'), h((req) => ins.getSettings(req.businessId)));
+router.put('/settings', requirePermission('parties:edit'), validate({
+  body: z.object({
+    vipAmount: num, highValueAmount: num,
+    inactiveDays: z.coerce.number().int().min(7).max(365).optional(),
+    newDays: z.coerce.number().int().min(1).max(180).optional(),
+    quotationFollowUpDays: z.coerce.number().int().min(1).max(60).optional(),
+    leadNoResponseDays: z.coerce.number().int().min(1).max(60).optional(),
+    automation: z.object({
+      enabled: z.boolean().optional(), reorder: z.boolean().optional(), inactivity: z.boolean().optional(),
+      quotation: z.boolean().optional(), leadEscalation: z.boolean().optional(),
+    }).optional(),
+    complaintAssigneeUserId: oid.nullable().optional(),
+    leadAssign: z.object({
+      mode: z.enum(['none', 'round_robin', 'rules']),
+      userIds: z.array(oid).max(100).optional().default([]),
+      rules: z.array(z.object({
+        city: z.string().trim().max(60).optional().default(''), source: z.string().trim().max(20).optional().default(''),
+        minValue: z.coerce.number().min(0).max(1e10).optional().default(0), userId: oid,
+      })).max(50).optional().default([]),
+    }).optional(),
+    territories: z.array(z.object({
+      name: z.string().trim().min(1).max(60), cities: z.array(z.string().trim().min(1).max(60)).min(1).max(50), userId: oid.nullable().optional(),
+    })).max(50).optional(),
+  }),
+}), h((req) => ins.saveSettings(req.businessId, req.user, req.body), 'CRM settings saved'));
+router.post('/territories/apply', requirePermission('parties:edit'), validate({ body: z.object({ overwrite: z.boolean().optional().default(false) }) }),
+  h((req) => ins.applyTerritories(req.businessId, req.user, req.body)));
 
 export default router;

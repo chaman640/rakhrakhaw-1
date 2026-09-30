@@ -30,7 +30,19 @@ export const FEATURES = [
     key: 'crm_assign',
     name: 'Staff ko lead/kaam dena',
     desc: 'Lead aur kaam kisi staff ko do — use sirf apna kaam dikhega',
+    plans: ['BADHTI', 'BADI', 'ASEEM'],
+  },
+  {
+    key: 'crm_smart',
+    name: 'CRM — scoring, re-order, automation',
+    desc: 'Customer score, re-order aur inactivity alert, auto follow-up, complaint assignment, sales target',
     plans: ['BADI', 'ASEEM'],
+  },
+  {
+    key: 'crm_pro',
+    name: 'CRM — territory aur lead rules',
+    desc: 'Area-wise retailer, city/value se lead apne aap sahi staff ko',
+    plans: ['ASEEM'],
   },
   {
     key: 'demand',
@@ -55,6 +67,12 @@ export const FEATURES = [
     name: 'HR — commission, performance, team target',
     desc: 'Sales se commission, employee aur team performance',
     plans: ['BADI', 'ASEEM'],
+  },
+  {
+    key: 'sales_pro',
+    name: 'Quotation, sales order, delivery challan',
+    desc: 'Bade wholesaler/importer ke liye: quotation → order → dispatch → bill',
+    plans: ['BADHTI', 'BADI', 'ASEEM'],
   },
   {
     key: 'bulk_import',

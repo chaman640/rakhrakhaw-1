@@ -61,3 +61,7 @@ export { default as Payout } from './Payout.js';
 export { default as PartnerAdmin } from './PartnerAdmin.js';
 export { default as BillingOrder } from './BillingOrder.js';
 export { default as PushSubscription } from './PushSubscription.js';
+export { default as CrmSettings } from './CrmSettings.js';
+export { default as Complaint } from './Complaint.js';
+export { default as CrmNote } from './CrmNote.js';
+export { default as Quotation } from './Quotation.js';

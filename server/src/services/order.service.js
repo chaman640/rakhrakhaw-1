@@ -403,6 +403,8 @@ export async function updateStatus(businessId, id, { status, note }, userId, vie
 
   order.status = status;
   order.statusHistory.push({ status, at: new Date(), byUserId: userId, note });
+  if (status === ORDER_STATUS.READY && !order.dispatch?.dispatchedAt) order.set('dispatch.dispatchedAt', new Date());
+  if (status === ORDER_STATUS.DELIVERED) order.set('dispatch.deliveredAt', new Date());
   if (note) order.wholesalerNote = note;
   await order.save();
 
@@ -513,4 +515,54 @@ export async function updateOrderItems(businessId, id, { items, note }, userId, 
   });
 
   return getOrderForWholesaler(businessId, id);
+}
+
+/**
+ * Seller-side sales order (phone/WhatsApp order, or a won quotation).
+ * Same Order record as retailer orders, so packing → dispatch → bill works unchanged.
+ */
+export async function createSellerOrder(businessId, { partyId, items, note = '', paymentMode, expectedDeliveryAt = null, source = 'seller', quotationId = null }, userId, viewer = null) {
+  const party = await Party.findOne({ _id: partyId, businessId }).select('name shopName status type').lean();
+  if (!party || party.type !== 'retailer') throw ApiError.badRequest('Customer not found');
+  if (isScoped(viewer) && !(await canSeeDoc({ partyId }, businessId, viewer))) throw ApiError.notFound('Customer not found');
+  if (!items?.length) throw ApiError.badRequest('Add at least one item');
+  const found = await Item.find({ _id: { $in: items.map((i) => i.itemId) }, businessId, isActive: true }).select('name unit stockQty salePrice wholesalePrice').lean();
+  const byId = new Map(found.map((i) => [String(i._id), i]));
+  const priced = new Map((await resolveRates(businessId, partyId, found)).map((i) => [String(i._id), i.rate]));
+  const lines = items.map((l) => {
+    const it = byId.get(String(l.itemId));
+    if (!it) throw ApiError.badRequest('An item in this order is no longer available');
+    const rate = round2(l.rate ?? priced.get(String(l.itemId)) ?? 0);
+    const qty = round2(l.qty);
+    return { itemId: it._id, name: it.name, unit: it.unit, qty, rate, amount: round2(qty * rate), availableAtOrder: it.stockQty };
+  });
+  const business = await Business.findById(businessId).select('orderPrefix').lean();
+  const { number: orderNo } = await Counter.nextNumber({ businessId, key: COUNTER_KEYS.ORDER, prefix: business?.orderPrefix || 'ORD' });
+  const order = await Order.create({
+    businessId, partyId, placedByUserId: userId, orderNo, items: lines,
+    itemsTotal: round2(lines.reduce((a, l) => a + l.amount, 0)), itemCount: lines.length,
+    status: ORDER_STATUS.PLACED,
+    statusHistory: [{ status: ORDER_STATUS.PLACED, at: new Date(), byUserId: userId, note: source === 'quotation' ? 'Created from quotation' : 'Booked by seller' }],
+    paymentMode: paymentMode || ORDER_PAYMENT_MODES.UDHAAR,
+    wholesalerNote: note, source, quotationId, expectedDeliveryAt,
+  });
+  return getOrderForWholesaler(businessId, order._id, viewer);
+}
+
+/** Dispatch details for the delivery challan; issues a challan number once */
+export async function updateDispatch(businessId, id, body, userId, viewer = null) {
+  await assertCanTouch(businessId, id, viewer);
+  const order = await Order.findOne({ _id: id, businessId });
+  if (!order) throw ApiError.notFound('Order not found');
+  if (order.status === ORDER_STATUS.CANCELLED) throw ApiError.badRequest('This order is cancelled');
+  for (const k of ['vehicleNo', 'transporter', 'lrNo', 'driverName', 'driverPhone', 'packages', 'note', 'deliveredTo']) {
+    if (body[k] !== undefined) order.set(`dispatch.${k}`, body[k]);
+  }
+  if (body.expectedDeliveryAt !== undefined) order.expectedDeliveryAt = body.expectedDeliveryAt || null;
+  if (!order.dispatch?.challanNo) {
+    const { number } = await Counter.nextNumber({ businessId, key: 'challan', prefix: 'DC' });
+    order.set('dispatch.challanNo', number);
+  }
+  await order.save();
+  return getOrderForWholesaler(businessId, id, viewer);
 }

@@ -118,13 +118,13 @@ const t2 = await billing.startTrial(tBiz, 'ASEEM');
 check('dobara trial nahi milta', t2.planCode === 'BADHTI' && +t2.paidTill === +t1.paidTill);
 let ts = await billing.billingSummary(tBiz);
 check('summary: trial chalu, din baaki', ts.trial.on && ts.trial.daysLeft === 15, JSON.stringify(ts.trial));
-check('BADHTI me leads hai, staff assign nahi', ts.features.includes('crm_leads') && !ts.features.includes('crm_assign'), JSON.stringify(ts.features));
-check('band feature pe sabse sasta plan bataya', ts.locked.crm_assign?.plan?.code === 'BADI', JSON.stringify(ts.locked.crm_assign));
+check('BADHTI me leads aur assign hai, smart nahi', ts.features.includes('crm_leads') && ts.features.includes('crm_assign') && !ts.features.includes('crm_smart'), JSON.stringify(ts.features));
+check('band feature pe sabse sasta plan bataya', ts.locked.crm_smart?.plan?.code === 'BADI', JSON.stringify(ts.locked.crm_smart));
 
 const runMw = (key) => new Promise((resolve) => requireFeature(key)({ businessId: tBiz }, {}, (err) => resolve(err || null)));
 check('backend: crm_leads khula', (await runMw('crm_leads')) === null);
-const blocked = await runMw('crm_assign');
-check('backend: crm_assign band (feature_locked)', blocked?.details?.reason === 'feature_locked', blocked?.message);
+const blocked = await runMw('crm_smart');
+check('backend: crm_smart band (feature_locked)', blocked?.details?.reason === 'feature_locked', blocked?.message);
 
 await M.Subscription.updateOne({ businessId: tBiz }, { $set: { paidTill: new Date(Date.now() - 86400000) } });
 ts = await billing.billingSummary(tBiz);
@@ -133,17 +133,17 @@ let sellErr = null;
 try { await billing.assertCanSell(tBiz); } catch (e) { sellErr = e; }
 check('trial khatam -> bechna ruka', sellErr?.details?.reason === 'subscription_required');
 
-// Admin setting: trial 30 din, crm_assign BADHTI me bhi, CHOTI ka daam ₹60
+// Admin setting: trial 30 din, crm_smart BADHTI me bhi, CHOTI ka daam ₹60
 await platform.updatePlatformConfig({
   trialDays: 30,
-  featurePlans: { crm_assign: ['BADHTI', 'BADI', 'ASEEM'] },
+  featurePlans: { crm_smart: ['BADHTI', 'BADI', 'ASEEM'] },
   plans: [{ code: 'CHOTI', pricePaise: 6000 }],
 });
 const t3biz = new mongoose.Types.ObjectId();
 const t3 = await billing.startTrial(t3biz);
 const d3 = (new Date(t3.paidTill) - Date.now()) / 86400000;
 check('admin ne trial 30 din kiya -> naya trial 30 din', d3 > 29.9 && d3 < 30.1, `${d3}`);
-check('admin ne feature BADHTI me khola', (await billing.billingSummary(t3biz)).features.includes('crm_assign'));
+check('admin ne feature BADHTI me khola', (await billing.billingSummary(t3biz)).features.includes('crm_smart'));
 check('admin ne CHOTI ka daam badla -> poore app me', PLAN_BY_CODE.CHOTI.pricePaise === 6000);
 check('pricing page (catalog) me naya daam', billing.planCatalog().plans.find((x) => x.code === 'CHOTI')?.priceRupees === 60,
   JSON.stringify(billing.planCatalog().plans.map((x) => [x.code, x.priceRupees])));

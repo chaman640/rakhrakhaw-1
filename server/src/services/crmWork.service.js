@@ -2,14 +2,13 @@ import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { ROLES, PARTY_TYPES, NOTIFICATION_TYPES } from '../config/constants.js';
 import { STAFF_ROLES, userCan } from '../config/permissions.js';
-import { Lead, CrmTask, Party, User } from '../models/index.js';
+import { Lead, CrmTask, Party, User, CrmSettings } from '../models/index.js';
 import { LEAD_STAGES } from '../models/Lead.js';
 import { isScoped } from '../utils/scope.js';
 import { isFreeMode, subscriptionOf } from './billing.service.js';
 import { planHasFeature, cheapestPlanFor } from './platform.service.js';
 import { rupees } from '../config/billing.js';
 import { createParty } from './party.service.js';
-import { getCrmOverview } from './crm.service.js';
 import { notify } from './notification.service.js';
 
 /**
@@ -18,25 +17,27 @@ import { notify } from './notification.service.js';
  * PLAN SE (config/features.js):
  *   crm_basic  (₹50+)  — retailer pe follow-up ka kaam, par khule kaam 20 tak
  *   crm_leads  (₹100+) — leads + pipeline, kaam ki hadd nahi
- *   crm_assign (₹500+) — lead/kaam kisi AUR staff ko dena, auto follow-up kaam,
- *                        team ka hisaab
+ *   crm_assign (₹100+) — lead/kaam kisi AUR staff ko dena, team ka hisaab
+ *   crm_smart  (₹500+) — score, re-order, auto follow-up, target
+ *   crm_pro    (₹2000) — territory, lead rules
  *
  * STAFF KO SIRF APNA: jis staff pe "sirf apna data" (scope: own) laga hai
  * use wahi lead/kaam dikhte hain jo use diye gaye ya usne banaye. Malik ko sab.
  */
 
 const DAY = 86400000;
+export const STAGE_PROBABILITY = { new: 10, contacted: 20, interested: 40, quotation: 60, negotiation: 80, won: 100, lost: 0 };
 const BASIC_OPEN_TASK_LIMIT = 20;
 const esc = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
 
-async function hasFeature(businessId, key) {
+export async function hasFeature(businessId, key) {
   if (isFreeMode()) return true;
   const state = await subscriptionOf(businessId);
   return planHasFeature(state.plan.code, key);
 }
 
-async function assertFeature(businessId, key) {
+export async function assertFeature(businessId, key) {
   if (await hasFeature(businessId, key)) return;
   const p = cheapestPlanFor(key);
   throw ApiError.forbidden(
@@ -45,23 +46,23 @@ async function assertFeature(businessId, key) {
   );
 }
 
-const isOwner = (u) => (u?.staffRole || STAFF_ROLES.OWNER) === STAFF_ROLES.OWNER;
+export const isOwner = (u) => (u?.staffRole || STAFF_ROLES.OWNER) === STAFF_ROLES.OWNER;
 
 /** Kisi doc ko badal sakta hai: malik, `parties:edit` wala, ya jiska kaam hai/jisne banaya */
-function canTouch(user, doc) {
+export function canTouch(user, doc) {
   if (isOwner(user) || userCan(user, 'parties:edit')) return true;
   const me = String(user._id);
   return String(doc.assignedToUserId || '') === me || String(doc.createdBy || '') === me;
 }
 
-function mineFilter(user) {
+export function mineFilter(user) {
   if (!isScoped(user)) return {};
   return { $or: [{ assignedToUserId: user._id }, { createdBy: user._id }] };
 }
 
 /**
  * Kisko diya ja raha hai — wahi dukaan ka, chalu staff hona chahiye. Kisi aur
- * ko dena `crm_assign` (₹500+) ka feature hai; khud ko dena hamesha chalta hai.
+ * ko dena `crm_assign` (₹100+) ka feature hai; khud ko dena hamesha chalta hai.
  */
 async function resolveAssignee(businessId, user, assignedToUserId) {
   if (!assignedToUserId || String(assignedToUserId) === String(user._id)) return user._id;
@@ -76,11 +77,36 @@ async function resolveAssignee(businessId, user, assignedToUserId) {
   return target._id;
 }
 
-async function nameMap(ids) {
+export async function nameMap(ids) {
   const list = [...new Set(ids.filter(Boolean).map(String))];
   if (!list.length) return new Map();
   const users = await User.find({ _id: { $in: list } }).select('name').lean();
   return new Map(users.map((u) => [String(u._id), u.name]));
+}
+
+/**
+ * Lead routing: rules (city/source/value → staff, ₹2000 plan) or round robin (₹500+).
+ * Returns null when no automatic owner applies.
+ */
+async function routeLead(businessId, body) {
+  const settings = await CrmSettings.findOne({ businessId }).lean();
+  const mode = settings?.leadAssign?.mode || 'none';
+  if (mode === 'none') return null;
+  const staff = new Set((await assignableStaff(businessId)).map((u) => String(u._id)));
+  if (mode === 'rules' && await hasFeature(businessId, 'crm_pro')) {
+    const city = String(body.city || '').trim().toLowerCase();
+    const value = Number(body.expectedValue) || 0;
+    const hit = (settings.leadAssign.rules || []).find((r) => staff.has(String(r.userId))
+      && (!r.city || r.city.toLowerCase() === city)
+      && (!r.source || r.source === body.source)
+      && value >= (r.minValue || 0));
+    if (hit) return hit.userId;
+  }
+  if (!(await hasFeature(businessId, 'crm_smart'))) return null;
+  const pool = (settings.leadAssign.userIds || []).filter((u) => staff.has(String(u)));
+  if (!pool.length) return null;
+  const upd = await CrmSettings.findOneAndUpdate({ businessId }, { $inc: { 'leadAssign.cursor': 1 } }, { new: true }).lean();
+  return pool[(upd.leadAssign.cursor - 1) % pool.length];
 }
 
 /* ─────────────────────────────── staff list ─────────────────────────────── */
@@ -96,6 +122,7 @@ export async function assignableStaff(businessId) {
 function shapeLead(l, names) {
   return {
     ...l,
+    probability: l.probability ?? STAGE_PROBABILITY[l.stage] ?? 0,
     assignedToName: names.get(String(l.assignedToUserId)) || '',
     noteCount: (l.notes || []).length,
     lastNote: (l.notes || []).slice(-1)[0] || null,
@@ -126,10 +153,10 @@ export async function pipeline(businessId, user) {
   if (isScoped(user)) match.$or = [{ assignedToUserId: user._id }, { createdBy: user._id }];
   const rows = await Lead.aggregate([
     { $match: match },
-    { $group: { _id: '$stage', count: { $sum: 1 }, value: { $sum: '$expectedValue' } } },
+    { $group: { _id: '$stage', count: { $sum: 1 }, value: { $sum: '$expectedValue' }, weighted: { $sum: { $multiply: ['$expectedValue', { $divide: [{ $ifNull: ['$probability', { $ifNull: [{ $arrayElemAt: [LEAD_STAGES.map((x) => STAGE_PROBABILITY[x]), { $indexOfArray: [LEAD_STAGES, '$stage'] }] }, 0] }] }, 100] }] } } } },
   ]);
   const by = new Map(rows.map((r) => [r._id, r]));
-  return LEAD_STAGES.map((s) => ({ stage: s, count: by.get(s)?.count || 0, value: by.get(s)?.value || 0 }));
+  return LEAD_STAGES.map((s) => ({ stage: s, count: by.get(s)?.count || 0, value: by.get(s)?.value || 0, weighted: Math.round(by.get(s)?.weighted || 0) }));
 }
 
 export async function getLead(businessId, user, id) {
@@ -143,7 +170,8 @@ export async function getLead(businessId, user, id) {
 
 export async function createLead(businessId, user, body) {
   await assertFeature(businessId, 'crm_leads');
-  const assignee = await resolveAssignee(businessId, user, body.assignedToUserId);
+  const routed = body.assignedToUserId === undefined ? await routeLead(businessId, body) : null;
+  const assignee = routed || await resolveAssignee(businessId, user, body.assignedToUserId);
   const lead = await Lead.create({
     businessId,
     name: body.name,
@@ -153,6 +181,9 @@ export async function createLead(businessId, user, body) {
     source: body.source || 'other',
     stage: 'new',
     expectedValue: Number(body.expectedValue) || 0,
+    probability: body.probability ?? null,
+    expectedCloseAt: body.expectedCloseAt || null,
+    interest: body.interest || '',
     assignedToUserId: assignee,
     nextFollowUpAt: body.nextFollowUpAt || null,
     notes: body.note ? [{ text: body.note, byUserId: user._id, byName: user.name }] : [],
@@ -162,6 +193,12 @@ export async function createLead(businessId, user, body) {
     await CrmTask.create({
       businessId, title: `Follow-up: ${lead.shopName || lead.name}`, kind: 'followup',
       dueAt: body.nextFollowUpAt, assignedToUserId: assignee, leadId: lead._id, createdBy: user._id,
+    });
+  } else if (await hasFeature(businessId, 'crm_smart') && (await CrmSettings.findOne({ businessId }).select('automation').lean())?.automation?.enabled !== false) {
+    const due = new Date(Date.now() + DAY); due.setHours(12, 0, 0, 0);
+    await CrmTask.create({
+      businessId, title: `First call: ${lead.shopName || lead.name}`, kind: 'call', dueAt: due, source: 'auto',
+      autoKey: `lead:${lead._id}`, assignedToUserId: assignee, leadId: lead._id, createdBy: user._id,
     });
   }
   if (String(assignee) !== String(user._id)) await tellAssignee(businessId, assignee, `Naya lead: ${lead.shopName || lead.name}`, '/today');
@@ -174,10 +211,12 @@ export async function updateLead(businessId, user, id, body) {
   if (!lead) throw ApiError.notFound('Lead nahi mila');
   if (!canTouch(user, lead)) throw ApiError.forbidden('Ye lead aapka nahi hai');
 
-  for (const f of ['name', 'shopName', 'phone', 'city', 'source', 'lostReason']) {
+  for (const f of ['name', 'shopName', 'phone', 'city', 'source', 'lostReason', 'interest']) {
     if (body[f] !== undefined) lead[f] = body[f];
   }
   if (body.expectedValue !== undefined) lead.expectedValue = Number(body.expectedValue) || 0;
+  if (body.probability !== undefined) lead.probability = body.probability;
+  if (body.expectedCloseAt !== undefined) lead.expectedCloseAt = body.expectedCloseAt || null;
   if (body.nextFollowUpAt !== undefined) lead.nextFollowUpAt = body.nextFollowUpAt || null;
   if (body.stage && body.stage !== lead.stage) {
     lead.notes.push({ text: `Stage: ${lead.stage} → ${body.stage}`, byUserId: user._id, byName: user.name });
@@ -200,6 +239,7 @@ export async function addLeadNote(businessId, user, id, { text, kind = 'note', n
   if (!lead) throw ApiError.notFound('Lead nahi mila');
   if (!canTouch(user, lead)) throw ApiError.forbidden('Ye lead aapka nahi hai');
   lead.notes.push({ text, kind, byUserId: user._id, byName: user.name });
+  if (kind !== 'note') lead.lastContactAt = new Date();
   if (lead.stage === 'new' && ['call', 'meeting', 'visit'].includes(kind)) {
     lead.stage = 'contacted';
     lead.stageChangedAt = new Date();
@@ -374,6 +414,7 @@ export async function updateTask(businessId, user, id, body) {
         lead.nextFollowUpAt = null;
       }
       if (lead.stage === 'new') { lead.stage = 'contacted'; lead.stageChangedAt = new Date(); }
+      lead.lastContactAt = new Date();
       await lead.save();
     }
   }
@@ -486,62 +527,9 @@ export async function teamStats(businessId, user, { days = 30 } = {}) {
   });
 }
 
-/* ─────────────────────────────── AUTOMATION ─────────────────────────────── */
-
-/**
- * CRM KHUD KAAM BANATA HAI (₹500+).
- *
- * Jo retailer "follow-up chahiye" ya "gayab ho raha" me hain aur jinka koi
- * khula kaam nahi, unke liye aaj ka follow-up kaam — us staff ko jiske naam
- * retailer hai (warna malik ko). Ek retailer ka ek hi khula auto-kaam: dobara
- * chalane pe dohra nahi banta.
- */
-export async function generateFollowUpTasks(businessId, user) {
-  await assertFeature(businessId, 'crm_assign');
-  const overview = await getCrmOverview(businessId, null);
-  const candidates = [
-    ...overview.followUp.map((p) => ({ ...p, why: `${p.daysSinceOrder} din se order nahi` })),
-    ...overview.dead.filter((p) => !p.neverOrdered).map((p) => ({ ...p, why: `${p.daysSinceOrder} din se order nahi — gayab ho raha` })),
-  ];
-  if (!candidates.length) return { created: 0 };
-
-  const ids = candidates.map((c) => c.partyId);
-  const [openTasks, parties] = await Promise.all([
-    CrmTask.find({ businessId, partyId: { $in: ids }, status: { $ne: 'done' } }).select('partyId').lean(),
-    Party.find({ _id: { $in: ids }, businessId }).select('assignedToUserId').lean(),
-  ]);
-  const busy = new Set(openTasks.map((t) => String(t.partyId)));
-  const owner = new Map(parties.map((p) => [String(p._id), p.assignedToUserId]));
-
-  const today0 = new Date(); today0.setHours(18, 0, 0, 0);
-  const docs = candidates
-    .filter((c) => !busy.has(String(c.partyId)))
-    .slice(0, 200)
-    .map((c) => ({
-      businessId,
-      title: `Follow-up call: ${c.shopName || c.name}`,
-      note: c.why,
-      kind: 'call',
-      priority: c.daysSinceOrder > 45 ? 'high' : 'normal',
-      dueAt: today0,
-      assignedToUserId: owner.get(String(c.partyId)) || user._id,
-      partyId: c.partyId,
-      source: 'auto',
-      createdBy: user._id,
-    }));
-  if (docs.length) await CrmTask.insertMany(docs);
-
-  const perAssignee = new Map();
-  for (const d of docs) perAssignee.set(String(d.assignedToUserId), (perAssignee.get(String(d.assignedToUserId)) || 0) + 1);
-  for (const [uid, n] of perAssignee) {
-    if (uid !== String(user._id)) await tellAssignee(businessId, uid, `${n} naye follow-up kaam aapke naam`, '/today');
-  }
-  return { created: docs.length };
-}
-
 /* ─────────────────────────────── khabar ─────────────────────────────── */
 
-async function tellAssignee(businessId, userId, title, link) {
+export async function tellAssignee(businessId, userId, title, link) {
   try {
     await notify({ businessId, userId, type: NOTIFICATION_TYPES.TASK_ASSIGNED, title, body: 'Aaj ka kaam me dekhein', link });
   } catch { /* khabar na jaye to kaam nahi rukta */ }

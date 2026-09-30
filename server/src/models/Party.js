@@ -70,6 +70,7 @@ const partySchema = new mongoose.Schema(
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     notes: { type: String, default: '' },
+    tags: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
