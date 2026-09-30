@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { validate } from '../middleware/validate.js';
 import { protect } from '../middleware/auth.js';
+import { z } from 'zod';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ok } from '../utils/response.js';
+import { saveShortcuts } from '../services/auth.service.js';
 import * as ctrl from '../controllers/auth.controller.js';
 import {
   wholesalerSignupSchema, loginSchema, retailerSignupSchema,
@@ -33,5 +37,7 @@ router.get('/me', protect, ctrl.me);
 router.put('/profile', protect, validate({ body: updateProfileSchema }), ctrl.updateProfile);
 router.post('/change-password', protect, validate({ body: changePasswordSchema }), ctrl.changePassword);
 router.post('/logout', protect, ctrl.logout);
+router.put('/shortcuts', protect, validate({ body: z.object({ shortcuts: z.array(z.string().trim().regex(/^[a-z_]{2,30}$/)).max(12) }) }),
+  asyncHandler(async (req, res) => ok(res, await saveShortcuts(req.user._id, req.body.shortcuts), 'Shortcuts saved')));
 
 export default router;

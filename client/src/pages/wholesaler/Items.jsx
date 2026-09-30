@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useOpenFromLink } from '@/lib/openFromLink';
 import {
   Plus, Package, IndianRupee, TriangleAlert, XCircle, Tag,
   Upload, FileUp, Download, Pencil, Boxes, Trash2, EyeOff, Eye, ShieldCheck, Share2 } from
@@ -54,7 +55,7 @@ export default function Items() {
 
   const [selected, setSelected] = useState([]);
   const [formItem, setFormItem] = useState(null);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useOpenFromLink();
   const [stockItem, setStockItem] = useState(null);
   const [shareItem, setShareItem] = useState(null);
   const [categoryOpen, setCategoryOpen] = useState(false);

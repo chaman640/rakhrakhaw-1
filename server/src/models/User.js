@@ -72,6 +72,8 @@ const userSchema = new mongoose.Schema(
 
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
+    // Home ke shortcut (seller khud chunta hai) — har device pe ek jaise
+    shortcuts: { type: [String], default: undefined },
 
     /**
      * EK NUMBER, EK JAGAH LOGIN (item 24).

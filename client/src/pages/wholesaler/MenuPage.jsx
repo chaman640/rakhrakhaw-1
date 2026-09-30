@@ -8,6 +8,7 @@ import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { useIntakeBadge } from '@/hooks/useIntakeBadge';
 import { wholesalerNav, buyerNav } from '@/components/layout/navConfig';
 import ModeSwitch from '@/components/layout/ModeSwitch';
+import Launcher from './Launcher';
 import { Card, Button, ConfirmModal, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
@@ -68,7 +69,7 @@ const TILE_COLORS = [
  *
  * Desktop pe bhi yahi page khulta hai, bas grid me zyada column aa jate hain.
  */
-export default function MenuPage() {
+function ClassicMenu() {
   const toast = useToast();
   const { user, business, can, logout } = useAuth();
   const { buying, isBuyMode, shop } = useShop();
@@ -304,4 +305,10 @@ function AppTile({ row, color, badge, pinned, onTogglePin }) {
       </button>
     </div>
   );
+}
+
+// Seller ke liye Odoo jaisa apps ka Home; khareedne wale ka menu pehle jaisa
+export default function MenuPage() {
+  const { buying } = useShop();
+  return buying ? <ClassicMenu /> : <Launcher />;
 }

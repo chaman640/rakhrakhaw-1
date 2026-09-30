@@ -1,6 +1,8 @@
 import Logo from '@/components/Logo';
 import { useState } from 'react';
-import { ArrowLeft, LogOut, ChevronDown, UserCircle } from 'lucide-react';
+import { ArrowLeft, LogOut, ChevronDown, UserCircle, LayoutGrid } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { cn } from '@/lib/cn';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
@@ -34,9 +36,9 @@ function canGoBack() {
  * Root page (jo neeche wali patti me hai) pe back nahi dikhta — wahan se peeche
  * jaane ki koi jagah hai hi nahi. Uski jagah dukaan ka naam dikhta hai.
  */
-export default function Header({ title, showBack, backTo }) {
+export default function Header({ title, showBack, backTo, app = null, badges = {} }) {
   const { user, business, logout } = useAuth();
-  const { isBuyMode, shop } = useShop();
+  const { isBuyMode, shop, buying } = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,9 +85,30 @@ export default function Header({ title, showBack, backTo }) {
     }
   };
 
+  const seller = !buying;
   return (
+    <>
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-slate-200 bg-white px-3 sm:h-16 sm:gap-3 sm:px-4 lg:px-6">
-      {showBack ? (
+      {seller ? (
+        <>
+          <button type="button" onClick={() => navigate('/menu')} aria-label={t('All apps')} title={t('All apps')}
+            className="-ml-1 shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 active:bg-slate-200 focus-ring">
+            <LayoutGrid size={20} />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <h2 className="truncate text-sm font-semibold text-slate-900 sm:text-base">{app ? t(app.label) : (title || headName)}</h2>
+            {app?.menu.length > 1 && (
+              <nav className="hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex" aria-label={t(app.label)}>
+                {app.menu.map((m) => (
+                  <NavLink key={m.to} to={m.to} className={({ isActive }) => cn('relative shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium', isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100')}>
+                    {t(m.label)}{m.badgeKey && badges[m.badgeKey] > 0 && <span className="ml-1.5 rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">{badges[m.badgeKey]}</span>}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
+          </div>
+        </>
+      ) : showBack ? (
         <button
           onClick={goBack}
           aria-label={t('Peeche jayein')}
@@ -122,7 +145,7 @@ export default function Header({ title, showBack, backTo }) {
         Address ya UPI badalne ke liye pehle Settings kholo phir tab dhoondho —
         wo teen kadam the. Ab jo naam saamne likha hai, wahi rasta hai.
       */}
-      {showBack ? (
+      {seller ? null : showBack ? (
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 sm:text-base">
           {title}
         </h2>
@@ -188,5 +211,15 @@ export default function Header({ title, showBack, backTo }) {
         )}
       </div>
     </header>
+    {seller && app?.menu.length > 1 && (
+      <nav className="sticky top-14 z-20 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-3 py-1.5 sm:top-16 lg:hidden" aria-label={t(app.label)}>
+        {app.menu.map((m) => (
+          <NavLink key={m.to} to={m.to} className={({ isActive }) => cn('shrink-0 rounded-full px-3 py-1.5 text-sm font-medium', isActive ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700')}>
+            {t(m.label)}{m.badgeKey && badges[m.badgeKey] > 0 ? ` (${badges[m.badgeKey]})` : ''}
+          </NavLink>
+        ))}
+      </nav>
+    )}
+    </>
   );
 }

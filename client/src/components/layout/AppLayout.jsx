@@ -12,6 +12,9 @@ import { useShop } from '@/context/ShopContext';
 import { useIsFetching } from '@/hooks/useQuery';
 import { RefreshBar } from '@/components/ui';
 import { wholesalerNav, buyerNav, isRootPage } from './navConfig';
+import { visibleApps, appForPath } from './appsConfig';
+import { useOrderBadge } from '@/hooks/useOrderBadge';
+import { useIntakeBadge } from '@/hooks/useIntakeBadge';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -130,23 +133,30 @@ export default function AppLayout() {
     ? (current && pathname !== current.to ? current.to : homeRoot)
     : homeRoot;
 
+  const newOrders = useOrderBadge();
+  const intakeCount = useIntakeBadge();
+  const app = buying ? null : appForPath(visibleApps(can), pathname);
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Net dheema ho to sabse upar 2px ki patti — page rukta nahi hai */}
       <RefreshBar show={fetching} />
 
-      <Sidebar />
+      {/* Seller side Odoo jaisa: sidebar nahi, upar app ka menu */}
+      {buying && <Sidebar />}
 
-      <div className="lg:pl-64">
+      <div className={buying ? 'lg:pl-64' : ''}>
         <Header
           title={current?.label ? t(current.label) : ''}
           showBack={!atRoot}
           backTo={backTo}
+          app={app}
+          badges={{ newOrders, intakeCount }}
         />
 
         {!buying && <TrialBanner />}
         <AnnouncementBar />
-        <main className={cn('px-4 pt-4 sm:px-5 lg:px-6 lg:pb-6', buying ? 'pb-20' : 'pb-6')}>
+        <main className={cn('px-4 pt-4 sm:px-5 lg:px-6 lg:pb-6', buying ? 'pb-20' : 'mx-auto max-w-7xl pb-6')}>
           {!buying && needsPlan ? <PlanNeeded /> : <Outlet />}
         </main>
       </div>

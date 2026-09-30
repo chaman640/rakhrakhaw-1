@@ -1,3 +1,4 @@
+import { cacheDel } from '../utils/cache.js';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
@@ -71,6 +72,7 @@ function publicUser(user) {
       `purchases:create` pehle se hai.
     */
     canBuy: user.role === 'retailer' ? true : userCan(user, 'purchases:create'),
+    shortcuts: user.shortcuts || null,
 
     // Paise ki hadd — form me pehle hi bata dena behtar hai, save karke
     // "ijazat nahi" dikhane se
@@ -506,4 +508,10 @@ export async function updateProfile(user, payload) {
   }
 
   return buildSession(dbUser);
+}
+
+export async function saveShortcuts(userId, shortcuts) {
+  await User.updateOne({ _id: userId }, { $set: { shortcuts: [...new Set(shortcuts)] } });
+  cacheDel(`u:${userId}`);
+  return { shortcuts: [...new Set(shortcuts)] };
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useOpenFromLink } from '@/lib/openFromLink';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Users, Truck, UserCheck, Ban, IndianRupee, Clock, ChevronRight, Tag } from
@@ -30,7 +31,7 @@ export default function PartyList({ type, embedded = false }) {
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useOpenFromLink();
   const [formParty, setFormParty] = useState(null);
 
   const params = { type, status, q: debouncedQ, page, limit: 25 };

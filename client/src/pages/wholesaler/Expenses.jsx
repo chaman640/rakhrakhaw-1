@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useOpenFromLink } from '@/lib/openFromLink';
 import {
   Plus, Wallet, Trash2, Pencil, Search, TrendingDown, CalendarDays,
 } from 'lucide-react';
@@ -66,7 +67,7 @@ export default function Expenses({ embedded = false }) {
   const debouncedQ = useDebounce(q);
   const [page, setPage] = useState(1);
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useOpenFromLink();
   const [editing, setEditing] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
