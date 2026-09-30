@@ -58,6 +58,8 @@ async function cleanup() {
     M.AdminAudit.collection.deleteMany({ adminId: { $in: admins.map((a) => a._id) } }).catch(() => {}),
   ]);
   await M.TutorialView.deleteMany({ viewer: /admcheck/ });
+  await M.AdminNotification.deleteMany({});
+  await M.Announcement.deleteMany({ title: /^Admcheck/ });
 }
 
 async function run() {
@@ -205,7 +207,56 @@ async function run() {
     r = await call('GET', '/support/abcdefabcdefabcdefabcdef', { token: sellerTok });
     check('other ticket ids are not visible', r.status === 404, `${r.status}`);
 
-    step('6. Sign out everywhere');
+    step('6. System settings, maintenance, alerts, announcements');
+    r = await call('GET', P('/settings'), { token: supTok2 });
+    check('support admin cannot open system settings', r.status === 403, `${r.status}`);
+    r = await call('PUT', P('/settings'), { token: sTok, body: { platformName: 'RakhRakhav Test', supportWhatsapp: '9999999999', defaultLanguage: 'en', notify: { content_issue: false } } });
+    check('super admin saves settings', r.status === 200 && r.data?.platformName === 'RakhRakhav Test' && r.data?.notify?.content_issue === false, r.message);
+    r = await call('PUT', P('/settings'), { token: sTok, body: { logoUrl: 'javascript:alert(1)' } });
+    check('unsafe logo link rejected', r.status === 400, `${r.status}`);
+    r = await call('GET', '/public/platform');
+    check('public platform info', r.data?.name === 'RakhRakhav Test' && r.data?.maintenance?.enabled === false, JSON.stringify(r.data));
+    await call('PUT', P('/settings'), { token: sTok, body: { maintenance: { enabled: true, message: 'Back at 6 pm' } } });
+    r = await call('GET', '/auth/me', { token: sellerTok });
+    const r3 = await call('GET', P('/settings'), { token: sTok });
+    const r4 = await call('GET', '/public/platform');
+    check('maintenance: users get 503 with message, admin and public info work', r.status === 503 && r.message === 'Back at 6 pm' && r.details?.reason === 'maintenance' && r3.status === 200 && r4.data?.maintenance?.enabled, `${r.status} ${r3.status}`);
+    await call('PUT', P('/settings'), { token: sTok, body: { maintenance: { enabled: false } } });
+    r = await call('GET', '/auth/me', { token: sellerTok });
+    check('maintenance off: users back', r.status === 200, `${r.status}`);
+    const mAudit = await M.AdminAudit.countDocuments({ action: { $in: ['maintenance.on', 'maintenance.off'] } });
+    check('maintenance switches are audited', mAudit >= 2, `${mAudit}`);
+
+    for (let i = 0; i < 5; i++) await call('POST', '/auth/login', { body: { phone: SELLER, password: 'wrong-pass' } });
+    r = await call('GET', P('/alerts'), { token: sTok });
+    const types = (r.data || []).map((a) => a.type);
+    check('alerts: new seller, urgent ticket, suspicious login', ['new_seller', 'urgent_ticket', 'suspicious_login'].every((x) => types.includes(x)) && r.meta?.unread >= 3, JSON.stringify(types));
+    r = await call('GET', P('/alerts'), { token: conTok2 });
+    check('content admin does not see seller/ticket alerts', r.status === 200 && !(r.data || []).some((a) => ['urgent_ticket', 'new_seller', 'suspicious_login'].includes(a.type)), JSON.stringify((r.data || []).map((a) => a.type)));
+    r = await call('POST', P('/alerts/read'), { token: sTok, body: {} });
+    const r5 = await call('GET', P('/alerts?unread=1'), { token: sTok });
+    check('mark all read', r.data?.updated >= 3 && r5.meta?.unread === 0, JSON.stringify(r5.meta));
+
+    const bizId = (await M.User.findOne({ phone: SELLER }).lean()).businessId;
+    r = await call('POST', P('/announcements'), { token: conTok2, body: { title: 'Admcheck for your shop', audience: 'specific', channels: ['banner', 'notification'] } });
+    check('specific-business announcement needs a business', r.status === 400, `${r.status}`);
+    r = await call('POST', P('/announcements'), { token: conTok2, body: { title: 'Admcheck for your shop', audience: 'specific', businessIds: [String(bizId)], channels: ['banner', 'notification'] } });
+    const annId = r.data?._id;
+    r = await call('GET', '/announcements', { token: sellerTok });
+    const r6 = await M.Notification.findOne({ userId: (await M.User.findOne({ phone: SELLER }).lean())._id, type: 'ANNOUNCEMENT' }).lean();
+    check('targeted announcement: banner + notification reach the shop', (r.data || []).some((a) => a._id === annId) && r6?.title === 'Admcheck for your shop', JSON.stringify(r.data?.map((a) => a.title)));
+    r = await call('POST', P('/announcements'), { token: conTok2, body: { title: 'Admcheck employees only', audience: 'employees' } });
+    const empAnn = r.data?._id;
+    r = await call('GET', '/announcements', { token: sellerTok });
+    check('employee-only announcement hidden from shop owner', !(r.data || []).some((a) => a._id === empAnn), JSON.stringify(r.data?.map((a) => a.title)));
+    r = await call('PUT', P('/plans'), { token: sTok, body: { featureLimits: { crm_reminders: { CHOTI: 30, BADHTI: null } } } });
+    const lim = r.data?.limits?.find((l) => l.key === 'crm_reminders');
+    check('feature limit per plan saved', lim?.values?.CHOTI === 30 && lim?.values?.BADHTI === null, JSON.stringify(lim));
+    await call('PUT', P('/plans'), { token: sTok, body: { featureLimits: { crm_reminders: { CHOTI: 20 } } } });
+    await call('PUT', P('/settings'), { token: sTok, body: { platformName: 'RakhRakhav', supportWhatsapp: '', notify: { content_issue: true } } });
+    await M.Announcement.deleteMany({ title: /^Admcheck/ });
+
+    step('7. Sign out everywhere');
     r = await call('POST', A('/logout'), { token: supTok2, body: { everywhere: true } });
     r2 = await call('GET', P('/support'), { token: supTok2 });
     check('all sessions end', r.status === 200 && r2.status === 401, `${r2.status}`);

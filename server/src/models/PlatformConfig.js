@@ -42,6 +42,19 @@ const platformConfigSchema = new mongoose.Schema(
     // Poori tarah band feature (kisi plan me nahi) — jaise kharab ho gaya ho
     featureOff: { type: [String], default: [] },
 
+    platformName: { type: String, trim: true, maxlength: 60, default: 'RakhRakhav' },
+    logoUrl: { type: String, trim: true, default: '' },
+    supportWhatsapp: { type: String, trim: true, default: '' },
+    defaultLanguage: { type: String, enum: ['en', 'hi'], default: 'en' },
+    tutorialLanguage: { type: String, enum: ['en', 'hi'], default: 'hi' },
+    currency: { type: String, default: 'INR' },
+    maintenance: {
+      enabled: { type: Boolean, default: false },
+      message: { type: String, trim: true, maxlength: 300, default: '' },
+      until: { type: Date, default: null },
+    },
+    notify: { type: Object, default: {} },
+    featureLimits: { type: Object, default: {} },
     supportPhone: { type: String, trim: true, default: '' },
     supportEmail: { type: String, trim: true, default: '' },
 

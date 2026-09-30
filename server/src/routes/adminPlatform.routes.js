@@ -4,6 +4,7 @@ import { requirePartnerAdmin, requireAdminPerm as can } from '../middleware/part
 import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok, created } from '../utils/response.js';
+import * as alerts from '../services/adminNotify.service.js';
 import * as svc from '../services/platformAdmin.service.js';
 import * as support from '../services/support.service.js';
 import * as content from '../services/content.service.js';
@@ -82,7 +83,7 @@ router.post('/businesses/:id/cancel', can('businesses:manage'), validate({
 /* ── users ── */
 router.get('/users', can('businesses:view'), validate({
   query: z.object({
-    type: z.enum(['all', 'seller', 'staff', 'buyer']).optional().default('all'),
+    type: z.enum(['all', 'seller', 'staff', 'employee', 'buyer']).optional().default('all'),
     q: z.string().trim().max(60).optional().default(''),
     active: z.enum(['', 'yes', 'no']).optional().default(''),
     page,
@@ -118,8 +119,42 @@ router.put('/plans', can('plans:manage'), validate({
     })).max(10).optional(),
     featurePlans: z.record(z.array(z.string().trim().max(20)).max(10)).optional(),
     featureOff: z.array(z.string().trim().max(40)).max(50).optional(),
+    featureLimits: z.record(z.record(z.union([z.null(), z.coerce.number().int().min(0).max(1000000)]))).optional(),
   }),
 }), asyncHandler(async (req, res) => ok(res, await svc.savePlansAndFeatures(ctxOf(req), req.body), 'Setting save ho gayi')));
+
+/* ── system settings ── */
+router.get('/settings', can('settings:manage'), asyncHandler(async (req, res) => ok(res, svc.getSystemSettings())));
+router.put('/settings', can('settings:manage'), validate({
+  body: z.object({
+    platformName: z.string().trim().min(2).max(60).optional(),
+    logoUrl: z.string().trim().max(500).refine((v) => !v || /^(https:\/\/|\/)/.test(v), 'Logo must be an https:// link').optional(),
+    supportPhone: z.string().trim().max(20).optional(),
+    supportEmail: z.string().trim().max(120).optional(),
+    supportWhatsapp: z.string().trim().max(20).optional(),
+    defaultLanguage: z.enum(['en', 'hi']).optional(),
+    tutorialLanguage: z.enum(['en', 'hi']).optional(),
+    currency: z.enum(['INR']).optional(),
+    trialDays: z.coerce.number().int().min(0).max(90).optional(),
+    trialPlanCode: z.string().trim().max(20).optional(),
+    maintenance: z.object({
+      enabled: z.boolean(),
+      message: z.string().trim().max(300).optional().default(''),
+      until: z.coerce.date().nullable().optional(),
+    }).optional(),
+    notify: z.record(z.boolean()).optional(),
+  }),
+}), asyncHandler(async (req, res) => ok(res, await svc.saveSystemSettings(ctxOf(req), req.body), 'Settings saved')));
+
+/* ── admin alerts ── */
+router.get('/alerts', validate({
+  query: z.object({ unread: z.enum(['0', '1']).optional(), page: z.coerce.number().int().min(1).max(500).optional().default(1) }),
+}), asyncHandler(async (req, res) => {
+  const { rows, meta } = await alerts.listAdminAlerts(req.admin.id, req.admin.perms, { unread: req.query.unread === '1', page: req.query.page });
+  res.json({ success: true, message: 'OK', data: rows, meta });
+}));
+router.post('/alerts/read', validate({ body: z.object({ ids: z.array(objectId).max(200).optional() }) }),
+  asyncHandler(async (req, res) => ok(res, await alerts.markAlertsRead(req.admin.id, req.admin.perms, req.body.ids))));
 
 /* ── soochna ── */
 const annBody = z.object({
@@ -127,8 +162,10 @@ const annBody = z.object({
   body: z.string().trim().max(1000).optional().default(''),
   link: z.string().trim().max(300).optional().default(''),
   tone: z.enum(['info', 'success', 'warning']).optional().default('info'),
-  audience: z.enum(['all', 'sellers', 'buyers']).optional().default('all'),
+  audience: z.enum(['all', 'sellers', 'buyers', 'employees', 'specific']).optional().default('all'),
   planCodes: z.array(z.string().trim().max(20)).max(10).optional().default([]),
+  businessIds: z.array(objectId).max(200).optional().default([]),
+  channels: z.array(z.enum(['banner', 'notification'])).min(1).max(2).optional().default(['banner']),
   startsAt: z.string().optional().nullable(),
   endsAt: z.string().optional().nullable(),
   active: z.boolean().optional().default(true),

@@ -7,6 +7,7 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { OfflineSync, OfflineBanner } from '@/components/OfflineSync';
 import AppRoutes from '@/routes/AppRoutes';
+import MaintenanceGate from '@/components/MaintenanceGate';
 
 /**
  * PrefsProvider AuthProvider ke ANDAR hai — bahar nahi.
@@ -31,7 +32,7 @@ export default function App() {
                 <NotificationProvider>
                   <OfflineBanner />
                   <OfflineSync />
-                  <AppRoutes />
+                  <MaintenanceGate><AppRoutes /></MaintenanceGate>
                 </NotificationProvider>
               </CartProvider>
             </ShopProvider>

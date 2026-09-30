@@ -113,6 +113,10 @@ api.interceptors.response.use(
       window.dispatchEvent(new CustomEvent('rr:needs-plan'));
     }
 
+    if (status === 503 && error.response?.data?.details?.reason === 'maintenance') {
+      window.dispatchEvent(new CustomEvent('rr:maintenance', { detail: { message, until: error.response.data.details.until } }));
+    }
+
     if (status === 401) {
       localStorage.removeItem('rr_token');
       /*

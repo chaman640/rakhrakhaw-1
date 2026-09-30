@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import ApiError from '../utils/ApiError.js';
+import { reportSystemError } from '../services/adminNotify.service.js';
 
 export function notFoundHandler(req, res, next) {
   next(new ApiError(404, `Route not found: ${req.method} ${req.originalUrl}`));
@@ -68,7 +69,7 @@ export function errorHandler(err, req, res, next) {
   if (err.name === 'JsonWebTokenError') { statusCode = 401; message = 'Invalid token'; }
   if (err.name === 'TokenExpiredError') { statusCode = 401; message = 'Session khatam ho gaya, dobara login karein'; }
 
-  if (statusCode >= 500) console.error('[error]', err);
+  if (statusCode >= 500) { console.error('[error]', err); reportSystemError(err, req); }
 
   // Stack sirf apne computer pe. NODE_ENV set karna bhool jayein tab bhi
   // internet pe khuli site se code ka andar bahar nahi jana chahiye.

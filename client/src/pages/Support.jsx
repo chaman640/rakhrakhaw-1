@@ -10,6 +10,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import { usePlatform } from '@/lib/platform';
 
 const CATS = [['account', 'Account & login'], ['billing', 'Plan & payment'], ['sales', 'Sales & bills'], ['purchase', 'Purchase & expenses'], ['stock', 'Items & stock'],
   ['accounts_gst', 'Accounts & GST'], ['hr', 'HR & employees'], ['app_problem', 'App not working'], ['suggestion', 'Suggestion'], ['other', 'Something else']];
@@ -127,10 +128,20 @@ export default function Support() {
   const [params, setParams] = useSearchParams();
   const [creating, setCreating] = useState(params.get('new') === '1');
   const { data, loading } = useQuery(['support', 'list'], () => api.get('/support').then((r) => r.data));
+  const platform = usePlatform();
   if (id) return <Thread id={id} />;
+  const wa = platform?.supportWhatsapp?.replace(/\D/g, '').slice(-10);
   return (
     <>
       <PageHeader title={t('Support')} subtitle={t('Questions or problems with the app? We are here to help.')} action={<Button icon={Plus} onClick={() => setCreating(true)}>{t('New ticket')}</Button>} />
+      {(platform?.supportPhone || wa || platform?.supportEmail) && (
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          <span className="text-slate-500">{t('Talk to us')}:</span>
+          {platform.supportPhone && <a className="text-brand-700 hover:underline" href={`tel:${platform.supportPhone}`}>{platform.supportPhone}</a>}
+          {wa && <a className="text-brand-700 hover:underline" href={`https://wa.me/91${wa}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+          {platform.supportEmail && <a className="text-brand-700 hover:underline" href={`mailto:${platform.supportEmail}`}>{platform.supportEmail}</a>}
+        </div>
+      )}
       {loading && !data ? <div className="flex justify-center py-12"><Spinner /></div> : !data?.length ? (
         <EmptyState icon={LifeBuoy} title={t('No tickets yet')} message={t('Raise a ticket and our team will reply here and in your notifications.')} action={<Button onClick={() => setCreating(true)}>{t('Contact support')}</Button>} />
       ) : (

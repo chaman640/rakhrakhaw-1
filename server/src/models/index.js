@@ -66,3 +66,4 @@ export { default as Complaint } from './Complaint.js';
 export { default as CrmNote } from './CrmNote.js';
 export { default as Quotation } from './Quotation.js';
 export { default as BankAccount } from './BankAccount.js';
+export { default as AdminNotification } from './AdminNotification.js';

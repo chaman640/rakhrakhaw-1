@@ -4,11 +4,14 @@ import { cacheDel } from '../utils/cache.js';
 import { ROLES } from '../config/constants.js';
 import { PLANS, PLAN_BY_CODE, SUB_STATUS, rupees, periodPricePaise, PERIODS } from '../config/billing.js';
 import {
-  Business, User, Subscription, BillingOrder, BillingCycle, AdminAudit, Announcement, PartnerAdmin,
+  Business, User, Subscription, BillingOrder, BillingCycle, AdminAudit, Announcement, PartnerAdmin, Notification,
   TutorialVideo, Item, Invoice, SupportTicket,
 } from '../models/index.js';
 import { statusOf, cancelSubscription, isFreeMode } from './billing.service.js';
-import { platformConfig, updatePlatformConfig, featureMatrix } from './platform.service.js';
+import {
+  platformConfig, updatePlatformConfig, featureMatrix, limitMatrix, FEATURE_LIMITS,
+} from './platform.service.js';
+import { ADMIN_ALERTS } from '../models/AdminNotification.js';
 
 /**
  * ADMIN PANEL — RakhRakhav ka apna control room.
@@ -430,7 +433,8 @@ export async function cancelByAdmin(ctx, id, { note = '' }) {
 export async function listUsers({ type = 'all', q = '', active = '', page = 1, limit = 30 } = {}) {
   const filter = {};
   if (type === 'seller') { filter.role = ROLES.WHOLESALER; filter.staffRole = { $in: ['owner', null] }; }
-  if (type === 'staff') { filter.role = ROLES.WHOLESALER; filter.staffRole = { $nin: ['owner', null] }; }
+  if (type === 'staff') { filter.role = ROLES.WHOLESALER; filter.staffRole = { $nin: ['owner', null, 'employee'] }; }
+  if (type === 'employee') { filter.role = ROLES.WHOLESALER; filter.staffRole = 'employee'; }
   if (type === 'buyer') filter.role = ROLES.RETAILER;
   if (active === 'yes') filter.isActive = { $ne: false };
   if (active === 'no') filter.isActive = false;
@@ -452,7 +456,7 @@ export async function listUsers({ type = 'all', q = '', active = '', page = 1, l
       _id: u._id,
       name: u.name,
       phone: u.phone,
-      type: u.role === ROLES.RETAILER ? 'buyer' : (!u.staffRole || u.staffRole === 'owner' ? 'seller' : 'staff'),
+      type: u.role === ROLES.RETAILER ? 'buyer' : (!u.staffRole || u.staffRole === 'owner' ? 'seller' : u.staffRole === 'employee' ? 'employee' : 'staff'),
       staffRole: u.staffRole || '',
       businessId: u.businessId,
       businessName: bizMap.get(String(u.businessId)) || '',
@@ -526,7 +530,45 @@ export function getPlansAndFeatures() {
       active: p.active !== false,
     })),
     features: featureMatrix(),
+    limits: limitMatrix(),
     updatedAt: cfg.updatedAt || null,
+  };
+}
+
+const SYSTEM_FIELDS = ['platformName', 'logoUrl', 'supportWhatsapp', 'defaultLanguage', 'tutorialLanguage', 'currency', 'supportPhone', 'supportEmail', 'trialDays', 'trialPlanCode'];
+
+export function getSystemSettings() {
+  const cfg = platformConfig();
+  return {
+    ...Object.fromEntries(SYSTEM_FIELDS.map((k) => [k, cfg[k]])),
+    maintenance: cfg.maintenance,
+    notify: Object.fromEntries(ADMIN_ALERTS.map((a) => [a, cfg.notify?.[a] !== false])),
+    plans: PLANS.filter((p) => p.pricePaise > 0).map((p) => ({ code: p.code, name: p.name })),
+  };
+}
+
+export async function saveSystemSettings(ctx, body) {
+  const patch = {};
+  for (const k of SYSTEM_FIELDS) if (body[k] !== undefined) patch[k] = body[k];
+  if (body.maintenance) patch.maintenance = body.maintenance;
+  if (body.notify) patch.notify = body.notify;
+  const { before, after } = await updatePlatformConfig(patch, ctx?.adminId);
+  const changed = Object.keys(patch).filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+  await audit(ctx, {
+    action: patch.maintenance && JSON.stringify(before.maintenance) !== JSON.stringify(after.maintenance) ? (after.maintenance.enabled ? 'maintenance.on' : 'maintenance.off') : 'settings.update',
+    targetType: 'PlatformConfig', targetId: 'main', targetLabel: 'System settings',
+    before: Object.fromEntries(changed.map((k) => [k, before[k]])), after: Object.fromEntries(changed.map((k) => [k, after[k]])),
+  });
+  return getSystemSettings();
+}
+
+/** Public, safe subset for every visitor (branding, support, maintenance banner) */
+export function publicPlatform() {
+  const c = platformConfig();
+  return {
+    name: c.platformName, logoUrl: c.logoUrl, supportPhone: c.supportPhone, supportEmail: c.supportEmail, supportWhatsapp: c.supportWhatsapp,
+    defaultLanguage: c.defaultLanguage, tutorialLanguage: c.tutorialLanguage, currency: c.currency,
+    maintenance: c.maintenance?.enabled ? { enabled: true, message: c.maintenance.message, until: c.maintenance.until } : { enabled: false },
   };
 }
 
@@ -553,6 +595,15 @@ export async function savePlansAndFeatures(ctx, body) {
   }
   if (body.featurePlans) patch.featurePlans = body.featurePlans;
   if (Array.isArray(body.featureOff)) patch.featureOff = body.featureOff;
+  if (body.featureLimits) {
+    const clean = {};
+    for (const l of FEATURE_LIMITS) {
+      const v = body.featureLimits[l.key];
+      if (!v) continue;
+      clean[l.key] = Object.fromEntries(Object.entries(v).filter(([c]) => PLAN_BY_CODE[c]).map(([c, n]) => [c, n === null || n === '' ? null : Math.max(0, Math.round(Number(n)))]));
+    }
+    patch.featureLimits = clean;
+  }
 
   const { before, after } = await updatePlatformConfig(patch, ctx?.adminId);
   await audit(ctx, {
@@ -577,11 +628,14 @@ export async function saveAnnouncement(ctx, id, body) {
     tone: body.tone || 'info',
     audience: body.audience || 'all',
     planCodes: Array.isArray(body.planCodes) ? body.planCodes.filter((c) => PLAN_BY_CODE[c]) : [],
+    businessIds: body.audience === 'specific' ? (body.businessIds || []) : [],
+    channels: body.channels?.length ? body.channels : ['banner'],
     startsAt: body.startsAt ? new Date(body.startsAt) : new Date(),
     endsAt: body.endsAt ? new Date(body.endsAt) : null,
     active: body.active !== false,
   };
   if (!data.title?.trim()) throw ApiError.badRequest('Title zaroori hai');
+  if (data.audience === 'specific' && !data.businessIds.length) throw ApiError.badRequest('Choose at least one business');
 
   let doc;
   let before = null;
@@ -598,6 +652,7 @@ export async function saveAnnouncement(ctx, id, body) {
     action: id ? 'announcement.update' : 'announcement.create',
     targetType: 'Announcement', targetId: doc._id, targetLabel: doc.title, before, after: data,
   });
+  if (doc.channels.includes('notification')) await dispatchAnnouncements().catch((e) => console.warn('[announce]', e.message));
   return doc.toObject();
 }
 
@@ -618,12 +673,16 @@ export async function deleteAnnouncement(ctx, id) {
 export async function activeAnnouncementsFor(user) {
   const now = new Date();
   const isSeller = user?.role === ROLES.WHOLESALER;
+  const isEmployee = isSeller && user.staffRole === 'employee';
+  const audiences = ['all', isEmployee ? 'employees' : isSeller ? 'sellers' : 'buyers'];
+  if (isSeller && user.businessId) audiences.push('specific');
   const rows = await Announcement.find({
     active: true,
     startsAt: { $lte: now },
     $or: [{ endsAt: null }, { endsAt: { $gt: now } }],
-    audience: { $in: ['all', isSeller ? 'sellers' : 'buyers'] },
-  }).sort({ startsAt: -1 }).limit(5).lean();
+    audience: { $in: audiences },
+    channels: { $ne: ['notification'] },
+  }).sort({ startsAt: -1 }).limit(10).lean();
 
   let planCode = '';
   if (isSeller && rows.some((r) => r.planCodes?.length)) {
@@ -631,6 +690,38 @@ export async function activeAnnouncementsFor(user) {
     planCode = sub?.planCode || '';
   }
   return rows
+    .filter((r) => r.audience !== 'specific' || (r.businessIds || []).some((b) => String(b) === String(user.businessId)))
     .filter((r) => !r.planCodes?.length || (isSeller && r.planCodes.includes(planCode)))
+    .slice(0, 5)
     .map((r) => ({ _id: r._id, title: r.title, body: r.body, link: r.link, tone: r.tone, startsAt: r.startsAt }));
+}
+
+/** Push "notification" channel announcements once they are live (runs on save and hourly) */
+export async function dispatchAnnouncements() {
+  const now = new Date();
+  const due = await Announcement.find({
+    active: true, channels: 'notification', notifiedAt: null, startsAt: { $lte: now }, $or: [{ endsAt: null }, { endsAt: { $gt: now } }],
+  }).limit(20);
+  let sent = 0;
+  for (const a of due) {
+    const claimed = await Announcement.findOneAndUpdate({ _id: a._id, notifiedAt: null }, { $set: { notifiedAt: now } });
+    if (!claimed) continue;
+    const f = { isActive: { $ne: false } };
+    if (a.audience === 'sellers') Object.assign(f, { role: ROLES.WHOLESALER, staffRole: { $ne: 'employee' } });
+    else if (a.audience === 'employees') Object.assign(f, { role: ROLES.WHOLESALER, staffRole: 'employee' });
+    else if (a.audience === 'buyers') f.role = { $ne: ROLES.WHOLESALER };
+    else if (a.audience === 'specific') f.businessId = { $in: a.businessIds };
+    if (a.planCodes?.length) {
+      const bids = await Subscription.find({ planCode: { $in: a.planCodes } }).distinct('businessId');
+      f.businessId = f.businessId ? { $in: a.businessIds.filter((b) => bids.some((x) => String(x) === String(b))) } : { $in: bids };
+    }
+    const users = (await User.find(f).select('_id businessId').limit(20000).lean()).filter((u) => u.businessId);
+    for (let i = 0; i < users.length; i += 1000) {
+      await Notification.insertMany(users.slice(i, i + 1000).map((u) => ({
+        userId: u._id, businessId: u.businessId, type: 'ANNOUNCEMENT', title: a.title, body: a.body, link: a.link || '',
+      })), { ordered: false }).catch(() => {});
+    }
+    sent += users.length;
+  }
+  return { sent };
 }

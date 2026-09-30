@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { publicPlatform } from '../services/platformAdmin.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import ApiError from '../utils/ApiError.js';
@@ -21,6 +22,8 @@ import * as catalog from '../services/catalog.service.js';
 const router = Router();
 
 const shopFields = 'name logoUrl address.city address.state phone gstEnabled inviteCode requireApproval';
+
+router.get('/platform', (req, res) => ok(res, publicPlatform()));
 
 router.get('/shop/:code', asyncHandler(async (req, res) => {
   const code = String(req.params.code || '').trim().toUpperCase();

@@ -60,6 +60,7 @@ export function PrefsProvider({ children }) {
     theme: prefs.theme,
     resolvedTheme: resolveTheme(prefs.theme),
     setLangPref: (lang) => update({ lang, langChosen: true }),
+    applyDefaultLang: (lang) => update({ lang }),
     setTheme: (theme) => update({ theme }),
     setTextSize: (textSize) => update({ textSize }),
     reset: () => update(DEFAULT_PREFS),

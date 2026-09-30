@@ -1,4 +1,5 @@
 import { cacheDel } from '../utils/cache.js';
+import { notifyAdmins, recordLoginFailure, clearLoginFailures } from './adminNotify.service.js';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
@@ -187,6 +188,7 @@ export async function signupWholesaler({
     (`ensureTrial`) dobara ban jayega.
   */
   await startTrial(business._id, planCode).catch((e) => console.warn('[trial] nahi bana:', e.message));
+  notifyAdmins('new_seller', { title: `New seller: ${business.name}`, body: `${user.name} · ${cleanPhone}`, link: `/partner/admin/platform/businesses/${business._id}`, key: `seller:${business._id}` });
 
   // Abhi abhi signup kiya hai to ye khud malik hai — poora profile milega
   return { token: signToken(user), user: publicUser(user), business: businessForUser(business, user) };
@@ -356,7 +358,11 @@ export async function login({ phone, password }) {
   if (!user.isActive) throw ApiError.forbidden('Aapka account band kar diya gaya hai');
 
   const okPassword = await user.checkPassword(password);
-  if (!okPassword) throw ApiError.unauthorized('Password galat hai');
+  if (!okPassword) {
+    recordLoginFailure(cleanPhone);
+    throw ApiError.unauthorized('Password galat hai');
+  }
+  clearLoginFailures(cleanPhone);
 
   /*
    * DUKAAN KA PAISA RUKA HAI TO STAFF LOGIN NAHI KAR SAKTA (Part 28).

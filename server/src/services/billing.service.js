@@ -1,4 +1,5 @@
 import ApiError from '../utils/ApiError.js';
+import { notifyAdmins } from './adminNotify.service.js';
 import { env } from '../config/env.js';
 import { cacheGet, cacheSet } from '../utils/cache.js';
 import {
@@ -13,7 +14,7 @@ import {
   SUB_STATUS, seatsOf, seatsAllow, rupees,
   PERIODS, YEARLY_MONTHS_CHARGED, monthsOf, periodPricePaise,
 } from '../config/billing.js';
-import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle } from '../models/index.js';
+import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle, Business } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
 import {
   platformConfig, featuresOfPlan, cheapestPlanFor,
@@ -1108,6 +1109,10 @@ async function activate(orderDoc, paymentId) {
     sourceId: paymentId || claimed.providerOrderId,
   }).catch(() => {});
 
+  Business.findById(claimed.businessId).select('name').lean().then((b) => notifyAdmins('new_subscription', {
+    title: `Payment received: ${b?.name || 'a shop'}`, body: `${claimed.planCode} · ₹${rupees(claimed.amountPaise || 0)}`,
+    link: `/partner/admin/platform/businesses/${claimed.businessId}`, key: `pay:${claimed._id}`,
+  })).catch(() => {});
   return { alreadyDone: false, order: claimed };
 }
 
@@ -1188,6 +1193,7 @@ export async function handleWebhook(rawBody, signature) {
       { _id: doc._id, status: 'created' },
       { $set: { status: 'failed', failReason: payment.error_description?.slice(0, 200) || 'fail' } },
     );
+    notifyAdmins('payment_failed', { title: 'Payment failed', body: payment.error_description || '', severity: 'warning', link: `/partner/admin/platform/businesses/${doc.businessId}`, key: `payfail:${payment.id}` });
     return { ok: true, failed: true };
   }
 
@@ -1400,6 +1406,7 @@ async function handleSubscriptionEvent(kind, event) {
       { $set: { mandateStatus: kind === 'subscription.halted' ? 'halted' : 'pending' } },
     );
 
+    notifyAdmins('payment_failed', { title: kind === 'subscription.halted' ? 'Autopay halted' : 'Autopay payment failed', body: sub.planCode, severity: 'warning', link: `/partner/admin/platform/businesses/${sub.businessId}`, key: `sub:${ent.id}:${kind}:${new Date().toISOString().slice(0, 10)}` });
     // "Is mahine paisa NAHI aaya" — itihaas me chadha do, Autopay page pe dikhega
     logBillingCycle({
       businessId: sub.businessId, subscriptionId: sub._id,

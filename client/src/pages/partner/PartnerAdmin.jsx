@@ -8,6 +8,9 @@ import {
 } from './PlatformAdmin';
 import { AdminLogin, SecurityPanel } from './AdminSecurity';
 import { AdminAdmins, AdminSupport, AdminContent } from './AdminExtras';
+import {
+  AdminAlerts, AdminSettings, AlertBell, QuickActions,
+} from './AdminSystem';
 
 /*
   Admin ki navigation — desktop pe upar ek line, phone pe khisakne wali.
@@ -25,6 +28,8 @@ const ADMIN_TABS = [
   ['salesmen', 'Salesmen', 'partners:manage'],
   ['admins', 'Admins', 'admins:manage'],
   ['audit', 'Audit log', 'audit:view'],
+  ['alerts', 'Alerts', 'dashboard'],
+  ['settings', 'Settings', 'settings:manage'],
 ];
 
 /*
@@ -183,6 +188,7 @@ function Panel({ me, reloadMe, onLogout }) {
             <p className="text-xs text-slate-500">{me.name || me.email} · {me.roleLabel}</p>
           </div>
           <div className="flex gap-1">
+            {!locked && <AlertBell onOpen={() => go('alerts')} />}
             <button type="button" onClick={() => go('security')} title="Security" aria-label="Security" className={`rounded-lg px-2.5 py-2 text-sm hover:bg-slate-100 ${me.totpEnabled ? 'text-slate-600' : 'text-amber-600'}`}>
               <ShieldCheck size={15} />
             </button>
@@ -208,7 +214,10 @@ function Panel({ me, reloadMe, onLogout }) {
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-5">
         {tab === 'security' && <SecurityPanel me={me} onChanged={reloadMe} onSignedOut={onLogout} />}
         {!locked && <>
+        {tab === 'dashboard' && <QuickActions perms={perms} go={go} />}
         {tab === 'dashboard' && <AdminDashboard go={go} />}
+        {tab === 'alerts' && <AdminAlerts go={go} />}
+        {tab === 'settings' && <AdminSettings />}
         {tab === 'businesses' && <AdminBusinesses openId={bizId} plans={plans} />}
         {tab === 'users' && <AdminUsers />}
         {tab === 'payments' && <AdminPayments />}

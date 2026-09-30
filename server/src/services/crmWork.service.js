@@ -6,7 +6,7 @@ import { Lead, CrmTask, Party, User, CrmSettings } from '../models/index.js';
 import { LEAD_STAGES } from '../models/Lead.js';
 import { isScoped } from '../utils/scope.js';
 import { isFreeMode, subscriptionOf } from './billing.service.js';
-import { planHasFeature, cheapestPlanFor } from './platform.service.js';
+import { planHasFeature, cheapestPlanFor, featureLimit } from './platform.service.js';
 import { rupees } from '../config/billing.js';
 import { createParty } from './party.service.js';
 import { notify } from './notification.service.js';
@@ -27,7 +27,6 @@ import { notify } from './notification.service.js';
 
 const DAY = 86400000;
 export const STAGE_PROBABILITY = { new: 10, contacted: 20, interested: 40, quotation: 60, negotiation: 80, won: 100, lost: 0 };
-const BASIC_OPEN_TASK_LIMIT = 20;
 const esc = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
 
@@ -341,13 +340,14 @@ export async function createTask(businessId, user, body) {
   await assertFeature(businessId, 'crm_basic');
   if (body.leadId) await assertFeature(businessId, 'crm_leads');
 
-  // ₹50 wale plan me khule kaam ki hadd — bada plan lene pe hat jati hai
-  if (!(await hasFeature(businessId, 'crm_leads'))) {
-    const open = await CrmTask.countDocuments({ businessId, status: { $ne: 'done' } });
-    if (open >= BASIC_OPEN_TASK_LIMIT) {
+  // Open-task cap for small plans (admin-configurable limit)
+  if (!isFreeMode()) {
+    const { plan } = await subscriptionOf(businessId);
+    const cap = featureLimit(plan.code, 'crm_reminders');
+    if (cap !== null && await CrmTask.countDocuments({ businessId, status: { $ne: 'done' } }) >= cap) {
       const p = cheapestPlanFor('crm_leads');
       throw ApiError.forbidden(
-        `Is plan me ${BASIC_OPEN_TASK_LIMIT} khule kaam tak — purane poore karein ya ${p?.name || 'bada plan'} lein`,
+        `Is plan me ${cap} khule kaam tak — purane poore karein ya ${p?.name || 'bada plan'} lein`,
         { reason: 'feature_locked', feature: 'crm_leads', plan: p ? { code: p.code, name: p.name, priceRupees: rupees(p.pricePaise) } : null },
       );
     }

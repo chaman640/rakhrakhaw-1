@@ -372,7 +372,7 @@ export function AdminUsers() {
   const [active, setActive] = useState('');
   const [page, setPage] = useState(1);
   const { data, err } = useLoad(() => api.get(`${P}/users`, { params: { type, q, active, page } }).then((r) => r.data), [type, q, active, page]);
-  const TYPES = [['all', 'Sab'], ['seller', 'Seller'], ['buyer', 'Buyer / Retailer'], ['staff', 'Staff / Employee']];
+  const TYPES = [['all', 'All'], ['seller', 'Sellers'], ['buyer', 'Buyers / retailers'], ['staff', 'Staff'], ['employee', 'Employees']];
 
   return (
     <div className="space-y-3">
@@ -397,7 +397,7 @@ export function AdminUsers() {
               <tr key={u._id} className="border-t border-slate-100">
                 <td className="px-3 py-2">{u.name}{!u.active && <span className="ml-1 text-xs text-red-600">(band)</span>}</td>
                 <td>{u.phone}</td>
-                <td>{u.type === 'staff' ? `Staff · ${u.staffRole}` : u.type === 'buyer' ? 'Buyer' : 'Seller'}</td>
+                <td>{u.type === 'staff' ? `Staff · ${u.staffRole}` : u.type === 'employee' ? 'Employee' : u.type === 'buyer' ? 'Buyer' : 'Seller'}</td>
                 <td>{u.businessName || '—'}</td>
                 <td className="text-xs">{dtt(u.lastLoginAt)}</td>
                 <td className="text-xs">{dt(u.createdAt)}</td>
@@ -476,6 +476,7 @@ export function AdminPlans({ onChanged }) {
       plans: data.plans.map((p) => ({ ...p, featuresText: (p.features || []).join('\n') })),
       featurePlans: Object.fromEntries(data.features.map((f) => [f.key, f.plans])),
       featureOff: data.features.filter((f) => f.off).map((f) => f.key),
+      featureLimits: Object.fromEntries((data.limits || []).map((l) => [l.key, { ...l.values }])),
     });
   }, [data]);
 
@@ -504,6 +505,7 @@ export function AdminPlans({ onChanged }) {
         })),
         featurePlans: form.featurePlans,
         featureOff: form.featureOff,
+        featureLimits: Object.fromEntries(Object.entries(form.featureLimits || {}).map(([k, v]) => [k, Object.fromEntries(Object.entries(v).map(([c, n]) => [c, n === '' || n === null ? null : Number(n)]))])),
       });
       setMsg(r.message);
       await load();
@@ -574,6 +576,30 @@ export function AdminPlans({ onChanged }) {
         </table>
       </Card>
 
+      {(data.limits || []).length > 0 && (
+        <Card className="overflow-x-auto">
+          <p className="mb-1 text-sm font-semibold">Limits inside features</p>
+          <p className="mb-3 text-xs text-slate-500">Leave empty for no limit.</p>
+          <table className="w-full min-w-[560px] text-sm">
+            <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">Limit</th>{form.plans.map((p) => <th key={p.code} className="text-center">{p.name}</th>)}</tr></thead>
+            <tbody>
+              {data.limits.map((l) => (
+                <tr key={l.key} className="border-t border-slate-100">
+                  <td className="py-2">{l.name}<p className="text-xs text-slate-500">{l.key}</p></td>
+                  {form.plans.map((p) => (
+                    <td key={p.code} className="px-1 text-center">
+                      <input type="number" min="0" aria-label={`${l.name} — ${p.name}`} value={form.featureLimits?.[l.key]?.[p.code] ?? ''}
+                        onChange={(e) => setForm((x) => ({ ...x, featureLimits: { ...x.featureLimits, [l.key]: { ...x.featureLimits[l.key], [p.code]: e.target.value } } }))}
+                        placeholder="∞" className={`${input} w-20 text-center`} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
       <div className="flex items-center gap-3">
         <Btn disabled={busy} onClick={save}><Save size={14} />Save karein</Btn>
         {msg && <span className="text-sm text-slate-700">{msg}</span>}
@@ -585,7 +611,36 @@ export function AdminPlans({ onChanged }) {
 
 /* ═══════════════════════════════ SOOCHNA ═══════════════════════════════ */
 
-const blankAnn = { title: '', body: '', link: '', tone: 'info', audience: 'all', planCodes: [], startsAt: '', endsAt: '', active: true };
+const blankAnn = { title: '', body: '', link: '', tone: 'info', audience: 'all', planCodes: [], businessIds: [], channels: ['banner'], startsAt: '', endsAt: '', active: true };
+const AUDIENCE = { all: 'Everyone', sellers: 'Sellers (shop owners & staff)', buyers: 'Buyers / retailers', employees: 'Employees (Employee App)', specific: 'Specific businesses' };
+
+function BusinessPicker({ ids, names, onChange }) {
+  const [q, setQ] = useState('');
+  const [found, setFound] = useState([]);
+  useEffect(() => {
+    if (q.trim().length < 2) { setFound([]); return undefined; }
+    const t = setTimeout(() => api.get(`${P}/businesses`, { params: { q, page: 1 } }).then((r) => setFound(r.data?.rows || [])).catch(() => {}), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {ids.map((id) => (
+          <span key={id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{names[id] || id.slice(-6)}
+            <button type="button" aria-label="Remove" onClick={() => onChange(ids.filter((x) => x !== id), names)}>×</button></span>
+        ))}
+      </div>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search business by name or phone" className={`${input} w-full`} />
+      {found.length > 0 && (
+        <ul className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 text-sm">
+          {found.filter((b) => !ids.includes(b._id)).map((b) => (
+            <li key={b._id}><button type="button" onClick={() => { onChange([...ids, b._id], { ...names, [b._id]: b.name }); setQ(''); }} className="w-full px-3 py-1.5 text-left hover:bg-slate-50">{b.name} <span className="text-xs text-slate-500">{b.phone || b.ownerPhone || ''}</span></button></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 const toLocal = (d) => (d ? new Date(new Date(d).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
 
 export function AdminAnnouncements({ plans }) {
@@ -593,6 +648,7 @@ export function AdminAnnouncements({ plans }) {
   const [f, setF] = useState(blankAnn);
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState('');
+  const [bizNames, setBizNames] = useState({});
 
   async function save(e) {
     e.preventDefault(); setMsg('');
@@ -603,30 +659,40 @@ export function AdminAnnouncements({ plans }) {
     } catch (e2) { setMsg(e2.message); }
   }
   async function remove(id) {
-    if (!window.confirm('Ye soochna hata dein?')) return;
+    if (!window.confirm('Delete this announcement?')) return;
     try { await api.delete(`${P}/announcements/${id}`); load(); } catch (e) { setMsg(e.message); }
   }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <form onSubmit={save} className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
-        <p className="flex items-center gap-1.5 text-sm font-semibold"><Megaphone size={15} />{editId ? 'Soochna badlein' : 'Nayi soochna'}</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold"><Megaphone size={15} />{editId ? 'Edit announcement' : 'New announcement'}</p>
         <input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Title" className={`${input} w-full`} />
-        <textarea rows={3} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} placeholder="Baat" className={`${input} w-full`} />
-        <input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} placeholder="Link (marzi) — jaise /profile?tab=plan" className={`${input} w-full`} />
+        <textarea rows={3} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} placeholder="Message" className={`${input} w-full`} />
+        <input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} placeholder="Link (optional) — e.g. /profile?tab=plan" className={`${input} w-full`} />
         <div className="grid grid-cols-2 gap-2">
-          <select value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} className={input}>
-            <option value="all">Sabko</option><option value="sellers">Sirf sellers</option><option value="buyers">Sirf buyers</option>
+          <select aria-label="Audience" value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} className={input}>
+            {Object.entries(AUDIENCE).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <select value={f.tone} onChange={(e) => setF({ ...f, tone: e.target.value })} className={input}>
-            <option value="info">Jaankari</option><option value="success">Khushkhabri</option><option value="warning">Chetavni</option>
+            <option value="info">Information</option><option value="success">Good news</option><option value="warning">Warning</option>
           </select>
-          <label className="text-xs text-slate-600">Kab se<input type="datetime-local" value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} className={`${input} w-full`} /></label>
-          <label className="text-xs text-slate-600">Kab tak (marzi)<input type="datetime-local" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} className={`${input} w-full`} /></label>
+          <label className="text-xs text-slate-600">Starts<input type="datetime-local" value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} className={`${input} w-full`} /></label>
+          <label className="text-xs text-slate-600">Ends (optional)<input type="datetime-local" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} className={`${input} w-full`} /></label>
         </div>
-        {f.audience !== 'buyers' && (
+        {f.audience === 'specific' && <BusinessPicker ids={f.businessIds || []} names={bizNames} onChange={(ids, n) => { setBizNames(n); setF({ ...f, businessIds: ids }); }} />}
+        <div className="flex flex-wrap gap-3 text-sm">
+          <span className="text-xs text-slate-500">Show as:</span>
+          {[['banner', 'Banner on dashboard / web / app'], ['notification', 'Notification']].map(([c, l]) => (
+            <label key={c} className="flex items-center gap-1">
+              <input type="checkbox" checked={(f.channels || []).includes(c)}
+                onChange={(e) => { const next = e.target.checked ? [...(f.channels || []), c] : (f.channels || []).filter((x) => x !== c); if (next.length) setF({ ...f, channels: next }); }} />{l}
+            </label>
+          ))}
+        </div>
+        {!['buyers', 'specific'].includes(f.audience) && (
           <div className="flex flex-wrap gap-3 text-sm">
-            <span className="text-xs text-slate-500">Sirf in plan wale sellers (khali = sab):</span>
+            <span className="text-xs text-slate-500">Only sellers on these plans (none = all):</span>
             {(plans || []).map((p) => (
               <label key={p.code} className="flex items-center gap-1">
                 <input type="checkbox" checked={f.planCodes.includes(p.code)}
@@ -635,10 +701,10 @@ export function AdminAnnouncements({ plans }) {
             ))}
           </div>
         )}
-        <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} />Chalu</label>
+        <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} />Active</label>
         <div className="flex gap-2">
-          <Btn type="submit"><Plus size={14} />{editId ? 'Save' : 'Banayein'}</Btn>
-          {editId && <Btn tone="light" onClick={() => { setEditId(null); setF(blankAnn); }}>Rehne dein</Btn>}
+          <Btn type="submit"><Plus size={14} />{editId ? 'Save' : 'Create'}</Btn>
+          {editId && <Btn tone="light" onClick={() => { setEditId(null); setF(blankAnn); }}>Cancel</Btn>}
         </div>
         {msg && <p className="text-sm text-slate-700">{msg}</p>}
       </form>
@@ -649,21 +715,21 @@ export function AdminAnnouncements({ plans }) {
           <Card key={a._id}>
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="font-medium text-slate-900">{a.title} {!a.active && <span className="text-xs text-slate-500">(band)</span>}</p>
+                <p className="font-medium text-slate-900">{a.title} {!a.active && <span className="text-xs text-slate-500">(inactive)</span>}</p>
                 <p className="text-sm text-slate-600">{a.body}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {a.audience === 'all' ? 'Sabko' : a.audience === 'sellers' ? 'Sellers' : 'Buyers'}
-                  {a.planCodes?.length ? ` · ${a.planCodes.join(', ')}` : ''} · {dtt(a.startsAt)} → {a.endsAt ? dtt(a.endsAt) : 'hamesha'}
+                  {AUDIENCE[a.audience] || a.audience}{a.audience === 'specific' ? ` (${a.businessIds?.length || 0})` : ''} · {(a.channels || ['banner']).join(' + ')}{a.notifiedAt ? ' · sent' : ''}
+                  {a.planCodes?.length ? ` · ${a.planCodes.join(', ')}` : ''} · {dtt(a.startsAt)} → {a.endsAt ? dtt(a.endsAt) : 'no end'}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1">
-                <Btn small tone="light" onClick={() => { setEditId(a._id); setF({ ...blankAnn, ...a, startsAt: toLocal(a.startsAt), endsAt: toLocal(a.endsAt) }); }}>Badlein</Btn>
+                <Btn small tone="light" onClick={() => { setEditId(a._id); setF({ ...blankAnn, ...a, startsAt: toLocal(a.startsAt), endsAt: toLocal(a.endsAt) }); }}>Edit</Btn>
                 <Btn small tone="light" onClick={() => remove(a._id)}><Trash2 size={12} /></Btn>
               </div>
             </div>
           </Card>
         ))}
-        {data && !data.length && <p className="text-sm text-slate-500">Abhi koi soochna nahi.</p>}
+        {data && !data.length && <p className="text-sm text-slate-500">No announcements yet.</p>}
       </div>
     </div>
   );

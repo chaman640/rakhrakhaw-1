@@ -13,7 +13,10 @@ const announcementSchema = new mongoose.Schema(
     body: { type: String, trim: true, maxlength: 1000, default: '' },
     link: { type: String, trim: true, maxlength: 300, default: '' },
     tone: { type: String, enum: ['info', 'success', 'warning'], default: 'info' },
-    audience: { type: String, enum: ['all', 'sellers', 'buyers'], default: 'all' },
+    audience: { type: String, enum: ['all', 'sellers', 'buyers', 'employees', 'specific'], default: 'all' },
+    businessIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+    channels: { type: [String], enum: ['banner', 'notification'], default: ['banner'] },
+    notifiedAt: { type: Date, default: null },
     // Sirf in plan wale sellers ko (khali = sab)
     planCodes: { type: [String], default: [] },
     startsAt: { type: Date, default: Date.now },

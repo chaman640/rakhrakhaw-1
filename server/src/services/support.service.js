@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { notifyAdmins } from './adminNotify.service.js';
 import ApiError from '../utils/ApiError.js';
 import { ROLES, NOTIFICATION_TYPES } from '../config/constants.js';
 import { STAFF_ROLES } from '../config/permissions.js';
@@ -48,6 +49,11 @@ export async function createTicket(user, body, files) {
     subject: body.subject,
     priority: body.priority === 'high' ? 'high' : 'normal',
     messages: [{ by: 'user', byId: user._id, byName: user.name, text: body.description, attachments }],
+  });
+  const urgent = t.priority === 'high';
+  notifyAdmins(urgent ? 'urgent_ticket' : 'ticket', {
+    title: `${urgent ? 'Urgent ticket' : 'New ticket'} ${t.ticketNo}: ${t.subject}`, body: `${user.name} · ${t.category}`,
+    severity: urgent ? 'critical' : 'info', link: `/partner/admin/platform/support/${t._id}`, key: `ticket:${t._id}`,
   });
   return forUser(t.toObject());
 }

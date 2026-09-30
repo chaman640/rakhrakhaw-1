@@ -1,4 +1,5 @@
 import express from 'express';
+import { platformConfig } from './services/platform.service.js';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
@@ -131,6 +132,12 @@ app.use('/api', rateLimit({
   message: { success: false, message: 'Thoda dheere — ek minute me itni request nahi' },
 }));
 
+// Maintenance mode: users get 503, admins and public info keep working
+app.use('/api', (req, res, next) => {
+  const m = platformConfig().maintenance;
+  if (!m?.enabled || /^\/(partner|public\/platform|health|billing\/webhook)/.test(req.path)) return next();
+  return res.status(503).json({ success: false, message: m.message || 'We are upgrading the app. Please try again shortly.', details: { reason: 'maintenance', until: m.until || null } });
+});
 app.use('/api', apiRoutes);
 
 /* ─────────────────────────────────────────────────────────────────────────

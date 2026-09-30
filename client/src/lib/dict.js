@@ -3420,6 +3420,14 @@ const DICT = {
   'Bills cancelled in this period': { hi: 'इस अवधि में रद्द बिल', en: 'Bills cancelled in this period' },
   'Entered 4 days after its date': { hi: 'तारीख के 4 दिन बाद डाली', en: 'Entered 4 days after its date' },
   'Changed after it was created — see edit history': { hi: 'बनने के बाद बदला — बदलाव का इतिहास देखें', en: 'Changed after it was created — see edit history' },
+
+  /* ── Maintenance & support contact ── */
+  'We are upgrading {name}': { hi: 'हम {name} को अपग्रेड कर रहे हैं', en: 'We are upgrading {name}' },
+  'The app will be back shortly. Your data is safe.': { hi: 'ऐप जल्द वापस आएगा। आपका डेटा सुरक्षित है।', en: 'The app will be back shortly. Your data is safe.' },
+  'Expected back: {d}': { hi: 'वापसी अनुमानित: {d}', en: 'Expected back: {d}' },
+  'Try again': { hi: 'फिर कोशिश करें', en: 'Try again' },
+  'Urgent? Call {p}': { hi: 'ज़रूरी? कॉल करें {p}', en: 'Urgent? Call {p}' },
+  'Talk to us': { hi: 'हमसे बात करें', en: 'Talk to us' },
 };
 
 export default DICT;

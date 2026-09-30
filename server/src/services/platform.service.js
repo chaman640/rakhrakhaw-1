@@ -17,7 +17,17 @@ import ApiError from '../utils/ApiError.js';
  */
 const DEFAULT_PLANS = new Map(PLANS.map((p) => [p.code, { ...p, features: [...(p.features || [])] }]));
 
-const DEFAULTS = { trialDays: 15, trialPlanCode: 'BADHTI', supportPhone: '', supportEmail: '' };
+const DEFAULTS = {
+  trialDays: 15, trialPlanCode: 'BADHTI', supportPhone: '', supportEmail: '',
+  platformName: 'RakhRakhav', logoUrl: '', supportWhatsapp: '', defaultLanguage: 'en', tutorialLanguage: 'hi', currency: 'INR',
+  maintenance: { enabled: false, message: '', until: null }, notify: {}, featureLimits: {},
+};
+const SYSTEM_KEYS = ['platformName', 'logoUrl', 'supportWhatsapp', 'defaultLanguage', 'tutorialLanguage', 'currency'];
+
+/** Numeric limits inside a feature, per plan (admin can change) */
+export const FEATURE_LIMITS = [
+  { key: 'crm_reminders', feature: 'crm_basic', name: 'Open CRM reminders / tasks', defaults: { CHOTI: 20 } },
+];
 
 let current = { ...DEFAULTS, featurePlans: {}, featureOff: [], plans: [] };
 let loadedAt = 0;
@@ -50,6 +60,10 @@ function toPlain(doc) {
     trialPlanCode: doc.trialPlanCode || DEFAULTS.trialPlanCode,
     supportPhone: doc.supportPhone || '',
     supportEmail: doc.supportEmail || '',
+    ...Object.fromEntries(SYSTEM_KEYS.map((k) => [k, doc[k] ?? DEFAULTS[k]])),
+    maintenance: { ...DEFAULTS.maintenance, ...(doc.maintenance || {}) },
+    notify: doc.notify || {},
+    featureLimits: doc.featureLimits || {},
     featurePlans: fp,
     featureOff: doc.featureOff || [],
     plans: (doc.plans || []).map((p) => (p.toObject ? p.toObject() : p)),
@@ -104,6 +118,19 @@ export function cheapestPlanFor(key) {
     .sort((a, b) => a.pricePaise - b.pricePaise)[0] || null;
 }
 
+/** Limit for a plan, or null when unlimited */
+export function featureLimit(planCode, key) {
+  const def = FEATURE_LIMITS.find((l) => l.key === key);
+  if (!def) return null;
+  const custom = platformConfig().featureLimits?.[key];
+  const v = custom && Object.prototype.hasOwnProperty.call(custom, planCode) ? custom[planCode] : def.defaults[planCode];
+  return v === undefined || v === null || v === '' ? null : Number(v);
+}
+
+export function limitMatrix() {
+  return FEATURE_LIMITS.map((l) => ({ ...l, values: Object.fromEntries(PLANS.filter((p) => p.pricePaise > 0).map((p) => [p.code, featureLimit(p.code, l.key)])) }));
+}
+
 export function featureMatrix() {
   return FEATURES.map((f) => ({
     key: f.key, name: f.name, desc: f.desc,
@@ -127,6 +154,10 @@ export async function updatePlatformConfig(patch, adminId) {
   }
   if (patch.supportPhone !== undefined) doc.supportPhone = patch.supportPhone;
   if (patch.supportEmail !== undefined) doc.supportEmail = patch.supportEmail;
+  for (const k of SYSTEM_KEYS) if (patch[k] !== undefined) doc[k] = patch[k];
+  if (patch.maintenance) doc.maintenance = { ...(doc.maintenance?.toObject?.() || doc.maintenance || {}), ...patch.maintenance };
+  if (patch.notify) { doc.notify = { ...(doc.notify || {}), ...patch.notify }; doc.markModified('notify'); }
+  if (patch.featureLimits) { doc.featureLimits = patch.featureLimits; doc.markModified('featureLimits'); }
 
   if (Array.isArray(patch.plans)) {
     for (const o of patch.plans) {
