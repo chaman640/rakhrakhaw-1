@@ -471,62 +471,6 @@ export async function today(businessId, user) {
   };
 }
 
-/* ─────────────────────────────── TEAM ─────────────────────────────── */
-
-/** Kaun kitna kaam kar raha hai — malik ke liye (₹500+) */
-export async function teamStats(businessId, user, { days = 30 } = {}) {
-  await assertFeature(businessId, 'crm_assign');
-  if (!isOwner(user) && !userCan(user, 'parties:edit')) throw ApiError.forbidden('Team ka hisaab sirf malik/manager dekh sakta hai');
-  const since = new Date(Date.now() - days * DAY);
-  const bid = oid(businessId);
-  const now = new Date();
-
-  const [tasks, leads, staff] = await Promise.all([
-    CrmTask.aggregate([
-      { $match: { businessId: bid, $or: [{ createdAt: { $gte: since } }, { status: { $ne: 'done' } }] } },
-      {
-        $group: {
-          _id: '$assignedToUserId',
-          open: { $sum: { $cond: [{ $ne: ['$status', 'done'] }, 1, 0] } },
-          overdue: { $sum: { $cond: [{ $and: [{ $ne: ['$status', 'done'] }, { $lt: ['$dueAt', now] }, { $ne: ['$dueAt', null] }] }, 1, 0] } },
-          done: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'done'] }, { $gte: ['$doneAt', since] }] }, 1, 0] } },
-          onTime: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'done'] }, { $gte: ['$doneAt', since] }, { $or: [{ $eq: ['$dueAt', null] }, { $lte: ['$doneAt', { $add: ['$dueAt', DAY] }] }] }] }, 1, 0] } },
-        },
-      },
-    ]),
-    Lead.aggregate([
-      { $match: { businessId: bid } },
-      {
-        $group: {
-          _id: '$assignedToUserId',
-          total: { $sum: 1 },
-          open: { $sum: { $cond: [{ $in: ['$stage', ['won', 'lost']] }, 0, 1] } },
-          won: { $sum: { $cond: [{ $and: [{ $eq: ['$stage', 'won'] }, { $gte: ['$stageChangedAt', since] }] }, 1, 0] } },
-          lost: { $sum: { $cond: [{ $and: [{ $eq: ['$stage', 'lost'] }, { $gte: ['$stageChangedAt', since] }] }, 1, 0] } },
-        },
-      },
-    ]),
-    assignableStaff(businessId),
-  ]);
-  const tMap = new Map(tasks.map((t) => [String(t._id), t]));
-  const lMap = new Map(leads.map((l) => [String(l._id), l]));
-  return staff.map((s) => {
-    const t = tMap.get(String(s._id)) || {};
-    const l = lMap.get(String(s._id)) || {};
-    const closed = (l.won || 0) + (l.lost || 0);
-    return {
-      ...s,
-      tasksOpen: t.open || 0,
-      tasksOverdue: t.overdue || 0,
-      tasksDone: t.done || 0,
-      onTimeRate: t.done ? Math.round(((t.onTime || 0) / t.done) * 100) : null,
-      leadsOpen: l.open || 0,
-      leadsWon: l.won || 0,
-      conversionRate: closed ? Math.round(((l.won || 0) / closed) * 100) : null,
-    };
-  });
-}
-
 /* ─────────────────────────────── khabar ─────────────────────────────── */
 
 export async function tellAssignee(businessId, userId, title, link) {

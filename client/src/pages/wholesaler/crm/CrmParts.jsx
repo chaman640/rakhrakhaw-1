@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Check, Phone, Clock, AlertTriangle, User, Trash2, CalendarClock, MapPin,
 } from 'lucide-react';
@@ -33,7 +34,7 @@ export const SOURCES = [
 const KINDS = [['call', 'Call'], ['visit', 'Visit'], ['followup', 'Follow-up'], ['payment', 'Payment lena'], ['delivery', 'Delivery'], ['other', 'Aur']];
 const PRIORITIES = [['low', 'Kam'], ['normal', 'Normal'], ['high', 'Zaroori']];
 
-/** Kaam jin staff ko de sakte hain — sirf crm_assign (₹500+) wale plan me */
+/** Staff you can hand work to — crm_assign (₹100+) */
 export function useAssignable() {
   const { allowed } = useFeature('crm_assign');
   const { isOwner, can } = useAuth();
@@ -156,7 +157,9 @@ export function TaskRow({ task, showAssignee = false, onChanged, taskPath = '/cr
           )}
           {task.priority === 'high' && <Badge tone="red">{t('Zaroori')}</Badge>}
           {task.source === 'auto' && <Badge tone="slate">{t('Apne aap bana')}</Badge>}
-          {who && <span className="inline-flex items-center gap-1"><User size={12} />{who.name}</span>}
+          {who && (task.party && taskPath === '/crm/tasks'
+            ? <Link to={`/crm/customers/${task.party._id}`} className="inline-flex items-center gap-1 hover:text-brand-700 hover:underline"><User size={12} />{who.name}</Link>
+            : <span className="inline-flex items-center gap-1"><User size={12} />{who.name}</span>)}
           {who?.phone && (
             <a href={`tel:${who.phone}`} className="inline-flex items-center gap-1 text-brand-700 hover:underline"><Phone size={12} />{who.phone}</a>
           )}
@@ -200,7 +203,8 @@ export function LeadLine({ lead, onOpen }) {
       </div>
       <div className="shrink-0 text-right">
         <Badge tone={STAGE_TONE[lead.stage]}>{t(STAGE_LABEL[lead.stage])}</Badge>
-        {lead.expectedValue > 0 && <p className="mt-1 text-xs text-slate-500">{formatMoney(lead.expectedValue)}</p>}
+        {lead.expectedValue > 0 && <p className="mt-1 text-xs text-slate-500">{formatMoney(lead.expectedValue)}{!['won', 'lost'].includes(lead.stage) && lead.probability !== undefined ? ` · ${lead.probability}%` : ''}</p>}
+        {lead.expectedCloseAt && !['won', 'lost'].includes(lead.stage) && <p className="text-[11px] text-slate-400">{t('Close by {d}', { d: formatDate(lead.expectedCloseAt) })}</p>}
       </div>
     </button>
   );

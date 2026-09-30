@@ -12,6 +12,10 @@ import {
   QtyStepper, ReadLineItem, ReadField, Input, useToast } from
 '@/components/ui';
 import { STATUS_TONE, STATUS_LABEL } from '../Orders';
+import DispatchCard from './DispatchCard';
+import DocSheet from '@/components/sales/DocSheet';
+import { useAuth } from '@/context/AuthContext';
+import { useFeature } from '@/hooks/useBilling';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -27,6 +31,8 @@ export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { business } = useAuth();
+  const salesPro = useFeature('sales_pro').allowed;
 
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -124,7 +130,7 @@ export default function OrderDetail() {
             </p>
 
             {order.party &&
-            <Link to={`/retailers/${order.partyId}`}
+            <Link to={`/crm/customers/${order.partyId}`}
             className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100">
                 <Store size={15} className="text-slate-400" />
                 <span className="font-medium text-slate-900">
@@ -248,6 +254,20 @@ export default function OrderDetail() {
           </div>
         }
       </Card>
+
+      {salesPro && <DispatchCard order={order} onSaved={setOrder} onPrint={() => window.print()} />}
+
+      <DocSheet
+        title={order.dispatch?.challanNo ? 'Delivery challan' : 'Sales order'}
+        no={order.dispatch?.challanNo ? `${order.dispatch.challanNo} · ${order.orderNo}` : order.orderNo}
+        date={order.dispatch?.dispatchedAt || order.createdAt}
+        business={business}
+        party={order.party}
+        rows={order.items}
+        showRates={!order.dispatch?.challanNo}
+        totals={order.dispatch?.challanNo ? [] : [['Total', formatMoney(order.itemsTotal), true]]}
+        meta={[['Vehicle', order.dispatch?.vehicleNo], ['Transporter', order.dispatch?.transporter], ['LR no.', order.dispatch?.lrNo], ['Driver', [order.dispatch?.driverName, order.dispatch?.driverPhone].filter(Boolean).join(' ')], ['Packages', order.dispatch?.packages || '']]}
+        notes={[['Note', order.dispatch?.note || order.wholesalerNote]]} />
 
       {/* ---- Stock warning ---- */}
       {!closed && !order.canFulfil &&

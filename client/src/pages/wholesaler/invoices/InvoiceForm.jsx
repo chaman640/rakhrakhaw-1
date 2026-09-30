@@ -29,6 +29,7 @@ export default function InvoiceForm() {
   const { gstEnabled, business } = useAuth();
   const [params] = useSearchParams();
   const orderId = params.get('order');
+  const presetParty = params.get('party');
 
   const [party, setParty] = useState(null);
   const [partyState, setPartyState] = useState('');
@@ -55,6 +56,12 @@ export default function InvoiceForm() {
   useEffect(() => {
     api.get('/invoices/next-number').then((r) => setPreview(r.data.preview)).catch(() => {});
 
+    if (!orderId && presetParty) {
+      api.get(`/parties/${presetParty}`).then((r) => {
+        setParty({ value: r.data._id, label: r.data.shopName || r.data.name, raw: r.data });
+        setPartyState(r.data.address?.stateCode || '');
+      }).catch(() => {});
+    }
     if (!orderId) return;
     api.get(`/invoices/from-order/${orderId}`).
     then((r) => {

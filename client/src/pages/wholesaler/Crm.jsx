@@ -13,7 +13,12 @@ import { t } from '@/lib/i18n';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useFeature } from '@/hooks/useBilling';
 import { useAuth } from '@/context/AuthContext';
-import { LeadsTab, TasksTab, TeamTab } from './crm/CrmTabs';
+import { LeadsTab, TasksTab } from './crm/CrmTabs';
+import Customers from './crm/Customers';
+import Insights from './crm/Insights';
+import TeamPerf from './crm/TeamPerf';
+import CrmSettingsTab from './crm/CrmSettingsTab';
+import { ComplaintsTab } from './crm/Complaints';
 
 /**
  * CRM — "kaun abhi dekh raha hai, kaun chup ho gaya, kaun gaya hi gaya."
@@ -163,7 +168,7 @@ function Section({ title, subtitle, icon: Icon, tone, rows, empty, renderMeta, r
             <div key={r.partyId} className="flex items-center gap-3 py-2.5">
               <button
                 type="button"
-                onClick={() => navigate(`/retailers/${r.partyId}?tab=orders`)}
+                onClick={() => navigate(`/crm/customers/${r.partyId}`)}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
@@ -204,37 +209,34 @@ function Section({ title, subtitle, icon: Icon, tone, rows, empty, renderMeta, r
 }
 
 
-/**
- * CRM — chaar tab, ek jagah.
- *
- *   Retailers — kaun order ke kareeb, kaun chup, kaun gaya (upar wala hissa)
- *   Leads     — naye sambhavit grahak aur unki pipeline (₹100+)
- *   Kaam      — follow-up/call/visit ke kaam, staff ko dena (₹500+)
- *   Team      — kaun staff kitna kaam kar raha hai (₹500+, malik/manager)
- *
- * Band tab bhi dikhte hain — kholne pe "ye kis plan me hai" (FeatureGate).
- */
 export default function Crm() {
-  const [tab, setTab] = useSessionState('crm:tab', 'retailers');
+  const [tab, setTab] = useSessionState('crm:tab2', 'customers');
   const { isOwner, can } = useAuth();
-  const teamOn = useFeature('crm_assign').allowed && (isOwner || can('parties:edit'));
+  const manager = isOwner || can('parties:edit');
+  const teamOn = useFeature('crm_assign').allowed && manager;
   const tabs = [
-    { value: 'retailers', label: 'Retailers' },
+    { value: 'customers', label: 'Customers' },
+    { value: 'insights', label: 'Insights' },
+    { value: 'activity', label: 'Activity' },
     { value: 'leads', label: 'Leads' },
-    { value: 'tasks', label: 'Kaam' },
+    { value: 'tasks', label: 'Tasks' },
+    { value: 'complaints', label: 'Complaints' },
     ...(teamOn ? [{ value: 'team', label: 'Team' }] : []),
+    ...(manager ? [{ value: 'settings', label: 'Settings' }] : []),
   ];
+  const current = tabs.some((x) => x.value === tab) ? tab : 'customers';
   return (
     <>
-      <PageHeader
-        title={t('CRM')}
-        subtitle={t('Kaun kharidne ke kareeb hai, kaun bhoolne laga hai — sab ek jagah')}
-      />
-      <Tabs tabs={tabs} value={tab} onChange={setTab} />
-      {tab === 'retailers' && <RetailerCrm />}
-      {tab === 'leads' && <LeadsTab />}
-      {tab === 'tasks' && <TasksTab />}
-      {tab === 'team' && teamOn && <TeamTab />}
+      <PageHeader title={t('CRM')} subtitle={t('Customers, leads, follow-ups and complaints in one place')} />
+      <Tabs tabs={tabs} value={current} onChange={setTab} />
+      {current === 'customers' && <Customers />}
+      {current === 'insights' && <Insights />}
+      {current === 'activity' && <RetailerCrm />}
+      {current === 'leads' && <LeadsTab />}
+      {current === 'tasks' && <TasksTab />}
+      {current === 'complaints' && <ComplaintsTab />}
+      {current === 'team' && <TeamPerf />}
+      {current === 'settings' && <CrmSettingsTab />}
     </>
   );
 }

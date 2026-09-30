@@ -1,6 +1,6 @@
 import {
   FileText, Truck, Package, Landmark, Target, Briefcase, LayoutDashboard, UsersRound, Settings, MessageCircle,
-  PlusCircle, IndianRupee, ShoppingBag, PackagePlus, Receipt, Undo2, UserPlus, Sparkles, BookOpen, Fingerprint, ClipboardList,
+  PlusCircle, IndianRupee, ShoppingBag, PackagePlus, Receipt, Undo2, UserPlus, Sparkles, BookOpen, Fingerprint, ClipboardList, FileSignature,
 } from 'lucide-react';
 import { wholesalerNav } from './navConfig';
 
@@ -12,7 +12,7 @@ import { wholesalerNav } from './navConfig';
 export const APPS = [
   {
     key: 'sales', label: 'Sales', icon: FileText, tone: 'from-sky-500 to-blue-600',
-    menu: [['/home', 'Counter'], ['/sales', 'Bills'], ['/orders', 'Orders'], ['/returns', 'Returns'], ['/retailers', 'Customers'], ['/demand', 'Demand']],
+    menu: [['/home', 'Counter'], ['/sales', 'Bills'], ['/quotations', 'Quotations'], ['/orders', 'Orders'], ['/returns', 'Returns'], ['/retailers', 'Customers'], ['/demand', 'Demand']],
     also: ['/invoices', '/sale/new'],
   },
   {
@@ -29,7 +29,7 @@ export const APPS = [
   },
   {
     key: 'crm', label: 'CRM', icon: Target, tone: 'from-rose-500 to-pink-600',
-    menu: [['/crm', 'Pipeline'], ['/today', "Today's work"]],
+    menu: [['/crm', 'CRM'], ['/today', "Today's work"]],
   },
   {
     key: 'chat', label: 'Chat', icon: MessageCircle, tone: 'from-cyan-500 to-sky-600',
@@ -82,6 +82,7 @@ export const QUICK_ACTIONS = [
   { key: 'sale_return', label: 'Sale return', icon: Undo2, to: '/returns/new', perm: 'returns:create' },
   { key: 'add_customer', label: 'Add customer', icon: UserPlus, to: '/retailers?new=1', perm: 'parties:create' },
   { key: 'new_lead', label: 'CRM leads', icon: Sparkles, to: '/crm', perm: 'parties:view' },
+  { key: 'new_quote', label: 'New quotation', icon: FileSignature, to: '/quotations/new', perm: 'orders:create' },
   { key: 'orders', label: 'New orders', icon: ClipboardList, to: '/orders', perm: 'orders', badgeKey: 'newOrders' },
   { key: 'khata', label: 'Khata', icon: BookOpen, to: '/khata', perm: 'khata:view' },
   { key: 'check_in', label: 'Check in', icon: Fingerprint, to: '/emp' },

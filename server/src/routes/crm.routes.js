@@ -123,9 +123,6 @@ router.put('/tasks/:id', requirePermission('parties:view'), validate({
 router.delete('/tasks/:id', requirePermission('parties:view'), validate({ params: idP }),
   h((req) => work.deleteTask(req.businessId, req.user, req.params.id)));
 
-router.get('/team', requirePermission('parties:view'), validate({
-  query: z.object({ days: z.coerce.number().int().min(1).max(365).optional().default(30) }),
-}), h((req) => work.teamStats(req.businessId, req.user, req.query)));
 router.post('/auto-tasks', requirePermission('parties:edit'),
   h(async (req) => { await work.assertFeature(req.businessId, 'crm_smart'); return ops.runAutomation(req.businessId, { force: true, actor: req.user._id }); }));
 

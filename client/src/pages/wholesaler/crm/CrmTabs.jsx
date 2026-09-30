@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, Target, ListChecks, Users2, Sparkles, Phone, MessageSquare, Trophy,
+  Plus, Search, Target, ListChecks, Sparkles, Phone, MessageSquare, Trophy, FileSignature,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useQuery, useListQuery, bust, prime } from '@/hooks/useQuery';
@@ -50,7 +50,7 @@ export function LeadsTab() {
               stage === p.stage ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white')}>
             <p className="text-xs text-slate-500">{t(STAGE_LABEL[p.stage])}</p>
             <p className="text-lg font-semibold text-slate-900">{p.count}</p>
-            {p.value > 0 && <p className="text-[11px] text-slate-500">{formatMoney(p.value)}</p>}
+            {p.value > 0 && <p className="text-[11px] text-slate-500">{formatMoney(p.value)}{p.weighted > 0 && !['won', 'lost'].includes(p.stage) ? ` · ${t('likely')} ${formatMoney(p.weighted)}` : ''}</p>}
           </button>
         ))}
       </div>
@@ -128,6 +128,8 @@ function NewLeadModal({ open, onClose, onSaved }) {
 function LeadModal({ id, onClose }) {
   const toast = useToast();
   const navigate = useNavigate();
+  const { can } = useAuth();
+  const quotesOn = useFeature('sales_pro').allowed;
   const { data: lead, refetch } = useQuery(['crm', 'lead', id], () => api.get(`/crm/leads/${id}`).then((r) => r.data), { poll: false });
   const [note, setNote] = useState('');
   const [kind, setKind] = useState('call');
@@ -172,8 +174,21 @@ function LeadModal({ id, onClose }) {
           )}
         </div>
 
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Input label={t('Expected value')} type="number" prefix="₹" defaultValue={lead.expectedValue || ''} key={`v${lead.expectedValue}`}
+            onBlur={(e) => Number(e.target.value || 0) !== (lead.expectedValue || 0) && call(() => api.put(`/crm/leads/${id}`, { expectedValue: Number(e.target.value || 0) }), t('Saved'))} />
+          <Input label={t('Chance of winning')} type="number" suffix="%" defaultValue={lead.probability ?? ''} key={`p${lead.probability}`}
+            onBlur={(e) => e.target.value !== '' && Number(e.target.value) !== lead.probability && call(() => api.put(`/crm/leads/${id}`, { probability: Math.min(100, Math.max(0, Number(e.target.value))) }), t('Saved'))} />
+          <Input label={t('Expected closing')} type="date" defaultValue={lead.expectedCloseAt ? String(lead.expectedCloseAt).slice(0, 10) : ''} key={`c${lead.expectedCloseAt}`}
+            onBlur={(e) => call(() => api.put(`/crm/leads/${id}`, { expectedCloseAt: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+          <Input label={t('Interested in')} defaultValue={lead.interest || ''} key={`i${lead.interest}`} placeholder={t('Products')}
+            onBlur={(e) => e.target.value !== (lead.interest || '') && call(() => api.put(`/crm/leads/${id}`, { interest: e.target.value }), t('Saved'))} />
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <p className="text-sm text-slate-600">{t('Andazan dhanda')}: <b>{formatMoney(lead.expectedValue || 0)}</b></p>
+          {quotesOn && can('orders:create') && (
+            <Button variant="secondary" icon={FileSignature} className="self-end"
+              onClick={() => navigate(lead.partyId ? `/quotations/new?partyId=${lead.partyId}` : `/quotations/new?leadId=${id}`)}>{t('Make quotation')}</Button>
+          )}
           <AssigneeSelect value={lead.assignedToUserId} label={t('Kiske paas')}
             onChange={(v) => call(() => api.put(`/crm/leads/${id}`, { assignedToUserId: v }), t('Lead de diya'))} />
         </div>
@@ -285,54 +300,3 @@ export function TasksTab() {
     </div>
   );
 }
-
-/* ═══════════════════════════════ TEAM ═══════════════════════════════ */
-
-export function TeamTab() {
-  const { allowed, lockedInfo } = useFeature('crm_assign');
-  const [days, setDays] = useState(30);
-  const { data, loading, error } = useQuery(['crm', 'team', days], () => api.get('/crm/team', { params: { days } }).then((r) => r.data), { enabled: allowed });
-
-  if (!allowed) return <UpgradeCard info={lockedInfo} />;
-  if (error && !data) return <EmptyState icon={Users2} title={error.message} />;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        {[7, 30, 90].map((d) => (
-          <button key={d} type="button" onClick={() => setDays(d)}
-            className={cn('rounded-full px-3 py-1 text-sm', days === d ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200')}>
-            {t('{n} din', { n: d })}
-          </button>
-        ))}
-      </div>
-      <Card className="overflow-x-auto" padding={false}>
-        {loading ? <div className="flex justify-center py-10"><Spinner /></div> : (
-          <table className="w-full min-w-[620px] text-sm">
-            <thead className="bg-slate-50 text-left text-xs text-slate-500">
-              <tr>
-                <th className="px-4 py-2">{t('Staff')}</th><th>{t('Khule kaam')}</th><th>{t('Chhoote')}</th>
-                <th>{t('Poore')}</th><th>{t('Samay pe')}</th><th>{t('Khule lead')}</th><th>{t('Jeete')}</th><th>{t('Jeet %')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data || []).map((s) => (
-                <tr key={s._id} className="border-t border-slate-100">
-                  <td className="px-4 py-2 font-medium text-slate-900">{s.name}<span className="block text-xs font-normal text-slate-500">{s.staffRole}</span></td>
-                  <td>{s.tasksOpen}</td>
-                  <td className={s.tasksOverdue ? 'font-semibold text-red-600' : ''}>{s.tasksOverdue}</td>
-                  <td>{s.tasksDone}</td>
-                  <td>{s.onTimeRate === null ? '—' : `${s.onTimeRate}%`}</td>
-                  <td>{s.leadsOpen}</td>
-                  <td>{s.leadsWon}</td>
-                  <td>{s.conversionRate === null ? '—' : `${s.conversionRate}%`}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </div>
-  );
-}
-

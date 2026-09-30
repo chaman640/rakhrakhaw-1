@@ -117,7 +117,7 @@ export async function getOrder(businessId, id, { partyId = null } = {}) {
   if (partyId) filter.partyId = partyId;   // retailer sirf apna order dekhe
 
   const order = await Order.findOne(filter)
-    .populate('partyId', 'name shopName phone')
+    .populate('partyId', 'name shopName phone address gstin')
     .lean();
   if (!order) throw ApiError.notFound('Order nahi mila');
 

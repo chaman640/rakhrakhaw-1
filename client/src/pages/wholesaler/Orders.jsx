@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ShoppingCart, Clock, IndianRupee, Calendar, ChevronRight, TriangleAlert,
+  ShoppingCart, Clock, IndianRupee, Calendar, ChevronRight, TriangleAlert, Plus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -9,9 +9,12 @@ import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDateTime, formatDate } from '@/lib/format';
 import {
   PageHeader, Card, StatCard, Table, Badge, SearchInput, Chips,
-  Select, Input, Pagination, EmptyState, SkeletonRows, useToast,
+  Select, Input, Pagination, EmptyState, SkeletonRows, Button, useToast,
 } from '@/components/ui';
 import { t } from '@/lib/i18n';
+import { useAuth } from '@/context/AuthContext';
+import { useFeature } from '@/hooks/useBilling';
+import BookOrderModal from './orders/BookOrderModal';
 
 export const STATUS_TONE = {
   PLACED: 'blue', PACKED: 'amber', READY: 'brand', DELIVERED: 'green', CANCELLED: 'red',
@@ -21,6 +24,9 @@ export const STATUS_LABEL = {
 };
 
 export default function Orders() {
+  const { can } = useAuth();
+  const salesPro = useFeature('sales_pro').allowed;
+  const [bookOpen, setBookOpen] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -102,7 +108,9 @@ export default function Orders() {
 
   return (
     <>
-      <PageHeader title={t('Orders')} subtitle={t('Retailers ke bheje hue order')} />
+      <PageHeader title={t('Orders')} subtitle={t('Retailers ke bheje hue order')}
+        action={salesPro && can('orders:create') && <Button icon={Plus} onClick={() => setBookOpen(true)}>{t('Book order')}</Button>} />
+      <BookOrderModal open={bookOpen} onClose={() => setBookOpen(false)} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Naye order')} value={c.PLACED || 0} icon={ShoppingCart}

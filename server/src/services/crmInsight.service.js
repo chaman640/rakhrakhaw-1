@@ -362,7 +362,7 @@ export async function customerProfile(businessId, viewer, id) {
 
   const LABEL = { INVOICE: 'Sale', PAYMENT_IN: 'Payment received', PAYMENT_OUT: 'Payment made', SALE_RETURN: 'Return', OPENING: 'Opening balance', ADJUSTMENT: 'Adjustment' };
   const timeline = [
-    ...ledger.map((e) => ({ at: e.date, kind: 'ledger', type: e.type, title: `${LABEL[e.type] || e.type}${e.refNo ? ` ${e.refNo}` : ''}`, amount: round2((e.debit || 0) - (e.credit || 0)), refType: e.refType, refId: e.refId, note: e.note })),
+    ...ledger.map((e) => ({ at: e.date, kind: 'ledger', type: e.type, title: `${LABEL[e.type] || e.type}${e.refNo ? ` ${e.refNo}` : ''}`, label: LABEL[e.type] || e.type, refNo: e.refNo || '', amount: round2((e.debit || 0) - (e.credit || 0)), refType: e.refType, refId: e.refId, note: e.note })),
     ...orders.map((o) => ({ at: o.createdAt, kind: 'order', title: `Order ${o.orderNo}`, amount: o.itemsTotal, status: o.status, refId: o._id })),
     ...complaints.map((c) => ({ at: c.createdAt, kind: 'complaint', title: `Complaint ${c.complaintNo}: ${c.subject}`, status: c.status, priority: c.priority, refId: c._id })),
     ...notes.map((n) => ({ at: n.createdAt, kind: n.kind, title: n.text, by: n.byName, nextFollowUpAt: n.nextFollowUpAt })),

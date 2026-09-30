@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Truck,
   FileText, BookOpen, Wallet, BarChart3, Settings, Store, Bell, Receipt, Undo2,
   House, UserCircle, Wallet2, UsersRound, Search, PackagePlus, MessageCircle, CreditCard, Target, Heart, CalendarCheck,
-  Briefcase, IdCard, Landmark, LifeBuoy,
+  Briefcase, IdCard, Landmark, LifeBuoy, FileSignature,
 } from 'lucide-react';
 
 /**
@@ -30,6 +30,10 @@ export const wholesalerNav = [
   {
     to: '/orders', label: 'Orders', icon: ShoppingCart, part: 7, badgeKey: 'newOrders', perm: 'orders',
     desc: 'Retailer ne app se jo maal manga hai',
+  },
+  {
+    to: '/quotations', label: 'Quotations', icon: FileSignature, perm: 'orders',
+    desc: 'Price offers for big buyers — turn into order, dispatch and bill', alt: 'quote estimate proforma',
   },
   {
     to: '/items', label: 'Items', icon: Package, part: 3, perm: 'items',

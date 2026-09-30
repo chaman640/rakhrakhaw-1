@@ -45,6 +45,11 @@ import WholesalerChat from '@/pages/wholesaler/Chat';
 import WholesalerChatThread from '@/pages/wholesaler/ChatThread';
 import Autopay from '@/pages/wholesaler/Autopay';
 import Crm from '@/pages/wholesaler/Crm';
+import CustomerProfile from '@/pages/wholesaler/crm/CustomerProfile';
+import { ComplaintDetail } from '@/pages/wholesaler/crm/Complaints';
+import Quotations from '@/pages/wholesaler/Quotations';
+import QuoteForm from '@/pages/wholesaler/quotations/QuoteForm';
+import QuoteDetail from '@/pages/wholesaler/quotations/QuoteDetail';
 import Hr from '@/pages/wholesaler/Hr';
 import Accounts from '@/pages/wholesaler/Accounts';
 import Help from '@/pages/Help';
@@ -244,6 +249,12 @@ export default function AppRoutes() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/crm" element={<RequirePermission permission="parties"><FeatureGate feature="crm_basic"><Crm /></FeatureGate></RequirePermission>} />
+        <Route path="/crm/customers/:id" element={<RequirePermission permission="parties"><FeatureGate feature="crm_basic"><CustomerProfile /></FeatureGate></RequirePermission>} />
+        <Route path="/crm/complaints/:id" element={<RequirePermission permission="parties"><FeatureGate feature="crm_basic"><ComplaintDetail /></FeatureGate></RequirePermission>} />
+        <Route path="/quotations" element={<RequirePermission permission="orders"><FeatureGate feature="sales_pro"><Quotations /></FeatureGate></RequirePermission>} />
+        <Route path="/quotations/new" element={<RequirePermission permission="orders:create"><FeatureGate feature="sales_pro"><QuoteForm /></FeatureGate></RequirePermission>} />
+        <Route path="/quotations/:id" element={<RequirePermission permission="orders"><FeatureGate feature="sales_pro"><QuoteDetail /></FeatureGate></RequirePermission>} />
+        <Route path="/quotations/:id/edit" element={<RequirePermission permission="orders:edit"><FeatureGate feature="sales_pro"><QuoteForm /></FeatureGate></RequirePermission>} />
         <Route path="/today" element={<FeatureGate feature="crm_basic"><Today /></FeatureGate>} />
         <Route path="/hr" element={<RequirePermission permission={['hr', 'payroll']}><FeatureGate feature="hr_basic"><Hr /></FeatureGate></RequirePermission>} />
         <Route path="/hr/employees/:id" element={<RequirePermission permission={['hr', 'payroll']}><FeatureGate feature="hr_basic"><EmployeeDetail /></FeatureGate></RequirePermission>} />
