@@ -108,7 +108,7 @@ warnOtpMode();
 */
 app.use('/api/auth/otp', rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 12,
+  max: Number(process.env.OTP_RATE_LIMIT || 12),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Bahut baar koshish ho gayi — thodi der baad dobara try karein' },
@@ -116,7 +116,7 @@ app.use('/api/auth/otp', rateLimit({
 
 app.use('/api/auth', rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 40,
+  max: Number(process.env.AUTH_RATE_LIMIT || 40),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Bahut baar koshish ho gayi — thodi der baad dobara try karein' },

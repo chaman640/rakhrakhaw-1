@@ -169,6 +169,8 @@ const invoiceSchema = new mongoose.Schema(
     deliveryCharge: { type: Number, default: 0 },
 
     paidAmount: { type: Number, default: 0 },
+    // Part of paidAmount that came from the party's advance (jama), not from a specific payment
+    advanceApplied: { type: Number, default: 0 },
     dueAmount: { type: Number, default: 0 },
     paymentStatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid' },
 

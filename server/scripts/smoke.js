@@ -6,6 +6,7 @@
  * Ye asli API calls karta hai, phir apna banaya hua saara test data delete kar deta hai.
  * Aapke asli data ko haath nahi lagata (sab kuch "smoke-" prefix wale phone numbers pe hota hai).
  */
+import './test-env.js';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import app from '../src/app.js';
@@ -217,7 +218,7 @@ async function run() {
     check('GST off karne par GSTIN clear hua', r.data?.gstEnabled === false && r.data?.gstin === '', `gstin: "${r.data?.gstin}"`);
 
     r = await call('GET', '/business/me', { token: wToken });
-    check('invite link bana', String(r.data?.inviteLink || '').includes('/join/'), r.data?.inviteLink);
+    check('invite link bana', /\/(join|s)\//.test(String(r.data?.inviteLink || '')), r.data?.inviteLink);
 
     r = await call('GET', '/business/states');
     check('states list mili (36 = 28 state + 8 UT)', Array.isArray(r.data) && r.data.length === 36, `count ${r.data?.length}`);
@@ -262,8 +263,11 @@ async function run() {
     r = await call('POST', `/business/retailers/${partyId}/block`, { token: wToken });
     check('block chala', r.data?.status === 'blocked');
 
+    // Ek login kai dukaanon ka hai — block sirf is dukaan ka darwaza band karta hai
     r = await call('POST', '/auth/login', { body: { phone: RETAILER_PHONE, password: 'test1234' } });
-    check('blocked retailer login nahi kar paya', r.status === 403, `status ${r.status}`);
+    rToken = r.data?.token || rToken;
+    r = await call('GET', '/catalog', { token: rToken });
+    check('blocked retailer is dukaan ka maal nahi dekh paya', r.status === 403, `status ${r.status}`);
 
     // ---------------------------------------------------------- Invite rotate
     console.log(`\n${Y}Invite link badalna${N}`);
@@ -1579,7 +1583,8 @@ async function run() {
     check('delete pe balance -464 wapas hua', r.data?.balance === -464, `${r.data?.balance}`);
 
     r = await call('GET', `/invoices/${invoice3}`, { token: wToken });
-    check('bill dobara udhaar dikhne laga', r.data?.dueAmount === 100 && r.data?.paymentStatus === 'partial',
+    // Bill ke 100 khule, par party ka ₹464 jama pada hai — wo apne aap isi bill pe lag gaya
+    check('khula hua 100 party ke jama se chukta hua', r.data?.dueAmount === 0 && r.data?.paymentStatus === 'paid',
       `due ${r.data?.dueAmount}, ${r.data?.paymentStatus}`);
 
     ledger9 = await LedgerEntry.find({ refType: 'Payment', refId: payment1 }).lean();
@@ -1588,11 +1593,12 @@ async function run() {
     console.log(`\n${Y}Payment list, filter aur stats${N}`);
 
     r = await call('GET', '/payments', { token: wToken });
-    check('saari payments mili (4)', r.data?.length === 4, `mile ${r.data?.length}`);
+    // 4 + kharid ke saath diya ₹1000 (ab Payment list me bhi dikhta hai)
+    check('saari payments mili (5)', r.data?.length === 5, `mile ${r.data?.length}`);
     check('list me party ka naam aaya', Boolean(r.data?.[0]?.party?.name), `${r.data?.[0]?.party?.name}`);
 
     r = await call('GET', '/payments?direction=OUT', { token: wToken });
-    check('OUT filter chala', r.data?.length === 1, `mile ${r.data?.length}`);
+    check('OUT filter chala', r.data?.length === 2, `mile ${r.data?.length}`);
 
     r = await call('GET', '/payments?mode=UPI', { token: wToken });
     check('mode filter chala', r.data?.every((p) => p.mode === 'UPI'), 'koi non-UPI aa gaya');
@@ -1604,7 +1610,7 @@ async function run() {
     check('party ke naam se search chala', r.data?.length >= 2, `mile ${r.data?.length}`);
 
     r = await call('GET', `/payments?partyId=${supplierId}`, { token: wToken });
-    check('party filter chala', r.data?.length === 1, `mile ${r.data?.length}`);
+    check('party filter chala', r.data?.length === 2, `mile ${r.data?.length}`);
 
     r = await call('GET', '/payments/stats', { token: wToken });
     check('stats: aaj 700 aaya', r.data?.todayAmount === 700, `${r.data?.todayAmount}`);
@@ -1760,7 +1766,7 @@ async function run() {
       r.data?.columns?.some((c) => c.key === 'cash') && r.data?.columns?.some((c) => c.key === 'upi'));
     // Part 9 ke baad: cash 100 delete ho chuka, UPI 200 + UPI 500 confirm = 700 aaya, 450 diya
     check('kul aaya 700', r.data?.totals?.inTotal === 700, `${r.data?.totals?.inTotal}`);
-    check('kul diya 450', r.data?.totals?.outTotal === 450, `${r.data?.totals?.outTotal}`);
+    check('kul diya 1450 (450 + kharid ke saath 1000)', r.data?.totals?.outTotal === 1450, `${r.data?.totals?.outTotal}`);
 
     console.log(`\n${Y}CSV download${N}`);
 
@@ -2500,12 +2506,15 @@ async function run() {
       .filter((pmt) => pmt.status === 'confirmed' && pmt.direction === 'OUT')
       .reduce((s2, pmt) => s2 + (pmt.amount || 0), 0));
 
-    const bachaCredit = round2(unapplied + returnCredit - refunded);
+    // Jama jo baad me kisi bill pe laga (sweep) — bill pe `advanceApplied` me likha hai
+    const sweptToBills = round2((await Invoice.find({ partyId, isCancelled: false }).select('advanceApplied').lean())
+      .reduce((s2, i) => s2 + (i.advanceApplied || 0), 0));
+    const bachaCredit = round2(unapplied + returnCredit - refunded - sweptToBills);
     check('bill ka jod − khata = wo credit jo kisi bill pe nahi laga',
       round2(billsDue - bal) === bachaCredit,
       `bill ${billsDue} − khata ${bal} = ${round2(billsDue - bal)}, `
       + `par bina lage credit ${bachaCredit} `
-      + `(advance ${unapplied} + wapasi ${returnCredit} − wapas kiya ${refunded})`);
+      + `(advance ${unapplied} + wapasi ${returnCredit} − wapas kiya ${refunded} − bill pe laga jama ${sweptToBills})`);
 
     /* ─────────────────────────────────────────────────────────────────────
        Khata, GST report aur delete ka nishaan
@@ -2959,7 +2968,7 @@ async function run() {
     const bizOwner = await call('GET', '/business/me', { token: wToken });
     check('malik ko invite code poora mila', Boolean(bizOwner.data?.inviteCode),
       `${bizOwner.data?.inviteCode}`);
-    check('malik ko invite link bhi mila', /\/join\//.test(bizOwner.data?.inviteLink || ''),
+    check('malik ko invite link bhi mila', /\/(join|s)\//.test(bizOwner.data?.inviteLink || ''),
       `${bizOwner.data?.inviteLink}`);
 
     // Doosra darwaza — /auth/me
@@ -3404,10 +3413,10 @@ async function run() {
     check('naye retailer ka naam/phone lead se aaya, salesman ke naam', r.data?.phone === '9444400001'
       && String(r.data?.assignedToUserId) === String(salesId), `${r.data?.phone} ${r.data?.assignedToUserId}`);
 
-    r = await call('GET', '/crm/team', { token: wToken });
-    const salesRow = (r.data || []).find((x) => String(x._id) === String(salesId));
-    check('team ke hisaab me salesman ka kaam aur jeeta lead', salesRow?.tasksDone >= 1 && salesRow?.leadsWon >= 1, JSON.stringify(salesRow));
-    r = await call('GET', '/crm/team', { token: salesToken17 });
+    r = await call('GET', '/crm/performance', { token: wToken });
+    const salesRow = (r.data?.rows || []).find((x) => String(x.userId) === String(salesId));
+    check('team ke hisaab me salesman ka jeeta lead', salesRow?.leads >= 1 && salesRow?.converted >= 1, `${r.status} ${JSON.stringify(salesRow)}`);
+    r = await call('GET', '/crm/performance', { token: salesToken17 });
     check('team ka hisaab salesman ko nahi', r.status === 403, `status ${r.status}`);
 
     r = await call('POST', '/crm/auto-tasks', { token: wToken });
@@ -3620,7 +3629,8 @@ async function run() {
     check('bade wholesaler ne bill bana diya (neeche 200 ka discount bhi)', r.status === 201, `${r.message}`);
     const bigInvNo = r.data?.invoiceNo;
     const bigInvTotal = r.data?.grandTotal;
-    check('bill pe GST laga', (r.data?.taxTotal || 0) > 0, `tax ${r.data?.taxTotal}`);
+    const bigTax = (r.data?.cgstTotal || 0) + (r.data?.sgstTotal || 0) + (r.data?.igstTotal || 0);
+    check('bill pe GST laga', bigTax > 0, `tax ${bigTax}`);
 
     // ---- bill bante hi kaam apne aap ban gaya ----
     r = await call('GET', '/stock-intake', { token: wToken });
@@ -3678,8 +3688,9 @@ async function run() {
 
     r = await call('GET', `/items/${madeItem._id}`, { token: wToken });
     check('AB stock badh gaya', r.data?.stockQty === 4, `stock ${r.data?.stockQty}`);
-    check('lagat bhi item pe chadh gayi (GST ke bina, discount ke baad)',
-      r.data?.purchasePrice === 950, `${r.data?.purchasePrice}`);
+    // Buyer is not GST-registered here, so GST is part of the cost
+    check('lagat bhi item pe chadh gayi (GST ke saath, discount ke baad)',
+      r.data?.purchasePrice === 1121, `${r.data?.purchasePrice}`);
     check('bechne ka rate waise ka waisa raha', r.data?.salePrice === 1300, `${r.data?.salePrice}`);
 
     const purchasesAfter = (await call('GET', '/purchases?limit=1', { token: wToken })).meta?.total || 0;

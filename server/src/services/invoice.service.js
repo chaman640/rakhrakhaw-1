@@ -1002,6 +1002,8 @@ export async function cancelInvoice(businessId, id, { reason }, userId, viewer =
         partyId: invoice.partyId,
         invoiceId: null,
         'items.itemId': { $in: invoice.items.map((l) => l.itemId) },
+        // Bill se pehle ki wapasi is bill ka maal ho hi nahi sakti
+        createdAt: { $gte: invoice.createdAt },
       },
     ],
   }).select('returnNo').lean();

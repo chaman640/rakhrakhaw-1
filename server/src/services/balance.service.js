@@ -4,7 +4,7 @@ import { PARTY_TYPES } from '../config/constants.js';
 import {
   Party, Invoice, Purchase, LedgerEntry, Payment, ReturnNote,
 } from '../models/index.js';
-import { applyCredit } from './settlement.service.js';
+import { applyCredit, applyPaidAtomic } from './settlement.service.js';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -253,12 +253,35 @@ export async function sweepAdvance(businessId, partyId, { preferId = null } = {}
   if (!party) return { used: 0, allocations: [] };
 
   const cfg = kindForParty(party.type);
-  const [agg] = await cfg.model().aggregate([
-    { $match: { businessId: oid(businessId), [cfg.party]: oid(partyId), ...cfg.open, dueAmount: { $gt: 0 } } },
-    { $group: { _id: null, due: { $sum: '$dueAmount' } } },
-  ]);
+  const dueNow = async () => {
+    const [agg] = await cfg.model().aggregate([
+      { $match: { businessId: oid(businessId), [cfg.party]: oid(partyId), ...cfg.open, dueAmount: { $gt: 0 } } },
+      { $group: { _id: null, due: { $sum: '$dueAmount' } } },
+    ]);
+    return round2(agg?.due || 0);
+  };
 
-  const billsDue = round2(agg?.due || 0);
+  /*
+    Jama paisa jo bill pe laga tha, wo khud hi chala gaya (payment delete,
+    wapasi hati) — to bill bhi utna dobara khulna chahiye, warna bill "paid"
+    aur khata "baaki" dono ek saath dikhte hain.
+  */
+  let billsDue = await dueNow();
+  const over = round2(round2(party.balance || 0) - billsDue - Math.max(0, round2(party.openingBalance || 0)));
+  if (over > 0) {
+    let left = over;
+    const docs = await cfg.model().find({ businessId, [cfg.party]: partyId, ...cfg.open, advanceApplied: { $gt: 0 } })
+      .sort({ [cfg.kind === 'Invoice' ? 'invoiceDate' : 'purchaseDate']: -1, createdAt: -1 }).select('advanceApplied').lean();
+    for (const d of docs) {
+      if (left <= 0) break;
+      const take = round2(Math.min(left, d.advanceApplied));
+      if (take > 0 && await applyPaidAtomic(cfg.kind, businessId, d._id, -take)) {
+        await cfg.model().updateOne({ _id: d._id }, { $inc: { advanceApplied: -take } });
+        left = round2(left - take);
+      }
+    }
+    if (left < over) billsDue = await dueNow();
+  }
   if (billsDue <= 0) return { used: 0, allocations: [] };
 
   const free = round2(unappliedCredit({
@@ -270,6 +293,7 @@ export async function sweepAdvance(businessId, partyId, { preferId = null } = {}
   if (jama <= 0) return { used: 0, allocations: [] };
 
   const { allocations } = await applyCredit(cfg.kind, businessId, partyId, jama, { preferId });
+  for (const a of allocations) await cfg.model().updateOne({ _id: a.docId }, { $inc: { advanceApplied: a.amount } });
   const used = round2(allocations.reduce((s, a) => s + a.amount, 0));
 
   return { used, allocations: allocations.map((a) => ({ docId: a.docId, amount: a.amount })) };
