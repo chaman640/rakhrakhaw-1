@@ -17,7 +17,8 @@
     "billing:check": "node scripts/billing-check.js",
     "e2e": "node scripts/e2e.js",
     "hr:check": "node scripts/hr-check.js",
-    "accounts:check": "node scripts/accounts-check.js"
+    "accounts:check": "node scripts/accounts-check.js",
+    "admin:check": "node scripts/admin-check.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

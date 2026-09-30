@@ -16,7 +16,7 @@ export async function listTutorials() {
 
 /** Sirf onboarding tour wale, kram me — pehli baar wale safar ke liye */
 export async function listOnboardingTour() {
-  return TutorialVideo.find({ inOnboardingTour: true }).sort({ order: 1 }).lean();
+  return TutorialVideo.find({ inOnboardingTour: true, status: { $in: ['published', null] } }).sort({ order: 1 }).lean();
 }
 
 export async function getTutorial(key) {

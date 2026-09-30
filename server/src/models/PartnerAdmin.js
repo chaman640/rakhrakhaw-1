@@ -27,6 +27,24 @@ const partnerAdminSchema = new mongoose.Schema(
     */
     tokenSeq: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
+    lastLoginIp: { type: String, default: '' },
+
+    name: { type: String, trim: true, default: '' },
+    // Pehla (.env wala) admin super hota hai; baaki super admin banata hai
+    role: { type: String, enum: ['super', 'admin', 'support', 'content', 'finance'], default: 'super' },
+    active: { type: Boolean, default: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'PartnerAdmin', default: null },
+
+    // 2FA (authenticator app) — secret seal karke
+    totpSecret: { type: String, default: '', select: false },
+    totpPending: { type: String, default: '', select: false },
+    totpEnabled: { type: Boolean, default: false },
+    require2fa: { type: Boolean, default: false },
+    backupCodes: { type: [String], default: [], select: false },
+
+    // Galat password pe rok
+    failedLogins: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
   },
   { timestamps: true },
 );

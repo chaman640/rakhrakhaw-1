@@ -40,6 +40,8 @@ import adminPlatformRoutes from './adminPlatform.routes.js';
 import announcementRoutes from './announcement.routes.js';
 import hrRoutes from './hr.routes.js';
 import accountsRoutes from './accounts.routes.js';
+import supportRoutes from './support.routes.js';
+import contentRoutes from './content.routes.js';
 
 const router = Router();
 
@@ -63,6 +65,7 @@ router.use('/partner', partnerRoutes);
 
 // Bina login ke dukaan dekhna — koi pehra nahi
 router.use('/public', publicRoutes);
+router.use('/content', contentRoutes);
 
 // Part 2
 router.use('/auth', authRoutes);
@@ -139,5 +142,6 @@ router.use('/tutorials', tutorialRoutes);
 router.use('/crm', crmRoutes);
 router.use('/hr', hrRoutes);
 router.use('/accounts', accountsRoutes);
+router.use('/support', supportRoutes);
 
 export default router;

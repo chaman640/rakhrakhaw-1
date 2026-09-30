@@ -5,7 +5,7 @@ import { ROLES } from '../config/constants.js';
 import { PLANS, PLAN_BY_CODE, SUB_STATUS, rupees, periodPricePaise, PERIODS } from '../config/billing.js';
 import {
   Business, User, Subscription, BillingOrder, BillingCycle, AdminAudit, Announcement, PartnerAdmin,
-  TutorialVideo, Item, Invoice,
+  TutorialVideo, Item, Invoice, SupportTicket,
 } from '../models/index.js';
 import { statusOf, cancelSubscription, isFreeMode } from './billing.service.js';
 import { platformConfig, updatePlatformConfig, featureMatrix } from './platform.service.js';
@@ -145,9 +145,13 @@ export async function dashboard(query = {}) {
     };
   });
 
-  const [videos, publishedVideos] = await Promise.all([
-    TutorialVideo.countDocuments({}),
-    TutorialVideo.countDocuments({ $or: [{ 'videos.hi': { $ne: '' } }, { 'videos.en': { $ne: '' } }] }),
+  const [videos, publishedVideos, supportAgg] = await Promise.all([
+    TutorialVideo.countDocuments({ kind: { $in: ['video', null] } }),
+    TutorialVideo.countDocuments({ kind: { $in: ['video', null] }, status: { $in: ['published', null] } }),
+    SupportTicket.aggregate([
+      { $match: { status: { $in: ['open', 'in_progress', 'waiting_user'] } } },
+      { $group: { _id: null, open: { $sum: 1 }, urgent: { $sum: { $cond: [{ $in: ['$priority', ['high', 'urgent']] }, 1, 0] } }, unread: { $sum: { $cond: [{ $gt: ['$adminUnread', 0] }, 1, 0] } } } },
+    ]),
   ]);
 
   return {
@@ -172,6 +176,7 @@ export async function dashboard(query = {}) {
       failedInRange: failedRange, refunded,
     },
     content: { videos, publishedVideos, draftVideos: videos - publishedVideos },
+    support: { open: supportAgg[0]?.open || 0, urgent: supportAgg[0]?.urgent || 0, unread: supportAgg[0]?.unread || 0 },
     recentBusinesses: recentBiz,
     recentAdminActions: recentAudit,
   };

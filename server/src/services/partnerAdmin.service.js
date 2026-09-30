@@ -3,7 +3,7 @@ import ApiError from '../utils/ApiError.js';
 import { env } from '../config/env.js';
 import { partnerRupees, baakiPaise } from '../config/partner.js';
 import {
-  PartnerAdmin, Salesman, Referral, Commission, Payout,
+  Salesman, Referral, Commission, Payout,
 } from '../models/index.js';
 
 /**
@@ -28,79 +28,6 @@ export function readAdminToken(token) {
   const d = jwt.verify(token, env.jwtSecret);
   if (d.aud !== AUD) throw ApiError.unauthorized();
   return d;
-}
-
-/**
- * Pehli baar `.env` se admin ban jata hai.
- *
- * Uske baad password panel se badla ja sakta hai, aur BADALNE KE BAAD `.env`
- * wala purana password CHALTA NAHI. Wahi hona bhi chahiye — warna password
- * badalne ka koi matlab nahi rehta, purana rasta khula rehta aur aadmi ko
- * lagta ki usne band kar diya.
- */
-async function ensureAdmin() {
-  const email = (env.partnerAdmin.email || '').toLowerCase().trim();
-  if (!email) return null;
-
-  let admin = await PartnerAdmin.findOne({ email });
-  if (admin) return admin;
-
-  if (!env.partnerAdmin.password) return null;
-
-  admin = new PartnerAdmin({ email, passwordHash: 'temp' });
-  await admin.setPassword(env.partnerAdmin.password);
-  await admin.save();
-  console.warn(`[partner] admin bana: ${email} — pehla login ke baad password badal lein`);
-  return admin;
-}
-
-export async function adminLogin({ email, password }) {
-  const admin = await ensureAdmin();
-  const mail = String(email || '').toLowerCase().trim();
-
-  // Ek hi jawab dono halat me — kaunsa email chalta hai, ye batana bhi ek chabi hai
-  if (!admin || admin.email !== mail || !(await admin.checkPassword(password))) {
-    throw ApiError.unauthorized('Email ya password galat hai');
-  }
-
-  admin.lastLoginAt = new Date();
-  await admin.save();
-
-  // Admin ka har login register me (platformAdmin.service.js — audit)
-  const { audit } = await import('./platformAdmin.service.js');
-  await audit({ adminId: admin._id }, { action: 'admin.login', targetType: 'PartnerAdmin', targetId: admin._id, targetLabel: admin.email });
-
-  return {
-    token: signAdminToken(admin),
-    email: admin.email,
-    // Panel me chetavni dikhane ke liye — .env wala password abhi tak chal raha hai
-    passwordChanged: admin.passwordChanged,
-  };
-}
-
-export async function adminChangePassword(adminId, { currentPassword, newPassword }) {
-  const admin = await PartnerAdmin.findById(adminId);
-  if (!admin) throw ApiError.notFound('Admin nahi mila');
-  if (!(await admin.checkPassword(currentPassword))) {
-    throw ApiError.badRequest('Purana password galat hai');
-  }
-  if (String(newPassword).length < 8) {
-    throw ApiError.badRequest('Naya password kam se kam 8 akshar ka rakhein');
-  }
-
-  await admin.setPassword(newPassword);
-  admin.passwordChanged = true;
-  /*
-    Purane token bhi band.
-
-    Sirf password badalna kaafi nahi tha: jo token pehle ban chuka hai wo 2
-    din aur chalta rehta. Yaani chaabi leak hone ke baad password badalne se
-    bhi 48 ghante tak sabka bank account dikhta rehta. `tokenSeq` badalte hi
-    har purana token bekaar ho jata hai.
-  */
-  admin.tokenSeq = (admin.tokenSeq || 0) + 1;
-  await admin.save();
-  return { ok: true, dobaraLoginKarein: true };
 }
 
 /** Sabki list — kisko kitna dena hai, bade baaki wale sabse upar */

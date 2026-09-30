@@ -2,7 +2,6 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok, created } from '../utils/response.js';
 import * as svc from '../services/partner.service.js';
 import * as admin from '../services/partnerAdmin.service.js';
-import * as tutorials from '../services/tutorial.service.js';
 
 /* ── salesman ── */
 
@@ -27,9 +26,6 @@ export const refInfo = asyncHandler(async (req, res) =>
 
 /* ── admin ── */
 
-export const adminLogin = asyncHandler(async (req, res) =>
-  ok(res, await admin.adminLogin(req.body), 'Login ho gaya'));
-
 export const adminList = asyncHandler(async (req, res) =>
   ok(res, await admin.adminList({ q: req.query.q })));
 
@@ -42,16 +38,3 @@ export const adminMarkPaid = asyncHandler(async (req, res) =>
 export const adminToggle = asyncHandler(async (req, res) =>
   ok(res, await admin.adminToggle(req.params.id, req.body?.active), 'Ho gaya'));
 
-export const adminChangePassword = asyncHandler(async (req, res) =>
-  ok(res, await admin.adminChangePassword(req.adminId, req.body), 'Password badal gaya'));
-
-/* ── admin: tutorial videos (Part 29) ── */
-
-export const adminTutorialList = asyncHandler(async (req, res) =>
-  ok(res, await tutorials.listTutorials()));
-
-export const adminTutorialUpsert = asyncHandler(async (req, res) =>
-  ok(res, await tutorials.upsertTutorial(req.body), 'Save ho gaya'));
-
-export const adminTutorialDelete = asyncHandler(async (req, res) =>
-  ok(res, await tutorials.deleteTutorial(req.params.key), 'Hata diya'));

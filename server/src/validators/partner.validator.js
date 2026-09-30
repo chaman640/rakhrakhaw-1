@@ -40,7 +40,7 @@ export const adminLoginSchema = z.object({
 
 export const adminPasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Purana password daalein'),
-  newPassword: z.string().min(8, 'Naya password kam se kam 8 akshar ka rakhein').max(72),
+  newPassword: z.string().min(10, 'Use at least 10 characters with both letters and numbers').max(72),
 });
 
 export const markPaidSchema = z.object({

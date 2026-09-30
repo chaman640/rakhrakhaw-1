@@ -37,6 +37,8 @@ export { default as SalaryAdvance } from './SalaryAdvance.js';
 export { default as HrLog } from './HrLog.js';
 export { default as AccountHead } from './AccountHead.js';
 export { default as JournalVoucher } from './JournalVoucher.js';
+export { default as SupportTicket } from './SupportTicket.js';
+export { default as TutorialView } from './TutorialView.js';
 export { default as ReturnNote } from './ReturnNote.js';
 export { default as AuditLog } from './AuditLog.js';
 export { default as StaffInvite } from './StaffInvite.js';
