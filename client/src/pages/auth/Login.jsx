@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import HelpVideos from '@/components/help/HelpVideos';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { BadgeCheck, Phone } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import AuthShell from '@/components/auth/AuthShell';
 import { Button, Input } from '@/components/ui';
@@ -11,7 +12,13 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [form, setForm] = useState({ phone: '', password: '' });
+  const [params] = useSearchParams();
+  const [form, setForm] = useState(() => {
+    let company = params.get('c') || '';
+    try { if (!company) company = localStorage.getItem('rr_company_code') || ''; } catch { /* private mode */ }
+    return { phone: '', password: '', companyCode: company.toUpperCase(), employeeCode: (params.get('e') || '').toUpperCase() };
+  });
+  const [mode, setMode] = useState(() => (params.get('c') ? 'employee' : 'phone'));
 
   /*
     BAHAR KYUN HUE — pehli hi baar me dikha do (item 24).
@@ -37,7 +44,10 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const data = await login(form.phone, form.password);
+      const data = mode === 'employee'
+        ? await login('', form.password, { companyCode: form.companyCode.trim().toUpperCase(), employeeCode: form.employeeCode.trim().toUpperCase() })
+        : await login(form.phone, form.password);
+      if (mode === 'employee') { try { localStorage.setItem('rr_company_code', form.companyCode.trim().toUpperCase()); } catch { /* ignore */ } }
       const from = location.state?.from?.pathname;
       if (data.user.role === 'retailer') {
         navigate(data.party?.status === 'active' ? (from || '/shop') : '/pending', { replace: true });
@@ -66,17 +76,34 @@ export default function Login() {
     >
       <HelpVideos placement="login" variant="inline" className="mb-4 w-full justify-center" />
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label={t('Phone number')}
-          required
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-          prefix="+91"
-          placeholder="98765 43210"
-          value={form.phone}
-          onChange={set('phone')}
-        />
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label={t('Sign in with')}>
+          {[['phone', 'Mobile number', Phone], ['employee', 'Employee ID', BadgeCheck]].map(([m, l, Icon]) => (
+            <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); setError(''); }}
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium ${mode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}>
+              <Icon size={15} />{t(l)}
+            </button>
+          ))}
+        </div>
+        {mode === 'phone' ? (
+          <Input
+            label={t('Phone number')}
+            required
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            prefix="+91"
+            placeholder="98765 43210"
+            value={form.phone}
+            onChange={set('phone')}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <Input label={t('Company code')} required autoCapitalize="characters" placeholder={'RAMES42'} value={form.companyCode}
+              onChange={(e) => setForm((f) => ({ ...f, companyCode: e.target.value.toUpperCase() }))} hint={t('Ask your employer')} />
+            <Input label={t('Employee ID')} required autoCapitalize="characters" placeholder={'EMP-0001'} value={form.employeeCode}
+              onChange={(e) => setForm((f) => ({ ...f, employeeCode: e.target.value.toUpperCase() }))} />
+          </div>
+        )}
         <Input
           label={t('Password')}
           required

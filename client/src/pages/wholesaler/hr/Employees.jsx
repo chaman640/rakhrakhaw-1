@@ -65,7 +65,7 @@ export function EmployeeForm({ open, onClose, employee = null, onSaved }) {
       toast.success(res.message);
       bust('hr', 'staff');
       setF(null);
-      onSaved?.(res.data);
+      onSaved?.(res.data, editing ? null : form.password);
       onClose();
     } catch (err) { toast.error(err.message); } finally { setSaving(false); }
   }
@@ -191,7 +191,7 @@ export default function Employees() {
         emptyTitle={t('No employees yet')}
         emptyMessage={t('Add your first employee. Existing staff logins appear here automatically.')}
       />
-      <EmployeeForm open={adding} onClose={() => setAdding(false)} onSaved={(e) => navigate(`/hr/employees/${e._id}`)} />
+      <EmployeeForm open={adding} onClose={() => setAdding(false)} onSaved={(e, pw) => navigate(`/hr/employees/${e._id}`, { state: pw ? { tempPassword: pw } : null })} />
     </>
   );
 }

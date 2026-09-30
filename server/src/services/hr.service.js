@@ -9,6 +9,7 @@ import { addStaff, updateStaff } from './staff.service.js';
 import {
   User, Business, Employee, OrgUnit, Team, Attendance, HrRequest, Payroll, HrLog, Counter, Invoice, CrmTask, Party,
 } from '../models/index.js';
+import { cacheBust } from '../utils/cache.js';
 import { istDay, monthOf, currentPeriod } from '../utils/istDay.js';
 import { leaveBalances } from './hrTime.service.js';
 
@@ -292,6 +293,7 @@ export async function createEmployee(businessId, actor, body) {
   const profile = {};
   for (const k of PROFILE_FIELDS) if (body[k] !== undefined) profile[k] = body[k];
   if (body.salary) profile.salary = { ...body.salary, effectiveFrom: body.salary.effectiveFrom || new Date() };
+  await User.updateOne({ _id: staff._id }, { $set: { mustChangePassword: true } });
   const e = await Employee.create({ businessId, userId: staff._id, code: await nextEmployeeCode(businessId), ...profile });
   await hrLog(businessId, staff._id, actor, 'created', `Employee ${staff.name} (${e.code}) added`);
   return getEmployee(businessId, actor, staff._id);
@@ -407,16 +409,50 @@ export async function listLogs(businessId, { userId = '', page = 1, limit = 50 }
   };
 }
 
+/** Short code employees type with their Employee ID to sign in */
+export async function ensureCompanyCode(businessId) {
+  const b = await Business.findById(businessId).select('name companyCode').lean();
+  if (b?.companyCode) return b.companyCode;
+  const base = String(b?.name || 'SHOP').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5).padEnd(3, 'X');
+  for (let i = 0; i < 20; i += 1) {
+    const code = `${base}${Math.floor(10 + Math.random() * 90)}`;
+    try {
+      const r = await Business.updateOne({ _id: businessId, companyCode: { $in: [null, undefined] } }, { $set: { companyCode: code } });
+      if (r.modifiedCount) return code;
+      const again = await Business.findById(businessId).select('companyCode').lean();
+      if (again?.companyCode) return again.companyCode;
+    } catch (e) { if (e.code !== 11000) throw e; }
+  }
+  throw ApiError.conflict('Could not create a company code, please retry');
+}
+
+/** HR sets a temporary password; the employee must change it at next sign-in */
+export async function resetEmployeePassword(businessId, actor, userId, password) {
+  const user = await User.findOne({ _id: userId, businessId, role: ROLES.WHOLESALER });
+  if (!user) throw ApiError.notFound('Employee not found');
+  if (isOwner(user)) throw ApiError.forbidden('The owner password cannot be reset here');
+  if (String(user._id) === String(actor._id)) throw ApiError.badRequest('Use Profile → Change password for your own account');
+  await user.setPassword(password);
+  user.mustChangePassword = true;
+  user.sessionSeq = (user.sessionSeq || 0) + 1;
+  await user.save();
+  cacheBust(`u:${user._id}`);
+  await hrLog(businessId, user._id, actor, 'password_reset', `Login password reset for ${user.name}`);
+  return { reset: true };
+}
+
 export async function hrMeta(businessId) {
-  const [departments, designations, staff, settings] = await Promise.all([
+  const [departments, designations, staff, settings, companyCode] = await Promise.all([
     OrgUnit.find({ businessId, kind: 'department', active: true }).select('name').sort({ name: 1 }).lean(),
     OrgUnit.find({ businessId, kind: 'designation', active: true }).select('name').sort({ name: 1 }).lean(),
     User.find({ businessId, role: ROLES.WHOLESALER, isActive: { $ne: false } }).select('name staffRole').sort({ name: 1 }).lean(),
     hrSettings(businessId),
+    ensureCompanyCode(businessId),
   ]);
   const [teams, adv] = await Promise.all([hasFeature(businessId, 'hr_teams'), hasFeature(businessId, 'hr_advanced')]);
   return {
-    departments, designations, staff, settings,
+    departments, designations, staff, settings, companyCode,
+    businessName: (await Business.findById(businessId).select('name').lean())?.name || '',
     features: { teams, advanced: adv },
     roles: Object.values(STAFF_ROLES).filter((r) => r !== STAFF_ROLES.OWNER).map((r) => ({ value: r, label: STAFF_ROLE_LABEL[r] })),
   };

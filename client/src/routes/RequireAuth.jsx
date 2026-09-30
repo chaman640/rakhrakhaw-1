@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import SetOwnPassword from '@/pages/auth/SetOwnPassword';
 import { useAuth } from '@/context/AuthContext';
 import Spinner from '@/components/ui/Spinner';
 
@@ -35,6 +36,8 @@ export default function RequireAuth({ roles, allowUnapproved = false, children }
   if (roles?.length && !roles.includes(user.role)) {
     return <Navigate to="/home" replace />;
   }
+
+  if (user.mustChangePassword) return <SetOwnPassword />;
 
   // Retailer approve nahi hua to sirf pending screen dikhegi
   if (!allowUnapproved && !isApproved) {

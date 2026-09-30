@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import {
+  createContext, useContext, useEffect, useState, useCallback, useRef,
+} from 'react';
 import api, { setActiveShopId } from '@/lib/api';
 import { clearCache } from '@/lib/queryCache';
 
@@ -32,10 +34,18 @@ export function AuthProvider({ children }) {
   }, [applySession]);
 
   useEffect(() => { loadSession(); }, [loadSession]);
+  const userRef = useRef(null);
+  userRef.current = user;
+  useEffect(() => {
+    // Only when the server says so and we don't already know (avoids a refetch loop from background polling)
+    const on = () => { if (userRef.current && !userRef.current.mustChangePassword) loadSession(); };
+    window.addEventListener('rr:must-change-password', on);
+    return () => window.removeEventListener('rr:must-change-password', on);
+  }, [loadSession]);
 
   /** Wholesaler / retailer dono ke liye */
-  const login = useCallback(async (phone, password) => {
-    const res = await api.post('/auth/login', { phone, password });
+  const login = useCallback(async (phone, password, extra = null) => {
+    const res = await api.post('/auth/login', extra ? { ...extra, password } : { phone, password });
     localStorage.setItem(TOKEN_KEY, res.data.token);
     // Naya aadmi, nayi shuruaat — pichhle wale ki chuni hui dukaan yahin chhod do
     setActiveShopId(null);
@@ -91,6 +101,7 @@ export function AuthProvider({ children }) {
     setBusiness,
     login, logout, signupWholesaler, signupRetailer, joinAsStaff,
     refresh: loadSession,
+    passwordChanged: () => setUser((u) => (u ? { ...u, mustChangePassword: false } : u)),
     isWholesaler: user?.role === 'wholesaler',
     isRetailer: user?.role === 'retailer',
     // Maal khareed sakta hai ya nahi — server ka faisla (`purchases:create`).

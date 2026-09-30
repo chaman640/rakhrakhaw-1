@@ -30,9 +30,11 @@ export const wholesalerSignupSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  phone,
+  phone: phone.optional(),
+  companyCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4,10}$/, 'Invalid company code').optional(),
+  employeeCode: z.string().trim().toUpperCase().max(20).optional(),
   password: z.string().min(1, 'Password daalein'),
-});
+}).refine((b) => b.phone || (b.companyCode && b.employeeCode), { message: 'Enter your mobile number, or company code and Employee ID', path: ['phone'] });
 
 export const retailerSignupSchema = z.object({
   // Khaali chhoda ja sakta hai — retailer ab bina kisi dukaan ke invite link

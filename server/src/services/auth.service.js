@@ -14,7 +14,7 @@ import { validateGstin } from '../utils/gstin.js';
 import { generateInviteCode } from '../utils/generateCode.js';
 import { businessForUser, isOwnerUser } from '../utils/businessView.js';
 import { SUB_STATUS } from '../config/billing.js';
-import { User, Business, Party, Membership } from '../models/index.js';
+import { User, Business, Party, Membership, Employee } from '../models/index.js';
 import { assertOtpToken } from './otp.service.js';
 import { cacheBust } from '../utils/cache.js';
 import { bindReferral } from './partner.service.js';
@@ -51,6 +51,7 @@ function publicUser(user) {
     // nahi. (Client pe kuch bhi chhupana suraksha nahi hoti.)
     staffRole,
     staffRoleLabel: STAFF_ROLE_LABEL[staffRole] || staffRole,
+    mustChangePassword: Boolean(user.mustChangePassword),
     isOwner: user.role === 'wholesaler' && staffRole === 'owner',
     permissions: user.role === 'wholesaler'
       ? (staffRole === 'owner' ? ALL_PERMISSIONS : (user.permissions || []))
@@ -350,8 +351,15 @@ export async function signupRetailer({ inviteCode, name, shopName, phone, passwo
 }
 
 /** Login — wholesaler aur retailer dono ke liye ek hi endpoint */
-export async function login({ phone, password }) {
-  const cleanPhone = normalizePhone(phone);
+export async function login({ phone, companyCode, employeeCode, password }) {
+  let cleanPhone = phone ? normalizePhone(phone) : '';
+  if (!cleanPhone) {
+    const biz = await Business.findOne({ companyCode }).select('_id').lean();
+    const emp = biz && await Employee.findOne({ businessId: biz._id, code: employeeCode }).select('userId').lean();
+    const u = emp && await User.findById(emp.userId).select('phone').lean();
+    if (!u) throw ApiError.unauthorized('Company code or Employee ID is wrong');
+    cleanPhone = u.phone;
+  }
 
   const user = await User.findOne({ phone: cleanPhone }).select('+passwordHash');
   if (!user) throw ApiError.unauthorized('Ye number registered nahi hai');
@@ -459,7 +467,9 @@ export async function resetPassword({ phone, otpToken, newPassword }) {
   if (!user.isActive) throw ApiError.forbidden('Aapka account band kar diya gaya hai');
 
   await user.setPassword(newPassword);
+  user.mustChangePassword = false;
   await user.save();
+  cacheBust(`u:${user._id}`);
 
   return { phone: cleanPhone };
 }
@@ -470,9 +480,12 @@ export async function changePassword(userId, { currentPassword, newPassword }) {
 
   const okPassword = await user.checkPassword(currentPassword);
   if (!okPassword) throw ApiError.badRequest('Purana password galat hai');
+  if (currentPassword === newPassword) throw ApiError.badRequest('Choose a new password, different from the current one');
 
   await user.setPassword(newPassword);
+  user.mustChangePassword = false;
   await user.save();
+  cacheBust(`u:${user._id}`);
   return true;
 }
 

@@ -71,6 +71,7 @@ const userSchema = new mongoose.Schema(
     createdByUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     isActive: { type: Boolean, default: true },
+    mustChangePassword: { type: Boolean, default: false },
     lastLoginAt: { type: Date, default: null },
     // Home ke shortcut (seller khud chunta hai) — har device pe ek jaise
     shortcuts: { type: [String], default: undefined },

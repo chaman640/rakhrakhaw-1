@@ -60,6 +60,7 @@ const businessSchema = new mongoose.Schema(
     // Ramesh Bhai ek link WhatsApp pe bhejte hain; jo bhi join kare wo 'pending' me
     // aata hai aur approve hone tak catalog nahi dekh sakta.
     inviteCode: { type: String, index: true, sparse: true, default: null },
+    companyCode: { type: String, unique: true, sparse: true, default: undefined },
     inviteEnabled: { type: Boolean, default: true },
     autoApproveRetailers: { type: Boolean, default: false },
 

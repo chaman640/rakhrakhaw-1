@@ -62,6 +62,11 @@ export const protect = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // Temporary password from the employer: nothing else opens until it is changed
+  if (user.mustChangePassword && !/^\/api\/(auth\/(me|change-password|logout)|public\/)/.test(req.originalUrl)) {
+    throw ApiError.forbidden('Please set your own password to continue', { reason: 'must_change_password' });
+  }
+
   req.user = user;
   next();
 });

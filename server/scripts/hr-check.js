@@ -110,6 +110,18 @@ async function run() {
     r = await call('POST', '/hr/employees', { token: oTok, body: { name: 'Dup', phone: PH.emp, password: 'hr123456' } });
     check('same phone twice blocked', r.status === 409, `${r.status}`);
 
+    let r0 = await login(PH.emp);
+    const tmpTok = r0;
+    r0 = await call('GET', '/hr/me', { token: tmpTok });
+    check('temporary password: app blocked until changed', r0.status === 403 && r0.details?.reason === 'must_change_password', `${r0.status}`);
+    r0 = await call('GET', '/auth/me', { token: tmpTok });
+    check('profile says password must change', r0.data?.user?.mustChangePassword === true, JSON.stringify(r0.data?.user?.mustChangePassword));
+    r0 = await call('POST', '/auth/change-password', { token: tmpTok, body: { currentPassword: 'hr123456', newPassword: 'hr123456' } });
+    check('same password not accepted', r0.status === 400, `${r0.status}`);
+    r0 = await call('POST', '/auth/change-password', { token: tmpTok, body: { currentPassword: 'hr123456', newPassword: 'emp98765' } });
+    check('employee sets own password', r0.status === 200, r0.message);
+    await M.User.updateMany({ phone: { $in: [PH.emp, PH.hr, PH.viewer] } }, { $set: { mustChangePassword: false } });
+    await M.User.updateOne({ phone: PH.emp }, { $set: { passwordHash: (await M.User.findOne({ phone: PH.hr }).select('+passwordHash').lean()).passwordHash } });
     const eTok = await login(PH.emp);
     const hTok = await login(PH.hr);
     const vTok = await login(PH.viewer);
@@ -245,11 +257,34 @@ async function run() {
     r = await call('DELETE', `/hr/org/department/${deptId}`, { token: oTok });
     check('department in use cannot be deleted', r.status === 400, `${r.status}`);
 
+    step('6b. Employee ID login, HR password reset');
+    r = await call('GET', '/hr/meta', { token: oTok });
+    const company = r.data?.companyCode;
+    const empCode = (await M.Employee.findOne({ userId: empId }).lean())?.code;
+    check('company code created', /^[A-Z0-9]{4,10}$/.test(company || ''), company);
+    r = await call('POST', '/auth/login', { body: { companyCode: company, employeeCode: empCode, password: 'hr123456' } });
+    check('login with company code + Employee ID', Boolean(r.data?.token) && r.data?.user?.staffRole === 'employee', r.message);
+    r = await call('POST', '/auth/login', { body: { companyCode: company, employeeCode: 'EMP-9999', password: 'hr123456' } });
+    check('wrong Employee ID rejected', r.status === 401, `${r.status}`);
+    const beforeReset = await login(PH.emp);
+    r = await call('POST', `/hr/employees/${empId}/password`, { token: vTok, body: { password: 'temp4321' } });
+    check('viewer cannot reset passwords', r.status === 403, `${r.status}`);
+    r = await call('POST', `/hr/employees/${empId}/password`, { token: hTok, body: { password: 'temp4321' } });
+    check('HR resets password', r.status === 200, r.message);
+    r = await call('GET', '/hr/me', { token: beforeReset });
+    check('old session signed out after reset', r.status === 401, `${r.status}`);
+    const t2 = await login(PH.emp, 'temp4321');
+    r = await call('GET', '/hr/me', { token: t2 });
+    check('temporary password forces change', r.status === 403 && r.details?.reason === 'must_change_password', `${r.status}`);
+    await call('POST', '/auth/change-password', { token: t2, body: { currentPassword: 'temp4321', newPassword: 'hr123456x' } });
+    r = await call('GET', '/hr/me', { token: t2 });
+    check('after change, app opens', r.status === 200, `${r.status}`);
+
     step('7. Plan gating + exit');
     await M.Subscription.updateOne({ businessId: bizId }, { $set: { planCode: 'CHOTI' } });
     r = await call('GET', '/hr/teams', { token: oTok });
     check('teams locked on CHOTI', r.status === 403 && r.details?.reason === 'feature_locked', `${r.status}`);
-    r = await call('GET', '/hr/me', { token: eTok });
+    r = await call('GET', '/hr/me', { token: t2 });
     check('basic HR still open on CHOTI', r.status === 200, `${r.status}`);
     await M.Subscription.updateOne({ businessId: bizId }, { $set: { planCode: 'BADI' } });
 

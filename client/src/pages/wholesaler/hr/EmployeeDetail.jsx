@@ -1,17 +1,19 @@
 import { useRef, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Pencil, Phone, Camera, UserX, UserCheck } from 'lucide-react';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import {
+  Pencil, Phone, Camera, UserX, UserCheck, KeyRound, Share2,
+} from 'lucide-react';
 import api from '@/lib/api';
 import { useQuery, bust } from '@/hooks/useQuery';
 import { useAuth } from '@/context/AuthContext';
 import { formatDate, formatDateTime, formatMoney, formatPhone } from '@/lib/format';
 import {
-  Card, CardHeader, Button, Badge, Tabs, Spinner, EmptyState, Modal, useToast,
+  Card, CardHeader, Button, Badge, Tabs, Spinner, EmptyState, Modal, Input, useToast,
 } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { shrinkImage } from '@/lib/shrinkImage';
 import {
-  Avatar, MonthGrid, MonthPicker, Stat, thisPeriod, periodLabel, PAY_TONE, Cap, EMP_TYPES, hoursOf,
+  Avatar, MonthGrid, MonthPicker, Stat, thisPeriod, periodLabel, PAY_TONE, Cap, EMP_TYPES, hoursOf, useHrMeta,
 } from './hrShared';
 import { EmployeeForm } from './Employees';
 import { MarkModal } from './AttendanceTab';
@@ -22,7 +24,55 @@ const Field = ({ label, value }) => (
   <div className="py-2"><p className="text-xs text-slate-500">{label}</p><p className="text-sm font-medium text-slate-900">{value || '—'}</p></div>
 );
 
-function ProfileTab({ e }) {
+function LoginCard({ e, initialPassword }) {
+  const toast = useToast();
+  const { can, user } = useAuth();
+  const { data: meta } = useHrMeta();
+  const [pw, setPw] = useState(initialPassword || '');
+  const [open, setOpen] = useState(false);
+  const [next, setNext] = useState('');
+  const [busy, setBusy] = useState(false);
+  const company = meta?.companyCode || '';
+  const link = `${window.location.origin}/login?c=${company}&e=${encodeURIComponent(e.code)}`;
+  const text = [
+    t('Hello {n}, your {b} employee app login:', { n: e.name.split(' ')[0], b: meta?.businessName || '' }),
+    `${t('Company code')}: ${company}`, `${t('Employee ID')}: ${e.code}`, `${t('Mobile')}: ${e.phone}`,
+    pw ? `${t('Temporary password')}: ${pw}` : null, pw ? t('You will be asked to set your own password.') : null, link,
+  ].filter(Boolean).join('\n');
+  const wa = `https://wa.me/91${String(e.phone || '').replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`;
+
+  async function reset() {
+    if (next.length < 6) { toast.error(t('Password must be at least 6 characters')); return; }
+    setBusy(true);
+    try {
+      const r = await api.post(`/hr/employees/${e._id}/password`, { password: next });
+      toast.success(r.message); setPw(next); setNext(''); setOpen(false);
+    } catch (err) { toast.error(err.message); } finally { setBusy(false); }
+  }
+  const self = String(user?._id) === String(e._id);
+  return (
+    <Card>
+      <CardHeader title={t('App login')} subtitle={e.loginActive === false ? t('Login is disabled') : t('The employee signs in with these details')} />
+      <div className="grid grid-cols-2 gap-x-4">
+        <Field label={t('Company code')} value={company} />
+        <Field label={t('Employee ID')} value={e.code} />
+        <Field label={t('Mobile')} value={formatPhone(e.phone)} />
+        <Field label={t('Last login')} value={e.lastLoginAt ? formatDateTime(e.lastLoginAt) : t('Never')} />
+      </div>
+      {pw && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{t('Temporary password')}: <b className="font-mono">{pw}</b> — {t('share it now, it is not shown again')}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {e.phone && <a href={wa} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="secondary" icon={Share2}>{t('Share on WhatsApp')}</Button></a>}
+        {can('hr:edit') && !self && e.staffRole !== 'owner' && <Button size="sm" variant="ghost" icon={KeyRound} onClick={() => setOpen(true)}>{t('Reset password')}</Button>}
+      </div>
+      <Modal open={open} onClose={() => setOpen(false)} title={t('Reset login password')} description={t('They will be signed out and must set their own password at next sign-in.')}
+        footer={<><Button variant="secondary" onClick={() => setOpen(false)}>{t('Cancel')}</Button><Button loading={busy} onClick={reset}>{t('Set temporary password')}</Button></>}>
+        <Input label={t('Temporary password')} value={next} onChange={(x) => setNext(x.target.value)} hint={t('At least 6 characters')} autoComplete="off" />
+      </Modal>
+    </Card>
+  );
+}
+
+function ProfileTab({ e, tempPassword }) {
   const { can } = useAuth();
   const type = EMP_TYPES.find(([v]) => v === e.employmentType)?.[1];
   return (
@@ -65,6 +115,7 @@ function ProfileTab({ e }) {
           <Field label={t('Emergency contact')} value={e.emergencyContact?.name && `${e.emergencyContact.name} · ${e.emergencyContact.phone}`} />
         </div>
       </Card>
+      <LoginCard e={e} initialPassword={tempPassword} />
       <Card>
         <CardHeader title={t('Tasks')} />
         <div className="grid grid-cols-3 gap-2">
@@ -161,6 +212,7 @@ function LogView({ e }) {
 
 export default function EmployeeDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const { can, user } = useAuth();
@@ -230,7 +282,7 @@ export default function EmployeeDetail() {
         </div>
       </Card>
       <Tabs tabs={tabs} value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} />
-      {tab === 'profile' && <ProfileTab e={e} />}
+      {tab === 'profile' && <ProfileTab e={e} tempPassword={location.state?.tempPassword} />}
       {tab === 'attendance' && <AttendanceView e={e} />}
       {tab === 'leave' && <LeaveView e={e} />}
       {tab === 'salary' && <SalaryView e={e} />}

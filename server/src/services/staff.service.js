@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { cacheBust } from '../utils/cache.js';
 import ApiError from '../utils/ApiError.js';
 import { assertSeat } from './billing.service.js';
 import { normalizePhone } from '../utils/phone.js';
@@ -212,9 +213,14 @@ export async function updateStaff(businessId, id, payload, actor) {
     if (payload.isActive && !user.isActive) await assertSeat(businessId);
     user.isActive = payload.isActive;
   }
-  if (payload.password) await user.setPassword(payload.password);
+  if (payload.password) {
+    await user.setPassword(payload.password);
+    user.mustChangePassword = true;
+    user.sessionSeq = (user.sessionSeq || 0) + 1;
+  }
 
   await user.save();
+  cacheBust(`u:${user._id}`);
   return shape(user.toObject());
 }
 

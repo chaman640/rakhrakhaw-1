@@ -138,6 +138,9 @@ router.post('/employees', requirePermission('hr:create'), validate({
     password: z.string().min(6, 'Password must be at least 6 characters').max(100),
   }),
 }), asyncHandler(async (req, res) => created(res, await hr.createEmployee(req.businessId, req.user, req.body), 'Employee added')));
+router.post('/employees/:id/password', requirePermission('hr:edit'), validate({
+  params: idP, body: z.object({ password: z.string().min(6, 'Password must be at least 6 characters').max(100) }),
+}), hm('Temporary password set — they must change it at next sign-in', (req) => hr.resetEmployeePassword(req.businessId, req.user, req.params.id, req.body.password)));
 router.get('/employees/:id', requirePermission('hr:view', 'payroll:view'), validate({ params: idP }), h((req) => hr.getEmployee(req.businessId, req.user, req.params.id)));
 router.put('/employees/:id', requirePermission('hr:edit', 'payroll:create'), validate({
   params: idP,
