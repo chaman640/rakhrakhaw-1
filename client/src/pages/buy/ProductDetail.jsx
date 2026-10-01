@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ReelPhoto, useAutoSlide } from '@/components/product/reelPhotos';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Package, ShoppingCart, Check, ShieldCheck, MessageCircle, Images, Store, Share2, Heart,
@@ -207,6 +208,8 @@ function ReelPanel({ item, shop, sectionRef, index }) {
   const [animating, setAnimating] = useState(false); // ungli chhutne ke baad ka animation
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomOrigin, setZoomOrigin] = useState('50% 50%');
+  const [touching, setTouching] = useState(false);
+  useAutoSlide({ count: photos.length, slide, setSlide, setAnimating, paused: touching || zoomScale !== 1, ref: containerRef });
 
   /*
     EK HI FINGER, TEEN KAAM (Part 41) — swipe (agli/pichhli photo, Instagram
@@ -216,6 +219,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
     thodi si harkat se pata chalta hai ki teenon me se kaun sa hai.
   */
   function onTouchStart(e) {
+    setTouching(true);
     const p = e.touches[0];
     const rect = containerRef.current?.getBoundingClientRect();
     touchRef.current = {
@@ -230,8 +234,8 @@ function ReelPanel({ item, shop, sectionRef, index }) {
       if (touchRef.current.mode) return; // tab tak swipe/scroll shuru ho chuka hoga to zoom nahi
       touchRef.current.mode = 'zoom';
       setZoomOrigin(`${touchRef.current.originX}% ${touchRef.current.originY}%`);
-      setZoomScale(1.8);
-    }, 280);
+      setZoomScale(1.5);
+    }, 450);
   }
 
   function onTouchMove(e) {
@@ -256,6 +260,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
   }
 
   function onTouchEnd() {
+    setTouching(false);
     clearTimeout(zoomTimerRef.current);
     if (touchRef.current.mode === 'zoom') {
       setZoomScale(1);
@@ -396,6 +401,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
       >
         {photos.length ? (
           <>
@@ -417,7 +423,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
                 }}
               >
                 {photos.map((src, i) => (
-                  <img key={i} src={src} alt="" className="h-full w-full flex-shrink-0 object-cover" />
+                  <ReelPhoto key={i} src={src} />
                 ))}
               </div>
             </div>
@@ -432,7 +438,7 @@ function ReelPanel({ item, shop, sectionRef, index }) {
 
       {/* Kitni photo hai, kaun si chal rahi hai — jaise Instagram carousel me */}
       {photos.length > 1 && (
-        <span className="absolute left-3 top-8 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+        <span className="absolute left-1/2 top-8 -translate-x-1/2 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
           {slide + 1}/{photos.length}
         </span>
       )}

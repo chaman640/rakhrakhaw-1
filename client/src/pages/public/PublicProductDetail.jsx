@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ReelPhoto, useAutoSlide } from '@/components/product/reelPhotos';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Package, ShoppingCart, ShieldCheck, Images } from 'lucide-react';
 import api from '@/lib/api';
@@ -188,8 +189,11 @@ function PublicReelPanel({ item, shop, sectionRef, index, onOrder }) {
   const [animating, setAnimating] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomOrigin, setZoomOrigin] = useState('50% 50%');
+  const [touching, setTouching] = useState(false);
+  useAutoSlide({ count: photos.length, slide, setSlide, setAnimating, paused: touching || zoomScale !== 1, ref: containerRef });
 
   function onTouchStart(e) {
+    setTouching(true);
     const p = e.touches[0];
     const rect = containerRef.current?.getBoundingClientRect();
     touchRef.current = {
@@ -202,8 +206,8 @@ function PublicReelPanel({ item, shop, sectionRef, index, onOrder }) {
       if (touchRef.current.mode) return;
       touchRef.current.mode = 'zoom';
       setZoomOrigin(`${touchRef.current.originX}% ${touchRef.current.originY}%`);
-      setZoomScale(1.8);
-    }, 280);
+      setZoomScale(1.5);
+    }, 450);
   }
 
   function onTouchMove(e) {
@@ -223,6 +227,7 @@ function PublicReelPanel({ item, shop, sectionRef, index, onOrder }) {
   }
 
   function onTouchEnd() {
+    setTouching(false);
     clearTimeout(zoomTimerRef.current);
     if (touchRef.current.mode === 'zoom') { setZoomScale(1); touchRef.current.mode = null; return; }
     if (touchRef.current.mode !== 'swipe') { touchRef.current.mode = null; return; }
@@ -251,6 +256,7 @@ function PublicReelPanel({ item, shop, sectionRef, index, onOrder }) {
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
       >
         {photos.length ? (
           <div className="h-full w-full" style={{
@@ -262,7 +268,7 @@ function PublicReelPanel({ item, shop, sectionRef, index, onOrder }) {
               transition: animating ? 'transform 220ms ease-out' : 'none',
             }}>
               {photos.map((src, i) => (
-                <img key={i} src={src} alt="" className="h-full w-full flex-shrink-0 object-cover" />
+                <ReelPhoto key={i} src={src} />
               ))}
             </div>
           </div>
@@ -273,7 +279,7 @@ function PublicReelPanel({ item, shop, sectionRef, index, onOrder }) {
       </div>
 
       {photos.length > 1 && (
-        <span className="absolute left-3 top-8 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+        <span className="absolute left-1/2 top-8 -translate-x-1/2 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
           {slide + 1}/{photos.length}
         </span>
       )}

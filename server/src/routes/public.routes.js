@@ -73,7 +73,7 @@ router.get('/shop/:code/items', asyncHandler(async (req, res) => {
 
   const [items, total] = await Promise.all([
     Item.find(filter)
-      .select('name imageUrl unit salePrice mrp stockQty brand category minOrderQty')
+      .select('name imageUrl images unit salePrice mrp stockQty brand category minOrderQty')
       .sort({ name: 1 }).skip((page - 1) * limit).limit(limit).lean(),
     Item.countDocuments(filter),
   ]);
@@ -83,6 +83,7 @@ router.get('/shop/:code/items', asyncHandler(async (req, res) => {
       _id: i._id,
       name: i.name,
       imageUrl: i.imageUrl || '',
+      images: [i.imageUrl, ...(i.images || []).map((x) => x.url)].filter(Boolean),
       unit: i.unit,
       rate: i.salePrice,
       mrp: i.mrp || 0,
