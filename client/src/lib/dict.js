@@ -4073,6 +4073,37 @@ const DICT = {
 
   /* ── Selection ── */
   '{a} chunein': { hi: '{a} चुनें', en: 'Select {a}' },
+
+  /* ── Landing page ── */
+  'Tax Invoice': { hi: 'टैक्स इनवॉइस', en: 'Tax Invoice' },
+  'Bikri': { hi: 'बिक्री', en: 'Sales' },
+  'Munafa': { hi: 'मुनाफ़ा', en: 'Profit' },
+  '15 din free aazmayein': { hi: '15 दिन फ्री आज़माएं', en: 'Try free for 15 days' },
+  'Poori dukaan ka hisaab,': { hi: 'पूरी दुकान का हिसाब,', en: 'Your whole shop,' },
+  'ek hi app me': { hi: 'एक ही ऐप में', en: 'in one app' },
+  'Har app doosre se juda hai — bill banate hi stock, khata aur report apne aap badal jate hain.': { hi: 'हर ऐप दूसरे से जुड़ा है — बिल बनाते ही स्टॉक, खाता और रिपोर्ट अपने आप बदल जाते हैं।', en: 'Every app is connected — make a bill and stock, ledger and reports update by themselves.' },
+  'GST bill ek minute me — aur seedha WhatsApp pe': { hi: 'GST बिल एक मिनट में — और सीधा WhatsApp पर', en: 'GST bills in a minute — sent straight to WhatsApp' },
+  'Tax Invoice aur Bill of Supply dono': { hi: 'टैक्स इनवॉइस और बिल ऑफ़ सप्लाई दोनों', en: 'Both Tax Invoice and Bill of Supply' },
+  'Har retailer ka apna rate apne aap': { hi: 'हर रिटेलर का अपना रेट अपने आप', en: 'Each retailer\'s own rate, filled in automatically' },
+  'Order se ek dabav me bill': { hi: 'ऑर्डर से एक टैप में बिल', en: 'Turn an order into a bill in one tap' },
+  'Kisse kitna lena hai — ek nazar me': { hi: 'किससे कितना लेना है — एक नज़र में', en: 'Who owes you what — at a glance' },
+  'Jama aur udhaar apne aap barabar': { hi: 'जमा और उधार अपने आप बराबर', en: 'Advances and dues settle automatically' },
+  'WhatsApp aur app se yaad dilayein': { hi: 'WhatsApp और ऐप से याद दिलाएं', en: 'Send reminders on WhatsApp and in the app' },
+  'Credit limit har party ki alag': { hi: 'हर पार्टी की अलग क्रेडिट लिमिट', en: 'A separate credit limit for every party' },
+  'Online order': { hi: 'ऑनलाइन ऑर्डर', en: 'Online orders' },
+  'Retailer apne phone se order karein': { hi: 'रिटेलर अपने फ़ोन से ऑर्डर करें', en: 'Retailers order from their phones' },
+  'Aapka catalog, photo aur rate ke saath': { hi: 'आपका कैटलॉग, फ़ोटो और रेट के साथ', en: 'Your catalogue, with photos and prices' },
+  'Wishlist se pata chalta hai kya maang hai': { hi: 'विशलिस्ट से पता चलता है क्या मांग है', en: 'Wishlists show you what\'s in demand' },
+  'Retailer ke liye bilkul free': { hi: 'रिटेलर के लिए बिल्कुल फ्री', en: 'Completely free for retailers' },
+  'Fayda, GST aur poore khaate — apne aap': { hi: 'फ़ायदा, GST और पूरे खाते — अपने आप', en: 'Profit, GST and full books — automatically' },
+  'Day book, ledger, trial balance, P&L': { hi: 'डे बुक, लेजर, ट्रायल बैलेंस, P&L', en: 'Day book, ledger, trial balance, P&L' },
+  'GSTR-1 aur GSTR-3B ki taiyari': { hi: 'GSTR-1 और GSTR-3B की तैयारी', en: 'GSTR-1 and GSTR-3B ready to file' },
+  'CA ke liye CSV ek click me': { hi: 'CA के लिए CSV एक क्लिक में', en: 'CSV for your CA in one click' },
+  'Aur bhi bahut kuch': { hi: 'और भी बहुत कुछ', en: 'And much more' },
+  'HR aur salary': { hi: 'HR और सैलरी', en: 'HR and payroll' },
+  'Attendance, chhutti, salary aur advance — sab ek jagah. Employee apne phone se check-in karte hain.': { hi: 'हाज़िरी, छुट्टी, सैलरी और एडवांस — सब एक जगह। कर्मचारी अपने फ़ोन से चेक-इन करते हैं।', en: 'Attendance, leave, salary and advances in one place. Employees check in from their phones.' },
+  'CRM aur follow-up': { hi: 'CRM और फॉलो-अप', en: 'CRM and follow-ups' },
+  'Naye lead, follow-up aur shikayat — kis graahak ko kab phone karna hai, app khud batata hai.': { hi: 'नए लीड, फॉलो-अप और शिकायत — किस ग्राहक को कब फ़ोन करना है, ऐप खुद बताता है।', en: 'Leads, follow-ups and complaints — the app tells you whom to call and when.' },
 };
 
 export default DICT;
