@@ -48,10 +48,10 @@ const BASE = `http://localhost:${PORT}/api`;
 const PH = { seller: '9300000001', salesman: '9300000002', retailer: '9300000003' };
 const otp = (phone) => jwt.sign({ phone, purpose: 'SIGNUP', otp: true }, env.jwtSecret, { expiresIn: '15m' });
 
-async function call(method, path, { body, token } = {}) {
+async function call(method, path, { body, token, headers } = {}) {
   const res = await fetch(BASE + path, {
     method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(headers || {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   let json = null;
@@ -254,6 +254,22 @@ async function run() {
       && r.data?.staffCount >= 1 && r.data?.usage?.invoices >= 1, JSON.stringify({ s: r.data?.subscription?.planCode, p: r.data?.payments?.length, st: r.data?.staffCount, u: r.data?.usage }));
     r = await call('GET', '/partner/admin/platform/users?type=buyer&q=E2E', { token: aTok });
     check('users me retailer', (r.data?.rows || []).some((u) => u.phone === PH.retailer), `${(r.data?.rows || []).length}`);
+
+    step('11. Offline sync: the same entry sent twice is saved once');
+    r = await call('POST', '/auth/login', { body: { phone: PH.seller, password: 'e2e12345' } });
+    const oTok = r.data?.token || sTok;
+    const before = (await call('GET', '/expenses?limit=1', { token: oTok })).meta?.total ?? 0;
+    const key = { 'Idempotency-Key': `e2e-${Date.now()}` };
+    const exp = { category: 'tea', amount: 40, mode: 'CASH' };
+    const r1 = await call('POST', '/expenses', { token: oTok, body: exp, headers: key });
+    const r2 = await call('POST', '/expenses', { token: oTok, body: exp, headers: key });
+    const after = (await call('GET', '/expenses?limit=1', { token: oTok })).meta?.total ?? 0;
+    check('repeat with same key returns the first answer', r1.status === 201 && r2.status === 201 && String(r1.data?._id) === String(r2.data?._id), `${r1.status}/${r2.status} ${r1.message} ${r2.message}`);
+    check('only one expense was created', after === before + 1, `${before} -> ${after}`);
+    r = await call('POST', '/payments', { token: oTok, body: exp, headers: key });
+    check('same key on a different action is refused', r.status === 422, `${r.status}`);
+    const r3 = await call('POST', '/expenses', { token: oTok, body: exp });
+    check('without a key every send still creates an entry', r3.status === 201 && String(r3.data?._id) !== String(r1.data?._id), `${r3.status}`);
   } finally {
     await cleanup().catch(() => {});
     server.close();

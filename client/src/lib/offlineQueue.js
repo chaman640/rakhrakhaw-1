@@ -63,16 +63,22 @@ async function withStore(storeName, mode, fn) {
  * baaki hain" jaisa dikhane ke liye) — bhejne ka asli kaam `OfflineSync.jsx`
  * ke RUNNERS me `kind` ke hisaab se hota hai.
  */
-export async function enqueue(kind, payload) {
-  const item = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    kind,
-    payload,
-    createdAt: Date.now(),
-  };
+export const newKey = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+// Entries belong to the login that made them; another person logging in on this phone must not send them
+const owner = () => { try { return JSON.parse(localStorage.getItem('rr_session') || 'null')?.data?.user?._id || ''; } catch { return ''; } };
+
+export async function enqueue(kind, payload, id = newKey()) {
+  const item = { id, kind, payload, owner: owner(), createdAt: Date.now() };
   await withStore(PENDING_STORE, 'readwrite', (store) => store.put(item));
+  notify();
   return item;
 }
+
+/* Anyone showing "N entries waiting" listens here */
+const listeners = new Set();
+export function onQueueChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+function notify() { listeners.forEach((fn) => { try { fn(); } catch { /* ignore */ } }); }
 
 async function getAll(storeName) {
   return withStore(storeName, 'readonly', (store) => new Promise((resolve, reject) => {
@@ -82,14 +88,16 @@ async function getAll(storeName) {
   }));
 }
 
+const mine = (i) => !i.owner || i.owner === owner();
 export const listQueue = (kind = null) =>
-  getAll(PENDING_STORE).then((all) => (kind ? all.filter((i) => i.kind === kind) : all));
+  getAll(PENDING_STORE).then((all) => all.filter((i) => mine(i) && (!kind || i.kind === kind)));
 
 export const listFailed = (kind = null) =>
-  getAll(FAILED_STORE).then((all) => (kind ? all.filter((i) => i.kind === kind) : all));
+  getAll(FAILED_STORE).then((all) => all.filter((i) => mine(i) && (!kind || i.kind === kind)));
 
 async function removePending(id) {
   await withStore(PENDING_STORE, 'readwrite', (store) => store.delete(id));
+  notify();
 }
 
 async function moveToFailed(item, reason) {
@@ -100,6 +108,7 @@ async function moveToFailed(item, reason) {
 /** Dukaandaar ne dekh liya, samjhaya, ab hata do */
 export async function dismissFailed(id) {
   await withStore(FAILED_STORE, 'readwrite', (store) => store.delete(id));
+  notify();
 }
 
 /** Failed wapas pending me — dukaandaar ne kuch theek karke phir se bhejne ko bola */
@@ -107,8 +116,10 @@ export async function retryFailed(id) {
   const items = await listFailed();
   const item = items.find((i) => i.id === id);
   if (!item) return;
-  await withStore(PENDING_STORE, 'readwrite', (store) => store.put({ id: item.id, kind: item.kind, payload: item.payload, createdAt: item.createdAt }));
+  // New key: the server remembers the old key's rejection and would only replay it
+  await withStore(PENDING_STORE, 'readwrite', (store) => store.put({ id: newKey(), kind: item.kind, payload: item.payload, owner: item.owner, createdAt: item.createdAt }));
   await withStore(FAILED_STORE, 'readwrite', (store) => store.delete(id));
+  notify();
 }
 
 /**
@@ -127,25 +138,57 @@ export async function retryFailed(id) {
  *   nahi hoga — isliye FAILED me daal do aur AAGE BADH JAO, baaki
  *   pending cheezein isse rukni nahi chahiye.
  */
-export async function flush(runners, onEvent) {
+// Login expired, server busy or restarting, or the same entry still being saved: try again later
+const RETRY_LATER = (status) => !status || status === 401 || status === 408 || status === 409 || status === 429 || status >= 500;
+
+let flushing = null;
+export function flush(runners, onEvent) {
+  // One sync at a time — app start and the "online" event can fire together
+  if (!flushing) flushing = doFlush(runners, onEvent).finally(() => { flushing = null; });
+  return flushing;
+}
+
+async function doFlush(runners, onEvent) {
   const items = (await listQueue()).sort((a, b) => a.createdAt - b.createdAt);
   for (const item of items) {
     const run = runners[item.kind];
     if (!run) { await removePending(item.id); continue; } // pehchana nahi gaya kaam — phasa hua na rahe
     try {
-      await run(item.payload);
+      const res = await run(item.payload, item.id);
       await removePending(item.id);
-      onEvent?.({ type: 'done', item });
+      onEvent?.({ type: 'done', item, res });
     } catch (err) {
-      if (typeof err?.status === 'number') {
+      if (!RETRY_LATER(err?.status)) {
         // Server ne dekh kar mana kiya — dobara try karne se badalne wala nahi
         await moveToFailed(item, err.message || 'Server ne mana kiya');
         onEvent?.({ type: 'failed', item, message: err.message });
         continue; // yahi ek atka, baaki chalte rahenge
       }
-      onEvent?.({ type: 'offline' });
-      return; // network hi nahi pahuncha — yahin ruk jao, baaki agli baar
+      onEvent?.({ type: 'offline', status: err?.status });
+      return; // network ya server abhi taiyar nahi — baaki agli baar
     }
+  }
+}
+
+/**
+ * Send now if possible; if there is no network (or it drops mid-way), keep it in the queue
+ * under the same key so a request that did reach the server is never saved twice.
+ * Returns `{ queued: true }` or `{ queued: false, res }`. Real rejections are thrown.
+ */
+export async function sendOrQueue(kind, payload, send) {
+  const key = newKey();
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    await enqueue(kind, payload, key);
+    return { queued: true };
+  }
+  try {
+    return { queued: false, res: await send(payload, key) };
+  } catch (err) {
+    if (typeof err?.status !== 'number') {
+      await enqueue(kind, payload, key);
+      return { queued: true };
+    }
+    throw err;
   }
 }
 
@@ -158,5 +201,7 @@ export function watchAndFlush(runners, onEvent) {
   const tryFlush = () => { flush(runners, onEvent).catch(() => {}); };
   window.addEventListener('online', tryFlush);
   if (navigator.onLine) tryFlush();
-  return () => window.removeEventListener('online', tryFlush);
+  // "online" isn't fired when the Wi-Fi stays up but the internet behind it comes back
+  const id = setInterval(() => { if (navigator.onLine) tryFlush(); }, 60000);
+  return () => { window.removeEventListener('online', tryFlush); clearInterval(id); };
 }

@@ -6,6 +6,7 @@ import { Modal, Button, Input, Combobox, Textarea, useToast } from '@/components
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 import BankSelect from '@/components/BankSelect';
+import { sendOrQueue } from '@/lib/offlineQueue';
 
 const MODES = [
 { value: 'CASH', label: 'Cash', icon: Banknote },
@@ -95,11 +96,20 @@ export default function PaymentFormModal({
     setSaving(true);
     setError('');
     try {
-      const res = await api.post('/payments', {
+      const payload = {
         partyId: party.value, direction, amount: Number(amount), mode, date, bankAccountId: mode === 'CASH' ? null : bankAccountId,
         reference: reference.trim(), note: note.trim(),
         ...(allowAdvance ? { allowAdvance: true } : {})
-      });
+      };
+      const out = await sendOrQueue('payment', payload, (b, k) => api.post('/payments', b, { headers: { 'Idempotency-Key': k } }));
+      if (out.queued) {
+        toast.success(t('Internet nahi hai — abhi ke liye save kar liya, net aate hi bhej denge'));
+        onSaved?.(null);
+        setAsk(null);
+        onClose();
+        return;
+      }
+      const res = out.res;
       toast.success(res.message);
       onSaved?.(res.data);
       setAsk(null);

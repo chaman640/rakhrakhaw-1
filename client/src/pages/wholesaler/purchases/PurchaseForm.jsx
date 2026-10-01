@@ -10,6 +10,7 @@ import {
 '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
+import { sendOrQueue } from '@/lib/offlineQueue';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const UNITS = ['PCS', 'BOX', 'PKT', 'SET', 'PAIR', 'DOZ', 'KG', 'GM', 'LTR', 'ML', 'MTR', 'FT', 'BAG', 'BUNDLE'];
@@ -130,7 +131,7 @@ export default function PurchaseForm() {
 
     setSaving(true);
     try {
-      const res = await api.post('/purchases', {
+      const payload = {
         supplierId: supplier?.value || '',
         supplierBillNo: billNo,
         purchaseDate: date,
@@ -161,9 +162,15 @@ export default function PurchaseForm() {
         paidAmount: Number(paidAmount || 0),
         notes,
         updatePurchasePrice: updatePrice
-      });
-      toast.success(res.message);
-      navigate(`/purchases/${res.data._id}`, { replace: true });
+      };
+      const out = await sendOrQueue('purchase', payload, (b, k) => api.post('/purchases', b, { headers: { 'Idempotency-Key': k } }));
+      if (out.queued) {
+        toast.success(t('Internet nahi hai — abhi ke liye save kar liya, net aate hi bhej denge'));
+        navigate('/purchases', { replace: true });
+        return;
+      }
+      toast.success(out.res.message);
+      navigate(`/purchases/${out.res.data._id}`, { replace: true });
     } catch (err) {
       toast.error(err.message);
     } finally {

@@ -4104,6 +4104,16 @@ const DICT = {
   'Attendance, chhutti, salary aur advance — sab ek jagah. Employee apne phone se check-in karte hain.': { hi: 'हाज़िरी, छुट्टी, सैलरी और एडवांस — सब एक जगह। कर्मचारी अपने फ़ोन से चेक-इन करते हैं।', en: 'Attendance, leave, salary and advances in one place. Employees check in from their phones.' },
   'CRM aur follow-up': { hi: 'CRM और फॉलो-अप', en: 'CRM and follow-ups' },
   'Naye lead, follow-up aur shikayat — kis graahak ko kab phone karna hai, app khud batata hai.': { hi: 'नए लीड, फॉलो-अप और शिकायत — किस ग्राहक को कब फ़ोन करना है, ऐप खुद बताता है।', en: 'Leads, follow-ups and complaints — the app tells you whom to call and when.' },
+
+  /* ── Offline sync ── */
+  'Internet nahi hai — net aate hi apne aap bhej denge': { hi: 'इंटरनेट नहीं है — नेट आते ही अपने आप भेज देंगे', en: 'No internet — they will be sent automatically when you\'re back online' },
+  '{n} entry bhej nahi paye — dekhein': { hi: '{n} एंट्री नहीं भेज पाए — देखें', en: 'Not sent: {n} — tap to review' },
+  '{n} entry bhejni baaki — net aate hi chali jayengi': { hi: '{n} एंट्री भेजनी बाकी — नेट आते ही चली जाएंगी', en: 'Waiting to sync: {n} — will send when you\'re online' },
+  'Bina internet ki entries': { hi: 'बिना इंटरनेट की एंट्री', en: 'Offline entries' },
+  'Abhi bhejein': { hi: 'अभी भेजें', en: 'Sync now' },
+  'Server ne mana kiya — dekh kar theek karein': { hi: 'सर्वर ने मना किया — देखकर ठीक करें', en: 'Refused by the server — please review' },
+  'Bhejni baaki': { hi: 'भेजनी बाकी', en: 'Waiting to sync' },
+  'Ye phone me surakshit hain. Bill ka number aur stock ki jaanch bhejte waqt hoti hai.': { hi: 'ये फ़ोन में सुरक्षित हैं। बिल का नंबर और स्टॉक की जांच भेजते वक्त होती है।', en: 'These are saved safely on this phone. Bill numbers and stock checks are done when they are sent.' },
 };
 
 export default DICT;

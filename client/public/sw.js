@@ -23,10 +23,23 @@
        (`offlineQueue.js`) — service worker inhe chhuta tak nahi.
 */
 
-const SHELL_CACHE = 'rr-shell-v2'; // v2 drops /api/auth responses the old version cached by mistake
+const SHELL_CACHE = 'rr-shell-v3'; // v2 dropped wrongly cached /api/auth responses; v3 precaches the whole app
 const API_CACHE = 'rr-api-v1';
 
-self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
+// Keep every app file on the phone, so pages never opened before still work without internet
+async function precache() {
+  try {
+    const res = await fetch('/precache.json', { cache: 'no-store' });
+    if (!res.ok) return [];
+    const { files = [] } = await res.json();
+    const cache = await caches.open(SHELL_CACHE);
+    // Hashed files never change, so fetch only the missing ones; index.html etc. are always refreshed
+    await Promise.allSettled(files.map((f) => (f.startsWith('/assets/') ? cache.match(f).then((hit) => hit || cache.add(f)) : cache.add(f))));
+    return files;
+  } catch { return []; }
+}
+
+self.addEventListener('install', (e) => e.waitUntil(precache().then(() => self.skipWaiting())));
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
@@ -37,6 +50,15 @@ self.addEventListener('activate', (e) => {
         .filter((k) => k !== SHELL_CACHE && k !== API_CACHE)
         .map((k) => caches.delete(k)),
     );
+    // Drop page files from older deploys so the cache doesn't keep growing
+    const files = await precache();
+    if (files.length) {
+      const keep = new Set(files.map((f) => new URL(f, self.location.origin).href));
+      const cache = await caches.open(SHELL_CACHE);
+      for (const req of await cache.keys()) {
+        if (new URL(req.url).pathname.startsWith('/assets/') && !keep.has(req.url)) await cache.delete(req);
+      }
+    }
     await self.clients.claim();
   })());
 });
@@ -58,7 +80,7 @@ self.addEventListener('fetch', (event) => {
         return fresh;
       } catch {
         const cache = await caches.open(SHELL_CACHE);
-        return (await cache.match('/')) || Response.error();
+        return (await cache.match('/index.html')) || (await cache.match('/')) || Response.error();
       }
     })());
     return;

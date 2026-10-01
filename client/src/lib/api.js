@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { t } from './i18n';
+import { offlineAnswer } from './offlineData';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -91,7 +92,12 @@ api.interceptors.response.use(
     if (typeof res.data?.message === 'string') res.data.message = t(res.data.message);
     return res.data;
   },
-  (error) => {
+  async (error) => {
+    // No answer at all: item/party lists can still be served from the copy kept on the phone
+    if (!error.response && error.config?.method === 'get') {
+      const offline = await offlineAnswer(error.config.url, error.config.params).catch(() => null);
+      if (offline) return offline;
+    }
     const status = error.response?.status;
     let message =
       error.response?.data?.message ||

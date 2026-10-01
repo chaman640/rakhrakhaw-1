@@ -6,6 +6,7 @@ import { clearCache } from '@/lib/queryCache';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'rr_token';
+const SESSION_KEY = 'rr_session';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -17,6 +18,12 @@ export function AuthProvider({ children }) {
     setUser(data?.user || null);
     setBusiness(data?.business || null);
     setParty(data?.party || null);
+    // Last good session, tied to this exact login, so the app still opens without internet
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (data?.user && token) localStorage.setItem(SESSION_KEY, JSON.stringify({ t: token.slice(-32), data: { user: data.user, business: data.business, party: data.party } }));
+      else if (!data) localStorage.removeItem(SESSION_KEY);
+    } catch { /* storage full or blocked */ }
   }, []);
 
   const loadSession = useCallback(async () => {
@@ -25,9 +32,16 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.get('/auth/me');
       applySession(res.data);
-    } catch {
-      localStorage.removeItem(TOKEN_KEY);
-      applySession(null);
+    } catch (err) {
+      // No answer at all (offline) — keep the login and use the saved session for this token
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { /* broken */ }
+      if (typeof err?.status !== 'number' && saved?.t === token.slice(-32) && saved.data?.user) {
+        applySession(saved.data);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+        applySession(null);
+      }
     } finally {
       setLoading(false);
     }

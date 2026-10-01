@@ -12,6 +12,7 @@ import { env, assertBillingReady, warnOtpMode } from './config/env.js';
 import { rememberOrigin, detectedOrigin } from './config/origin.js';
 import { CLIENT_DIST, UPLOAD_DIR } from './config/paths.js';
 import apiRoutes from './routes/index.js';
+import { idempotency } from './middleware/idempotency.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const hasClientBuild = fs.existsSync(path.join(CLIENT_DIST, 'index.html'));
@@ -138,6 +139,7 @@ app.use('/api', (req, res, next) => {
   if (!m?.enabled || /^\/(partner|public\/platform|health|billing\/webhook)/.test(req.path)) return next();
   return res.status(503).json({ success: false, message: m.message || 'We are upgrading the app. Please try again shortly.', details: { reason: 'maintenance', until: m.until || null } });
 });
+app.use('/api', idempotency);
 app.use('/api', apiRoutes);
 
 /* ─────────────────────────────────────────────────────────────────────────

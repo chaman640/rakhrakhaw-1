@@ -10,7 +10,7 @@ import {
 '@/components/ui';
 import PartyPicker from './PartyPicker';
 import { bust } from '@/hooks/useQuery';
-import { enqueue } from '@/lib/offlineQueue';
+import { sendOrQueue } from '@/lib/offlineQueue';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
 
@@ -305,16 +305,14 @@ export default function InvoiceForm() {
       wahi bill "bhej nahi paya" wale message me dikhega — chup-chaap
       galat nahi banega (`offlineQueue.js` me poori wajah).
     */
-    if (!navigator.onLine) {
-      await enqueue('invoice', payload);
-      toast.success(t('Internet nahi hai — bill save kar liya, net aate hi bhej denge'));
-      setSaving(false);
-      navigate('/invoices', { replace: true });
-      return;
-    }
-
     try {
-      const res = await api.post('/invoices', payload);
+      const out = await sendOrQueue('invoice', payload, (b, k) => api.post('/invoices', b, { headers: { 'Idempotency-Key': k } }));
+      if (out.queued) {
+        toast.success(t('Internet nahi hai — bill save kar liya, net aate hi bhej denge'));
+        navigate('/invoices', { replace: true });
+        return;
+      }
+      const res = out.res;
       toast.success(res.message);
       if (res.data?.usedAdvance > 0) {
         toast.success(t('Jama me se {a0} kat gaya', { a0: formatMoney(res.data.usedAdvance) }));

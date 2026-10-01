@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Wallet, Check, Package } from 'lucide-react';
 import api from '@/lib/api';
 import { bust } from '@/hooks/useQuery';
-import { enqueue } from '@/lib/offlineQueue';
+import { sendOrQueue } from '@/lib/offlineQueue';
 import { formatMoney, formatQty } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Combobox, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -165,17 +165,19 @@ export default function ExpenseFormModal({ open, onClose, expense, categories, o
         rakha hai. Edit karna bhi door rakha hai — jo already save hai
         usme badlaav ka bhi apna hisaab hai.
       */
-      if (!navigator.onLine && !editing && !isWaste) {
-        await enqueue('expense', payload);
-        toast.success(t('Internet nahi hai — abhi ke liye save kar liya, net aate hi bhej denge'));
-        onSaved?.(null);
-        onClose();
-        return;
+      let res;
+      if (!editing && !isWaste) {
+        const out = await sendOrQueue('expense', payload, (b, k) => api.post('/expenses', b, { headers: { 'Idempotency-Key': k } }));
+        if (out.queued) {
+          toast.success(t('Internet nahi hai — abhi ke liye save kar liya, net aate hi bhej denge'));
+          onSaved?.(null);
+          onClose();
+          return;
+        }
+        res = out.res;
+      } else {
+        res = editing ? await api.put(`/expenses/${expense._id}`, payload) : await api.post('/expenses', payload);
       }
-
-      const res = editing
-        ? await api.put(`/expenses/${expense._id}`, payload)
-        : await api.post('/expenses', payload);
       toast.success(res.message);
       // Kharch badla to fayda-nuksan bhi badla
       bust('expenses', 'reports', 'dashboard', 'items');

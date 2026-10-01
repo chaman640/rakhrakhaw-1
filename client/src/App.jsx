@@ -5,7 +5,7 @@ import { ShopProvider } from '@/context/ShopContext';
 import { CartProvider } from '@/context/CartContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { ToastProvider } from '@/components/ui/Toast';
-import { OfflineSync, OfflineBanner } from '@/components/OfflineSync';
+import { OfflineSync, OfflineBanner, SyncBar } from '@/components/OfflineSync';
 import AppRoutes from '@/routes/AppRoutes';
 import MaintenanceGate from '@/components/MaintenanceGate';
 
@@ -31,6 +31,7 @@ export default function App() {
               <CartProvider>
                 <NotificationProvider>
                   <OfflineBanner />
+                  <SyncBar />
                   <OfflineSync />
                   <MaintenanceGate><AppRoutes /></MaintenanceGate>
                 </NotificationProvider>
