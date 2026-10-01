@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Search, X, Pencil, Check, LogOut, Video, ChevronRight, Factory, Bell,
+  Search, X, Pencil, Check, LogOut, Video, ChevronRight,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -16,20 +16,6 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
-
-// Seedhe link jo side-menu me nahi hain par apna page rakhte hain
-const EXTRA_PAGES = [
-  { to: '/suppliers', label: 'Suppliers', icon: Factory, perm: 'parties', desc: 'Jinse aap maal kharidte hain' },
-  { to: '/notifications', label: 'Notifications', icon: Bell, desc: 'Naye alert' },
-];
-
-// Har feature tile ka apna rang — index se, taaki rang kabhi na badle
-const TILE_COLORS = [
-  'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700',
-  'bg-violet-100 text-violet-700', 'bg-rose-100 text-rose-700', 'bg-cyan-100 text-cyan-700',
-  'bg-orange-100 text-orange-700', 'bg-indigo-100 text-indigo-700', 'bg-teal-100 text-teal-700',
-  'bg-pink-100 text-pink-700', 'bg-lime-100 text-lime-700', 'bg-fuchsia-100 text-fuchsia-700',
-];
 
 const Badge = ({ n }) => (n > 0 ? (
   <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">{n > 99 ? '99+' : n}</span>
@@ -80,12 +66,7 @@ export default function Launcher() {
   const chosen = (user?.shortcuts || DEFAULT_SHORTCUTS).filter((k) => actions.some((a) => a.key === k));
   const shortcuts = chosen.map((k) => actions.find((a) => a.key === k));
 
-  const pages = useMemo(() => [...wholesalerNav, ...EXTRA_PAGES].filter((n) => !n.perm || can(n.perm)), [can]);
-  // Saare features ek jagah — jo app tile pehle se wahi page kholta hai (Dashboard, CRM...) use dobara nahi
-  const features = useMemo(() => {
-    const appHome = new Map(apps.map((a) => [a.menu[0].to, a.label]));
-    return pages.filter((n) => appHome.get(n.to) !== n.label);
-  }, [apps, pages]);
+  const pages = useMemo(() => wholesalerNav.filter((n) => !n.perm || can(n.perm)), [can]);
   const needle = q.trim().toLowerCase();
   const found = needle ? pages.filter((n) => `${t(n.label)} ${n.label} ${n.desc ? t(n.desc) : ''} ${n.alt || ''}`.toLowerCase().includes(needle)) : [];
   const appBadge = (a) => a.menu.reduce((s, m) => s + (m.badgeKey ? badges[m.badgeKey] || 0 : 0), 0);
@@ -166,23 +147,6 @@ export default function Launcher() {
                     <Badge n={appBadge(a)} />
                   </span>
                   <span className="text-sm font-medium text-slate-800">{t(a.label)}</span>
-                </Link>
-              );
-            })}
-          </div>
-
-          <p className="mb-3 mt-8 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('All features')}</p>
-          <div className="grid grid-cols-3 gap-x-2 gap-y-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-            {features.map((n, i) => {
-              const Icon = n.icon;
-              return (
-                <Link key={n.to} to={n.to} aria-label={n.desc ? `${t(n.label)} — ${t(n.desc)}` : t(n.label)}
-                  className="group flex flex-col items-center gap-1.5 rounded-2xl p-1.5 text-center hover:bg-white focus-ring">
-                  <span className={cn('relative flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-transform group-hover:-translate-y-0.5', TILE_COLORS[i % TILE_COLORS.length])}>
-                    <Icon size={22} />
-                    {n.badgeKey && <Badge n={badges[n.badgeKey]} />}
-                  </span>
-                  <span className="line-clamp-2 text-xs font-medium leading-tight text-slate-700">{t(n.label)}</span>
                 </Link>
               );
             })}

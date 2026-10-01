@@ -1,6 +1,7 @@
 import {
   FileText, Truck, Package, Landmark, Target, Briefcase, LayoutDashboard, UsersRound, Settings, MessageCircle,
   PlusCircle, IndianRupee, ShoppingBag, PackagePlus, Receipt, Undo2, UserPlus, Sparkles, BookOpen, Fingerprint, ClipboardList, FileSignature,
+  Users, BarChart3, CalendarCheck, Heart, Bell, LifeBuoy,
 } from 'lucide-react';
 import { wholesalerNav } from './navConfig';
 
@@ -12,8 +13,12 @@ import { wholesalerNav } from './navConfig';
 export const APPS = [
   {
     key: 'sales', label: 'Sales', icon: FileText, tone: 'from-sky-500 to-blue-600',
-    menu: [['/home', 'Counter'], ['/sales', 'Bills'], ['/quotations', 'Quotations'], ['/orders', 'Orders'], ['/returns', 'Returns'], ['/retailers', 'Customers'], ['/demand', 'Demand']],
+    menu: [['/home', 'Counter'], ['/sales', 'Bills'], ['/quotations', 'Quotations'], ['/orders', 'Orders'], ['/returns', 'Returns']],
     also: ['/invoices', '/sale/new'],
+  },
+  {
+    key: 'customers', label: 'Customers', icon: Users, tone: 'from-pink-500 to-rose-600',
+    menu: [['/retailers', 'Customers'], ['/demand', 'Demand']],
   },
   {
     key: 'purchase', label: 'Purchase', icon: Truck, tone: 'from-amber-500 to-orange-600',
@@ -25,7 +30,15 @@ export const APPS = [
   },
   {
     key: 'accounting', label: 'Accounting', icon: Landmark, tone: 'from-violet-500 to-purple-600',
-    menu: [['/accounts', 'Accounts & GST'], ['/khata', 'Khata'], ['/payments', 'Payments'], ['/reports', 'Reports']],
+    menu: [['/accounts', 'Accounts & GST']],
+  },
+  {
+    key: 'khata', label: 'Khata', icon: BookOpen, tone: 'from-yellow-500 to-amber-600',
+    menu: [['/khata', 'Khata'], ['/payments', 'Payments']],
+  },
+  {
+    key: 'reports', label: 'Reports', icon: BarChart3, tone: 'from-teal-500 to-cyan-700',
+    menu: [['/reports', 'Reports']],
   },
   {
     key: 'crm', label: 'CRM', icon: Target, tone: 'from-rose-500 to-pink-600',
@@ -86,5 +99,11 @@ export const QUICK_ACTIONS = [
   { key: 'orders', label: 'New orders', icon: ClipboardList, to: '/orders', perm: 'orders', badgeKey: 'newOrders' },
   { key: 'khata', label: 'Khata', icon: BookOpen, to: '/khata', perm: 'khata:view' },
   { key: 'check_in', label: 'Check in', icon: Fingerprint, to: '/emp' },
+  { key: 'todays_work', label: "Today's work", icon: CalendarCheck, to: '/today' },
+  { key: 'stock_intake', label: 'Stock intake', icon: PackagePlus, to: '/stock-intake', perm: 'purchases', badgeKey: 'intakeCount' },
+  { key: 'demand', label: 'Demand', icon: Heart, to: '/demand', perm: 'items' },
+  { key: 'suppliers', label: 'Suppliers', icon: Truck, to: '/suppliers', perm: 'parties' },
+  { key: 'notifications', label: 'Notifications', icon: Bell, to: '/notifications' },
+  { key: 'help', label: 'Help & support', icon: LifeBuoy, to: '/help' },
 ];
 export const DEFAULT_SHORTCUTS = ['new_sale', 'receive_payment', 'new_purchase', 'add_item', 'add_expense', 'orders'];
