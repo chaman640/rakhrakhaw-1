@@ -40,7 +40,6 @@ const DICT = {
   'Payment ka page khul nahi paya — internet check karke dobara koshish karein': { hi: 'पेमेंट का पेज खुल नहीं पाया — इंटरनेट चेक करके दोबारा कोशिश करें', en: 'The payment page didn\'t open — check your internet and try again' },
   'Payment poora nahi hua': { hi: 'पेमेंट पूरा नहीं हुआ', en: 'Payment did not go through' },
   'Paisa mil gaya hai. Plan chalu hone me thoda waqt lag raha hai — ek minute me page dobara kholein.': { hi: 'पैसा मिल गया है। प्लान चालू होने में थोड़ा वक़्त लग रहा है — एक मिनट में पेज दोबारा खोलें।', en: 'We\'ve received your payment. The plan is taking a moment to activate — please reopen this page in a minute.' },
-  'Abhi poori app free chal rahi hai — plan lene ki zarurat nahi.': { hi: 'अभी पूरी ऐप फ्री चल रही है — प्लान लेने की ज़रूरत नहीं।', en: 'The whole app is free right now — no plan needed.' },
   'Kitne mahine ka': { hi: 'कितने महीने का', en: 'For how many months' },
   'mahine': { hi: 'महीने', en: 'months' },
   'Ye plan lein': { hi: 'यह प्लान लें', en: 'Choose this plan' },
@@ -2115,7 +2114,6 @@ const DICT = {
   'Abhi tak koi mahina record nahi hua.': { hi: 'अभी तक कोई महीना रिकॉर्ड नहीं हुआ।', en: 'No months recorded yet.' },
   'Aaya': { hi: 'आया', en: 'Received' },
   'Nahi aaya': { hi: 'नहीं आया', en: 'Missed' },
-  'Abhi ye dukaan free mode me hai — koi payment nahi lagta.': { hi: 'अभी यह दुकान फ्री मोड में है — कोई पेमेंट नहीं लगता।', en: 'This shop is in free mode right now — no payment needed.' },
 
   /* ── PlanNeeded staff messaging (Part 28) ── */
   'Dukaan ka payment ruka hua hai': { hi: 'दुकान का पेमेंट रुका हुआ है', en: 'Shop payment is overdue' },
@@ -3006,7 +3004,7 @@ const DICT = {
   'All apps': { hi: 'सभी ऐप', en: 'All apps' },
   'Shortcuts saved': { hi: 'शॉर्टकट सेव हो गए', en: 'Shortcuts saved' },
   'Choose your shortcuts': { hi: 'अपने शॉर्टकट चुनें', en: 'Choose your shortcuts' },
-  'Pick up to 8. They appear at the top of Home on all your devices.': { hi: '8 तक चुनें। ये आपके हर डिवाइस पर होम में सबसे ऊपर दिखेंगे।', en: 'Pick up to 8. They appear at the top of Home on all your devices.' },
+  'Pick as many as you like. They appear at the top of Home on all your devices.': { hi: 'जितने चाहें चुनें। ये आपके हर डिवाइस पर होम में सबसे ऊपर दिखेंगे।', en: 'Pick as many as you like. They appear at the top of Home on all your devices.' },
   'Welcome, {n}': { hi: 'नमस्ते, {n}', en: 'Welcome, {n}' },
   'Shortcuts': { hi: 'शॉर्टकट', en: 'Shortcuts' },
   'Customise': { hi: 'बदलें', en: 'Customise' },
@@ -3682,7 +3680,6 @@ const DICT = {
   'Aapka account band kar diya gaya hai': { hi: 'आपका अकाउंट बंद कर दिया गया है', en: 'Your account has been disabled' },
   'Aapka maal tayyar kiya ja raha hai': { hi: 'आपका माल तैयार किया जा रहा है', en: 'Your goods are being prepared' },
   'Aapki dukaan ki entry nahi mili': { hi: 'आपकी दुकान की एंट्री नहीं मिली', en: 'Your shop record was not found' },
-  'Abhi paisa liya hi nahi ja raha — poori app free hai': { hi: 'अभी पैसा लिया ही नहीं जा रहा — पूरी ऐप फ्री है', en: 'No payment is being taken right now — the whole app is free' },
   'Account ban gaya': { hi: 'अकाउंट बन गया', en: 'Account created' },
   'Account nahi mila': { hi: 'अकाउंट नहीं मिला', en: 'Account not found' },
   'Account number theek nahi hai': { hi: 'अकाउंट नंबर ठीक नहीं है', en: 'Account number is not valid' },
@@ -3940,7 +3937,6 @@ const DICT = {
   'Dukaan dhundhna, maal dekhna, order bhejna, apna khata aur bill dekhna — ye sab hamesha free hai. Iske liye kabhi paisa nahi lagega.': { hi: 'दुकान ढूंढना, माल देखना, ऑर्डर भेजना, अपना खाता और बिल देखना — ये सब हमेशा फ्री है। इसके लिए कभी पैसा नहीं लगेगा।', en: 'Finding shops, browsing products, placing orders, and viewing your ledger and bills are always free. You\'ll never pay for these.' },
   'Neeche wale plan sirf tab lagte hain jab aap KHUD bechna chahte hain — apna stock, apna bill, apne graahak. Ginti LOGIN karne wale logon ki hai (aap khud bhi usme gine jate hain). Aapke retailer kitne bhi hon, wo is ginti me nahi aate.': { hi: 'नीचे वाले प्लान सिर्फ तब लगते हैं जब आप खुद बेचना चाहते हैं — अपना स्टॉक, अपना बिल, अपने ग्राहक। गिनती लॉगिन करने वाले लोगों की है (आप खुद भी उसमें गिने जाते हैं)। आपके रिटेलर कितने भी हों, वो इस गिनती में नहीं आते।', en: 'The plans below apply only when you sell yourself — your own stock, bills and customers. The count is of people who log in (including you). Your retailers never count, however many you have.' },
   'Daam me GST alag se lag sakta hai. Paisa mahine ka hai aur kabhi bhi band kiya ja sakta hai — band karne par jitni mohlat baaki hai utne din sab chalta rahega.': { hi: 'दाम में GST अलग से लग सकता है। पैसा महीने का है और कभी भी बंद किया जा सकता है — बंद करने पर जितने दिन बाकी हैं उतने दिन सब चलता रहेगा।', en: 'GST may apply on top of the price. Billing is monthly and can be cancelled any time — everything keeps working for the days already paid.' },
-  'Abhi ye plan chalu nahi kiye gaye hain — filhaal poori app free chal rahi hai.': { hi: 'अभी ये प्लान चालू नहीं किए गए हैं — फिलहाल पूरी ऐप फ्री चल रही है।', en: 'These plans aren\'t active yet — the whole app is free for now.' },
   '{a0} ka poora maal aur daam dekhein.': { hi: '{a0} का पूरा माल और दाम देखें।', en: 'See all of {a0}\'s products and prices.' },
   '{a0} ka poora maal aur daam dekhein. Order karne ke liye free account banayein.': { hi: '{a0} का पूरा माल और दाम देखें। ऑर्डर करने के लिए फ्री अकाउंट बनाएं।', en: 'See all of {a0}\'s products and prices. Create a free account to order.' },
   'Maal dhundhein': { hi: 'माल ढूंढें', en: 'Search products' },
@@ -4114,6 +4110,13 @@ const DICT = {
   'Server ne mana kiya — dekh kar theek karein': { hi: 'सर्वर ने मना किया — देखकर ठीक करें', en: 'Refused by the server — please review' },
   'Bhejni baaki': { hi: 'भेजनी बाकी', en: 'Waiting to sync' },
   'Ye phone me surakshit hain. Bill ka number aur stock ki jaanch bhejte waqt hoti hai.': { hi: 'ये फ़ोन में सुरक्षित हैं। बिल का नंबर और स्टॉक की जांच भेजते वक्त होती है।', en: 'These are saved safely on this phone. Bill numbers and stock checks are done when they are sent.' },
+
+  /* ── Free version ── */
+  'Abhi app free chal rahi hai — free me {plan} (₹{amt}) wale plan ke saare feature milte hain. Bade plan jald shuru honge.': { hi: 'अभी ऐप फ्री चल रही है — फ्री में {plan} (₹{amt}) वाले प्लान के सारे फीचर मिलते हैं। बड़े प्लान जल्द शुरू होंगे।', en: 'The app is free right now — you get every feature of the {plan} (₹{amt}) plan. Bigger plans are coming soon.' },
+  'Abhi ye plan chalu nahi kiye gaye hain — filhaal free me Chhoti dukaan (₹50) wale plan ke saare feature milte hain.': { hi: 'अभी ये प्लान चालू नहीं किए गए हैं — फिलहाल फ्री में छोटी दुकान (₹50) वाले प्लान के सारे फीचर मिलते हैं।', en: 'These plans aren\'t active yet — for now, the free version includes every feature of the Small shop (₹50) plan.' },
+  'Abhi ye dukaan free mode me hai — koi payment nahi lagta. Free me {plan} (₹{amt}) wale plan ke feature milte hain.': { hi: 'अभी ये दुकान फ्री मोड में है — कोई पेमेंट नहीं लगता। फ्री में {plan} (₹{amt}) वाले प्लान के फीचर मिलते हैं।', en: 'This shop is on the free version — no payment needed. It includes the features of the {plan} (₹{amt}) plan.' },
+  'Free version me {plan} (₹{amt}) wale plan ke feature milte hain. Bade plan jald shuru honge.': { hi: 'फ्री वर्ज़न में {plan} (₹{amt}) वाले प्लान के फीचर मिलते हैं। बड़े प्लान जल्द शुरू होंगे।', en: 'The free version includes the features of the {plan} (₹{amt}) plan. Bigger plans are coming soon.' },
+  'Abhi paisa liya hi nahi ja raha — app free mode me hai': { hi: 'अभी पैसा लिया ही नहीं जा रहा — ऐप फ्री मोड में है', en: 'No payment is being taken right now — the app is on the free version' },
 };
 
 export default DICT;

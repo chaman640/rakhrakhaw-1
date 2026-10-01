@@ -27,8 +27,10 @@ export function useBilling() {
  * chamka dena galat hai; asli rok backend pe hai (middleware/feature.js).
  */
 export function useFeature(key) {
+  const { user } = useAuth();
   const billing = useBilling();
-  if (!billing) return { allowed: true, ready: false, lockedInfo: null };
+  // Bechne wale ka jawab abhi aa raha hai — `pending` se page apni request rok sakta hai
+  if (!billing) return { allowed: true, ready: false, pending: user?.role === 'wholesaler', lockedInfo: null };
   const allowed = (billing.features || []).includes(key);
   return { allowed, ready: true, lockedInfo: allowed ? null : (billing.locked?.[key] || null) };
 }

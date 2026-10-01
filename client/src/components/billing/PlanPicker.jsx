@@ -238,7 +238,7 @@ export default function PlanPicker({ onDone, compact = false }) {
     <div className="space-y-4">
       {!data.chargingNow && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {t('Abhi poori app free chal rahi hai — plan lene ki zarurat nahi.')}
+          {t('Abhi app free chal rahi hai — free me {plan} (₹{amt}) wale plan ke saare feature milte hain. Bade plan jald shuru honge.', { plan: t(data.freePlan?.name || 'Chhoti dukaan'), amt: data.freePlan?.priceRupees ?? 50 })}
         </p>
       )}
 

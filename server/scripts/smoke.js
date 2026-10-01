@@ -27,6 +27,10 @@ import {
   ginti lene par ye galti dobara ho hi nahi sakti.
 */
 import { permissionsForRole, STAFF_ROLES } from '../src/config/permissions.js';
+import { FEATURES } from '../src/config/features.js';
+import { PLANS } from '../src/config/billing.js';
+import { updatePlatformConfig, loadPlatformConfig } from '../src/services/platform.service.js';
+import { PlatformConfig } from '../src/models/index.js';
 
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', D = '\x1b[2m', N = '\x1b[0m';
 
@@ -3223,6 +3227,12 @@ async function run() {
     r = await call('GET', '/wishlist/ids', { token: wToken, shop: bigBizId });
     check('dil bharne ke liye ids mili', (r.data || []).map(String).includes(String(bigItem)), JSON.stringify(r.data));
 
+    // Free version me sirf ₹50 wale plan ke feature — maang (₹100 wala) band
+    r = await call('GET', '/wishlist-demand', { token: bigToken });
+    check('free version me ₹100 wala feature (maang) band', r.status === 403 && r.details?.reason === 'feature_locked',
+      `status ${r.status} · ${JSON.stringify(r.details)}`);
+    // Baaki test ke liye admin setting se saare feature free plan me khol dete hain
+    await updatePlatformConfig({ featurePlans: Object.fromEntries(FEATURES.map((f) => [f.key, PLANS.map((p) => p.code)])) });
     r = await call('GET', '/wishlist-demand', { token: bigToken });
     check('malik ko item ki maang dikhi', (r.data?.items || []).some((x) => String(x.itemId) === String(bigItem) && x.count === 1),
       JSON.stringify(r.data?.items));
@@ -4254,6 +4264,8 @@ async function run() {
 
   } finally {
     await cleanup();
+    await PlatformConfig.deleteMany({ key: 'main' });
+    await loadPlatformConfig();
     server.close();
     await mongoose.disconnect();
   }

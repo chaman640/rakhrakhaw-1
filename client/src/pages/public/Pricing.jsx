@@ -111,7 +111,7 @@ export default function Pricing() {
       */}
       {data && !data.chargingNow && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {t('Abhi ye plan chalu nahi kiye gaye hain — filhaal poori app free chal rahi hai.')}
+          {t('Abhi ye plan chalu nahi kiye gaye hain — filhaal free me Chhoti dukaan (₹50) wale plan ke saare feature milte hain.')}
         </p>
       )}
 

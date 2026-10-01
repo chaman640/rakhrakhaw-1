@@ -1,8 +1,8 @@
 import ApiError from '../utils/ApiError.js';
 import { rupees } from '../config/billing.js';
 import { FEATURE_BY_KEY } from '../config/features.js';
-import { isFreeMode, subscriptionOf } from '../services/billing.service.js';
-import { planHasFeature, cheapestPlanFor } from '../services/platform.service.js';
+import { businessHasFeature } from '../services/billing.service.js';
+import { cheapestPlanFor } from '../services/platform.service.js';
 
 /**
  * FEATURE KA PEHRA — backend pe, sirf button chhupana kaafi nahi.
@@ -14,14 +14,12 @@ import { planHasFeature, cheapestPlanFor } from '../services/platform.service.js
  * `reason: 'feature_locked'` aur sabse sasta plan jata hai, taaki app seedha
  * "ye ₹500 wale plan me hai — [Plan dekhein]" dikha sake.
  *
- * Free mode me sab khula. Plan khatam hone ki rok `requirePaidSeller` ka kaam
+ * Free mode me ₹50 wale plan (FREE_MODE_PLAN) ke feature khule. Plan khatam hone ki rok `requirePaidSeller` ka kaam
  * hai; yahan sirf "is plan me ye hai ya nahi".
  */
 export const requireFeature = (key) => async (req, res, next) => {
   try {
-    if (isFreeMode()) return next();
-    const state = await subscriptionOf(req.businessId);
-    if (planHasFeature(state.plan.code, key)) return next();
+    if (await businessHasFeature(req.businessId, key)) return next();
 
     const f = FEATURE_BY_KEY[key];
     const p = cheapestPlanFor(key);

@@ -3,8 +3,8 @@ import ApiError from '../utils/ApiError.js';
 import { ROLES } from '../config/constants.js';
 import { STAFF_ROLES, STAFF_ROLE_LABEL, userCan } from '../config/permissions.js';
 import { rupees } from '../config/billing.js';
-import { isFreeMode, subscriptionOf } from './billing.service.js';
-import { planHasFeature, cheapestPlanFor } from './platform.service.js';
+import { businessHasFeature } from './billing.service.js';
+import { cheapestPlanFor } from './platform.service.js';
 import { addStaff, updateStaff } from './staff.service.js';
 import {
   User, Business, Employee, OrgUnit, Team, Attendance, HrRequest, Payroll, HrLog, Counter, Invoice, CrmTask, Party,
@@ -18,11 +18,7 @@ const esc = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const isOwner = (u) => (u?.staffRole || STAFF_ROLES.OWNER) === STAFF_ROLES.OWNER;
 export const canSalary = (u) => userCan(u, 'payroll:view');
 
-export async function hasFeature(businessId, key) {
-  if (isFreeMode()) return true;
-  const state = await subscriptionOf(businessId);
-  return planHasFeature(state.plan.code, key);
-}
+export const hasFeature = businessHasFeature;
 
 export async function assertFeature(businessId, key) {
   if (await hasFeature(businessId, key)) return;

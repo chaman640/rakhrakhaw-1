@@ -122,6 +122,9 @@ export const PLANS = [
 
 export const PLAN_BY_CODE = Object.fromEntries(PLANS.map((p) => [p.code, p]));
 
+// BILLING_MODE=free me bechne wale ko sirf is plan ke feature milte hain (₹50 wala)
+export const FREE_MODE_PLAN = 'CHOTI';
+
 /**
  * PAISA KITNE WAQT KA — sirf DO raste: mahina ya saal.
  *

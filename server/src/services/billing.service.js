@@ -10,14 +10,14 @@ import {
 } from './razorpay.service.js';
 import { ROLES } from '../config/constants.js';
 import {
-  BILLING_MODES, PLANS, PAID_PLANS, PLAN_BY_CODE, FREE_PLAN,
+  BILLING_MODES, PLANS, PAID_PLANS, PLAN_BY_CODE, FREE_PLAN, FREE_MODE_PLAN,
   SUB_STATUS, seatsOf, seatsAllow, rupees,
   PERIODS, YEARLY_MONTHS_CHARGED, monthsOf, periodPricePaise,
 } from '../config/billing.js';
 import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle, Business } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
 import {
-  platformConfig, featuresOfPlan, cheapestPlanFor,
+  platformConfig, featuresOfPlan, cheapestPlanFor, planHasFeature,
 } from './platform.service.js';
 import { FEATURES } from '../config/features.js';
 
@@ -37,6 +37,16 @@ import { FEATURES } from '../config/features.js';
  */
 
 export const isFreeMode = () => env.billing.mode === BILLING_MODES.FREE;
+
+/** Feature kis plan ke hisaab se khulein — free mode me ₹50 wala plan, warna dukaan ka apna */
+export async function featurePlanCode(businessId) {
+  if (isFreeMode()) return FREE_MODE_PLAN;
+  return (await subscriptionOf(businessId)).plan.code;
+}
+
+export async function businessHasFeature(businessId, key) {
+  return planHasFeature(await featurePlanCode(businessId), key);
+}
 
 /*
   Ek mahina aage — bina tareekh phisle.
@@ -438,7 +448,7 @@ function checkoutPayload(made, plan, period) {
  * hai. Uski khabar webhook se aati hai — plan wahin chalu hota hai.
  */
 export async function startAutopay(businessId, { planCode, period = PERIODS.MONTHLY }) {
-  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
+  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — app free mode me hai');
 
   const plan = PLAN_BY_CODE[planCode];
   if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
@@ -638,7 +648,7 @@ async function assertSeatsFitPlan(businessId, planCode) {
  * padti. Har baar mandate maangne pe aadha aadmi wahin chhod deta hai.
  */
 export async function changePlan(businessId, { planCode, period = PERIODS.MONTHLY }) {
-  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
+  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — app free mode me hai');
 
   const plan = PLAN_BY_CODE[planCode];
   if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
@@ -770,7 +780,7 @@ export async function changePlan(businessId, { planCode, period = PERIODS.MONTHL
  * khola jata hai — grahak ko sirf ek baar phir UPI se manzoori deni padti hai.
  */
 export async function switchMandate(businessId, { planCode, period = PERIODS.MONTHLY }) {
-  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
+  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — app free mode me hai');
 
   const plan = PLAN_BY_CODE[planCode];
   if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');
@@ -902,6 +912,7 @@ export async function cancelSubscription(businessId) {
 
 /** App ko dikhane ke liye poori halat — Settings ka billing wala hissa */
 export async function billingSummary(businessId) {
+  const featureCode = await featurePlanCode(businessId);
   await ensureTrial(businessId);
   const state = await subscriptionOf(businessId);
   const used = await seatsUsed(businessId);
@@ -910,6 +921,8 @@ export async function billingSummary(businessId) {
   return {
     mode: env.billing.mode,
     chargingNow: state.chargingNow,
+    // Free mode me jis plan ke feature mil rahe hain (₹50 wala)
+    freePlan: isFreeMode() ? { code: FREE_MODE_PLAN, name: PLAN_BY_CODE[FREE_MODE_PLAN].name, priceRupees: rupees(PLAN_BY_CODE[FREE_MODE_PLAN].pricePaise) } : null,
     status: state.status,
     usable: state.usable,
     plan: {
@@ -938,9 +951,9 @@ export async function billingSummary(businessId) {
       Free mode me sab. `locked` me har band feature ka sabse sasta plan, taaki
       "ye ₹500 wale plan me hai" seedha dikh sake.
     */
-    features: isFreeMode() ? FEATURES.map((f) => f.key) : featuresOfPlan(state.plan.code),
-    locked: isFreeMode() ? {} : Object.fromEntries(FEATURES
-      .filter((f) => !featuresOfPlan(state.plan.code).includes(f.key))
+    features: featuresOfPlan(featureCode),
+    locked: Object.fromEntries(FEATURES
+      .filter((f) => !featuresOfPlan(featureCode).includes(f.key))
       .map((f) => {
         const p = cheapestPlanFor(f.key);
         return [f.key, {
@@ -998,7 +1011,7 @@ export async function billingSummary(businessId) {
  * Rakam SERVER pe tay hoti hai, client se aayi rakam kabhi nahi maani jati.
  */
 export async function startCheckout(businessId, { planCode, months = 1 }, userId = null) {
-  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — poori app free hai');
+  if (isFreeMode()) throw ApiError.badRequest('Abhi paisa liya hi nahi ja raha — app free mode me hai');
 
   const plan = PLAN_BY_CODE[planCode];
   if (!plan || plan.pricePaise <= 0 || plan.active === false) throw ApiError.badRequest('Aisa koi plan nahi hai');

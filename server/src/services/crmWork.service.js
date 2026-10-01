@@ -5,8 +5,8 @@ import { STAFF_ROLES, userCan } from '../config/permissions.js';
 import { Lead, CrmTask, Party, User, CrmSettings } from '../models/index.js';
 import { LEAD_STAGES } from '../models/Lead.js';
 import { isScoped } from '../utils/scope.js';
-import { isFreeMode, subscriptionOf } from './billing.service.js';
-import { planHasFeature, cheapestPlanFor, featureLimit } from './platform.service.js';
+import { businessHasFeature, featurePlanCode } from './billing.service.js';
+import { cheapestPlanFor, featureLimit } from './platform.service.js';
 import { rupees } from '../config/billing.js';
 import { createParty } from './party.service.js';
 import { notify } from './notification.service.js';
@@ -30,11 +30,7 @@ export const STAGE_PROBABILITY = { new: 10, contacted: 20, interested: 40, quota
 const esc = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
 
-export async function hasFeature(businessId, key) {
-  if (isFreeMode()) return true;
-  const state = await subscriptionOf(businessId);
-  return planHasFeature(state.plan.code, key);
-}
+export const hasFeature = businessHasFeature;
 
 export async function assertFeature(businessId, key) {
   if (await hasFeature(businessId, key)) return;
@@ -341,9 +337,8 @@ export async function createTask(businessId, user, body) {
   if (body.leadId) await assertFeature(businessId, 'crm_leads');
 
   // Open-task cap for small plans (admin-configurable limit)
-  if (!isFreeMode()) {
-    const { plan } = await subscriptionOf(businessId);
-    const cap = featureLimit(plan.code, 'crm_reminders');
+  {
+    const cap = featureLimit(await featurePlanCode(businessId), 'crm_reminders');
     if (cap !== null && await CrmTask.countDocuments({ businessId, status: { $ne: 'done' } }) >= cap) {
       const p = cheapestPlanFor('crm_leads');
       throw ApiError.forbidden(

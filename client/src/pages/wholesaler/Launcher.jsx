@@ -26,13 +26,13 @@ function ShortcutEditor({ open, onClose, chosen, actions }) {
   const { refresh } = useAuth();
   const [picked, setPicked] = useState(chosen);
   const [saving, setSaving] = useState(false);
-  const toggle = (k) => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : p.length >= 8 ? p : [...p, k]));
+  const toggle = (k) => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
   async function save() {
     setSaving(true);
     try { await api.put('/auth/shortcuts', { shortcuts: picked }); await refresh?.(); toast.success(t('Shortcuts saved')); onClose(); } catch (err) { toast.error(err.message); } finally { setSaving(false); }
   }
   return (
-    <Modal open={open} onClose={onClose} title={t('Choose your shortcuts')} description={t('Pick up to 8. They appear at the top of Home on all your devices.')}
+    <Modal open={open} onClose={onClose} title={t('Choose your shortcuts')} description={t('Pick as many as you like. They appear at the top of Home on all your devices.')}
       footer={<><Button variant="secondary" onClick={onClose}>{t('Cancel')}</Button><Button loading={saving} onClick={save}>{t('Save')}</Button></>}>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {actions.map((a) => {
