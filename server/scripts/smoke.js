@@ -3227,9 +3227,11 @@ async function run() {
     r = await call('GET', '/wishlist/ids', { token: wToken, shop: bigBizId });
     check('dil bharne ke liye ids mili', (r.data || []).map(String).includes(String(bigItem)), JSON.stringify(r.data));
 
-    // Free version me sirf ₹50 wale plan ke feature — maang (₹100 wala) band
+    // Free version = ₹50 plan: CRM/maang khule, HR (attendance) band
     r = await call('GET', '/wishlist-demand', { token: bigToken });
-    check('free version me ₹100 wala feature (maang) band', r.status === 403 && r.details?.reason === 'feature_locked',
+    check('free version me maang khuli', r.status === 200, `status ${r.status} · ${r.message}`);
+    r = await call('GET', '/hr/me', { token: bigToken });
+    check('free version me HR (attendance) band', r.status === 403 && r.details?.reason === 'feature_locked',
       `status ${r.status} · ${JSON.stringify(r.details)}`);
     // Baaki test ke liye admin setting se saare feature free plan me khol dete hain
     await updatePlatformConfig({ featurePlans: Object.fromEntries(FEATURES.map((f) => [f.key, PLANS.map((p) => p.code)])) });

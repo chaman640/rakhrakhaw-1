@@ -337,8 +337,9 @@ export async function createTask(businessId, user, body) {
   if (body.leadId) await assertFeature(businessId, 'crm_leads');
 
   // Open-task cap for small plans (admin-configurable limit)
-  {
-    const cap = featureLimit(await featurePlanCode(businessId), 'crm_reminders');
+  const capPlan = await featurePlanCode(businessId);
+  if (capPlan) {
+    const cap = featureLimit(capPlan, 'crm_reminders');
     if (cap !== null && await CrmTask.countDocuments({ businessId, status: { $ne: 'done' } }) >= cap) {
       const p = cheapestPlanFor('crm_leads');
       throw ApiError.forbidden(

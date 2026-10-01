@@ -30,7 +30,7 @@ export function UpgradeCard({ info, compact = false }) {
         </p>
         {free && (
           <p className="mt-2 text-xs text-slate-500">
-            {t('Free version me {plan} (₹{amt}) wale plan ke feature milte hain. Bade plan jald shuru honge.', { plan: t(billing.freePlan?.name || 'Chhoti dukaan'), amt: billing.freePlan?.priceRupees ?? 50 })}
+            {t('Free version me HR (attendance, chhutti, salary) shamil nahi hai. Bade plan jald shuru honge.')}
           </p>
         )}
         {info.plan && !free && (

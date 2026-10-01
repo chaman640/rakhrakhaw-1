@@ -54,7 +54,7 @@ export const FEATURES = [
     key: 'hr_basic',
     name: 'HR — employee, attendance, chhutti, salary',
     desc: 'Employee profile, attendance, chhutti aur mahine ki salary',
-    plans: ['CHOTI', 'BADHTI', 'BADI', 'ASEEM'],
+    plans: ['BADHTI', 'BADI', 'ASEEM'],
   },
   {
     key: 'hr_teams',

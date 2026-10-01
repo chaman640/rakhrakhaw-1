@@ -51,7 +51,7 @@ export default function SubscriptionManage() {
   if (!me.chargingNow) {
     return (
       <Card>
-        <p className="text-sm text-slate-600">{t('Abhi ye dukaan free mode me hai — koi payment nahi lagta. Free me {plan} (₹{amt}) wale plan ke feature milte hain.', { plan: t(me.freePlan?.name || 'Chhoti dukaan'), amt: me.freePlan?.priceRupees ?? 50 })}</p>
+        <p className="text-sm text-slate-600">{t('Abhi ye dukaan free mode me hai — koi payment nahi lagta. HR (attendance, salary) free version me nahi hai.')}</p>
       </Card>
     );
   }

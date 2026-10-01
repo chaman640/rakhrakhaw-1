@@ -10,14 +10,14 @@ import {
 } from './razorpay.service.js';
 import { ROLES } from '../config/constants.js';
 import {
-  BILLING_MODES, PLANS, PAID_PLANS, PLAN_BY_CODE, FREE_PLAN, FREE_MODE_PLAN,
+  BILLING_MODES, PLANS, PAID_PLANS, PLAN_BY_CODE, FREE_PLAN, FREE_MODE_OFF,
   SUB_STATUS, seatsOf, seatsAllow, rupees,
   PERIODS, YEARLY_MONTHS_CHARGED, monthsOf, periodPricePaise,
 } from '../config/billing.js';
 import { Subscription, User, BillingOrder, RazorpayPlan, BillingCycle, Business } from '../models/index.js';
 import { creditReferral, reverseReferral } from './partner.service.js';
 import {
-  platformConfig, featuresOfPlan, cheapestPlanFor, planHasFeature,
+  platformConfig, featuresOfPlan, cheapestPlanFor, planHasFeature, plansForFeature,
 } from './platform.service.js';
 import { FEATURES } from '../config/features.js';
 
@@ -38,13 +38,17 @@ import { FEATURES } from '../config/features.js';
 
 export const isFreeMode = () => env.billing.mode === BILLING_MODES.FREE;
 
-/** Feature kis plan ke hisaab se khulein — free mode me ₹50 wala plan, warna dukaan ka apna */
+/** Free mode me HR chhod kar sab (admin ne poora band kiya ho to wo bhi nahi) */
+const freeModeHas = (key) => !FREE_MODE_OFF.includes(key) && plansForFeature(key).length > 0;
+
+/** Dukaan ka plan code feature/limit ke liye — free mode me `null` (koi plan nahi, limit nahi) */
 export async function featurePlanCode(businessId) {
-  if (isFreeMode()) return FREE_MODE_PLAN;
+  if (isFreeMode()) return null;
   return (await subscriptionOf(businessId)).plan.code;
 }
 
 export async function businessHasFeature(businessId, key) {
+  if (isFreeMode()) return freeModeHas(key);
   return planHasFeature(await featurePlanCode(businessId), key);
 }
 
@@ -913,6 +917,7 @@ export async function cancelSubscription(businessId) {
 /** App ko dikhane ke liye poori halat — Settings ka billing wala hissa */
 export async function billingSummary(businessId) {
   const featureCode = await featurePlanCode(businessId);
+  const featureKeys = isFreeMode() ? FEATURES.filter((f) => freeModeHas(f.key)).map((f) => f.key) : featuresOfPlan(featureCode);
   await ensureTrial(businessId);
   const state = await subscriptionOf(businessId);
   const used = await seatsUsed(businessId);
@@ -922,7 +927,6 @@ export async function billingSummary(businessId) {
     mode: env.billing.mode,
     chargingNow: state.chargingNow,
     // Free mode me jis plan ke feature mil rahe hain (₹50 wala)
-    freePlan: isFreeMode() ? { code: FREE_MODE_PLAN, name: PLAN_BY_CODE[FREE_MODE_PLAN].name, priceRupees: rupees(PLAN_BY_CODE[FREE_MODE_PLAN].pricePaise) } : null,
     status: state.status,
     usable: state.usable,
     plan: {
@@ -951,9 +955,9 @@ export async function billingSummary(businessId) {
       Free mode me sab. `locked` me har band feature ka sabse sasta plan, taaki
       "ye ₹500 wale plan me hai" seedha dikh sake.
     */
-    features: featuresOfPlan(featureCode),
+    features: featureKeys,
     locked: Object.fromEntries(FEATURES
-      .filter((f) => !featuresOfPlan(featureCode).includes(f.key))
+      .filter((f) => !featureKeys.includes(f.key))
       .map((f) => {
         const p = cheapestPlanFor(f.key);
         return [f.key, {

@@ -285,7 +285,7 @@ async function run() {
     r = await call('GET', '/hr/teams', { token: oTok });
     check('teams locked on CHOTI', r.status === 403 && r.details?.reason === 'feature_locked', `${r.status}`);
     r = await call('GET', '/hr/me', { token: t2 });
-    check('basic HR still open on CHOTI', r.status === 200, `${r.status}`);
+    check('HR (attendance) locked on CHOTI — ₹100 plan se', r.status === 403 && r.details?.reason === 'feature_locked', `${r.status}`);
     await M.Subscription.updateOne({ businessId: bizId }, { $set: { planCode: 'BADI' } });
 
     r = await call('PUT', `/hr/employees/${empId}`, { token: oTok, body: { status: 'left' } });

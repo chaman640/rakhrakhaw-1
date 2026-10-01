@@ -4112,11 +4112,16 @@ const DICT = {
   'Ye phone me surakshit hain. Bill ka number aur stock ki jaanch bhejte waqt hoti hai.': { hi: 'ये फ़ोन में सुरक्षित हैं। बिल का नंबर और स्टॉक की जांच भेजते वक्त होती है।', en: 'These are saved safely on this phone. Bill numbers and stock checks are done when they are sent.' },
 
   /* ── Free version ── */
-  'Abhi app free chal rahi hai — free me {plan} (₹{amt}) wale plan ke saare feature milte hain. Bade plan jald shuru honge.': { hi: 'अभी ऐप फ्री चल रही है — फ्री में {plan} (₹{amt}) वाले प्लान के सारे फीचर मिलते हैं। बड़े प्लान जल्द शुरू होंगे।', en: 'The app is free right now — you get every feature of the {plan} (₹{amt}) plan. Bigger plans are coming soon.' },
-  'Abhi ye plan chalu nahi kiye gaye hain — filhaal free me Chhoti dukaan (₹50) wale plan ke saare feature milte hain.': { hi: 'अभी ये प्लान चालू नहीं किए गए हैं — फिलहाल फ्री में छोटी दुकान (₹50) वाले प्लान के सारे फीचर मिलते हैं।', en: 'These plans aren\'t active yet — for now, the free version includes every feature of the Small shop (₹50) plan.' },
-  'Abhi ye dukaan free mode me hai — koi payment nahi lagta. Free me {plan} (₹{amt}) wale plan ke feature milte hain.': { hi: 'अभी ये दुकान फ्री मोड में है — कोई पेमेंट नहीं लगता। फ्री में {plan} (₹{amt}) वाले प्लान के फीचर मिलते हैं।', en: 'This shop is on the free version — no payment needed. It includes the features of the {plan} (₹{amt}) plan.' },
-  'Free version me {plan} (₹{amt}) wale plan ke feature milte hain. Bade plan jald shuru honge.': { hi: 'फ्री वर्ज़न में {plan} (₹{amt}) वाले प्लान के फीचर मिलते हैं। बड़े प्लान जल्द शुरू होंगे।', en: 'The free version includes the features of the {plan} (₹{amt}) plan. Bigger plans are coming soon.' },
   'Abhi paisa liya hi nahi ja raha — app free mode me hai': { hi: 'अभी पैसा लिया ही नहीं जा रहा — ऐप फ्री मोड में है', en: 'No payment is being taken right now — the app is on the free version' },
+
+  /* ── Plan features ── */
+  'Staff ki attendance, chhutti aur salary (HR)': { hi: 'स्टाफ की अटेंडेंस, छुट्टी और सैलरी (HR)', en: 'Staff attendance, leave and salary (HR)' },
+
+  /* ── Free version ── */
+  'Abhi app free chal rahi hai — HR (attendance, chhutti, salary) chhod kar baaki saare feature free hain.': { hi: 'अभी ऐप फ्री चल रही है — HR (अटेंडेंस, छुट्टी, सैलरी) छोड़कर बाकी सारे फीचर फ्री हैं।', en: 'The app is free right now — every feature is free except HR (attendance, leave, salary).' },
+  'Abhi ye plan chalu nahi kiye gaye hain — filhaal HR (attendance, salary) chhod kar baaki poori app free hai.': { hi: 'अभी ये प्लान चालू नहीं किए गए हैं — फिलहाल HR (अटेंडेंस, सैलरी) छोड़कर बाकी पूरी ऐप फ्री है।', en: 'These plans aren\'t active yet — for now the whole app is free except HR (attendance, salary).' },
+  'Abhi ye dukaan free mode me hai — koi payment nahi lagta. HR (attendance, salary) free version me nahi hai.': { hi: 'अभी ये दुकान फ्री मोड में है — कोई पेमेंट नहीं लगता। HR (अटेंडेंस, सैलरी) फ्री वर्ज़न में नहीं है।', en: 'This shop is on the free version — no payment needed. HR (attendance, salary) isn\'t included in the free version.' },
+  'Free version me HR (attendance, chhutti, salary) shamil nahi hai. Bade plan jald shuru honge.': { hi: 'फ्री वर्ज़न में HR (अटेंडेंस, छुट्टी, सैलरी) शामिल नहीं है। बड़े प्लान जल्द शुरू होंगे।', en: 'HR (attendance, leave, salary) isn\'t included in the free version. Bigger plans are coming soon.' },
 };
 
 export default DICT;

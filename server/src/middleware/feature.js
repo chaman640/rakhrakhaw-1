@@ -14,7 +14,7 @@ import { cheapestPlanFor } from '../services/platform.service.js';
  * `reason: 'feature_locked'` aur sabse sasta plan jata hai, taaki app seedha
  * "ye ₹500 wale plan me hai — [Plan dekhein]" dikha sake.
  *
- * Free mode me ₹50 wale plan (FREE_MODE_PLAN) ke feature khule. Plan khatam hone ki rok `requirePaidSeller` ka kaam
+ * Free mode me HR (FREE_MODE_OFF) chhod kar sab khula. Plan khatam hone ki rok `requirePaidSeller` ka kaam
  * hai; yahan sirf "is plan me ye hai ya nahi".
  */
 export const requireFeature = (key) => async (req, res, next) => {
