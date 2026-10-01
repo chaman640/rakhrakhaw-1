@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useShop } from '@/context/ShopContext';
 import { useIsFetching } from '@/hooks/useQuery';
 import { RefreshBar } from '@/components/ui';
+import { useFeatures } from '@/hooks/useBilling';
 import { wholesalerNav, buyerNav, isRootPage } from './navConfig';
 import { visibleApps, appForPath } from './appsConfig';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
@@ -37,8 +38,9 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const fetching = useIsFetching();
 
+  const has = useFeatures();
   const fullNav = buying ? buyerNav : wholesalerNav;
-  const allowedNav = buying ? buyerNav : fullNav.filter((n) => !n.perm || can(n.perm));
+  const allowedNav = buying ? buyerNav : fullNav.filter((n) => (!n.perm || can(n.perm)) && has(n.feature));
 
   // Sabse lamba milta hua rasta — `/invoices/123` pe bhi "Invoices" dikhe
   const current = [...fullNav]
@@ -136,7 +138,7 @@ export default function AppLayout() {
 
   const newOrders = useOrderBadge();
   const intakeCount = useIntakeBadge();
-  const app = buying ? null : appForPath(visibleApps(can), pathname);
+  const app = buying ? null : appForPath(visibleApps(can, has), pathname);
 
   return (
     <div className="min-h-screen bg-slate-50">

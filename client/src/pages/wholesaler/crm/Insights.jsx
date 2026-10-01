@@ -42,7 +42,6 @@ export default function Insights() {
   const navigate = useNavigate();
   const toast = useToast();
   const { allowed, lockedInfo } = useFeature('crm_leads');
-  const smartLock = useFeature('crm_smart').lockedInfo;
   const { data, loading } = useQuery(['crm', 'insights'], () => api.get('/crm/insights').then((r) => r.data), { enabled: allowed, onError: (e) => toast.error(e.message) });
   if (!allowed) return <UpgradeCard info={lockedInfo} />;
   if (loading && !data) return <div className="flex justify-center py-16"><Spinner /></div>;
@@ -57,7 +56,7 @@ export default function Insights() {
         ))}
       </div>
 
-      {!data.smart ? <UpgradeCard compact info={smartLock} /> : (
+      {data.smart && (
         <>
           {data.recommended.length > 0 && (
             <Card className="border-brand-200 bg-brand-50/40">

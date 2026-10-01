@@ -26,6 +26,15 @@ export function useBilling() {
  * Jab tak jawab na aaye, `allowed: true` — pehle hi pal me "upgrade karein"
  * chamka dena galat hai; asli rok backend pe hai (middleware/feature.js).
  */
+/**
+ * `const has = useFeatures(); has('crm_leads')` — plan me band cheez dikhani hi nahi.
+ * Jawab aane tak sab dikhta hai (asli rok backend pe hai).
+ */
+export function useFeatures() {
+  const billing = useBilling();
+  return (key) => !key || !billing || (billing.features || []).includes(key);
+}
+
 export function useFeature(key) {
   const { user } = useAuth();
   const billing = useBilling();

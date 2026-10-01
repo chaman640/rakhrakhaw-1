@@ -214,11 +214,12 @@ export default function Crm() {
   const { isOwner, can } = useAuth();
   const manager = isOwner || can('parties:edit');
   const teamOn = useFeature('crm_assign').allowed && manager;
+  const leadsOn = useFeature('crm_leads').allowed;
   const tabs = [
     { value: 'customers', label: 'Customers' },
-    { value: 'insights', label: 'Insights' },
+    ...(leadsOn ? [{ value: 'insights', label: 'Insights' }] : []),
     { value: 'activity', label: 'Activity' },
-    { value: 'leads', label: 'Leads' },
+    ...(leadsOn ? [{ value: 'leads', label: 'Leads' }] : []),
     { value: 'tasks', label: 'Tasks' },
     { value: 'complaints', label: 'Complaints' },
     ...(teamOn ? [{ value: 'team', label: 'Team' }] : []),

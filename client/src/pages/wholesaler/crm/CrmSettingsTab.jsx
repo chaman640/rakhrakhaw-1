@@ -74,7 +74,7 @@ export default function CrmSettingsTab() {
         </div>
       </Card>
 
-      <Card>
+      {smart.allowed && (<Card>
         <CardHeader title={t('Automatic follow-ups')} subtitle={smart.allowed ? t('Tasks go to the customer’s salesman (or area owner), otherwise to you') : t('Available in the ₹500 plan and above')}
           action={smart.allowed && <Button size="sm" variant="secondary" icon={Play} loading={saving === 'run'} onClick={runNow}>{t('Run now')}</Button>} />
         <fieldset disabled={!smart.allowed} className="space-y-3 disabled:opacity-60">
@@ -96,15 +96,15 @@ export default function CrmSettingsTab() {
             })}>{t('Save')}</Button>
           </div>
         </fieldset>
-      </Card>
+      </Card>)}
 
-      <Card>
+      {smart.allowed && (<Card>
         <CardHeader title={t('New lead assignment')} subtitle={t('Who gets a new lead when you don’t pick anyone')} />
         <fieldset disabled={!smart.allowed} className="space-y-3 disabled:opacity-60">
           <Select label={t('Method')} value={la.mode} onChange={(e) => setLa({ mode: e.target.value })} options={[
             { value: 'none', label: t('Whoever creates it') },
             { value: 'round_robin', label: t('Rotate between selected staff') },
-            { value: 'rules', label: `${t('Rules by city / source / value')}${pro.allowed ? '' : ' (₹2000)'}` },
+            ...(pro.allowed ? [{ value: 'rules', label: t('Rules by city / source / value') }] : []),
           ]} />
           {la.mode === 'round_robin' && (
             <div className="flex flex-wrap gap-2">
@@ -138,9 +138,9 @@ export default function CrmSettingsTab() {
             })}>{t('Save')}</Button>
           </div>
         </fieldset>
-      </Card>
+      </Card>)}
 
-      <Card>
+      {pro.allowed && (<Card>
         <CardHeader title={<span className="flex items-center gap-2"><MapPinned size={16} className="text-brand-700" />{t('Territories')}</span>}
           subtitle={pro.allowed ? t('Group cities into areas and give each area to a salesman') : t('Available in the ₹2000 plan')} />
         <fieldset disabled={!pro.allowed} className="space-y-2 disabled:opacity-60">
@@ -166,7 +166,7 @@ export default function CrmSettingsTab() {
             </div>
           </div>
         </fieldset>
-      </Card>
+      </Card>)}
     </div>
   );
 }

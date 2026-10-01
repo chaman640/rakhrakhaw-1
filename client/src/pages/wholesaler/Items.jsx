@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { useQuery, useListQuery, prime, bust } from '@/hooks/useQuery';
 import { useSessionState } from '@/hooks/useSessionState';
 import { useAuth } from '@/context/AuthContext';
+import { useFeature } from '@/hooks/useBilling';
 import { useDebounce } from '@/hooks/useDebounce';
 import { downloadText } from '@/lib/download';
 import { formatMoney, formatQty, expiryInfo } from '@/lib/format';
@@ -61,6 +62,7 @@ export default function Items() {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const bulkOn = useFeature('bulk_import').allowed;
   const [confirmBulk, setConfirmBulk] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -277,9 +279,11 @@ export default function Items() {
             <Button variant="secondary" icon={Tag} onClick={() => setCategoryOpen(true)}>
               <span className="hidden sm:inline">{t('Categories')}</span>
             </Button>
-            <Button variant="secondary" icon={FileUp} onClick={() => setBulkOpen(true)}>
-              <span className="hidden sm:inline">{t('Bill se add')}</span>
-            </Button>
+            {bulkOn && (
+              <Button variant="secondary" icon={FileUp} onClick={() => setBulkOpen(true)}>
+                <span className="hidden sm:inline">{t('Bill se add')}</span>
+              </Button>
+            )}
             <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>
               <span className="hidden sm:inline">{t('Import')}</span>
             </Button>

@@ -159,7 +159,7 @@ export default function Hr() {
       { value: 'requests', label: 'Requests', count: pending },
     ] : []),
     ...(can('payroll:view') ? [{ value: 'payroll', label: 'Payroll' }] : []),
-    ...(can('hr:view') ? [{ value: 'org', label: teams ? 'Teams' : 'Teams 🔒' }, { value: 'settings', label: 'Settings' }] : []),
+    ...(can('hr:view') ? [...(teams ? [{ value: 'org', label: 'Teams' }] : []), { value: 'settings', label: 'Settings' }] : []),
   ];
   const active = tabs.some((x) => x.value === tab) ? tab : tabs[0]?.value;
   return (

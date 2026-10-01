@@ -6,6 +6,7 @@ import { useShop } from '@/context/ShopContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { useIntakeBadge } from '@/hooks/useIntakeBadge';
+import { useFeatures } from '@/hooks/useBilling';
 import { wholesalerNav, buyerNav } from './navConfig';
 import { t } from '@/lib/i18n';
 
@@ -25,13 +26,14 @@ const STAFF_LABEL = { manager: 'Manager', salesman: 'Salesman', accountant: 'Mun
  */
 export default function Sidebar() {
   const { isRetailer, business, user, can, staffRole } = useAuth();
+  const has = useFeatures();
   const { buying, isBuyMode, shop } = useShop();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
   const intakeCount = useIntakeBadge();
 
   // Staff ko sirf uske kaam ka menu dikhega
-  const nav = buying ? buyerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
+  const nav = buying ? buyerNav : wholesalerNav.filter((n) => (!n.perm || can(n.perm)) && has(n.feature));
   const badges = { cartCount, newOrders, intakeCount };
 
   /*

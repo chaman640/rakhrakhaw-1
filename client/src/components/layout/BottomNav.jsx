@@ -6,6 +6,7 @@ import { useShop } from '@/context/ShopContext';
 import { useCart } from '@/context/CartContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { useIntakeBadge } from '@/hooks/useIntakeBadge';
+import { useFeatures } from '@/hooks/useBilling';
 import { wholesalerNav, buyerNav, bottomNavFor } from './navConfig';
 import { t } from '@/lib/i18n';
 
@@ -25,12 +26,13 @@ import { t } from '@/lib/i18n';
  */
 export default function BottomNav() {
   const { can } = useAuth();
+  const has = useFeatures();
   const { buying } = useShop();
   const { count: cartCount } = useCart();
   const newOrders = useOrderBadge();
   const intakeCount = useIntakeBadge();
 
-  const nav = buying ? buyerNav : wholesalerNav.filter((n) => !n.perm || can(n.perm));
+  const nav = buying ? buyerNav : wholesalerNav.filter((n) => (!n.perm || can(n.perm)) && has(n.feature));
   const items = bottomNavFor(nav, buying);
   const badges = { cartCount, newOrders, intakeCount };
 

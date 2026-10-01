@@ -32,7 +32,7 @@ export const wholesalerNav = [
     desc: 'Retailer ne app se jo maal manga hai',
   },
   {
-    to: '/quotations', label: 'Quotations', icon: FileSignature, perm: 'orders',
+    to: '/quotations', label: 'Quotations', icon: FileSignature, perm: 'orders', feature: 'sales_pro',
     desc: 'Price offers for big buyers — turn into order, dispatch and bill', alt: 'quote estimate proforma',
   },
   {
@@ -44,7 +44,7 @@ export const wholesalerNav = [
     desc: 'Jinko aap maal bechte hain',
   },
   {
-    to: '/crm', label: 'CRM', icon: Target, part: 46, perm: 'parties',
+    to: '/crm', label: 'CRM', icon: Target, part: 46, perm: 'parties', feature: 'crm_basic',
     desc: 'Naye lead, follow-up chahiye, aur gayab ho rahe retailer',
   },
   /*
@@ -52,22 +52,22 @@ export const wholesalerNav = [
     dikhte hain, isliye kisi ka kuch dikh jane ka khatra nahi.
   */
   {
-    to: '/today', label: 'Aaj ka kaam', icon: CalendarCheck,
+    to: '/today', label: 'Aaj ka kaam', icon: CalendarCheck, feature: 'crm_basic',
     desc: 'Mujhe diye gaye kaam — call, visit, follow-up',
     alt: 'task kaam today aaj follow up todo',
   },
   {
-    to: '/hr', label: 'HR', icon: Briefcase, perm: ['hr', 'payroll'],
+    to: '/hr', label: 'HR', icon: Briefcase, perm: ['hr', 'payroll'], feature: 'hr_basic',
     desc: 'Employees, attendance, leave and payroll',
     alt: 'hr employee attendance leave chhutti salary payroll tankhwah team',
   },
   {
-    to: '/emp', label: 'My Work', icon: IdCard,
+    to: '/emp', label: 'My Work', icon: IdCard, feature: 'hr_basic',
     desc: 'Check-in, leave, salary slips and my tasks',
     alt: 'attendance check in leave chhutti salary slip payslip my work employee app',
   },
   {
-    to: '/demand', label: 'Maang', icon: Heart, perm: 'items',
+    to: '/demand', label: 'Maang', icon: Heart, perm: 'items', feature: 'demand',
     desc: 'Retailer kya chahte hain — unki wishlist aur jo maal aapke paas nahi',
     alt: 'wishlist demand maang chahiye request',
   },

@@ -70,11 +70,11 @@ export const APPS = [
 const PERM = Object.fromEntries(wholesalerNav.map((n) => [n.to, n.perm]));
 const NAV = Object.fromEntries(wholesalerNav.map((n) => [n.to, n]));
 
-/** Is aadmi ko dikhne wale apps, har app me sirf uske khule page */
-export function visibleApps(can) {
+/** Is aadmi ko dikhne wale apps, har app me sirf uske khule page (ijazat + plan) */
+export function visibleApps(can, has = () => true) {
   return APPS.map((a) => ({
     ...a,
-    menu: a.menu.filter(([to, , perm]) => (NAV[to] || perm) && (!(perm || PERM[to]) || can(perm || PERM[to])))
+    menu: a.menu.filter(([to, , perm]) => (NAV[to] || perm) && (!(perm || PERM[to]) || can(perm || PERM[to])) && has(NAV[to]?.feature))
       .map(([to, label]) => ({ to, label, badgeKey: NAV[to]?.badgeKey })),
   })).filter((a) => a.menu.length);
 }
@@ -94,14 +94,14 @@ export const QUICK_ACTIONS = [
   { key: 'add_expense', label: 'Add expense', icon: Receipt, to: '/expenses?new=1', perm: 'expenses:create' },
   { key: 'sale_return', label: 'Sale return', icon: Undo2, to: '/returns/new', perm: 'returns:create' },
   { key: 'add_customer', label: 'Add customer', icon: UserPlus, to: '/retailers?new=1', perm: 'parties:create' },
-  { key: 'new_lead', label: 'CRM leads', icon: Sparkles, to: '/crm', perm: 'parties:view' },
-  { key: 'new_quote', label: 'New quotation', icon: FileSignature, to: '/quotations/new', perm: 'orders:create' },
+  { key: 'new_lead', label: 'CRM leads', icon: Sparkles, to: '/crm', perm: 'parties:view', feature: 'crm_leads' },
+  { key: 'new_quote', label: 'New quotation', icon: FileSignature, to: '/quotations/new', perm: 'orders:create', feature: 'sales_pro' },
   { key: 'orders', label: 'New orders', icon: ClipboardList, to: '/orders', perm: 'orders', badgeKey: 'newOrders' },
   { key: 'khata', label: 'Khata', icon: BookOpen, to: '/khata', perm: 'khata:view' },
-  { key: 'check_in', label: 'Check in', icon: Fingerprint, to: '/emp' },
-  { key: 'todays_work', label: "Today's work", icon: CalendarCheck, to: '/today' },
+  { key: 'check_in', label: 'Check in', icon: Fingerprint, to: '/emp', feature: 'hr_basic' },
+  { key: 'todays_work', label: "Today's work", icon: CalendarCheck, to: '/today', feature: 'crm_basic' },
   { key: 'stock_intake', label: 'Stock intake', icon: PackagePlus, to: '/stock-intake', perm: 'purchases', badgeKey: 'intakeCount' },
-  { key: 'demand', label: 'Demand', icon: Heart, to: '/demand', perm: 'items' },
+  { key: 'demand', label: 'Demand', icon: Heart, to: '/demand', perm: 'items', feature: 'demand' },
   { key: 'suppliers', label: 'Suppliers', icon: Truck, to: '/suppliers', perm: 'parties' },
   { key: 'notifications', label: 'Notifications', icon: Bell, to: '/notifications' },
   { key: 'help', label: 'Help & support', icon: LifeBuoy, to: '/help' },

@@ -4,6 +4,7 @@ import {
   Search, X, Pencil, Check, LogOut, Video, ChevronRight,
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useFeatures } from '@/hooks/useBilling';
 import { useAuth } from '@/context/AuthContext';
 import { useOrderBadge } from '@/hooks/useOrderBadge';
 import { useIntakeBadge } from '@/hooks/useIntakeBadge';
@@ -61,12 +62,13 @@ export default function Launcher() {
   const [askLogout, setAskLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const apps = useMemo(() => visibleApps(can), [can]);
-  const actions = useMemo(() => QUICK_ACTIONS.filter((a) => !a.perm || can(a.perm)), [can]);
+  const has = useFeatures();
+  const apps = useMemo(() => visibleApps(can, has), [can, has]);
+  const actions = useMemo(() => QUICK_ACTIONS.filter((a) => (!a.perm || can(a.perm)) && has(a.feature)), [can, has]);
   const chosen = (user?.shortcuts || DEFAULT_SHORTCUTS).filter((k) => actions.some((a) => a.key === k));
   const shortcuts = chosen.map((k) => actions.find((a) => a.key === k));
 
-  const pages = useMemo(() => wholesalerNav.filter((n) => !n.perm || can(n.perm)), [can]);
+  const pages = useMemo(() => wholesalerNav.filter((n) => (!n.perm || can(n.perm)) && has(n.feature)), [can, has]);
   const needle = q.trim().toLowerCase();
   const found = needle ? pages.filter((n) => `${t(n.label)} ${n.label} ${n.desc ? t(n.desc) : ''} ${n.alt || ''}`.toLowerCase().includes(needle)) : [];
   const appBadge = (a) => a.menu.reduce((s, m) => s + (m.badgeKey ? badges[m.badgeKey] || 0 : 0), 0);
