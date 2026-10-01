@@ -4114,6 +4114,10 @@ const DICT = {
   'Server ne mana kiya — dekh kar theek karein': { hi: 'सर्वर ने मना किया — देखकर ठीक करें', en: 'Refused by the server — please review' },
   'Bhejni baaki': { hi: 'भेजनी बाकी', en: 'Waiting to sync' },
   'Ye phone me surakshit hain. Bill ka number aur stock ki jaanch bhejte waqt hoti hai.': { hi: 'ये फ़ोन में सुरक्षित हैं। बिल का नंबर और स्टॉक की जांच भेजते वक्त होती है।', en: 'These are saved safely on this phone. Bill numbers and stock checks are done when they are sent.' },
+
+  /* ── Menu features ── */
+  'All features': { hi: 'सभी सुविधाएँ', en: 'All features' },
+  'Jinse aap maal kharidte hain': { hi: 'जिनसे आप माल खरीदते हैं', en: 'People you buy stock from' },
 };
 
 export default DICT;
