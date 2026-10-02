@@ -409,7 +409,7 @@ export async function stockReport(businessId, q = {}) {
       stockQty: round2(i.stockQty),
       lowStockAt: i.lowStockAt,
       purchasePrice: round2(i.purchasePrice),
-      stockValue: round2(i.stockQty * i.purchasePrice),
+      stockValue: round2(Math.max(0, i.stockQty) * i.purchasePrice),
       saleValue: round2(i.stockQty * (i.wholesalePrice || i.salePrice)),
       soldQty: round2(Math.abs(s?.qty || 0)),
       lastSoldAt: lastSoldAt ? dayKey(lastSoldAt) : '—',

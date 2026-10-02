@@ -196,7 +196,7 @@ export async function businessHisaab(businessId, partyMatch = {}) {
           advance: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $lt: ['$balance', 0] }] }, { $multiply: ['$balance', -1] }, 0] } },
           advanceOut: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'supplier'] }, { $lt: ['$balance', 0] }] }, { $multiply: ['$balance', -1] }, 0] } },
           dueParties: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $gt: ['$balance', 0] }] }, 1, 0] } },
-          advanceParties: { $sum: { $cond: [{ $lt: ['$balance', 0] }, 1, 0] } },
+          advanceParties: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $lt: ['$balance', 0] }] }, 1, 0] } },
         },
       },
     ]),

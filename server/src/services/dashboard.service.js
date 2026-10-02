@@ -173,8 +173,9 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
             Dhyan: ye KAMAAI NAHI hai. Ye wapas bhi ho sakta hai aur agle bill
             me bhi kat sakta hai — isliye profit me kabhi nahi juda.
           */
-          advance: { $sum: { $cond: [{ $lt: ['$balance', 0] }, { $multiply: ['$balance', -1] }, 0] } },
-          advanceParties: { $sum: { $cond: [{ $lt: ['$balance', 0] }, 1, 0] } },
+          // Sirf graahak — supplier ka minus balance hamara diya advance hai, unka rakha paisa nahi
+          advance: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $lt: ['$balance', 0] }] }, { $multiply: ['$balance', -1] }, 0] } },
+          advanceParties: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $lt: ['$balance', 0] }] }, 1, 0] } },
           payable: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'supplier'] }, { $gt: ['$balance', 0] }] }, '$balance', 0] } },
           retailers: { $sum: { $cond: [{ $eq: ['$type', 'retailer'] }, 1, 0] } },
           activeRetailers: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'retailer'] }, { $eq: ['$status', 'active'] }] }, 1, 0] } },
@@ -188,7 +189,7 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
         $group: {
           _id: null,
           items: { $sum: 1 },
-          stockValue: { $sum: { $multiply: ['$stockQty', '$purchasePrice'] } },
+          stockValue: { $sum: { $multiply: [{ $max: ['$stockQty', 0] }, '$purchasePrice'] } },
           outOfStock: { $sum: { $cond: [{ $lte: ['$stockQty', 0] }, 1, 0] } },
           low: { $sum: { $cond: [{ $and: [{ $gt: ['$stockQty', 0] }, { $lte: ['$stockQty', '$lowStockAt'] }] }, 1, 0] } },
         },

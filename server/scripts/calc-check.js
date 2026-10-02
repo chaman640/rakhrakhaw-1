@@ -207,6 +207,11 @@ async function run() {
     const d = r.data || {};
     console.log(D + JSON.stringify({ today: d.today, sales: d.sales, profit: d.profit }).slice(0, 600) + N);
     eq('dashboard ka mahine ka fayda = P&L', d.profit?.month ?? d.profit?.net ?? m.netProfit, m.netProfit);
+    // A ka jama 31; supplier ko pehle kuch advance de kar dekho ki wo jama me na jude
+    await call('POST', '/payments', { partyId: S, direction: 'OUT', amount: 2000, allowAdvance: true });
+    r = await call('GET', '/dashboard');
+    eq('dashboard ka jama paisa sirf graahak ka (31)', r.data?.khata?.advance, 31);
+    eq('dashboard: aaj ki bikri 1069 + 472', r.data?.sale?.today, 1541);
 
     console.log(`\n${Y}12. Udhaar report${N}`);
     r = await call('GET', '/reports/outstanding');
