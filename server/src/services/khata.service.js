@@ -9,6 +9,7 @@ import {
 } from '../utils/scope.js';
 import { notifyRetailer } from './notification.service.js';
 import { partyHisaab } from './balance.service.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -287,8 +288,8 @@ export async function getPartyLedger(businessId, partyId, { from, to, limit = 20
   const filter = { businessId, partyId };
   if (from || to) {
     filter.date = {};
-    if (from) filter.date.$gte = from;
-    if (to) { const t = new Date(to); t.setHours(23, 59, 59, 999); filter.date.$lte = t; }
+    if (from) filter.date.$gte = dayFrom(from);
+    if (to) filter.date.$lte = dayTo(to);
   }
 
   // ULTA nikalte hain (naya pehle), phir palat dete hain.
@@ -313,7 +314,7 @@ export async function getPartyLedger(businessId, partyId, { from, to, limit = 20
     const first = entries[0];
     opening = round2((first.balanceAfter || 0) - (first.debit || 0) + (first.credit || 0));
   } else if (from) {
-    const before = await LedgerEntry.findOne({ businessId, partyId, date: { $lt: from } })
+    const before = await LedgerEntry.findOne({ businessId, partyId, date: { $lt: dayFrom(from) } })
       .sort({ date: -1, createdAt: -1 }).select('balanceAfter').lean();
     opening = round2(before?.balanceAfter || 0);
   }
