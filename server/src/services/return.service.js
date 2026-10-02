@@ -267,7 +267,13 @@ export async function prefillFromDoc(businessId, type, docId) {
       soldQty: round2(l.qty),
       returnedQty: round2(done),
       qty: round2(Math.max(0, l.qty - done)),   // default: jitna bacha hai
-      rate: l.rate,
+      /*
+        Asal me laga daam — line ka discount aur bill ka extra discount ghata
+        kar (GST se pehle). List rate dene se wapasi pe diye se zyada credit
+        ban jata tha.
+      */
+      rate: l.qty > 0 && l.taxableValue != null ? round2(l.taxableValue / l.qty) : l.rate,
+      listRate: l.rate,
       discount: 0,
       gstRate: l.gstRate ?? 0,
     };

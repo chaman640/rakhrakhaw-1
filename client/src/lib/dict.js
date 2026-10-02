@@ -4138,6 +4138,9 @@ const DICT = {
   'Har somvaar pichhle hafte ka aur har mahine ki 1 tareekh ko pichhle mahine ka fayda-nuksan aur udhaar — malik ko hamesha aata hai.': { hi: 'हर सोमवार पिछले हफ़्ते का और हर महीने की 1 तारीख को पिछले महीने का फ़ायदा-नुकसान और उधार — मालिक को हमेशा आता है।', en: 'Every Monday for last week and on the 1st for last month: profit/loss and credit due. The owner always gets it.' },
   'Managers ko bhi bhejein': { hi: 'मैनेजर को भी भेजें', en: 'Also send to managers' },
   'Manager aur admin staff jinhe fayda-nuksan dekhne ki ijazat hai, unhe bhi ye notification jayega.': { hi: 'मैनेजर और एडमिन स्टाफ जिन्हें फ़ायदा-नुकसान देखने की इजाज़त है, उन्हें भी ये नोटिफ़िकेशन जाएगा।', en: 'Manager and admin staff who are allowed to see profit/loss will get it too.' },
+
+  /* ── Reports ── */
+  'Delivery charge mila': { hi: 'डिलीवरी चार्ज मिला', en: 'Delivery charges received' },
 };
 
 export default DICT;

@@ -118,7 +118,7 @@ export async function saleReport(businessId, q = {}, viewer = null) {
           },
           // Kitni quantity aisi hai jiski lagat bill me hai hi nahi (purane bill)
           snapQty: {
-            $sum: { $cond: [{ $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }, '$items.qty', 0] },
+            $sum: { $cond: [{ $or: [{ $gt: [{ $ifNull: ['$items.costTotal', 0] }, 0] }, { $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }] }, '$items.qty', 0] },
           },
         },
       },
@@ -811,7 +811,7 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
             ],
           },
         },
-        snapQty: { $sum: { $cond: [{ $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }, '$items.qty', 0] } },
+        snapQty: { $sum: { $cond: [{ $or: [{ $gt: [{ $ifNull: ['$items.costTotal', 0] }, 0] }, { $gt: [{ $ifNull: ['$items.costPrice', 0] }, 0] }] }, '$items.qty', 0] } },
       },
     },
   ];
@@ -827,6 +827,7 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
         tax: { $sum: { $add: ['$cgstTotal', '$sgstTotal', '$igstTotal'] } },
         // Tay rate se jitna zyada/kam liya — Part 21 (invoice.service.js me bane)
         rateVariance: { $sum: { $ifNull: ['$rateVarianceTotal', 0] } },
+        delivery: { $sum: { $ifNull: ['$deliveryCharge', 0] } },
       } },
     ]),
     Invoice.aggregate([{ $match: saleMatch }, ...costPipeline()]),
@@ -869,7 +870,9 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
   const netCost = round2(saleCost - returnCost);
 
   const grossProfit = round2(netSale - netCost);
-  const netProfit = round2(grossProfit - expenses.total);
+  // Bill pe liya delivery charge bhi kamaai hai — maal ki sale me nahi, alag line
+  const deliveryIncome = round2(saleAgg[0]?.delivery || 0);
+  const netProfit = round2(grossProfit + deliveryIncome - expenses.total);
 
   /*
    * TAY RATE SE FARK (Part 21) — sirf ek NAZAR hai, hisaab me pehle se
@@ -893,6 +896,7 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
       amount: rateVarianceTotal,
       muted: true,
     }] : []),
+    ...(deliveryIncome > 0 ? [{ key: 'delivery', label: 'Delivery charge mila', amount: deliveryIncome }] : []),
     ...expenses.byCategory.map((c) => ({
       key: `exp:${c.category}`, label: `   ${c.label}`, amount: -c.amount, muted: true,
     })),
@@ -929,6 +933,7 @@ export async function profitLossReport(businessId, q = {}, viewer = null) {
       netSale,
       cost: netCost,
       grossProfit,
+      deliveryIncome,
       rateVarianceTotal,
       expenses: expenses.total,
       expenseCount: expenses.count,

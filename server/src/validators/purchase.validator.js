@@ -31,7 +31,8 @@ export const purchaseItemSchema = z.object({
   qty: z.coerce.number().gt(0, 'Quantity 0 se zyada honi chahiye').max(10000000),
   rate: money,
   discount: money.optional().default(0),
-  gstRate: z.coerce.number().min(0).max(28).optional().default(0),
+  // Na bheja to item ka apna GST lagta hai (bill jaisa) — 0 maan lena kharid ka GST gira deta tha
+  gstRate: z.coerce.number().min(0).max(28).optional(),
 }).refine((l) => l.itemId || l.newItem?.name, {
   message: 'Item chunein ya naye item ka naam bharein',
   path: ['itemId'],

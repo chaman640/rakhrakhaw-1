@@ -236,20 +236,27 @@ export default function InvoiceForm() {
     const beforeExtra = round2(base.reduce((s, l) => s + l.taxable, 0));
     const extra = round2(Math.min(Math.max(Number(extraDiscount || 0), 0), beforeExtra));
 
-    let taxableTotal = 0,tax = 0;
+    // Server (gst.service.js) jaisa hi: aakhri line ko bacha hua discount, CGST/SGST har line pe
+    let taxableTotal = 0,tax = 0,cgst = 0,bataHua = 0;
     const billGstOn = gstEnabled && applyGst;
-    for (const l of base) {
-      const share = beforeExtra > 0 ? round2(l.taxable / beforeExtra * extra) : 0;
+    base.forEach((l, i) => {
+      const last = i === base.length - 1;
+      const share = beforeExtra > 0 ? last ? round2(extra - bataHua) : round2(l.taxable / beforeExtra * extra) : 0;
+      bataHua = round2(bataHua + share);
       const tv = round2(l.taxable - share);
       taxableTotal = round2(taxableTotal + tv);
-      if (billGstOn) tax = round2(tax + round2(tv * l.gstRate / 100));
-    }
+      if (billGstOn) {
+        const lineTax = round2(tv * l.gstRate / 100);
+        tax = round2(tax + lineTax);
+        cgst = round2(cgst + round2(lineTax / 2));
+      }
+    });
 
     const before = round2(taxableTotal + tax);
     const grandTotal = Math.round(before) + round2(Number(deliveryCharge || 0));
     return {
       subTotal, discountTotal: round2(lineDisc + extra), taxableTotal,
-      taxTotal: tax, cgst: round2(tax / 2), sgst: round2(tax - round2(tax / 2)),
+      taxTotal: tax, cgst, sgst: round2(tax - cgst),
       roundOff: round2(Math.round(before) - before), grandTotal
     };
   }, [rows, extraDiscount, deliveryCharge, gstEnabled, applyGst]);
