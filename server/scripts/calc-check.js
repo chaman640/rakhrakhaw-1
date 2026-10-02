@@ -278,6 +278,39 @@ async function run() {
     check('kharid mitayi', r.status === 200, r.message);
     eq('Z stock wapas 2', (await Item.findById(Z).lean()).stockQty, 2);
 
+    console.log(`\n${Y}21. Supplier: wapasi aur ₹2000 advance ke baad${N}`);
+    eq('kharid 1 poori chukta', (await Purchase.findById(pur1).lean()).dueAmount, 0);
+    eq('supplier ko advance 2000 − 1188 = 812 (minus balance)', (await Party.findById(S).lean()).balance, -812);
+
+    console.log(`\n${Y}22. Opening balance 500 wali party, 500 mile${N}`);
+    const C = await party({ type: 'retailer', name: 'Chandra Traders', openingBalance: 500, address: { city: 'Kanpur', state: 'Uttar Pradesh', pincode: '208001' } });
+    eq('opening se khata 500', (await Party.findById(C).lean()).balance, 500);
+    r = await call('POST', '/payments', { partyId: C, amount: 500 });
+    check('payment bani', r.status === 201, r.message);
+    eq('khata 0', (await Party.findById(C).lean()).balance, 0);
+
+    console.log(`\n${Y}23. Poora chukta bill wapas → jama → cash wapas${N}`);
+    r = await call('POST', '/invoices', { partyId: C, items: [{ itemId: Yi, qty: 1, rate: 80 }], paidAmount: 90 });
+    const cInv = r.data;
+    eq('bill 90 chukta', cInv?.dueAmount, 0);
+    r = await call('POST', '/returns', { type: 'SALE_RETURN', partyId: C, invoiceId: cInv._id, items: [{ itemId: Yi, qty: 1, rate: 80 }] });
+    const cRet = r.data;
+    eq('credit note 90 (80 + 9.6 → 90)', cRet?.grandTotal, 90);
+    eq('C ka jama 90', (await Party.findById(C).lean()).balance, -90);
+    r = await call('GET', `/payments/refund/${cRet._id}`);
+    eq('wapas ho sakta hai 90', r.data?.refundable, 90);
+    r = await call('POST', `/payments/refund/${cRet._id}`, { mode: 'CASH' });
+    check('cash wapas diya', r.status === 201 || r.status === 200, r.message);
+    eq('C ka khata 0', (await Party.findById(C).lean()).balance, 0);
+    r = await call('POST', `/payments/refund/${cRet._id}`, { mode: 'CASH' });
+    check('doobara refund nahi', r.status === 400, `${r.status}`);
+
+    console.log(`\n${Y}24. Quotation: Y 3×80, 10% chhoot, 12% GST${N}`);
+    r = await call('POST', '/quotations', { partyId: A, items: [{ itemId: Yi, qty: 3, rate: 80, discountPct: 10 }] });
+    // 240 → 216 → GST 25.92 → 241.92 → 242
+    eq('quotation taxable 216', r.data?.items?.[0]?.taxable, 216);
+    eq('quotation kul 242', r.data?.total, 242);
+
     console.log(`\n${Y}20. Salary ke din (Sep 2026, ravivaar chhutti)${N}`);
     const sep = monthOf('2026-09').days;   // 30 din, 4 ravivaar → 26 kaam ke din
     const emp = { joiningDate: new Date('2026-01-01') };
