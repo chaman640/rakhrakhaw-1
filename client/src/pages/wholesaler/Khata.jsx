@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, TrendingUp, TrendingDown, TriangleAlert, ChevronRight, Wallet, Phone } from
+  BookOpen, TrendingUp, TrendingDown, TriangleAlert, ChevronRight, Phone } from
 'lucide-react';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
 import { formatMoney, formatDate, formatPhone } from '@/lib/format';
 import {
-  PageHeader, Card, CardHeader, StatCard, Button, SearchInput, Chips,
+  PageHeader, Card, CardHeader, StatCard, SearchInput, Chips,
   Pagination, EmptyState, Badge, SkeletonRows, useToast } from
 '@/components/ui';
 import { BalanceLine } from './khata/LedgerTable';
@@ -53,7 +53,7 @@ export default function Khata() {
       <PageHeader
         title={t('Khata')}
         subtitle={t('Kisse kitna lena hai, kisko kitna dena hai — sab ek jagah')}
-        action={<Button icon={Wallet} onClick={() => navigate('/payments')}>{t('Payments')}</Button>} />
+      />
       
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

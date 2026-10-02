@@ -1,6 +1,5 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { PageHeader, Tabs } from '@/components/ui';
+import { useLocation } from 'react-router-dom';
+import { PageHeader } from '@/components/ui';
 import Purchases from './Purchases';
 import PartyList from './parties/PartyList';
 import Expenses from './Expenses';
@@ -39,53 +38,27 @@ import { t } from '@/lib/i18n';
  */
 
 const TABS = [
-  { to: '/purchases', value: 'purchases', label: 'Purchase', perm: 'purchases',
+  { to: '/purchases', value: 'purchases', label: 'Purchases', perm: 'purchases',
     subtitle: 'Maal andar aaya — stock apne aap badhta hai' },
-  { to: '/suppliers', value: 'suppliers', label: 'Supplier', perm: 'parties',
+  { to: '/suppliers', value: 'suppliers', label: 'Suppliers', perm: 'parties',
     subtitle: 'Jinse aap maal khareedte hain' },
   { to: '/expenses', value: 'expenses', label: 'Kharch', perm: 'expenses',
     subtitle: 'Chai, petrol, kiraya, tankhwah — maal ke alawa ka kharcha' },
 ];
 
 export default function Buying() {
-  const navigate = useNavigate();
-  const { pathname, search } = useLocation();
-  const { can } = useAuth();
+  const { pathname } = useLocation();
 
-  const dikhne = TABS.filter((tb) => can(tb.perm));
+  // Kaunsa hissa khula hai — URL se. Inke beech jaane ki patti upar app bar me hai
+  // (Purchases · Suppliers · Expenses · Stock intake), isliye yahan dobara nahi.
   const abhi = TABS.find((tb) => pathname.startsWith(tb.to)) || TABS[0];
-
-  /*
-    Ek hi tab bacha ho to tab-patti dikhane ka koi matlab nahi.
-
-    Hadd wale staff ke saath yahi hota hai: salesman ko sirf Kharch dikhta hai.
-    Uske liye ek akela tab sirf ek aisa button hai jo kuch karta hi nahi.
-  */
-  const pattiChahiye = dikhne.length > 1;
 
   return (
     <>
       <PageHeader
-        title={t('Kharid')}
+        title={t(abhi.label)}
         subtitle={t(abhi.subtitle)}
       />
-
-      {pattiChahiye && (
-        <Tabs
-          className="mb-4"
-          tabs={dikhne.map((tb) => ({ value: tb.value, label: tb.label }))}
-          value={abhi.value}
-          onChange={(v) => {
-            const next = TABS.find((tb) => tb.value === v);
-            /*
-              Purchase tab pe wapas aate waqt `?tab=dena` saath le jate hain —
-              taaki Dashboard se "Suppliers ko dena" pe aane ke baad Supplier
-              tab dekh kar wapas aaye to wahi jagah mile jahan se gaya tha.
-            */
-            navigate(next.to + (next.value === 'purchases' ? search : ''));
-          }}
-        />
-      )}
 
       {abhi.value === 'purchases' && <Purchases embedded />}
       {abhi.value === 'suppliers' && <PartyList type="supplier" embedded />}
