@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Upload, Trash2, Store, Save, CheckCircle2, QrCode, Landmark, FileText, Info, Plus,
 } from 'lucide-react';
@@ -11,7 +11,6 @@ import {
   Spinner, useToast,
 } from '@/components/ui';
 import AccountTab from './settings/AccountTab';
-import SubscriptionManage from '@/components/billing/SubscriptionManage';
 import { t } from '@/lib/i18n';
 
 /**
@@ -35,7 +34,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
 
   const wanted = params.get('tab');
-  const [tab, setTab] = useState(() => (wanted && ['shop', 'pay', 'bill', 'plan', 'me'].includes(wanted) ? wanted : 'shop'));
+  const [tab, setTab] = useState(() => (wanted && ['shop', 'pay', 'bill', 'me'].includes(wanted) ? wanted : 'shop'));
 
   useEffect(() => { if (!isOwner) setTab('me'); }, [isOwner]);
 
@@ -50,6 +49,9 @@ export default function Profile() {
     params.set('tab', next);
     setParams(params, { replace: true });
   };
+
+  // Plan ab apne "Plan & billing" page pe hai — purane link wahin bhejo
+  if (wanted === 'plan') return <Navigate to="/autopay" replace />;
 
   if (loading) {
     return <div className="flex justify-center py-20 text-slate-400"><Spinner size={28} /></div>;
@@ -72,8 +74,6 @@ export default function Profile() {
             { value: 'shop', label: 'Dukaan' },
             { value: 'pay', label: t('Paisa lena') },
             { value: 'bill', label: 'Bill' },
-            // Plan, autopay band/chalu, upgrade/downgrade — sab yahin se
-            { value: 'plan', label: 'Subscription' },
           ] : []),
           { value: 'me', label: 'Mera account' },
         ]}
@@ -88,7 +88,6 @@ export default function Profile() {
       {isOwner && business && tab === 'bill' && (
         <BillSection business={business} onSaved={setBusiness} />
       )}
-      {isOwner && tab === 'plan' && <SubscriptionManage />}
       {tab === 'me' && <AccountTab />}
 
       {!isOwner && authBusiness?.name && (

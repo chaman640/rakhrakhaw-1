@@ -14,7 +14,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import ExpenseFormModal from './expenses/ExpenseFormModal';
-import { t, tDyn } from '@/lib/i18n';
+import { t, tDyn, tn } from '@/lib/i18n';
 
 const ACTIVITY_ICON = { invoice: Receipt, order: ShoppingCart, payment: Wallet };
 
@@ -143,12 +143,12 @@ export default function Dashboard() {
   const tiles = [
     d.sale && {
       key: 'sale', label: t('Aaj ki sale'), value: formatMoney(d.sale.today),
-      sub: `${d.sale.todayBills} ${t('bill')}`, icon: IndianRupee, tone: 'brand', to: '/sales',
+      sub: `${tn(d.sale.todayBills, 'bill')}`, icon: IndianRupee, tone: 'brand', to: '/sales',
       change: d.sale.changePct,
     },
     d.collection && {
       key: 'coll', label: t('Aaj paisa aaya'), value: formatMoney(d.collection.today),
-      sub: `${d.collection.todayCount} ${t('entry')}`, icon: Wallet, tone: 'green', to: '/payments',
+      sub: `${tn(d.collection.todayCount, 'entry')}`, icon: Wallet, tone: 'green', to: '/payments',
     },
     /*
       Udhaar wala tile ab "Lena hai" wali LIST kholta hai, khali Payment page
@@ -200,7 +200,7 @@ export default function Dashboard() {
     */
     d.purchase && {
       key: 'purchase', label: t('Is mahine kharida'), value: formatMoney(d.purchase.month),
-      sub: `${d.purchase.monthCount} ${t('purchase')}`, icon: PackagePlus,
+      sub: `${tn(d.purchase.monthCount, 'purchase')}`, icon: PackagePlus,
       tone: 'slate', to: '/purchases',
     },
     d.profit && {
@@ -239,7 +239,7 @@ export default function Dashboard() {
     },
     d.sale?.month !== undefined && {
       key: 'month', label: t('Is mahine sale'), value: formatMoney(d.sale.month),
-      sub: `${d.sale.monthBills} ${t('bill')}`, icon: FileText, tone: 'brand', to: '/sales',
+      sub: `${tn(d.sale.monthBills, 'bill')}`, icon: FileText, tone: 'brand', to: '/sales',
     },
     /*
       Chhatha tile "Dena hai" hai, "Stock ki keemat" nahi.
@@ -440,7 +440,7 @@ export default function Dashboard() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-900">{row.name}</p>
-                      <p className="text-xs text-slate-500">{row.bills} {t('bill')}</p>
+                      <p className="text-xs text-slate-500">{tn(row.bills, 'bill')}</p>
                     </div>
                     <span className="tabular shrink-0 text-sm font-medium text-slate-900">
                       {formatMoney(row.amount)}

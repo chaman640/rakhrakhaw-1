@@ -15,7 +15,7 @@ export default function TrialBanner() {
 
   if (b.trial.expired) {
     return (
-      <Link to="/profile?tab=plan"
+      <Link to="/autopay"
         className="flex items-center gap-2 bg-red-600 px-4 py-2 text-sm font-medium text-white">
         <TriangleAlert size={15} className="shrink-0" />
         <span className="flex-1">{t('Free trial khatam ho gaya — bechna chalu rakhne ke liye plan lein')}</span>
@@ -28,7 +28,7 @@ export default function TrialBanner() {
   if (!b.trial.on || d > 7) return null;
   const urgent = d <= 1;
   return (
-    <Link to="/profile?tab=plan"
+    <Link to="/autopay"
       className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${urgent ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-900'}`}>
       <Clock size={15} className="shrink-0" />
       <span className="flex-1">

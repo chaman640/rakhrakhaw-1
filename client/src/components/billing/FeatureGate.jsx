@@ -34,7 +34,7 @@ export function UpgradeCard({ info, compact = false }) {
           </p>
         )}
         {info.plan && !free && (
-          <Link to="/profile?tab=plan" className="mt-4">
+          <Link to="/autopay" className="mt-4">
             <Button icon={Sparkles}>{t('Plan dekhein')}</Button>
           </Link>
         )}

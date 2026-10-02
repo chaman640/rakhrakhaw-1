@@ -11,7 +11,7 @@ import {
   PageHeader, Card, StatCard, Button, Table, Badge, SearchInput, Chips,
   Input, Pagination, EmptyState, SkeletonRows, useToast,
 } from '@/components/ui';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 const TYPE_LABEL = {
   SALE_RETURN: 'Maal wapas aaya',
@@ -99,11 +99,11 @@ export default function Returns() {
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Wapas aaya (kul)')} value={formatMoney(stats.saleAmount || 0)}
-          icon={ArrowDownLeft} tone="amber" sub={`${stats.saleCount || 0} credit note`} />
+          icon={ArrowDownLeft} tone="amber" sub={`${tn(stats.saleCount || 0, 'credit note')}`} />
         <StatCard label={t('Is mahine wapas aaya')} value={formatMoney(stats.saleMonthAmount || 0)}
           icon={Calendar} tone="amber" />
         <StatCard label={t('Wapas bheja (kul)')} value={formatMoney(stats.purchaseAmount || 0)}
-          icon={ArrowUpRight} tone="brand" sub={`${stats.purchaseCount || 0} debit note`} />
+          icon={ArrowUpRight} tone="brand" sub={`${tn(stats.purchaseCount || 0, 'debit note')}`} />
         <StatCard label={t('Is mahine wapas bheja')} value={formatMoney(stats.purchaseMonthAmount || 0)}
           icon={Calendar} tone="brand" />
       </div>

@@ -99,7 +99,7 @@ export default function Launcher() {
               return (
                 <Link key={a.key} to={a.to} className="relative flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-800 shadow-sm hover:border-brand-300 hover:bg-brand-50 focus-ring">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><Icon size={17} /></span>
-                  <span className="min-w-0 truncate">{t(a.label)}</span>
+                  <span className="line-clamp-2 min-w-0 leading-tight">{t(a.label)}</span>
                   {a.badgeKey && <Badge n={badges[a.badgeKey]} />}
                 </Link>
               );

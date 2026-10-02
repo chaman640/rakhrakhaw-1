@@ -131,7 +131,7 @@ export default function StockIntake() {
       {status === 'PENDING' && !rows.length && !loading && (
         <p className="mt-4 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
           <Store size={14} className="mt-0.5 shrink-0 text-slate-400" />
-          {t('Doosri dukaan se maal mangwane ke liye Profile me Buyer chunein.')}
+          {t('Doosri dukaan se maal mangwane ke liye Settings me Buyer mode chunein.')}
         </p>
       )}
     </>

@@ -242,7 +242,7 @@ export default function PlanPicker({ onDone, compact = false }) {
         </p>
       )}
 
-      {me?.trial?.on && (
+      {data.chargingNow && me?.trial?.on && (
         <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
           {t('Free trial chal raha hai — {n} din baaki. Abhi plan lenge to trial ke bache din bhi saath judenge.', { n: me.trial.daysLeft })}
         </p>

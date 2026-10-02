@@ -85,7 +85,31 @@ export function t(key, vars) {
     ));
   }
 
+  // English: "1 bills" → "1 bill" (anuvaad me aksar bahuvachan hi likha hota hai)
+  if (current === 'en' && vars) out = singularOne(String(out));
+
   return out;
+}
+
+const SING = { entries: 'entry', people: 'person' };
+function singularOne(text) {
+  return text.replace(/(^|[^\d.,₹])1 (bills|payments|shops|entries|purchases|items|orders|days|notes|employees|people|tasks|leads|customers|retailers|suppliers|requests|photos|accounts)\b/g,
+    (m, pre, w) => `${pre}1 ${SING[w] || w.slice(0, -1)}`);
+}
+
+/**
+ * Ginti ke saath shabd — English me 1 pe ekvachan, baaki pe bahuvachan:
+ * `tn(3, 'bill')` → "3 bills", `tn(1, 'entry')` → "1 entry". Hindi/Hinglish me shabd waisa hi.
+ */
+export function tn(n, word) {
+  const num = Number(n) || 0;
+  let w = t(word);
+  if (current === 'en' && num !== 1) {
+    const last = w.split(' ').pop();
+    const plural = /[^aeiou]y$/i.test(last) ? `${last.slice(0, -1)}ies` : /s$/i.test(last) ? last : `${last}s`;
+    w = w.slice(0, w.length - last.length) + plural;
+  }
+  return `${num} ${w}`;
 }
 
 /** Translate only plain strings — for components that accept text or elements as props */

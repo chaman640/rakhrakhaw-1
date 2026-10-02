@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import PaymentFormModal from './payments/PaymentFormModal';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 const MODE_ICON = { CASH: Banknote, UPI: Smartphone, BANK: Landmark, CHEQUE: FileCheck };
 const statusTone = { pending: 'amber', confirmed: 'green', failed: 'red' };
@@ -141,9 +141,9 @@ export default function Payments() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label={t('Aaj aaya')} value={formatMoney(stats.todayAmount || 0)} icon={IndianRupee}
-          tone="green" sub={`${stats.todayCount || 0} payment`} />
+          tone="green" sub={`${tn(stats.todayCount || 0, 'payment')}`} />
         <StatCard label={t('Is mahine')} value={formatMoney(stats.monthAmount || 0)} icon={Calendar}
-          tone="brand" sub={`${stats.monthCount || 0} payment`} />
+          tone="brand" sub={`${tn(stats.monthCount || 0, 'payment')}`} />
         <StatCard label={t('Confirm karna hai')} value={stats.pendingCount || 0} icon={Clock}
           tone={stats.pendingCount > 0 ? 'amber' : 'green'} sub={formatMoney(stats.pendingAmount || 0)} />
         {/*

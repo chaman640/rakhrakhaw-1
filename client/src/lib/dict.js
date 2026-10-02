@@ -129,7 +129,6 @@ const DICT = {
   'Kharidaar ke yahan ye maal stock me daalna abhi baaki hai': { hi: 'खरीदार के यहाँ यह माल स्टॉक में डालना अभी बाकी है', en: 'The buyer hasn\'t taken this stock in yet' },
   'Kharidaar ke yahan ka kaam ruk gaya tha (bill cancel hua tha)': { hi: 'खरीदार के यहाँ का काम रुक गया था (बिल कैंसिल हुआ था)', en: 'Stopped at the buyer’s end (the bill was cancelled)' },
   '{a} ke bill {b} se aaya': { hi: '{a} के बिल {b} से आया', en: 'Came from {a} — bill {b}' },
-  'purchase': { hi: 'परचेज़', en: 'purchases' },
   'Banayein aur bill me lagayein': { hi: 'बनाएँ और बिल में लगाएँ', en: 'Create and add to bill' },
   'Item ka naam to likhna hoga': { hi: 'आइटम का नाम तो लिखना होगा', en: 'The item needs a name' },
   '{a} ban gaya — ab bill me lag gaya': { hi: '{a} बन गया — अब बिल में लग गया', en: '{a} created and added to the bill' },
@@ -974,9 +973,12 @@ const DICT = {
   'ye wapas nahi aayega. Register me likha rahega ki kisne hataya.': { hi: 'ये वापस नहीं आएगा। रजिस्टर में लिखा रहेगा कि किसने हटाया।', en: 'this cannot be undone. The log will record who removed it.' },
   'Ye kharch "Fayda-Nuksan" report me apne aap ghat jate hain.': { hi: 'ये खर्च "फायदा-नुकसान" रिपोर्ट में अपने आप घट जाते हैं।', en: 'These expenses are deducted automatically in the Profit & Loss report.' },
   'Maal khareedna kharch nahi hai — wo "Purchase" me jata hai. Yahan sirf wo paisa likhein jo maal ke alawa bahar gaya.': { hi: 'माल खरीदना खर्च नहीं है — वो "Purchase" में जाता है। यहां सिर्फ वो पैसा लिखें जो माल के अलावा बाहर गया।', en: 'Buying goods is not an expense — that goes under "Purchase". Record only money spent on things other than stock.' },
-  entry: { hi: 'एंट्री', en: 'entries' },
+  entry: { hi: 'एंट्री', en: 'entry' },
   'is mahine': { hi: 'इस महीने', en: 'this month' },
-  bill: { hi: 'बिल', en: 'bills' },
+  bill: { hi: 'बिल', en: 'bill' },
+  payment: { hi: 'पेमेंट', en: 'payment' },
+  'credit note': { hi: 'क्रेडिट नोट', en: 'credit note' },
+  'debit note': { hi: 'डेबिट नोट', en: 'debit note' },
   se: { hi: 'से', en: 'to' },
 
   'Fayda-Nuksan': { hi: 'फायदा-नुकसान', en: 'Profit & Loss' },
@@ -1788,7 +1790,7 @@ const DICT = {
   'Doosri chhalni chun kar dekhein.': { hi: 'दूसरी छलनी चुन कर देखें।', en: 'Try another filter.' },
   '{a} / {b} ho gaya': { hi: '{a} / {b} हो गया', en: '{a} / {b} done' },
   'Jab tak ye kaam baaki hai, ye maal aapke stock me nahi hai — bechne par stock minus me chala jayega.': { hi: 'जब तक ये काम बाकी है, ये माल आपके स्टॉक में नहीं है — बेचने पर स्टॉक माइनस में चला जाएगा।', en: 'Until this is done the goods are not in your stock — selling them will push stock negative.' },
-  'Doosri dukaan se maal mangwane ke liye Profile me Buyer chunein.': { hi: 'दूसरी दुकान से माल मंगवाने के लिए Profile में Buyer चुनें।', en: 'To order from another shop, pick Buyer in your Profile.' },
+  'Doosri dukaan se maal mangwane ke liye Settings me Buyer mode chunein.': { hi: 'दूसरी दुकान से माल मंगवाने के लिए Settings में Buyer mode चुनें।', en: 'To order from another shop, switch to Buyer mode in Settings.' },
   'Maal stock me aa gaya': { hi: 'माल स्टॉक में आ गया', en: 'Goods added to stock' },
   '{n} item aapke stock me chadh gaye': { hi: '{n} आइटम आपके स्टॉक में चढ़ गए', en: '{n} items went into your stock' },
   'Bill {no} · {date}': { hi: 'बिल {no} · {date}', en: 'Bill {no} · {date}' },
@@ -3504,7 +3506,7 @@ const DICT = {
   'Is filter me kuch nahi mila': { hi: 'इस फ़िल्टर में कुछ नहीं मिला', en: 'Nothing matches this filter' },
   'Abhi koi item nahi hai': { hi: 'अभी कोई आइटम नहीं है', en: 'No items yet' },
   '{a0} item delete karein?': { hi: '{a0} आइटम डिलीट करें?', en: 'Delete {a0} items?' },
-  '{a0} dukaan pe udhaar': { hi: '{a0} दुकान पर उधार', en: '{a0} shops owe you' },
+  '{a0} dukaan pe udhaar': { hi: '{a0} दुकान पर उधार', en: 'Owed by {a0} shops' },
   'Kisi pe udhaar nahi': { hi: 'किसी पर उधार नहीं', en: 'Nobody owes you' },
   'Koi party nahi mili': { hi: 'कोई पार्टी नहीं मिली', en: 'No parties found' },
   'Koi chalu order nahi': { hi: 'कोई चालू ऑर्डर नहीं', en: 'No open orders' },
@@ -4149,6 +4151,14 @@ const DICT = {
   'HR — department, team aur reports': { hi: 'HR — विभाग, टीम और रिपोर्ट', en: 'HR — departments, teams and reports' },
   'HR — commission, performance, team target': { hi: 'HR — कमीशन, परफॉर्मेंस, टीम टारगेट', en: 'HR — commission, performance, team targets' },
   'Quotation, sales order, delivery challan': { hi: 'कोटेशन, सेल्स ऑर्डर, डिलीवरी चालान', en: 'Quotation, sales order, delivery challan' },
+
+  /* ── Notifications ── */
+
+  /* ── Staff ── */
+  'aakhri baar {a}': { hi: 'आख़िरी बार {a}', en: 'last login {a}' },
+
+  /* ── Billing ── */
+  'Aapka plan aur saare plan ek jagah': { hi: 'आपका प्लान और सारे प्लान एक जगह', en: 'Your plan and all plans in one place' },
 };
 
 export default DICT;

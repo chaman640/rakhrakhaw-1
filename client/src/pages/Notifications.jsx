@@ -234,7 +234,7 @@ export default function Notifications() {
                 <div key={n._id}>
                   {showHead && (
                     <p className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
-                      {bucket}
+                      {t(bucket)}
                     </p>
                   )}
                   <div

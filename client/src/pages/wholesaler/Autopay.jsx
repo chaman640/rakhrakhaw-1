@@ -61,22 +61,19 @@ export default function Autopay() {
     return <div className="flex justify-center py-16 text-slate-400"><Spinner size={26} /></div>;
   }
 
+  // Free mode: koi payment nahi — bas plans dikhte hain (PlanPicker khud batata hai ki abhi free hai)
   if (!me.chargingNow) {
     return (
       <>
-        <PageHeader title={t('Autopay')} />
-        <Card>
-          <p className="text-sm text-slate-600">
-            {t('Abhi ye dukaan free mode me hai — koi payment nahi lagta.')}
-          </p>
-        </Card>
+        <PageHeader title={t('Plan & billing')} subtitle={t('Aapka plan aur saare plan ek jagah')} />
+        <Card padding={false}><div className="p-5"><PlanPicker onDone={load} /></div></Card>
       </>
     );
   }
 
   return (
     <>
-      <PageHeader title={t('Autopay')} subtitle={t('Har mahine kitna kate, kab kate — sab yahin se')} />
+      <PageHeader title={t('Plan & billing')} subtitle={t('Har mahine kitna kate, kab kate — sab yahin se')} />
 
       {/* ── abhi ka plan ── */}
       <Card className="mb-4">

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui';
 import ExpenseFormModal from './expenses/ExpenseFormModal';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 /**
  * DUKAAN KA KHARCH.
@@ -178,7 +178,7 @@ export default function Expenses({ embedded = false }) {
       <Card padding={false}>
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <p className="text-sm text-slate-500">
-            {meta.total} {t('entry')}
+            {tn(meta.total, 'entry')}
           </p>
           <p className="tabular text-sm font-semibold text-slate-900">
             {formatMoney(meta.filteredAmount || 0)}

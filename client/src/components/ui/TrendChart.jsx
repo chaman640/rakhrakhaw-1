@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { formatMoney } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 /**
  * 14 din ki SALE aur KHARCH — do line.
@@ -168,7 +168,7 @@ export default function TrendChart({
                   left: `${Math.min(88, Math.max(12, xAt(hover)))}%`,
                   bottom: `calc(${100 - Math.min(yAt(sale[hover]), hasKharch ? yAt(kharch[hover]) : 100)}% + 10px)`,
                 }}>
-                <p className="text-[10px] text-slate-300">{hovered.label} · {hovered.bills} {t('bill')}</p>
+                <p className="text-[10px] text-slate-300">{hovered.label} · {tn(hovered.bills, 'bill')}</p>
                 <p className="text-[11px] font-medium text-white">
                   <span style={{ color: '#5eead4' }}>●</span> {formatMoney(hovered.amount)}
                 </p>

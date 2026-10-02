@@ -13,7 +13,7 @@ import {
   Select, Input, Pagination, EmptyState, SkeletonRows, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 const payTone = { unpaid: 'red', partial: 'amber', paid: 'green' };
 const payLabel = { unpaid: 'Udhaar', partial: 'Kuch mila', paid: 'Mil gaya' };
@@ -273,7 +273,7 @@ function DayHeader({ day, total }) {
       <p className="text-sm font-semibold text-slate-900">{dayName(day)}</p>
       {total && (
         <p className="tabular shrink-0 text-xs text-slate-500">
-          {total.bills} {t('bill')} · <span className="font-medium text-slate-700">{formatMoney(total.amount)}</span>
+          {tn(total.bills, 'bill')} · <span className="font-medium text-slate-700">{formatMoney(total.amount)}</span>
           {total.due > 0 && <span className="text-amber-700"> · {formatMoney(total.due)} {t('baaki')}</span>}
         </p>
       )}

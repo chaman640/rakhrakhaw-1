@@ -129,7 +129,7 @@ export default function StaffTab() {
                   {formatPhone(row.phone)}
                   {' · '}
                   {row.isOwner ? t('Sab kuch') : t('{a0} kaam ki ijazat', { a0: row.permissions.length })}
-                  {row.lastLoginAt && ` · aakhri baar ${formatDateTime(row.lastLoginAt)}`}
+                  {row.lastLoginAt && ` · ${t('aakhri baar {a}', { a: formatDateTime(row.lastLoginAt) })}`}
                 </p>
                 {row.limitsSummary?.hasLimits &&
               <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-amber-700">

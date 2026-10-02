@@ -277,18 +277,18 @@ export default function Items() {
         action={
         <>
             <Button variant="secondary" icon={Tag} onClick={() => setCategoryOpen(true)}>
-              <span className="hidden sm:inline">{t('Categories')}</span>
+              {t('Categories')}
             </Button>
             {bulkOn && (
               <Button variant="secondary" icon={FileUp} onClick={() => setBulkOpen(true)}>
-                <span className="hidden sm:inline">{t('Bill se add')}</span>
+                {t('Bill se add')}
               </Button>
             )}
             <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>
-              <span className="hidden sm:inline">{t('Import')}</span>
+              {t('Import')}
             </Button>
             <Button variant="secondary" icon={Download} onClick={handleExport}>
-              <span className="hidden sm:inline">{t('Export')}</span>
+              {t('Export')}
             </Button>
             <Button icon={Plus} onClick={() => {setFormItem(null);setFormOpen(true);}}>
               {t('Naya item')}

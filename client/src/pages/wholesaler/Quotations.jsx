@@ -33,7 +33,7 @@ export default function Quotations() {
         action={can('orders:create') && <Button icon={Plus} onClick={() => navigate('/quotations/new')}>{t('New quotation')}</Button>} />
       <div className="mb-3 grid grid-cols-3 gap-2 text-center">
         {[['Open offers', formatMoney(openValue)], ['Waiting reply', n('sent')], ['Won (orders)', n('converted')]].map(([l, v]) => (
-          <Card key={l} className="!p-3"><p className="text-xs text-slate-500">{t(l)}</p><p className="truncate text-base font-semibold text-slate-900 tabular-nums">{v}</p></Card>
+          <Card key={l} className="!p-3"><p className="text-xs text-slate-500">{t(l)}</p><p className="break-words text-sm font-semibold leading-tight text-slate-900 tabular-nums sm:text-base">{v}</p></Card>
         ))}
       </div>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">

@@ -2,7 +2,7 @@ import { Info, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { formatMoney, formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 /**
  * FAYDA-NUKSAN.
@@ -38,7 +38,7 @@ export default function ProfitLoss({ meta }) {
             </p>
             <p className={cn('mt-1 text-xs', good ? 'text-emerald-700' : 'text-red-700')}>
               {formatDate(meta.from)} {t('se')} {formatDate(meta.to)}
-              {' · '}{meta.bills} {t('bill')}
+              {' · '}{tn(meta.bills, 'bill')}
             </p>
           </div>
           <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
@@ -77,7 +77,7 @@ export default function ProfitLoss({ meta }) {
 
           {(meta.expenseByCategory || []).map((c) => (
             <Line key={c.category} label={t(c.label)} amount={-c.amount} minus indent
-              hint={`${c.count} ${t('entry')}`} />
+              hint={`${tn(c.count, 'entry')}`} />
           ))}
           <Line label={t('Dukaan ka kharch')} amount={-meta.expenses} minus strong />
 

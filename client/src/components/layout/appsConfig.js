@@ -63,7 +63,7 @@ export const APPS = [
   {
     key: 'settings', label: 'Settings', icon: Settings, tone: 'from-gray-500 to-gray-700',
     menu: [['/profile', 'Profile'], ['/settings', 'Settings'], ['/autopay', 'Plan & billing'], ['/help', 'Help & support']],
-    also: ['/notifications', '/support'],
+    also: ['/support'],
   },
 ];
 
