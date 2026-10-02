@@ -210,6 +210,71 @@ async function run() {
     r = await call('GET', '/reports/outstanding');
     const total = (r.data?.rows || []).reduce((s, x) => s + x.balance, 0);
     eq('udhaar = B ka 236 (A ka jama hai)', total, 236);
+
+    console.log(`\n${Y}13. GSTR-3B (is mahine)${N}`);
+    const period = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 7);
+    r = await call('GET', `/accounts/gst/gstr3b?period=${period}`);
+    const o = r.data?.table31?.a || {};
+    // Bahar: 882 + 400 − 200 = 1082; tax: 137.16 + 72 − 36 = 173.16
+    eq('3.1(a) taxable 1082', o.taxable, 1082);
+    eq('3.1(a) tax 173.16', round2((o.igst || 0) + (o.cgst || 0) + (o.sgst || 0)), 173.16);
+    const itc = r.data?.table4?.net || {};
+    // Supplier ka GSTIN nahi → kharid ka 300 ITC nahi milta, aur uski wapasi bhi ITC nahi ghatati
+    eq('ITC 0 (supplier bina GSTIN)', round2((itc.igst || 0) + (itc.cgst || 0) + (itc.sgst || 0)), 0);
+    eq('na milne wala GST 300', r.data?.table4?.notEligible?.tax, 300);
+
+    console.log(`\n${Y}14. Accounts: khaate barabar${N}`);
+    r = await call('GET', '/accounts/trial-balance');
+    const tb = r.data || {};
+    eq('trial balance: debit = credit', tb.totals?.dr ?? tb.totalDebit ?? tb.totals?.debit, tb.totals?.cr ?? tb.totalCredit ?? tb.totals?.credit);
+    r = await call('GET', '/accounts/checks');
+    const bad = (r.data?.checks || r.data || []).filter?.((c) => c.ok === false) || [];
+    check('book checks sab theek', bad.length === 0, JSON.stringify(bad).slice(0, 300));
+
+    console.log(`\n${Y}15. FIFO: Z opening 5×60, kharid 5×80, bikri 7 → lagat 300 + 160 = 460${N}`);
+    const Z = (await call('POST', '/items', { name: 'Gear Z', purchasePrice: 60, salePrice: 100, gstRate: 0, openingStock: 5 })).data?._id;
+    r = await call('POST', '/purchases', { items: [{ itemId: Z, qty: 5, rate: 80 }] });
+    eq('nakad kharid poori chukta', r.data?.dueAmount, 0);
+    r = await call('POST', '/invoices', { partyId: B, items: [{ itemId: Z, qty: 7, rate: 100 }] });
+    const zInv = await Invoice.findById(r.data?._id).lean();
+    eq('bill line ki lagat 460 (FIFO)', zInv?.items?.[0]?.costTotal, 460);
+    eq('Z stock 3', (await Item.findById(Z).lean()).stockQty, 3);
+
+    console.log(`\n${Y}16. Zyada paisa fayde me: Z 1×100, ₹120 mile${N}`);
+    r = await call('POST', '/invoices', { partyId: B, items: [{ itemId: Z, qty: 1, rate: 100 }], paidAmount: 120, extraAsProfit: true });
+    eq('bill 120 ka bana', r.data?.grandTotal, 120);
+    eq('rate 120 hua', r.data?.items?.[0]?.rate, 120);
+    eq('baaki 0', r.data?.dueAmount, 0);
+
+    console.log(`\n${Y}17. Payment mitana: B se 100 liye, phir mita diye${N}`);
+    const bBefore = (await Party.findById(B).lean()).balance;
+    r = await call('POST', '/payments', { partyId: B, amount: 100 });
+    const payId = r.data?._id;
+    eq('B ka khata 100 ghata', (await Party.findById(B).lean()).balance, round2(bBefore - 100));
+    r = await call('DELETE', `/payments/${payId}`);
+    check('payment mita', r.status === 200, r.message);
+    eq('B ka khata wapas', (await Party.findById(B).lean()).balance, bBefore);
+
+    console.log(`\n${Y}18. Kharab maal: Z 1 → kharch 80 (FIFO), phir mitaya${N}`);
+    r = await call('POST', '/expenses', { category: 'waste-stock', amount: 0.01, wasteItemId: Z, wasteQty: 1 });
+    check('waste kharch bana', r.status === 201, r.message);
+    eq('waste ki lagat 80 (bachi khep 80 wali)', r.data?.amount, 80);
+    eq('Z stock 2 − 1 = 1', (await Item.findById(Z).lean()).stockQty, 1);
+    r = await call('DELETE', `/expenses/${r.data?._id}`);
+    check('waste kharch mitaya', r.status === 200, r.message);
+    eq('Z stock wapas 2', (await Item.findById(Z).lean()).stockQty, 2);
+
+    console.log(`\n${Y}19. Nakad kharid mitana${N}`);
+    r = await call('POST', '/purchases', { items: [{ itemId: Z, qty: 2, rate: 90 }] });
+    eq('Z stock 2 + 2 = 4', (await Item.findById(Z).lean()).stockQty, 4);
+    r = await call('DELETE', `/purchases/${r.data?._id}`);
+    check('kharid mitayi', r.status === 200, r.message);
+    eq('Z stock wapas 2', (await Item.findById(Z).lean()).stockQty, 2);
+
+    console.log(`\n${Y}20. Sab ke baad phir se niyam${N}`);
+    await stockMatches(businessId);
+    await ledgerMatches(businessId);
+    await billsMatch(businessId);
   } finally {
     await cleanup();
     server.close();

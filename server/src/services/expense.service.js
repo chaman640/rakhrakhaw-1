@@ -8,7 +8,7 @@ import {
 import { round2 } from '../utils/money.js';
 import { Expense, Counter, Item } from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
-import { khepNikalo } from './lot.service.js';
+import { khepNikalo, khepWapas } from './lot.service.js';
 import { isScoped } from '../utils/scope.js';
 import { dayFrom, dayTo } from '../utils/istDay.js';
 
@@ -180,6 +180,7 @@ export async function createExpense(businessId, payload, userId) {
   let amount = round2(payload.amount);
   let wasteItemId = null;
   let wasteQty = 0;
+  let wasteLots = [];
   let stockAlreadyDeducted = false;
 
   try {
@@ -212,9 +213,10 @@ export async function createExpense(businessId, payload, userId) {
       });
       stockAlreadyDeducted = true;
 
-      const { cost } = await khepNikalo({
+      const { cost, pieces } = await khepNikalo({
         businessId, itemId: item._id, qty: wasteQty, fallbackCost: item.purchasePrice || 0,
       });
+      wasteLots = pieces;
       amount = round2(cost);
     } else if (!(amount > 0)) {
       throw ApiError.badRequest('Rakam 0 se zyada honi chahiye');
@@ -236,6 +238,7 @@ export async function createExpense(businessId, payload, userId) {
       note: payload.note || '',
       wasteItemId,
       wasteQty,
+      wasteLots,
       createdBy: userId || null,
     });
 
@@ -247,6 +250,7 @@ export async function createExpense(businessId, payload, userId) {
         businessId, itemId: wasteItemId, type: STOCK_MOVEMENT_TYPES.WASTE,
         qty: wasteQty, note: 'Waste expense save nahi hua — wapas', allowNegative: true,
       }).catch(() => {});
+      if (wasteLots.length) await khepWapas({ businessId, itemId: wasteItemId, pieces: wasteLots }).catch(() => {});
     }
     throw err;
   }
@@ -315,6 +319,12 @@ export async function deleteExpense(businessId, id, viewer = null) {
       note: `${expense.expenseNo} hata diya — stock wapas`,
       allowNegative: true,
     });
+    // Khep bhi wapas — warna stock aur khep ka jod bigad jata (FIFO lagat galat).
+    // Purani entry me khep likhi nahi thi: us lagat pe nayi khep.
+    const pieces = expense.wasteLots?.length
+      ? expense.wasteLots.map((p) => ({ lotId: p.lotId, qty: p.qty, unitCost: p.unitCost }))
+      : [{ qty: expense.wasteQty, unitCost: round2(expense.amount / expense.wasteQty) }];
+    await khepWapas({ businessId, itemId: expense.wasteItemId, pieces, date: expense.date, refNo: expense.expenseNo });
   }
 
   await Expense.deleteOne({ _id: expense._id });

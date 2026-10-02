@@ -59,6 +59,8 @@ const expenseSchema = new mongoose.Schema(
      */
     wasteItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
     wasteQty: { type: Number, default: 0, min: 0 },
+    // Kaunsi khep se kitna gaya — entry mitane pe wahi khep wapas bharti hai
+    wasteLots: [{ _id: false, lotId: mongoose.Schema.Types.ObjectId, qty: Number, unitCost: Number }],
     // Salary ka kharch — kis payroll se bana (accounting se source kholne ke liye)
     payrollId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payroll', default: null },
 

@@ -19,7 +19,8 @@
     "hr:check": "node scripts/hr-check.js",
     "crm:check": "node scripts/crm-check.js",
     "accounts:check": "node scripts/accounts-check.js",
-    "admin:check": "node scripts/admin-check.js"
+    "admin:check": "node scripts/admin-check.js",
+    "calc:check": "node scripts/calc-check.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

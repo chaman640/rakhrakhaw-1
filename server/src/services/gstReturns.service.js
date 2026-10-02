@@ -131,7 +131,7 @@ async function inputTax(businessId, { from, to }, biz) {
     ReturnNote.find({ businessId: bid, type: 'PURCHASE_RETURN', returnDate: { $gte: from, $lte: to } })
       .select('returnNo returnDate partyId partySnapshot taxableTotal cgstTotal sgstTotal igstTotal').lean(),
   ]);
-  const sup = await Party.find({ _id: { $in: purchases.map((p) => p.supplierId) } }).select('name gstin stateCode').lean();
+  const sup = await Party.find({ _id: { $in: [...purchases.map((p) => p.supplierId), ...returns.map((r) => r.partyId)] } }).select('name gstin stateCode').lean();
   const sm = new Map(sup.map((s) => [String(s._id), s]));
   const eligible = zero(); const blocked = { taxable: 0, tax: 0, count: 0 };
   const rows = [];
@@ -145,7 +145,10 @@ async function inputTax(businessId, { from, to }, biz) {
     else { blocked.taxable = round2(blocked.taxable + p.taxableTotal); blocked.tax = round2(blocked.tax + p.taxTotal); blocked.count += 1; }
     rows.push({ no: p.purchaseNo, billNo: p.supplierBillNo || '', date: p.purchaseDate, supplier: s?.name || '', gstin, eligible: Boolean(gstin), ...t, value: p.grandTotal });
   }
-  const reversal = returns.reduce((a, r) => addTax(a, { taxable: r.taxableTotal, igst: r.igstTotal, cgst: r.cgstTotal, sgst: r.sgstTotal }), zero());
+  // Sirf wahi wapasi ITC ghatati hai jiska ITC liya gaya tha (supplier ka GSTIN ho)
+  const reversal = returns
+    .filter((r) => (sm.get(String(r.partyId))?.gstin || r.partySnapshot?.gstin || '').trim())
+    .reduce((a, r) => addTax(a, { taxable: r.taxableTotal, igst: r.igstTotal, cgst: r.cgstTotal, sgst: r.sgstTotal }), zero());
   return { rows, eligible, blocked, reversal, net: addTax({ ...eligible }, reversal, -1) };
 }
 
