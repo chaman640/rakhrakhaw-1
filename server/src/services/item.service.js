@@ -6,7 +6,7 @@ import { saveImage, deleteImage } from '../utils/storage.js';
 import { parseCsvToObjects, toCsv } from '../utils/csv.js';
 import { Item, Category, StockMovement, PartyItemRate, Invoice, Purchase, ReturnNote } from '../models/index.js';
 import { applyStockChange, setStock } from './stock.service.js';
-import { khepBanao, khepValueMap } from './lot.service.js';
+import { khepBanao, khepNikalo, khepValueMap } from './lot.service.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -454,6 +454,16 @@ export async function adjustStock(businessId, id, { mode, qty, note, type }, use
       qty: signed, note, userId,
       allowNegative: false,
     });
+    // Khep bhi saath — warna stock aur khep alag ho jate aur FIFO lagat galat aati
+    const item = await Item.findOne({ _id: id, businessId }).select('purchasePrice').lean();
+    if (signed > 0) {
+      await khepBanao({
+        businessId, itemId: id, qty: signed, unitCost: item?.purchasePrice || 0,
+        source: 'ADJUSTMENT', refType: 'Item', refId: id, refNo: 'Stock joda', userId,
+      });
+    } else {
+      await khepNikalo({ businessId, itemId: id, qty: -signed, fallbackCost: item?.purchasePrice || 0 });
+    }
   }
   return getItem(businessId, id);
 }
@@ -698,6 +708,11 @@ export async function importCsv(businessId, { csv, commit }, userId) {
         await StockMovement.create({
           businessId, itemId: item._id, type: STOCK_MOVEMENT_TYPES.OPENING,
           qty: row.stockQty, balanceAfter: row.stockQty, note: 'CSV import', createdBy: userId,
+        });
+        // Opening maal ki khep — bina iske FIFO lagat khaali rehti
+        await khepBanao({
+          businessId, itemId: item._id, qty: row.stockQty, unitCost: row.purchasePrice || 0,
+          source: 'OPENING', refType: 'Item', refId: item._id, refNo: 'CSV import', userId,
         });
       }
       created++;

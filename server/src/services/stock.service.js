@@ -131,8 +131,10 @@ export async function setStock({ businessId, itemId, newQty, note = '', userId =
   */
   const { khepBanao, khepNikalo } = await import('./lot.service.js');
   if (delta > 0) {
-    await khepBanao({
-      businessId, itemId, qty: delta,
+    // Minus stock ki koi khep nahi hoti — khep utni hi jitna asal me bacha hai
+    const khepQty = Number(newQty) - Math.max(0, Number(item.stockQty));
+    if (khepQty > 0) await khepBanao({
+      businessId, itemId, qty: khepQty,
       unitCost: item.purchasePrice || 0,
       source: 'ADJUSTMENT', refType: 'Item', refId: itemId,
       refNo: 'Ginti theek ki', userId,

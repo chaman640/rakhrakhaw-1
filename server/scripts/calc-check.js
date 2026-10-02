@@ -311,6 +311,19 @@ async function run() {
     eq('quotation taxable 216', r.data?.items?.[0]?.taxable, 216);
     eq('quotation kul 242', r.data?.total, 242);
 
+    console.log(`\n${Y}25. Stock haath se: add 4, remove 3, set 10 — khep saath chale${N}`);
+    const W = (await call('POST', '/items', { name: 'Washer W', purchasePrice: 10, salePrice: 15, openingStock: 2 })).data?._id;
+    r = await call('POST', `/items/${W}/stock`, { mode: 'add', qty: 4 });
+    check('stock joda', r.status === 200, r.message);
+    r = await call('POST', `/items/${W}/stock`, { mode: 'remove', qty: 3 });
+    check('stock ghataya', r.status === 200, r.message);
+    r = await call('POST', `/items/${W}/stock`, { mode: 'set', qty: 10 });
+    eq('W stock 10', (await Item.findById(W).lean()).stockQty, 10);
+    r = await call('POST', '/items/import', { commit: true, csv: 'name,purchasePrice,salePrice,stockQty\nCSV Nut,7,12,25\n' });
+    check('CSV import', r.status === 200 || r.status === 201, r.message);
+    const nut = await Item.findOne({ businessId, name: 'CSV Nut' }).lean();
+    eq('CSV item stock 25', nut?.stockQty, 25);
+
     console.log(`\n${Y}20. Salary ke din (Sep 2026, ravivaar chhutti)${N}`);
     const sep = monthOf('2026-09').days;   // 30 din, 4 ravivaar → 26 kaam ke din
     const emp = { joiningDate: new Date('2026-01-01') };
