@@ -93,8 +93,10 @@ export default function Reports() {
     const want = searchParams.get('tab') || 'pl';
     return tabs.some((r) => r.value === want) ? want : (tabs[0]?.value || 'sale');
   });
-  const [from, setFrom] = useState(firstOfMonth());
-  const [to, setTo] = useState(todayStr());
+  // Notification ke link se aayi tareekh (hafte/mahine ka hisaab) — warna is mahine ki
+  const linkDate = (k) => (/^\d{4}-\d{2}-\d{2}$/.test(searchParams.get(k) || '') ? searchParams.get(k) : null);
+  const [from, setFrom] = useState(() => linkDate('from') || firstOfMonth());
+  const [to, setTo] = useState(() => linkDate('to') || todayStr());
   const [groupBy, setGroupBy] = useState('day');
   const [stockFilter, setStockFilter] = useState(searchParams.get('filter') || 'all');
   const [partyType, setPartyType] = useState('retailer');

@@ -4122,6 +4122,15 @@ const DICT = {
   'Abhi ye plan chalu nahi kiye gaye hain — filhaal HR (attendance, salary) chhod kar baaki poori app free hai.': { hi: 'अभी ये प्लान चालू नहीं किए गए हैं — फिलहाल HR (अटेंडेंस, सैलरी) छोड़कर बाकी पूरी ऐप फ्री है।', en: 'These plans aren\'t active yet — for now the whole app is free except HR (attendance, salary).' },
   'Abhi ye dukaan free mode me hai — koi payment nahi lagta. HR (attendance, salary) free version me nahi hai.': { hi: 'अभी ये दुकान फ्री मोड में है — कोई पेमेंट नहीं लगता। HR (अटेंडेंस, सैलरी) फ्री वर्ज़न में नहीं है।', en: 'This shop is on the free version — no payment needed. HR (attendance, salary) isn\'t included in the free version.' },
   'Free version me HR (attendance, chhutti, salary) shamil nahi hai. Bade plan jald shuru honge.': { hi: 'फ्री वर्ज़न में HR (अटेंडेंस, छुट्टी, सैलरी) शामिल नहीं है। बड़े प्लान जल्द शुरू होंगे।', en: 'HR (attendance, leave, salary) isn\'t included in the free version. Bigger plans are coming soon.' },
+
+  /* ── Report digest ── */
+  'Hisaab report': { hi: 'हिसाब रिपोर्ट', en: 'Reports' },
+  'Hafte ka hisaab — {a}': { hi: 'हफ़्ते का हिसाब — {a}', en: 'Weekly summary — {a}' },
+  'Mahine ka hisaab — {a}': { hi: 'महीने का हिसाब — {a}', en: 'Monthly summary — {a}' },
+  'Bikri {a} · Fayda {b} · Udhaar {c} — {d}': { hi: 'बिक्री {a} · फ़ायदा {b} · उधार {c} — {d}', en: 'Sales {a} · Profit {b} · Credit due {c} — {d}' },
+  'Bikri {a} · Nuksan {b} · Udhaar {c} — {d}': { hi: 'बिक्री {a} · नुकसान {b} · उधार {c} — {d}', en: 'Sales {a} · Loss {b} · Credit due {c} — {d}' },
+  'Bikri {a} · Fayda {b} · Udhaar {c}': { hi: 'बिक्री {a} · फ़ायदा {b} · उधार {c}', en: 'Sales {a} · Profit {b} · Credit due {c}' },
+  'Bikri {a} · Nuksan {b} · Udhaar {c}': { hi: 'बिक्री {a} · नुकसान {b} · उधार {c}', en: 'Sales {a} · Loss {b} · Credit due {c}' },
 };
 
 export default DICT;

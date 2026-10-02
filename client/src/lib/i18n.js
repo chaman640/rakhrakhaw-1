@@ -109,6 +109,9 @@ const DYNAMIC = [
   'Item "{a}" hataya', 'Naya retailer "{a}" jodha', 'Naya supplier "{a}" jodha', 'Naya item "{a}" jodha',
   '{a} cancel kiya — {b}', '{a} reject kiya — {b}', '{a} cancel kiya', '{a} reject kiya', '{a} — {b} kiya', '{a} ko {b} banaya',
   '{a} ko hataya', '{a} me {b} badla', '{a} mitaya', 'Paisa aaya {a}', 'Paisa diya {a}',
+  'Hafte ka hisaab — {a}', 'Mahine ka hisaab — {a}',
+  'Bikri {a} · Fayda {b} · Udhaar {c} — {d}', 'Bikri {a} · Nuksan {b} · Udhaar {c} — {d}',
+  'Bikri {a} · Fayda {b} · Udhaar {c}', 'Bikri {a} · Nuksan {b} · Udhaar {c}',
   'Zyada se zyada {a}% discount', '{a} tak ka bill', 'Zyada se zyada {a} photo lag sakti hain',
 ].map((key) => {
   const names = [];

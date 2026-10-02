@@ -7,6 +7,7 @@ import { loadPlatformConfig } from './services/platform.service.js';
 import { sweepAutomation } from './services/crmOps.service.js';
 import { sweepSubscriptionAlerts } from './services/adminNotify.service.js';
 import { dispatchAnnouncements } from './services/platformAdmin.service.js';
+import { sweepReportDigests } from './services/reportDigest.service.js';
 
 async function start() {
   await connectDB();
@@ -32,7 +33,10 @@ async function start() {
     sweepAutomation().catch((e) => console.warn('[crm] sweep:', e.message));
     sweepSubscriptionAlerts().catch((e) => console.warn('[alerts] sweep:', e.message));
     dispatchAnnouncements().catch((e) => console.warn('[announce] sweep:', e.message));
+    sweepReportDigests().catch((e) => console.warn('[digest] sweep:', e.message));
   }, 3600000).unref();
+  // Hafte/mahine ka hisaab — server jaagte hi bhi (free hosting pe server so jata hai)
+  setTimeout(() => sweepReportDigests().catch((e) => console.warn('[digest] sweep:', e.message)), 60000).unref();
   app.listen(env.port, '0.0.0.0', () => {
     if (env.isProd) {
       console.log(`[server] production mode, port ${env.port} — client aur API dono ek hi URL pe`);

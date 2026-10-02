@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell, ShoppingCart, TruckIcon, Wallet, TriangleAlert, CheckCheck,
   Trash2, BellOff, X, PackagePlus, UserPlus, ListChecks,
+  BarChart3,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useNotifications } from '@/context/NotificationContext';
@@ -25,6 +26,7 @@ const TYPES = [
   { value: 'STOCK_INTAKE', label: 'Maal aaya' },
   { value: 'RETAILER_REQUEST', label: 'Judne ki request' },
   { value: 'TASK_ASSIGNED', label: 'Kaam' },
+  { value: 'REPORT_DIGEST', label: 'Hisaab report' },
 ];
 
 const ICONS = {
@@ -36,6 +38,7 @@ const ICONS = {
   STOCK_INTAKE: PackagePlus,
   RETAILER_REQUEST: UserPlus,
   TASK_ASSIGNED: ListChecks,
+  REPORT_DIGEST: BarChart3,
 };
 
 const TONE = {
@@ -47,6 +50,7 @@ const TONE = {
   STOCK_INTAKE: 'bg-amber-50 text-amber-700',
   RETAILER_REQUEST: 'bg-blue-50 text-blue-700',
   TASK_ASSIGNED: 'bg-violet-50 text-violet-700',
+  REPORT_DIGEST: 'bg-teal-50 text-teal-700',
 };
 
 /** Aaj / Kal / uske pehle — date se zyada ye samajh aata hai */

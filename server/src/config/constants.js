@@ -152,6 +152,8 @@ export const NOTIFICATION_TYPES = {
   HR_UPDATE: 'HR_UPDATE',
   ANNOUNCEMENT: 'ANNOUNCEMENT',
   SUPPORT_REPLY: 'SUPPORT_REPLY',
+  // Har hafte/mahine ka fayda-nuksan aur udhaar — malik ko
+  REPORT_DIGEST: 'REPORT_DIGEST',
 };
 
 export const UNITS = [
