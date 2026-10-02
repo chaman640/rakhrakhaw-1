@@ -4141,6 +4141,14 @@ const DICT = {
 
   /* ── Reports ── */
   'Delivery charge mila': { hi: 'डिलीवरी चार्ज मिला', en: 'Delivery charges received' },
+
+  /* ── Plan features ── */
+  'CRM — scoring, re-order, automation': { hi: 'CRM — स्कोरिंग, री-ऑर्डर, ऑटोमेशन', en: 'CRM — scoring, re-order, automation' },
+  'CRM — territory aur lead rules': { hi: 'CRM — इलाका और लीड नियम', en: 'CRM — territories and lead rules' },
+  'HR — employee, attendance, chhutti, salary': { hi: 'HR — कर्मचारी, हाज़िरी, छुट्टी, सैलरी', en: 'HR — employees, attendance, leave, salary' },
+  'HR — department, team aur reports': { hi: 'HR — विभाग, टीम और रिपोर्ट', en: 'HR — departments, teams and reports' },
+  'HR — commission, performance, team target': { hi: 'HR — कमीशन, परफॉर्मेंस, टीम टारगेट', en: 'HR — commission, performance, team targets' },
+  'Quotation, sales order, delivery challan': { hi: 'कोटेशन, सेल्स ऑर्डर, डिलीवरी चालान', en: 'Quotation, sales order, delivery challan' },
 };
 
 export default DICT;

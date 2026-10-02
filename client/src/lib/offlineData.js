@@ -46,14 +46,14 @@ async function fetchAll(api, url, params) {
 
 let running = null;
 /** Saves the latest items and parties; quietly does nothing if offline or not allowed */
-export function refreshOfflineData(api) {
+export function refreshOfflineData(api, { items: canItems = true, parties: canParties = true } = {}) {
   if (running || typeof indexedDB === 'undefined' || !navigator.onLine) return running;
   const owner = who();
   if (!owner) return null;
   running = (async () => {
     const [items, parties] = await Promise.all([
-      fetchAll(api, '/items', { status: 'active' }).catch(() => null),
-      fetchAll(api, '/parties', { type: 'all', status: 'all' }).catch(() => null),
+      canItems ? fetchAll(api, '/items', { status: 'active' }).catch(() => null) : null,
+      canParties ? fetchAll(api, '/parties', { type: 'all', status: 'all' }).catch(() => null) : null,
     ]);
     if (items) await put('items', { owner, at: Date.now(), rows: items });
     if (parties) await put('parties', { owner, at: Date.now(), rows: parties });

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { WifiOff, RefreshCw, AlertTriangle, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { bust } from '@/hooks/useQuery';
@@ -32,13 +32,17 @@ export const KIND_LABEL = { invoice: 'Bill', expense: 'Kharch', payment: 'Paymen
 /** Kahin dikhta nahi — sirf internet wapas aane ka intezaar karta hai */
 export function OfflineSync() {
   const toast = useToast();
-  const { user, isWholesaler } = useAuth();
+  const { user, isWholesaler, can } = useAuth();
   const seller = Boolean(user && isWholesaler && !user.mustChangePassword);
+  // Jis list ko dekhne ki ijazat hi nahi, use phone pe bhi nahi rakhte (warna 403)
+  const allowed = { items: seller && can('items'), parties: seller && can('parties') };
+  const allowedRef = useRef(allowed);
+  allowedRef.current = allowed;
 
   // Keep the on-phone copy of items and parties fresh while online
   useEffect(() => {
     if (!seller) return undefined;
-    const refresh = () => refreshOfflineData(api);
+    const refresh = () => refreshOfflineData(api, allowedRef.current);
     refresh();
     window.addEventListener('online', refresh);
     const id = setInterval(refresh, 15 * 60000);
@@ -49,7 +53,7 @@ export function OfflineSync() {
     const label = t(KIND_LABEL[e.item?.kind] || 'Entry');
     if (e.type === 'done') {
       bust('expenses', 'invoices', 'reports', 'dashboard', 'items', 'khata', 'parties', 'payments', 'purchases');
-      refreshOfflineData(api);
+      refreshOfflineData(api, allowedRef.current);
       toast.success(t('{a0} bhej diya — internet wapas aa gaya tha', { a0: label }));
     } else if (e.type === 'failed') {
       // Server ne dekh kar mana kiya (jaise stock kam hai) — insaan ko batana zaroori hai
