@@ -112,6 +112,9 @@ export function tn(n, word) {
   return `${num} ${w}`;
 }
 
+/** Sirf shabd (ginti alag dikhani ho) — `tw(8, 'item')` → "items" */
+export const tw = (n, word) => tn(n, word).replace(/^\S+ /, '');
+
 /** Translate only plain strings — for components that accept text or elements as props */
 export const tx = (v) => (typeof v === 'string' ? t(v) : v);
 

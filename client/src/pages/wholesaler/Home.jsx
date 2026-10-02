@@ -13,7 +13,7 @@ import {
   Card, Button, Badge, Chips, EmptyState, SkeletonRows, Spinner, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 /**
  * HOME — roz ka kaam.
@@ -118,7 +118,7 @@ export default function Home() {
         <MiniStat
           label={t('Aaj ki sale')}
           value={formatMoney(stats?.todayAmount || 0)}
-          sub={`${stats?.todayCount || 0} bill`}
+          sub={`${tn(stats?.todayCount || 0, 'bill')}`}
           tone="brand"
           to="/sales"
         />

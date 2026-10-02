@@ -106,14 +106,17 @@ export async function getParty(businessId, id, viewer = null) {
     throw ApiError.notFound('Party nahi mili');
   }
 
-  const [customRateCount, linkedUser, orderCount, invoiceCount] = await Promise.all([
+  const [customRateCount, linkedUser, orderCount, invoiceCount, purchaseCount] = await Promise.all([
     PartyItemRate.countDocuments({ businessId, partyId: id }),
     party.linkedUserId ? User.findById(party.linkedUserId).select('name phone lastLoginAt isActive').lean() : null,
     Order.countDocuments({ businessId, partyId: id }),
-    Invoice.countDocuments({ businessId, partyId: id }),
+    // Cancel hue bill ginti me nahi
+    Invoice.countDocuments({ businessId, partyId: id, isCancelled: { $ne: true } }),
+    // Supplier ke liye uski kharid
+    Purchase.countDocuments({ businessId, supplierId: id }),
   ]);
 
-  return { ...party, customRateCount, linkedUser, orderCount, invoiceCount };
+  return { ...party, customRateCount, linkedUser, orderCount, invoiceCount, purchaseCount };
 }
 
 /* -------------------------------------------------------------- create */

@@ -73,7 +73,7 @@ export default function InstallButton({ className = '', variant = 'dark' }) {
         onClick={handleClick}
         className={`inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 font-semibold ${styles} ${className}`}
       >
-        <Download size={17} /> {t('Offline')}
+        <Download size={17} /> {t('App install karein')}
       </button>
 
       {showSteps && (

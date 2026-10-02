@@ -15,7 +15,7 @@ import {
   Pagination, EmptyState, Spinner, QtyStepper, useToast,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tw } from '@/lib/i18n';
 import StoryViewer from '@/components/story/StoryViewer';
 
 /**
@@ -369,12 +369,12 @@ function ShopHeader({ shop, saving, onToggleSave, onSwitch, onCart, cartCount })
             <span className="inline-flex items-center gap-1.5 text-slate-700">
               <Package size={14} className="text-slate-400" />
               <span className="font-semibold">{shop.itemCount ?? 0}</span>
-              <span className="text-xs text-slate-500">{t('item')}</span>
+              <span className="text-xs text-slate-500">{tw(shop.itemCount ?? 0, 'item')}</span>
             </span>
             <span className="inline-flex items-center gap-1.5 text-slate-700">
               <Layers size={14} className="text-slate-400" />
               <span className="font-semibold">{shop.categoryCount ?? 0}</span>
-              <span className="text-xs text-slate-500">{t('category')}</span>
+              <span className="text-xs text-slate-500">{tw(shop.categoryCount ?? 0, 'category')}</span>
             </span>
             {shop.balance > 0 && (
               <span className="inline-flex items-center gap-1.5 text-amber-700">

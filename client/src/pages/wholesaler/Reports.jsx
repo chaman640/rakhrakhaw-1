@@ -12,7 +12,7 @@ import {
 '@/components/ui';
 import ProfitLoss from './reports/ProfitLoss';
 import { useAuth } from '@/context/AuthContext';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 
 /*
   Ye do report LAGAT dikhati hain — "pl" seedha munafa, aur "stock" har item
@@ -409,10 +409,10 @@ function GstSummary({ meta }) {
   return (
     <Card className="mb-5">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {box(t('B2B (GSTIN wale)'), formatMoney(meta.split.b2b.total), `${meta.split.b2b.bills} bill`)}
-        {box(t('B2C (bina GSTIN)'), formatMoney(meta.split.b2c.total), `${meta.split.b2c.bills} bill`)}
+        {box(t('B2B (GSTIN wale)'), formatMoney(meta.split.b2b.total), `${tn(meta.split.b2b.bills, 'bill')}`)}
+        {box(t('B2C (bina GSTIN)'), formatMoney(meta.split.b2c.total), `${tn(meta.split.b2c.bills, 'bill')}`)}
         {box(t('Sale pe GST liya'), formatMoney(meta.outputTax), 'Output tax')}
-        {box(t('Kharid pe GST diya'), formatMoney(meta.inputTax), `${meta.purchaseBills} purchase`, 'green')}
+        {box(t('Kharid pe GST diya'), formatMoney(meta.inputTax), `${tn(meta.purchaseBills, 'purchase')}`, 'green')}
       </div>
       <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <p className="text-sm text-slate-600">

@@ -189,10 +189,10 @@ export default function ReturnDetail() {
         <div className={cn('sheet-scroll mt-3 overflow-x-auto', gst && 'sm:overflow-visible')}>
         <table className={cn('w-full text-xs [&_td]:pr-2 [&_th]:pr-2',
           '[&_td:last-child]:pr-0 [&_th:last-child]:pr-0',
-          gst ? 'min-w-[600px]' : 'min-w-[340px]')}>
+          gst ? 'min-w-[600px]' : 'min-w-[280px]')}>
           <thead>
             <tr className="border-b border-slate-300 text-left">
-              <th className="w-8 py-2 font-semibold">#</th>
+              <th className="hidden w-8 py-2 font-semibold sm:table-cell print:table-cell">#</th>
               <th className="py-2 font-semibold">{t('Item')}</th>
               {gst && <th className="py-2 font-semibold">HSN</th>}
               <th className="py-2 text-right font-semibold">{t('Qty')}</th>
@@ -207,7 +207,7 @@ export default function ReturnDetail() {
           <tbody>
             {note.items.map((it, i) =>
               <tr key={i} className="border-b border-slate-200 align-top">
-                <td className="py-2">{i + 1}</td>
+                <td className="hidden py-2 sm:table-cell print:table-cell">{i + 1}</td>
                 <td className="py-2">
                   <span className="font-medium">{it.name}</span>
                   {it.reason && <span className="block text-[10px] text-slate-500">{it.reason}</span>}

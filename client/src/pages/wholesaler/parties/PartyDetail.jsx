@@ -129,8 +129,14 @@ export default function PartyDetail({ type }) {
         <StatCard label={isRetailer ? t('Udhaar baaki') : t('Dena hai')} value={formatMoney(party.balance)}
           icon={IndianRupee} tone={party.balance > 0 ? 'amber' : 'green'}
           sub={party.creditLimit ? `Limit ${formatMoney(party.creditLimit)}` : t('Koi limit nahi')} />
-        <StatCard label={t('Orders')} value={party.orderCount || 0} icon={ShoppingCart} tone="brand" />
-        <StatCard label={t('Bills')} value={party.invoiceCount || 0} icon={FileText} tone="brand" />
+        {isRetailer ? (
+          <>
+            <StatCard label={t('Orders')} value={party.orderCount || 0} icon={ShoppingCart} tone="brand" />
+            <StatCard label={t('Bills')} value={party.invoiceCount || 0} icon={FileText} tone="brand" />
+          </>
+        ) : (
+          <StatCard label={t('Purchases')} value={party.purchaseCount || 0} icon={FileText} tone="brand" />
+        )}
         {isRetailer && (
           <StatCard label={t('Khaas rate')} value={party.customRateCount || 0} icon={Tag}
             tone={party.customRateCount ? 'green' : 'brand'} sub={t("items pe")} />

@@ -168,7 +168,7 @@ export default function Invoices() {
         <StatCard label={t('Kul bills')} value={stats.totalInvoices || 0} icon={FileText} tone="brand" />
         <StatCard label={t('Kul sale')} value={formatMoney(stats.totalAmount || 0)} icon={IndianRupee} tone="green" />
         <StatCard label={t('Is mahine')} value={formatMoney(stats.monthAmount || 0)} icon={Calendar} tone="brand"
-          sub={`${stats.monthCount || 0} bill`} />
+          sub={`${tn(stats.monthCount || 0, 'bill')}`} />
         <StatCard label={t('Udhaar baaki')} value={formatMoney(stats.totalDue || 0)} icon={TriangleAlert}
           tone={stats.totalDue > 0 ? 'amber' : 'green'} />
       </div>

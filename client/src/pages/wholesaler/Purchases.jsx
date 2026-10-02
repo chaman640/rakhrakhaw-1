@@ -113,7 +113,7 @@ export default function Purchases({ embedded = false }) {
         <StatCard label={t('Kul purchases')} value={stats.totalPurchases || 0} icon={Truck} tone="brand" />
         <StatCard label={t('Kul kharch')} value={formatMoney(stats.totalAmount || 0)} icon={IndianRupee} tone="brand" />
         <StatCard label={t('Is mahine')} value={formatMoney(stats.thisMonthAmount || 0)} icon={Calendar} tone="green"
-          sub={`${stats.thisMonthCount || 0} purchase`} />
+          sub={`${tn(stats.thisMonthCount || 0, 'purchase')}`} />
         <StatCard label={t('Suppliers ko dena')} value={formatMoney(stats.totalDue || 0)} icon={TriangleAlert}
           tone={stats.totalDue > 0 ? 'amber' : 'green'} />
       </div>

@@ -284,7 +284,7 @@ const DICT = {
   'CSV chunein': { hi: 'CSV चुनें', en: 'Choose CSV' },
   'CSV se items import karein': { hi: 'CSV से आइटम इम्पोर्ट करें', en: 'Import items from CSV' },
   Date: { hi: 'तारीख', en: 'Date' },
-  'De diye': { hi: 'दे दिए', en: 'Paid out' },
+  'De diye': { hi: 'दे दिए', en: 'Delivered' },
   'Default settings': { hi: 'आम सेटिंग', en: 'Default settings' },
   Dekhna: { hi: 'देखना', en: 'View' },
   Delete: { hi: 'मिटाएं', en: 'Delete' },
@@ -1680,7 +1680,7 @@ const DICT = {
   'Filter ({n})': { hi: 'फिल्टर ({n})', en: 'Filter ({n})' },
   'Sab hatayein': { hi: 'सब हटाएं', en: 'Clear all' },
   'Doosri dukaan dekhein': { hi: 'दूसरी दुकान देखें', en: 'Browse another shop' },
-  'category': { hi: 'कैटेगरी', en: 'categories' },
+  'category': { hi: 'कैटेगरी', en: 'category' },
   'Jo badlenge wo peeche turant lag jayega': { hi: 'जो बदलेंगे वो पीछे तुरंत लग जाएगा', en: 'Changes apply behind this instantly' },
   'Ho gaya': { hi: 'हो गया', en: 'Done' },
   'Order karein': { hi: 'ऑर्डर करें', en: 'Place order' },
@@ -4159,6 +4159,14 @@ const DICT = {
 
   /* ── Billing ── */
   'Aapka plan aur saare plan ek jagah': { hi: 'आपका प्लान और सारे प्लान एक जगह', en: 'Your plan and all plans in one place' },
+
+  /* ── Bill details ── */
+  'naam': { hi: 'नाम', en: 'name' },
+  'pata': { hi: 'पता', en: 'address' },
+  'phone number': { hi: 'फ़ोन नंबर', en: 'phone number' },
+
+  /* ── Install ── */
+  'App install karein': { hi: 'ऐप इंस्टॉल करें', en: 'Install app' },
 };
 
 export default DICT;

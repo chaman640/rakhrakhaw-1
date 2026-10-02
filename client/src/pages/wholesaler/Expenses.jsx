@@ -141,9 +141,9 @@ export default function Expenses({ embedded = false }) {
       {/* ── upar ki ginti ── */}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={t('Is mahine')} value={formatMoney(stats?.monthAmount || 0)}
-          sub={`${stats?.monthCount || 0} entry`} icon={TrendingDown} tone="amber" />
+          sub={`${tn(stats?.monthCount || 0, 'entry')}`} icon={TrendingDown} tone="amber" />
         <Stat label={t('Aaj')} value={formatMoney(stats?.todayAmount || 0)}
-          sub={`${stats?.todayCount || 0} entry`} icon={CalendarDays} tone="slate" />
+          sub={`${tn(stats?.todayCount || 0, 'entry')}`} icon={CalendarDays} tone="slate" />
         {(stats?.topCategories || []).slice(0, 2).map((c) => (
           <Stat key={c.category} label={t(c.label)} value={formatMoney(c.amount)}
             sub={t('is mahine')} icon={Wallet} tone="slate" />

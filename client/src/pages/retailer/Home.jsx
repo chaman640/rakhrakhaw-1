@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { t } from '@/lib/i18n';
+import { t, tn } from '@/lib/i18n';
 import { useNavigate } from 'react-router-dom';
 import {
   Store, ShoppingCart, Receipt, BookOpen, ChevronRight, Package,
@@ -113,7 +113,7 @@ export default function RetailerHome() {
         sub={d.orders.ready ? t('{a0} tayyar hai', { a0: d.orders.ready }) : t('Sab theek')}
         onClick={() => navigate('/my-orders')} />
         <Tile label={t("Is mahine kharida")} value={formatMoney(d.monthSpend)} icon={Receipt} tone="brand"
-        sub={`${d.monthBills} bill`} onClick={() => navigate('/my-bills')} />
+        sub={`${tn(d.monthBills, 'bill')}`} onClick={() => navigate('/my-bills')} />
         <Tile label={t("Kul order")} value={d.orders.delivered} icon={CircleCheck} tone="green"
         sub={t("Mil chuke")} onClick={() => navigate('/my-orders')} />
         <Tile label={t("Naye alert")} value={d.unread} icon={Bell} tone={d.unread ? 'amber' : 'brand'}
