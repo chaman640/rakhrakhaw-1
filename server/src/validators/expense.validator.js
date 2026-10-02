@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { entryDate } from '../utils/istDay.js';
 import { EXPENSE_MODES } from '../config/expenseCategories.js';
 
 const money = z.coerce.number().min(0.01, 'Rakam 0 se zyada honi chahiye').max(100000000);
@@ -11,7 +12,7 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
  * hai, server asli lagat se badal dega).
  */
 export const createExpenseSchema = z.object({
-  date: z.coerce.date().optional(),
+  date: z.preprocess(entryDate, z.coerce.date()).optional(),
   category: z.string().trim().min(1, 'Kharch kis cheez ka hai, ye chunein').max(60),
   amount: money,
   mode: z.enum(EXPENSE_MODES).optional().default('CASH'),
@@ -23,7 +24,7 @@ export const createExpenseSchema = z.object({
 }).strict();
 
 export const updateExpenseSchema = z.object({
-  date: z.coerce.date().optional(),
+  date: z.preprocess(entryDate, z.coerce.date()).optional(),
   category: z.string().trim().min(1).max(60).optional(),
   amount: money.optional(),
   mode: z.enum(EXPENSE_MODES).optional(),

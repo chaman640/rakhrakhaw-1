@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { downloadText } from '@/lib/download';
+import { dayStr } from '@/lib/format';
 import { Card, CardHeader, Button, Spinner, useToast } from '@/components/ui';
 import { t } from '@/lib/i18n';
 
@@ -21,7 +22,7 @@ const COUNT_LABEL = {
   invoices: 'Bill', payments: 'Payment', returns: 'Return', staff: 'Login',
 };
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => dayStr();
 
 export default function BackupTab() {
   const toast = useToast();

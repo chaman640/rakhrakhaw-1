@@ -10,6 +10,7 @@ import { logAction } from '../services/audit.service.js';
 import * as acc from '../services/accounts.service.js';
 import * as gst from '../services/gstReturns.service.js';
 import * as audit from '../services/accountsAudit.service.js';
+import { entryDate } from '../utils/istDay.js';
 
 const router = Router();
 router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller);
@@ -48,7 +49,7 @@ router.get('/journals', view, validate({ query: range }), h((req) => acc.listJou
 router.post('/journals', post, validate({
   body: z.object({
     kind: z.enum(['journal', 'contra']).optional().default('journal'),
-    date: z.coerce.date(),
+    date: z.preprocess(entryDate, z.coerce.date()),
     narration: z.string().trim().min(3, 'Please write a narration').max(300),
     lines: z.array(z.object({
       account: z.string().trim().min(2).max(60),

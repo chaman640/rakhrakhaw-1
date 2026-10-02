@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState } from 'react';
-import { tx } from '@/lib/i18n';
+import { tx, tDyn } from '@/lib/i18n';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -66,7 +66,7 @@ export function ToastProvider({ children }) {
                 )}
               >
                 <Icon size={18} className="mt-0.5 shrink-0" />
-                <p className="flex-1">{tx(t.message)}</p>
+                <p className="flex-1">{typeof t.message === 'string' ? tDyn(t.message) : tx(t.message)}</p>
                 <button onClick={() => dismiss(t.id)} className="shrink-0 opacity-50 hover:opacity-100">
                   <X size={16} />
                 </button>

@@ -1,5 +1,5 @@
 import { formatMoney, formatDate } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 /**
  * KHATE KA KAGAZ — CA WALI SHAKAL ME (item 21).
@@ -151,7 +151,7 @@ export default function LedgerPrint({ data, business, from, to, title }) {
             return (
               <tr key={e._id} className="border-b border-slate-100">
                 <td className="whitespace-nowrap px-2 py-1.5">{formatDate(e.date)}</td>
-                <td className="px-2 py-1.5">{e.note || TYPE_LABEL[e.type] || e.type}</td>
+                <td className="px-2 py-1.5">{e.note ? tDyn(e.note) : (TYPE_LABEL[e.type] || e.type)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5">{TYPE_LABEL[e.type] || e.type}</td>
                 <td className="whitespace-nowrap px-2 py-1.5">{e.refNo || '—'}</td>
                 <td className="tabular px-2 py-1.5 text-right">

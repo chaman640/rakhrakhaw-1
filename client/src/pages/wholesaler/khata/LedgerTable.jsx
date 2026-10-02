@@ -1,6 +1,6 @@
 import { formatMoney, formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 
 /**
  * Khata ka asli dil — ek hi component, teen jagah use hota hai:
@@ -121,7 +121,7 @@ export default function LedgerTable({ data, loading, onRowClick }) {
                       <span className="text-xs text-slate-500">{e.refNo}</span>)
                       }
                   </div>
-                  {e.note && <p className="mt-1 text-xs text-slate-400">{e.note}</p>}
+                  {e.note && <p className="mt-1 text-xs text-slate-400">{tDyn(e.note)}</p>}
                 </td>
                 <td className="tabular px-4 py-3 text-right text-slate-700">
                   {e.debit > 0 ? formatMoney(e.debit) : <span className="text-slate-300">—</span>}
@@ -186,7 +186,7 @@ export default function LedgerTable({ data, loading, onRowClick }) {
                       }
                   </div>
                   <p className="mt-1 text-xs text-slate-400">{formatDate(e.date)}</p>
-                  {e.note && <p className="mt-0.5 text-xs text-slate-400">{e.note}</p>}
+                  {e.note && <p className="mt-0.5 text-xs text-slate-400">{tDyn(e.note)}</p>}
                 </div>
 
                 <div className="shrink-0 text-right">

@@ -324,6 +324,21 @@ async function run() {
     const nut = await Item.findOne({ businessId, name: 'CSV Nut' }).lean();
     eq('CSV item stock 25', nut?.stockQty, 25);
 
+    console.log(`\n${Y}26. Kharid pe delivery ₹70: Q1 2×100 (18%), Q2 3×50 (12%)${N}`);
+    const Q1 = (await call('POST', '/items', { name: 'Pulley Q1', purchasePrice: 90, gstRate: 18 })).data?._id;
+    const Q2 = (await call('POST', '/items', { name: 'Belt Q2', purchasePrice: 40, gstRate: 12 })).data?._id;
+    const sBefore = (await Party.findById(S).lean()).balance;
+    r = await call('POST', '/purchases', { supplierId: S, items: [{ itemId: Q1, qty: 2, rate: 100 }, { itemId: Q2, qty: 3, rate: 50 }], deliveryCharge: 70 });
+    // 350 + 54 GST = 404, + 70 = 474
+    eq('kul 474 (delivery ke saath)', r.data?.grandTotal, 474);
+    eq('supplier ka khata +474', (await Party.findById(S).lean()).balance, round2(sBefore + 474));
+    const lot1 = await StockLot.findOne({ itemId: Q1 }).lean();
+    const lot2 = await StockLot.findOne({ itemId: Q2 }).lean();
+    eq('Q1 khep lagat (200 + 40) / 2 = 120', lot1?.unitCost, 120);
+    eq('Q2 khep lagat (150 + 30) / 3 = 60', lot2?.unitCost, 60);
+    r = await call('GET', '/accounts/trial-balance');
+    eq('trial balance ab bhi barabar', r.data?.totals?.dr, r.data?.totals?.cr);
+
     console.log(`\n${Y}20. Salary ke din (Sep 2026, ravivaar chhutti)${N}`);
     const sep = monthOf('2026-09').days;   // 30 din, 4 ravivaar → 26 kaam ke din
     const emp = { joiningDate: new Date('2026-01-01') };

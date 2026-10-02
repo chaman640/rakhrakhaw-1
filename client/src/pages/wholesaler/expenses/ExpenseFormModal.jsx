@@ -3,7 +3,7 @@ import { Wallet, Check, Package } from 'lucide-react';
 import api from '@/lib/api';
 import { bust } from '@/hooks/useQuery';
 import { sendOrQueue } from '@/lib/offlineQueue';
-import { formatMoney, formatQty } from '@/lib/format';
+import { formatMoney, formatQty, dayStr } from '@/lib/format';
 import { Modal, Button, Input, Textarea, Combobox, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
@@ -32,7 +32,7 @@ const MODES = [
   { value: 'CHEQUE', label: 'Cheque' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => dayStr();
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 export default function ExpenseFormModal({ open, onClose, expense, categories, onSaved }) {

@@ -574,7 +574,11 @@ export async function finishIntake(businessId, id, payload, userId) {
     bill pe jitna paisa aa chuka hai. Kuch item chhode hon to diya hua paisa
     bache maal se zyada nahi ho sakta.
   */
-  const addedTotal = round2(added.reduce((sum, l) => sum + (l.total || 0), 0));
+  // Bechne wale ke bill ka delivery charge bhi is kharid me (warna supplier ka khata bill se kam)
+  const srcInv = found.sourceInvoiceId
+    ? await Invoice.findById(found.sourceInvoiceId).select('deliveryCharge').lean() : null;
+  const deliveryCharge = round2(srcInv?.deliveryCharge || 0);
+  const addedTotal = round2(added.reduce((sum, l) => sum + (l.total || 0), 0) + deliveryCharge);
   const given = payload?.paidAmount;
   const paidAmount = round2(Math.min(
     addedTotal,
@@ -623,6 +627,7 @@ export async function finishIntake(businessId, id, payload, userId) {
       purchaseDate: found.invoiceDate || new Date(),
       items,
       paidAmount,
+      deliveryCharge,
       notes: payload?.notes || `${found.sellerName} se aaya maal`,
       updatePurchasePrice: true,
     }, userId);

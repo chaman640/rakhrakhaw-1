@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { entryDate } from '../utils/istDay.js';
 import { PAYMENT_MODES } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
@@ -15,7 +16,7 @@ export const invoiceItemSchema = z.object({
 export const createInvoiceSchema = z.object({
   partyId: objectId,
   orderId: objectId.or(z.literal('')).nullable().optional(),
-  invoiceDate: z.coerce.date().optional(),
+  invoiceDate: z.preprocess(entryDate, z.coerce.date()).optional(),
   items: z.array(invoiceItemSchema).min(1, 'Kam se kam ek item daalein').max(200),
   extraDiscount: money.optional().default(0),
   deliveryCharge: money.optional().default(0),

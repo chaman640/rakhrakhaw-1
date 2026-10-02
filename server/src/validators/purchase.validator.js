@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { entryDate } from '../utils/istDay.js';
 import { UNITS } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
@@ -42,9 +43,11 @@ export const createPurchaseSchema = z.object({
   // Khali chalti hai — nakad kharid (purchase.service.js me wajah likhi hai)
   supplierId: objectId.or(z.literal('')).nullable().optional().default(''),
   supplierBillNo: z.string().trim().max(40).optional().default(''),
-  purchaseDate: z.coerce.date().optional(),
+  purchaseDate: z.preprocess(entryDate, z.coerce.date()).optional(),
   items: z.array(purchaseItemSchema).min(1, 'Kam se kam ek item daalein').max(200),
   paidAmount: money.optional().default(0),
+  // Supplier ne bill pe delivery/bhaada liya ho
+  deliveryCharge: money.optional().default(0),
   notes: z.string().trim().max(500).optional().default(''),
   // Naya rate mila to item ka purchase price bhi update kar do
   updatePurchasePrice: z.boolean().optional().default(true),

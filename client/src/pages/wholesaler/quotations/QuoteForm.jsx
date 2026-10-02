@@ -3,14 +3,14 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '@/lib/api';
 import { bust } from '@/hooks/useQuery';
 import { useAuth } from '@/context/AuthContext';
-import { formatMoney, formatPhone } from '@/lib/format';
+import { formatMoney, formatPhone, dayStr } from '@/lib/format';
 import {
   PageHeader, Card, Button, Input, Textarea, Combobox, Spinner, useToast,
 } from '@/components/ui';
 import LineEditor, { newLine, lineTotals } from '@/components/sales/LineEditor';
 import { t } from '@/lib/i18n';
 
-const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n) => dayStr(Date.now() + n * 86400000);
 
 export default function QuoteForm() {
   const { id } = useParams();

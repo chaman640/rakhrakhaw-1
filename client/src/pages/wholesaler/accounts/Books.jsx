@@ -6,7 +6,7 @@ import {
   Card, Select, Spinner, EmptyState, Badge,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { t } from '@/lib/i18n';
+import { t, tDyn } from '@/lib/i18n';
 import {
   Amt, DateRange, PresetChips, ExportButton, Toolbar, today, fyStart, dateLabel,
 } from './accShared';
@@ -49,7 +49,7 @@ export function DayBook() {
                         <span className="text-xs text-slate-500 sm:w-20">{dateLabel(v.date).slice(0, 6)}</span>
                         <Badge tone="slate" className="shrink-0">{t(v.type)}</Badge>
                       </span>
-                      <span className="min-w-0 truncate text-sm text-slate-800">{[v.no, v.party, v.narration].filter(Boolean).join(' · ')}</span>
+                      <span className="min-w-0 truncate text-sm text-slate-800">{[v.no, v.party, tDyn(v.narration)].filter(Boolean).join(' · ')}</span>
                     </span>
                     <Amt v={v.amount} strong />
                   </button>
@@ -107,7 +107,7 @@ export function Ledger({ account, setAccount }) {
               {rows.map((x, i) => (
                 <tr key={i}>
                   <td className="whitespace-nowrap px-5 py-2 text-slate-500">{dateLabel(x.date)}</td>
-                  <td className="px-2 py-2"><span className="block text-slate-900">{x.against || x.type}</span><span className="block text-xs text-slate-500">{[t(x.type), x.no, x.party, x.narration].filter(Boolean).join(' · ')}</span></td>
+                  <td className="px-2 py-2"><span className="block text-slate-900">{x.against || x.type}</span><span className="block text-xs text-slate-500">{[t(x.type), x.no, x.party, tDyn(x.narration)].filter(Boolean).join(' · ')}</span></td>
                   <td className="px-2 py-2 text-right">{x.dr ? <Amt v={x.dr} /> : ''}</td>
                   <td className="px-2 py-2 text-right">{x.cr ? <Amt v={x.cr} /> : ''}</td>
                   <td className="px-5 py-2 text-right"><Bal v={x.balance} /></td>

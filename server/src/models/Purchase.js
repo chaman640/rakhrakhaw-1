@@ -63,6 +63,8 @@ const purchaseSchema = new mongoose.Schema(
     taxTotal: { type: Number, default: 0 },
     roundOff: { type: Number, default: 0 },
     grandTotal: { type: Number, default: 0 },
+    // Bechne wale ne bill pe jo delivery charge liya — kul me juda, lagat (khep) me banta
+    deliveryCharge: { type: Number, default: 0, min: 0 },
 
     paidAmount: { type: Number, default: 0 },
     // Part of paidAmount that came from the party's advance (jama), not from a specific payment

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, Save, Package, Truck, Info } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { formatMoney, formatQty } from '@/lib/format';
+import { formatMoney, formatQty, dayStr } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Select, Textarea, Combobox,
   Switch, Badge, LineItemCard, NumField, useToast } from
@@ -28,9 +28,10 @@ export default function PurchaseForm() {
 
   const [supplier, setSupplier] = useState(null);
   const [billNo, setBillNo] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => dayStr());
   const [rows, setRows] = useState([emptyRow()]);
   const [paidAmount, setPaidAmount] = useState('');
+  const [deliveryCharge, setDeliveryCharge] = useState('');
   const [notes, setNotes] = useState('');
   const [updatePrice, setUpdatePrice] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,10 +116,12 @@ export default function PurchaseForm() {
       taxTotal = round2(taxTotal + tax);
     }
     const before = round2(taxableTotal + taxTotal);
-    const grandTotal = Math.round(before);
-    return { subTotal, discountTotal, taxableTotal, taxTotal,
-      roundOff: round2(grandTotal - before), grandTotal };
-  }, [rows, gstEnabled]);
+    const rounded = Math.round(before);
+    // Delivery/bhaada server jaisa hi — round off ke baad seedha jodte hain
+    const delivery = round2(Number(deliveryCharge || 0));
+    return { subTotal, discountTotal, taxableTotal, taxTotal, delivery,
+      roundOff: round2(rounded - before), grandTotal: round2(rounded + delivery) };
+  }, [rows, gstEnabled, deliveryCharge]);
 
   const paid = Math.min(Number(paidAmount || 0), totals.grandTotal);
   const due = round2(totals.grandTotal - paid);
@@ -160,6 +163,7 @@ export default function PurchaseForm() {
               }
         )),
         paidAmount: Number(paidAmount || 0),
+        deliveryCharge: Number(deliveryCharge || 0),
         notes,
         updatePurchasePrice: updatePrice
       };
@@ -405,11 +409,16 @@ export default function PurchaseForm() {
               {totals.roundOff !== 0 &&
               <Row label={t('Round off')} value={formatMoney(totals.roundOff)} tone="muted" />
               }
+              {totals.delivery > 0 && <Row label={t('Delivery charge')} value={formatMoney(totals.delivery)} />}
               <div className="!mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                 <dt className="font-semibold text-slate-900">{t('Kul dena')}</dt>
                 <dd className="tabular text-xl font-semibold text-slate-900">{formatMoney(totals.grandTotal)}</dd>
               </div>
             </dl>
+
+            <Input containerClassName="mt-4" label={t('Delivery charge')} type="number" step="0.01" min="0" prefix="₹"
+              value={deliveryCharge} onChange={(e) => setDeliveryCharge(e.target.value)}
+              hint={t('Supplier ne bill pe bhaada liya ho to — maal ki lagat me bant jayega')} />
 
             {/*
                Supplier hi na ho to "kitna diya / kitna baaki" ka koi matlab

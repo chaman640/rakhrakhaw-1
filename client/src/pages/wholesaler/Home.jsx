@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useQuery, useListQuery } from '@/hooks/useQuery';
 import { useBillActions } from '@/hooks/useBillActions';
-import { formatMoney, formatDate, formatPhone } from '@/lib/format';
+import { formatMoney, formatDate, formatPhone, dayStr } from '@/lib/format';
 import {
   Card, Button, Badge, Chips, EmptyState, SkeletonRows, Spinner, useToast,
 } from '@/components/ui';
@@ -41,7 +41,7 @@ const RANGES = [
 
 function rangeDates(value) {
   const now = new Date();
-  const iso = (d) => d.toISOString().slice(0, 10);
+  const iso = (d) => dayStr(d);
   if (value === 'today') return { from: iso(now), to: iso(now) };
   if (value === 'week') {
     const from = new Date(now);

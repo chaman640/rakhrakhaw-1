@@ -43,3 +43,9 @@ export function monthOf(period) {
   const to = `${period}-${String(last).padStart(2, '0')}`;
   return { from, to, days: daysBetween(from, to), start: istStart(from), end: new Date(istStart(to).getTime() + 86400000) };
 }
+
+/** Form ki sirf-tareekh ('YYYY-MM-DD') → us IST din pe abhi ka samay (warna bill pe 5:30 am dikhta) */
+export function entryDate(v) {
+  if (typeof v !== 'string' || !DAY_ONLY.test(v)) return v;
+  return new Date(istStart(v).getTime() + istMinutes() * 60000 + (Date.now() % 60000));
+}

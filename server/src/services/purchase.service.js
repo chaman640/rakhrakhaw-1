@@ -310,6 +310,18 @@ export async function createPurchase(businessId, payload, userId) {
   const totals = computeTotals(lines, { gstEnabled: business?.gstEnabled });
 
   /*
+    DELIVERY / BHAADA — supplier ke bill pe alag se liya gaya.
+
+    Kul (aur supplier ka khata) me judta hai, aur maal ki lagat me bhi: har
+    line ke taxable ke hisaab se bant kar khep ki per-piece lagat me (landed
+    cost). Bina iske supplier ka khata bill se kam rehta aur munafa zyada dikhta.
+  */
+  const deliveryCharge = round2(payload.deliveryCharge || 0);
+  if (deliveryCharge > 0) totals.grandTotal = round2(totals.grandTotal + deliveryCharge);
+  const deliveryShare = (line) => (deliveryCharge > 0 && totals.taxableTotal > 0
+    ? (deliveryCharge * line.taxableValue) / totals.taxableTotal : 0);
+
+  /*
     Supplier na ho to kharid POORI CHUKTA hai — udhaar kisse?
 
     Ye chhoti si line ek bade jhoot ko rokti hai. Bina iske nakad wali kharid
@@ -341,6 +353,7 @@ export async function createPurchase(businessId, payload, userId) {
     taxTotal: totals.taxTotal,
     roundOff: totals.roundOff,
     grandTotal: totals.grandTotal,
+    deliveryCharge,
     paidAmount,
     dueAmount,
     paymentStatus: paymentStatusOf(paidAmount, totals.grandTotal),
@@ -384,7 +397,7 @@ export async function createPurchase(businessId, payload, userId) {
       businessId,
       itemId: line.itemId,
       qty: line.qty,
-      unitCost: line.qty > 0 ? round2(line.taxableValue / line.qty) : 0,
+      unitCost: line.qty > 0 ? round2((line.taxableValue + deliveryShare(line)) / line.qty) : 0,
       source: 'PURCHASE',
       refType: 'Purchase',
       refId: purchase._id,
@@ -397,7 +410,7 @@ export async function createPurchase(businessId, payload, userId) {
   // ---- Item ka purchase price update (naya rate mila to) ----
   if (payload.updatePurchasePrice !== false) {
     for (const line of totals.items) {
-      const unitCost = round2(line.taxableValue / line.qty);
+      const unitCost = round2((line.taxableValue + deliveryShare(line)) / line.qty);
       const old = itemMap.get(String(line.itemId))?.purchasePrice;
       if (unitCost > 0 && unitCost !== old) {
         await Item.updateOne({ _id: line.itemId, businessId }, { purchasePrice: unitCost });

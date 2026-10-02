@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useQuery, useListQuery, bust } from '@/hooks/useQuery';
-import { formatMoney, formatDate } from '@/lib/format';
+import { formatMoney, formatDate, dayStr } from '@/lib/format';
 import {
   PageHeader, Card, Button, Badge, Chips, EmptyState, SkeletonRows,
   ConfirmModal, useToast,
@@ -37,7 +37,7 @@ const RANGES = [
 
 function rangeDates(value) {
   const now = new Date();
-  const iso = (d) => d.toISOString().slice(0, 10);
+  const iso = (d) => dayStr(d);
   if (value === 'month') {
     return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now) };
   }

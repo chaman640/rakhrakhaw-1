@@ -67,3 +67,10 @@ export function expiryInfo(date) {
   if (din <= 30) return { din, tone: 'amber', key: '{n} din me expire', n: din };
   return { din, tone: 'slate', key: 'Expiry {n}', n: formatDate(date) };
 }
+
+/** Phone ke apne din ki 'YYYY-MM-DD' (toISOString UTC deta hai — IST me raat 5:30 tak kal ki tareekh) */
+export function dayStr(d = new Date()) {
+  const x = new Date(d);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
+}

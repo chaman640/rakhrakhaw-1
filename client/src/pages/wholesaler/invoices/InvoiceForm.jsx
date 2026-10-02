@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, Save, Info, FileText } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { formatMoney, formatQty } from '@/lib/format';
+import { formatMoney, formatQty, dayStr } from '@/lib/format';
 import {
   PageHeader, Card, CardHeader, Button, Input, Textarea, Select,
   Combobox, LineItemCard, NumField, Modal, Switch, useToast } from
@@ -33,7 +33,7 @@ export default function InvoiceForm() {
 
   const [party, setParty] = useState(null);
   const [partyState, setPartyState] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => dayStr());
   const [rows, setRows] = useState([emptyRow()]);
   const [extraDiscount, setExtraDiscount] = useState('');
   // Dukaan ki default rakam se bhara hua shuru hota hai — is EK bill ke

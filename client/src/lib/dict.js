@@ -4167,6 +4167,36 @@ const DICT = {
 
   /* ── Install ── */
   'App install karein': { hi: 'ऐप इंस्टॉल करें', en: 'Install app' },
+
+  /* ── Ledger notes ── */
+  'Purchase ke saath diya': { hi: 'खरीद के साथ दिया', en: 'Paid with the purchase' },
+  '{a} ke saath mila (₹{b} jama)': { hi: '{a} के साथ मिला (₹{b} जमा)', en: 'Received with {a} (₹{b} kept as advance)' },
+  '{a} ke saath mila': { hi: '{a} के साथ मिला', en: 'Received with {a}' },
+  '{a} ke saath': { hi: '{a} के साथ', en: 'With {a}' },
+  'Purana hisaab (opening balance)': { hi: 'पुराना हिसाब (ओपनिंग बैलेंस)', en: 'Opening balance' },
+
+  /* ── Purchase ── */
+  'Supplier ne bill pe bhaada liya ho to — maal ki lagat me bant jayega': { hi: 'सप्लायर ने बिल पर भाड़ा लिया हो तो — माल की लागत में बँट जाएगा', en: 'If the supplier charged delivery on the bill — it is spread into the goods cost' },
+
+  /* ── Server messages ── */
+  '{a} ban gaya — stock ghata aur khata update ho gaya': { hi: '{a} बन गया — स्टॉक घटा और खाता अपडेट हो गया', en: '{a} created — stock reduced and ledger updated' },
+  '{a} ban gaya — stock aur khata dono update ho gaye': { hi: '{a} बन गया — स्टॉक और खाता दोनों अपडेट हो गए', en: '{a} created — stock and ledger both updated' },
+  '{a} save ho gayi — stock badh gaya': { hi: '{a} सेव हो गई — स्टॉक बढ़ गया', en: '{a} saved — stock increased' },
+  '{a} confirm ho gaya — khate me lag gaya': { hi: '{a} कन्फ़र्म हो गया — खाते में लग गया', en: '{a} confirmed — added to the ledger' },
+  '{a} ka paisa khate me chadha diya': { hi: '{a} का पैसा खाते में चढ़ा दिया', en: 'Payment for {a} added to the ledger' },
+  '{a} naye, {b} ka stock badha': { hi: '{a} नए, {b} का स्टॉक बढ़ा', en: '{a} new, stock increased for {b}' },
+  '{a} ka stock ab {b}': { hi: '{a} का स्टॉक अब {b}', en: '{a} stock is now {b}' },
+  '{a} ab order kar sakta hai': { hi: '{a} अब ऑर्डर कर सकता है', en: '{a} can now place orders' },
+  '{a} ko block kar diya': { hi: '{a} को ब्लॉक कर दिया', en: '{a} blocked' },
+  '{a} cancel kar diya': { hi: '{a} कैंसल कर दिया', en: '{a} cancelled' },
+  '{a} reject kar diya': { hi: '{a} रिजेक्ट कर दिया', en: '{a} rejected' },
+  '{a} ka login ban gaya': { hi: '{a} का लॉगिन बन गया', en: 'Login created for {a}' },
+  '{a} item export hue': { hi: '{a} आइटम एक्सपोर्ट हुए', en: '{a} items exported' },
+  '{a} add ho gaya': { hi: '{a} जुड़ गया', en: '{a} added' },
+  'OTP bhej diya — {a} pe dekh lijiye': { hi: 'OTP भेज दिया — {a} पर देख लीजिए', en: 'OTP sent — check {a}' },
+  'Order {a} chala gaya': { hi: 'ऑर्डर {a} चला गया', en: 'Order {a} sent' },
+  '₹{a} ka kharch likh liya': { hi: '₹{a} का खर्च लिख लिया', en: 'Expense of ₹{a} recorded' },
+  '₹{a} wapas kar diya': { hi: '₹{a} वापस कर दिया', en: '₹{a} refunded' },
 };
 
 export default DICT;

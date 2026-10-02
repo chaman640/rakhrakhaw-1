@@ -6,7 +6,7 @@ import {
 'lucide-react';
 import api from '@/lib/api';
 import { downloadText } from '@/lib/download';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, dayStr } from '@/lib/format';
 import {
   PageHeader, Card, Button, Chips, Input, Select, Spinner, EmptyState, Badge, useToast } from
 '@/components/ui';
@@ -64,9 +64,9 @@ const STATUS_TONE = {
 
 const firstOfMonth = () => {
   const d = new Date();d.setDate(1);
-  return d.toISOString().slice(0, 10);
+  return dayStr(d);
 };
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => dayStr();
 
 /** Number wale column right, naam/status wale left — nazar me saaf lagta hai */
 const isNum = (col, i) => i !== 0 && !col.text && col.key !== 'status';
@@ -212,7 +212,7 @@ export default function Reports() {
                 <QuickRange label={t('Is mahine')} onPick={() => {setFrom(firstOfMonth());setTo(todayStr());}} />
                 <QuickRange label={t('30 din')} onPick={() => {
                 const d = new Date();d.setDate(d.getDate() - 29);
-                setFrom(d.toISOString().slice(0, 10));setTo(todayStr());
+                setFrom(dayStr(d));setTo(todayStr());
               }} />
               </div>
             </>

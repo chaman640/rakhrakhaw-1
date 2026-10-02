@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { entryDate } from '../utils/istDay.js';
 import { RETURN_TYPES } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
@@ -20,7 +21,7 @@ export const createReturnSchema = z.object({
   partyId: objectId,
   invoiceId: objectId.or(z.literal('')).nullable().optional(),
   purchaseId: objectId.or(z.literal('')).nullable().optional(),
-  returnDate: z.coerce.date().optional(),
+  returnDate: z.preprocess(entryDate, z.coerce.date()).optional(),
   items: z.array(returnLineSchema).min(1, 'Kam se kam ek item daalein'),
   extraDiscount: money.optional().default(0),
   reason: z.string().trim().max(300).optional().default(''),

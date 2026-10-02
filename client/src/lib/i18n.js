@@ -123,6 +123,12 @@ export const tx = (v) => (typeof v === 'string' ? t(v) : v);
   "Bill ban gaya — INV/26-27/0001". Each shape is listed once; the variable parts are kept.
 */
 const DYNAMIC = [
+  // Server ke "ho gaya" sandesh (toast) — specific pehle
+  '{a} ban gaya — stock ghata aur khata update ho gaya', '{a} ban gaya — stock aur khata dono update ho gaye',
+  '{a} save ho gayi — stock badh gaya', '{a} confirm ho gaya — khate me lag gaya', '{a} ka paisa khate me chadha diya',
+  '{a} naye, {b} ka stock badha', '{a} ka stock ab {b}', '{a} ab order kar sakta hai', '{a} ko block kar diya',
+  '{a} cancel kar diya', '{a} reject kar diya', '{a} ka login ban gaya', '{a} item export hue', '{a} add ho gaya',
+  'OTP bhej diya — {a} pe dekh lijiye', 'Order {a} chala gaya', '₹{a} ka kharch likh liya', '₹{a} wapas kar diya',
   'Bill ban gaya — {a}', 'Bill cancel — {a}', 'Naya order — {a}', 'Order cancel — {a}', 'Order me badlav — {a}',
   'Payment confirm ho gaya — {a}', 'Payment mil gaya — {a}', 'Payment reject — {a}',
   '{a} ne yaad dilaya hai', '{a} ne bill cancel kar diya', '{a} aapki dukaan se judna chahte hain', '{a} ka maal aa gaya',
@@ -136,6 +142,7 @@ const DYNAMIC = [
   'Item "{a}" hataya', 'Naya retailer "{a}" jodha', 'Naya supplier "{a}" jodha', 'Naya item "{a}" jodha',
   '{a} cancel kiya — {b}', '{a} reject kiya — {b}', '{a} cancel kiya', '{a} reject kiya', '{a} — {b} kiya', '{a} ko {b} banaya',
   '{a} ko hataya', '{a} me {b} badla', '{a} mitaya', 'Paisa aaya {a}', 'Paisa diya {a}',
+  '{a} ke saath mila (₹{b} jama)', '{a} ke saath mila', '{a} ke saath',
   'Hafte ka hisaab — {a}', 'Mahine ka hisaab — {a}',
   'Bikri {a} · Fayda {b} · Udhaar {c} — {d}', 'Bikri {a} · Nuksan {b} · Udhaar {c} — {d}',
   'Bikri {a} · Fayda {b} · Udhaar {c}', 'Bikri {a} · Nuksan {b} · Udhaar {c}',

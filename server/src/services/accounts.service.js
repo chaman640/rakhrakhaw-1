@@ -121,7 +121,7 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
   const moneyEntries = entries.filter((e) => e.type === 'PAYMENT_IN' || e.type === 'PAYMENT_OUT');
   const [invs, purs, rets, pays, payrolls, staff, purPays] = await Promise.all([
     byIds(Invoice, ids('Invoice'), 'taxableTotal cgstTotal sgstTotal igstTotal grandTotal deliveryCharge'),
-    byIds(Purchase, ids('Purchase'), 'taxableTotal taxTotal grandTotal'),
+    byIds(Purchase, ids('Purchase'), 'taxableTotal taxTotal grandTotal deliveryCharge'),
     byIds(ReturnNote, ids('ReturnNote'), 'type taxableTotal cgstTotal sgstTotal igstTotal grandTotal'),
     byIds(Payment, ids('Payment'), 'mode bankAccountId'),
     byIds(Payroll, expenses.filter((e) => e.payrollId).map((e) => e.payrollId), 'net advanceAdjusted paymentMode payrollNo period'),
@@ -151,7 +151,7 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
       type = 'Sale';
     } else if (e.refType === 'Purchase' && purs.get(key)) {
       const d = purs.get(key);
-      parts = split(x, [['purchases', d.taxableTotal], ['input_gst', d.taxTotal]], d.grandTotal);
+      parts = split(x, [['purchases', round2((d.taxableTotal || 0) + (d.deliveryCharge || 0))], ['input_gst', d.taxTotal]], d.grandTotal);
       type = 'Purchase';
     } else if (e.refType === 'ReturnNote' && rets.get(key)) {
       const d = rets.get(key);

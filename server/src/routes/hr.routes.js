@@ -18,7 +18,7 @@ import * as time from '../services/hrTime.service.js';
 import * as pay from '../services/payroll.service.js';
 import * as dash from '../services/hrDash.service.js';
 import * as work from '../services/crmWork.service.js';
-import { currentPeriod } from '../utils/istDay.js';
+import { currentPeriod, entryDate } from '../utils/istDay.js';
 
 const router = Router();
 router.use(protect, requireRole(ROLES.WHOLESALER), withTenant, requirePaidSeller, requireFeature('hr_basic'));
@@ -271,7 +271,7 @@ router.post('/payroll/advances', requirePermission('payroll:create'), validate({
   body: z.object({
     userId: oid,
     amount: z.coerce.number().min(1).max(1e7),
-    date: z.coerce.date().optional(),
+    date: z.preprocess(entryDate, z.coerce.date()).optional(),
     mode: z.enum(['CASH', 'UPI', 'BANK', 'CHEQUE']).optional().default('CASH'),
     note: z.string().trim().max(300).optional().default(''),
   }),
@@ -288,7 +288,7 @@ router.put('/payroll/:id', requirePermission('payroll:create'), validate({
 }), hm('Payroll updated', (req) => pay.updatePayroll(req.businessId, req.user, req.params.id, req.body)));
 router.post('/payroll/:id/pay', requirePermission('payroll:approve'), validate({
   params: idP,
-  body: z.object({ mode: z.enum(['CASH', 'UPI', 'BANK', 'CHEQUE']).optional().default('BANK'), date: z.coerce.date().optional() }),
+  body: z.object({ mode: z.enum(['CASH', 'UPI', 'BANK', 'CHEQUE']).optional().default('BANK'), date: z.preprocess(entryDate, z.coerce.date()).optional() }),
 }), hm('Salary marked as paid', (req) => pay.payPayroll(req.businessId, req.user, req.params.id, req.body)));
 router.post('/payroll/:id/cancel', requirePermission('payroll:approve'), validate({
   params: idP, body: z.object({ reason: z.string().trim().min(3, 'Please give a reason').max(200) }),

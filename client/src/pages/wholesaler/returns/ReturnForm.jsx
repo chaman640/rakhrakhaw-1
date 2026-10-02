@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, Save, Info, Undo2 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { formatMoney, formatQty } from '@/lib/format';
+import { formatMoney, formatQty, dayStr } from '@/lib/format';
 import {
   Card, CardHeader, Button, Input, Select, Textarea, Spinner,
   Combobox, Badge, useToast } from
@@ -49,7 +49,7 @@ export default function ReturnForm() {
   );
   const [party, setParty] = useState(null);
   const [partyState, setPartyState] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => dayStr());
   const [rows, setRows] = useState([emptyRow()]);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');

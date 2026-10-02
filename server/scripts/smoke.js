@@ -13,6 +13,7 @@ import app from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { connectDB } from '../src/config/db.js';
 import { round2 } from '../src/utils/money.js';
+import { istDay } from '../src/utils/istDay.js';
 import {
   User, Business, Party, Item, Category, StockMovement, PartyItemRate, LedgerEntry, Purchase, Counter,
   Cart, Order, Notification, Invoice, Payment, ReturnNote, Expense, Membership, StockIntake, Otp,
@@ -1672,7 +1673,8 @@ async function run() {
     check('trend me khali din bhi hain (gaddha nahi)',
       r.data?.trend?.every((t) => typeof t.amount === 'number' && t.label), 'kuch din adhoore');
     check('aakhri trend point aaj ka hai',
-      r.data?.trend?.[13]?.date === new Date().toISOString().slice(0, 10),
+      // Dukaan ka din IST me (server bhi IST pe chalta hai)
+      r.data?.trend?.[13]?.date === istDay(),
       `${r.data?.trend?.[13]?.date}`);
     check('orders ki ginti aayi', typeof r.data?.orders?.running === 'number');
     check('top items mile', Array.isArray(r.data?.topItems));
@@ -3635,6 +3637,8 @@ async function run() {
         partyId: w1PartyInBig,
         items: [{ itemId: bigItem, qty: 4, rate: 1000 }],
         extraDiscount: 200,
+        // Delivery bhi — kharidne wale ki purchase aur khate me bhi aana chahiye
+        deliveryCharge: 100,
         paidAmount: 0,
       },
     });
@@ -3701,8 +3705,9 @@ async function run() {
     r = await call('GET', `/items/${madeItem._id}`, { token: wToken });
     check('AB stock badh gaya', r.data?.stockQty === 4, `stock ${r.data?.stockQty}`);
     // Buyer is not GST-registered here, so GST is part of the cost
-    check('lagat bhi item pe chadh gayi (GST ke saath, discount ke baad)',
-      r.data?.purchasePrice === 1121, `${r.data?.purchasePrice}`);
+    // 1121 (GST ke saath, discount ke baad) + delivery 100 / 4 = 25
+    check('lagat bhi item pe chadh gayi (GST + delivery ke saath, discount ke baad)',
+      r.data?.purchasePrice === 1146, `${r.data?.purchasePrice}`);
     check('bechne ka rate waise ka waisa raha', r.data?.salePrice === 1300, `${r.data?.salePrice}`);
 
     const purchasesAfter = (await call('GET', '/purchases?limit=1', { token: wToken })).meta?.total || 0;

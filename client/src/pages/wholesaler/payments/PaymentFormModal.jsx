@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Banknote, Smartphone, Landmark, FileCheck } from 'lucide-react';
 import api from '@/lib/api';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, dayStr } from '@/lib/format';
 import { Modal, Button, Input, Combobox, Textarea, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { t } from '@/lib/i18n';
@@ -15,7 +15,7 @@ const MODES = [
 { value: 'CHEQUE', label: 'Cheque', icon: FileCheck }];
 
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => dayStr();
 
 /**
  * Paisa entry karne ka form.

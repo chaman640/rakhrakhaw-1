@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { entryDate } from '../utils/istDay.js';
 import { PAYMENT_MODES } from '../config/constants.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Galat id');
@@ -9,7 +10,7 @@ export const createPaymentSchema = z.object({
   direction: z.enum(['IN', 'OUT']).optional().default('IN'),
   amount: money,
   mode: z.enum(Object.values(PAYMENT_MODES)).optional().default('CASH'),
-  date: z.coerce.date().optional(),
+  date: z.preprocess(entryDate, z.coerce.date()).optional(),
   reference: z.string().trim().max(60).optional().default(''),
   note: z.string().trim().max(300).optional().default(''),
   bankAccountId: objectId.nullable().optional(),
@@ -34,7 +35,7 @@ export const refundSchema = z.object({
   mode: z.enum(Object.values(PAYMENT_MODES)).optional().default('CASH'),
   reference: z.string().trim().max(60).optional().default(''),
   note: z.string().trim().max(300).optional().default(''),
-  date: z.coerce.date().optional(),
+  date: z.preprocess(entryDate, z.coerce.date()).optional(),
 });
 
 export const claimPaymentSchema = z.object({
