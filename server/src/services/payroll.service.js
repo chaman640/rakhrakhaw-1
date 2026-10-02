@@ -12,12 +12,14 @@ import {
 } from './hr.service.js';
 
 /** Kitne din ki salary banti hai — attendance shuru hone se pehle ke din poore gine jate hain */
-function attendanceDays(emp, recs, days, weeklyOff, today, firstDay) {
+export function attendanceDays(emp, recs, days, weeklyOff, today, firstDay) {
   const joined = istDay(emp.joiningDate || emp.createdAt);
   const trackFrom = firstDay || '9999-12-31';
   const left = emp.leftAt ? istDay(emp.leftAt) : '9999-12-31';
   const working = days.filter((d) => !weeklyOff.includes(weekdayOf(d)));
-  const tracked = recs.length > 0;
+  // Attendance is mahine se pehle shuru ho chuki ho to bina entry wala din gair-haazir hai —
+  // warna poore mahine na aane wale ko poori salary ban jati
+  const tracked = recs.length > 0 || Boolean(firstDay && firstDay <= days[days.length - 1]);
   const rm = new Map(recs.map((r) => [r.day, r]));
   let paid = 0; let unpaidLeave = 0; let absent = 0;
   for (const d of working) {

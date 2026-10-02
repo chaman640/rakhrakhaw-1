@@ -15,6 +15,8 @@ import app from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { connectDB } from '../src/config/db.js';
 import { round2 } from '../src/utils/money.js';
+import { attendanceDays } from '../src/services/payroll.service.js';
+import { monthOf } from '../src/utils/istDay.js';
 import {
   User, Business, Party, Item, Invoice, LedgerEntry, StockMovement, StockLot, Payment, ReturnNote, Purchase, Expense,
 } from '../src/models/index.js';
@@ -270,6 +272,19 @@ async function run() {
     r = await call('DELETE', `/purchases/${r.data?._id}`);
     check('kharid mitayi', r.status === 200, r.message);
     eq('Z stock wapas 2', (await Item.findById(Z).lean()).stockQty, 2);
+
+    console.log(`\n${Y}20. Salary ke din (Sep 2026, ravivaar chhutti)${N}`);
+    const sep = monthOf('2026-09').days;   // 30 din, 4 ravivaar → 26 kaam ke din
+    const emp = { joiningDate: new Date('2026-01-01') };
+    let a = attendanceDays(emp, [], sep, [0], '2026-10-02', '2026-08-01');
+    eq('pehle se attendance, Sep me ek bhi entry nahi → 0 din ki salary', a.paidDays, 0);
+    eq('26 din gair-haazir', a.absentDays, 26);
+    a = attendanceDays(emp, [], sep, [0], '2026-10-02', undefined);
+    eq('attendance kabhi lagi hi nahi → poore 26 din', a.paidDays, 26);
+    a = attendanceDays({ joiningDate: new Date('2026-09-15') }, [{ day: '2026-09-15', status: 'present' }], sep, [0], '2026-10-02', '2026-09-15');
+    // 15–30 Sep: 16 din, 2 ravivaar (20, 27) → 14 kaam ke din; 1 haazir
+    eq('beech mahine judne wala: 1 haazir', a.paidDays, 1);
+    eq('beech mahine judne wala: 13 gair-haazir', a.absentDays, 13);
 
     console.log(`\n${Y}20. Sab ke baad phir se niyam${N}`);
     await stockMatches(businessId);
