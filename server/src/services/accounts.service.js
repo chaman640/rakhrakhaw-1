@@ -205,7 +205,7 @@ export async function journalLines(businessId, { from = null, to = null } = {}) 
 
   const byDay = new Map();
   for (const l of lots) {
-    const d = new Date(l.date).toISOString().slice(0, 10);
+    const d = istDay(l.date);
     byDay.set(d, round2((byDay.get(d) || 0) + (l.qty || 0) * (l.unitCost || 0)));
   }
   for (const [d, amt] of byDay) {

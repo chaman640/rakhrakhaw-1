@@ -14,6 +14,7 @@ import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { applyCredit, releaseCredit, tradedQty } from './settlement.service.js';
 import { sweepAdvance } from './balance.service.js';
 import { decideTaxType, computeInvoice, hsnSummary } from './gst.service.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -94,8 +95,8 @@ export async function listReturns(businessId, q, viewer = null) {
 
   if (q.from || q.to) {
     filter.returnDate = {};
-    if (q.from) filter.returnDate.$gte = q.from;
-    if (q.to) { const t = new Date(q.to); t.setHours(23, 59, 59, 999); filter.returnDate.$lte = t; }
+    if (q.from) filter.returnDate.$gte = dayFrom(q.from);
+    if (q.to) filter.returnDate.$lte = dayTo(q.to);
   }
 
   if (q.q) {

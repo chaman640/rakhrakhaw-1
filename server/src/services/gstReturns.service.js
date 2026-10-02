@@ -3,7 +3,7 @@ import { round2 } from '../utils/money.js';
 import { PARTY_TYPES, TAX_TYPES } from '../config/constants.js';
 import { getStateName, stateCodeFromGstin } from '../config/states.js';
 import { validateGstin } from '../utils/gstin.js';
-import { monthOf } from '../utils/istDay.js';
+import { monthOf, dayFrom, dayTo } from '../utils/istDay.js';
 import {
   Business, Invoice, Purchase, ReturnNote, Party,
 } from '../models/index.js';
@@ -193,7 +193,7 @@ export async function gstr3b(businessId, { period }) {
 }
 
 export async function purchaseGst(businessId, q) {
-  const range = q.period ? monthRange(q.period) : { from: new Date(q.from), to: new Date(q.to) };
+  const range = q.period ? monthRange(q.period) : { from: dayFrom(q.from), to: dayTo(q.to) };
   const biz = await context(businessId);
   return { ...(await inputTax(businessId, range, biz)), period: q.period };
 }

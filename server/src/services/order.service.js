@@ -11,6 +11,7 @@ import { resolveRates } from './rate.service.js';
 import { getCart, clearCart } from './cart.service.js';
 import { createPayment } from './payment.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 /**
  * Cart se order banana.
@@ -220,8 +221,8 @@ export async function listOrdersForWholesaler(businessId, q, viewer = null) {
 
   if (q.from || q.to) {
     filter.createdAt = {};
-    if (q.from) filter.createdAt.$gte = q.from;
-    if (q.to) { const to = new Date(q.to); to.setHours(23, 59, 59, 999); filter.createdAt.$lte = to; }
+    if (q.from) filter.createdAt.$gte = dayFrom(q.from);
+    if (q.to) filter.createdAt.$lte = dayTo(q.to);
   }
 
   if (q.q) {

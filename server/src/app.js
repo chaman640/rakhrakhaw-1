@@ -1,3 +1,4 @@
+import './config/tz.js';
 import express from 'express';
 import { platformConfig } from './services/platform.service.js';
 import compression from 'compression';

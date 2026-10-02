@@ -286,7 +286,7 @@ export async function runAutomation(businessId, { force = false, actor = null } 
   }
   if (s.automation.inactivity) {
     const cand = rows.filter((r) => r.bills && (r.segments.includes('at_risk') || (r.segments.includes('inactive') && r.daysSince <= s.inactiveDays * 3)));
-    const mo = new Date().toISOString().slice(0, 7);
+    const mo = currentPeriod();
     const keys = cand.map((r) => `inactive:${r._id}:${mo}`);
     const open = await usedAutoKeys(businessId, keys);
     const busy = new Set((await CrmTask.find({ businessId, partyId: { $in: cand.map((r) => r._id) }, status: { $ne: 'done' } }).select('partyId').lean()).map((t) => String(t.partyId)));

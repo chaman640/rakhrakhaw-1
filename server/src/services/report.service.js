@@ -6,6 +6,7 @@ import { expenseTotals } from './expense.service.js';
 import {
   scopeMatch, scopeByParty, scopeParties, scopePartiesMatch,
 } from '../utils/scope.js';
+import { dayFrom, dayTo, istDay } from '../utils/istDay.js';
 
 /**
  * Saari reports ek jagah.
@@ -21,14 +22,12 @@ const oid = (v) => new mongoose.Types.ObjectId(v);
 
 /** Date range ko din ke shuru aur din ke aakhir tak faila deta hai */
 function range({ from, to } = {}) {
-  const start = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  start.setHours(0, 0, 0, 0);
-  const end = to ? new Date(to) : new Date();
-  end.setHours(23, 59, 59, 999);
+  const start = from ? dayFrom(from) : dayFrom(`${istDay().slice(0, 8)}01`);
+  const end = dayTo(to || istDay());
   return { start, end };
 }
 
-const dayKey = (d) => new Date(d).toISOString().slice(0, 10);
+const dayKey = (d) => istDay(d);
 
 /* ══════════════════════════════════════════════════════════════ 1. SALE */
 
@@ -191,7 +190,7 @@ export async function saleReport(businessId, q = {}, viewer = null) {
       { $match: match },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate', timezone: '+05:30' } },
           bills: { $sum: 1 },
           qty: { $sum: { $sum: '$items.qty' } },
           taxable: { $sum: '$taxableTotal' },
@@ -334,7 +333,7 @@ export async function purchaseReport(businessId, q = {}) {
       { $match: match },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate', timezone: '+05:30' } },
           bills: { $sum: 1 },
           qty: { $sum: { $sum: '$items.qty' } },
           total: { $sum: '$grandTotal' }, paid: { $sum: '$paidAmount' }, due: { $sum: '$dueAmount' },
@@ -689,7 +688,7 @@ export async function paymentReport(businessId, q = {}, viewer = null) {
     { $match: match },
     {
       $group: {
-        _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, mode: '$mode', dir: '$direction' },
+        _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '+05:30' } }, mode: '$mode', dir: '$direction' },
         amount: { $sum: '$amount' },
       },
     },

@@ -203,7 +203,7 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
       { $match: await docScope({ businessId: bid, isCancelled: false, invoiceDate: { $gte: trendStart, $lte: todayEnd } }) },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate', timezone: '+05:30' } },
           amount: { $sum: '$grandTotal' }, bills: { $sum: 1 },
         },
       },

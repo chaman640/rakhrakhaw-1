@@ -17,6 +17,7 @@ import {
   outstandingFor, sweepAdvance, listWeOwe, refundableForReturn, businessHisaab,
 } from './balance.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -40,8 +41,8 @@ export async function listPayments(businessId, q, viewer = null) {
 
   if (q.from || q.to) {
     filter.date = {};
-    if (q.from) filter.date.$gte = q.from;
-    if (q.to) { const t = new Date(q.to); t.setHours(23, 59, 59, 999); filter.date.$lte = t; }
+    if (q.from) filter.date.$gte = dayFrom(q.from);
+    if (q.to) filter.date.$lte = dayTo(q.to);
   }
 
   if (q.q) {

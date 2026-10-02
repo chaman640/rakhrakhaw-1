@@ -15,6 +15,7 @@ import { khepBanao, khepHatao } from './lot.service.js';
 import { postEntry, reverseEntriesFor } from './ledger.service.js';
 import { applyCredit } from './settlement.service.js';
 import { sweepAdvance } from './balance.service.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const PREFIX = 'PUR';
@@ -73,12 +74,8 @@ export async function listPurchases(businessId, q) {
 
   if (q.from || q.to) {
     filter.purchaseDate = {};
-    if (q.from) filter.purchaseDate.$gte = q.from;
-    if (q.to) {
-      const to = new Date(q.to);
-      to.setHours(23, 59, 59, 999);
-      filter.purchaseDate.$lte = to;
-    }
+    if (q.from) filter.purchaseDate.$gte = dayFrom(q.from);
+    if (q.to) filter.purchaseDate.$lte = dayTo(q.to);
   }
 
   if (q.q) {
@@ -143,7 +140,7 @@ async function dayTotalsFor(purchases, filter, q) {
     { $match: match },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate', timezone: '+05:30' } },
         amount: { $sum: '$grandTotal' },
         due: { $sum: '$dueAmount' },
         bills: { $sum: 1 },

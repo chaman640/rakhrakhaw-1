@@ -3,6 +3,7 @@ import {
   Business, Party, Category, Item, PartyItemRate, StockMovement,
   Purchase, Order, Invoice, LedgerEntry, Payment, ReturnNote, User,
 } from '../models/index.js';
+import { istDay } from '../utils/istDay.js';
 
 /**
  * "Mera data mujhe do."
@@ -99,7 +100,7 @@ const CSV_BUILDERS = {
       headers,
       rows: rows.map((i) => ({
         invoiceNo: i.invoiceNo,
-        date: new Date(i.invoiceDate).toISOString().slice(0, 10),
+        date: istDay(i.invoiceDate),
         party: i.partySnapshot?.shopName || i.partySnapshot?.name || '',
         gstin: i.partySnapshot?.gstin || '',
         items: i.items.length,
@@ -120,7 +121,7 @@ const CSV_BUILDERS = {
     return {
       headers,
       rows: rows.map((e) => ({
-        date: new Date(e.date).toISOString().slice(0, 10),
+        date: istDay(e.date),
         party: nameMap[String(e.partyId)] || '',
         type: e.type, refNo: e.refNo || '',
         debit: e.debit, credit: e.credit, balanceAfter: e.balanceAfter,
@@ -140,7 +141,7 @@ const CSV_BUILDERS = {
       headers,
       rows: rows.map((p) => ({
         paymentNo: p.paymentNo,
-        date: new Date(p.date).toISOString().slice(0, 10),
+        date: istDay(p.date),
         party: nameMap[String(p.partyId)] || '',
         direction: p.direction, mode: p.mode, amount: p.amount,
         reference: p.reference || '', status: p.status,
@@ -160,7 +161,7 @@ const CSV_BUILDERS = {
       headers,
       rows: rows.map((p) => ({
         purchaseNo: p.purchaseNo,
-        date: new Date(p.purchaseDate).toISOString().slice(0, 10),
+        date: istDay(p.purchaseDate),
         supplier: nameMap[String(p.supplierId)] || '',
         supplierBillNo: p.supplierBillNo || '',
         items: p.items.length,
@@ -177,7 +178,7 @@ const CSV_BUILDERS = {
       headers,
       rows: rows.map((r) => ({
         returnNo: r.returnNo,
-        date: new Date(r.returnDate).toISOString().slice(0, 10),
+        date: istDay(r.returnDate),
         type: r.type,
         party: r.partySnapshot?.shopName || r.partySnapshot?.name || '',
         againstNo: r.againstNo || '', items: r.items.length,

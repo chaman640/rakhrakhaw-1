@@ -1,5 +1,6 @@
 import { AuditLog } from '../models/index.js';
 import { STAFF_ROLE_LABEL, STAFF_ROLES } from '../config/permissions.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 /**
  * REGISTER ME LIKHNE KA EK HI DARWAZA.
@@ -97,8 +98,8 @@ export async function listAudit(businessId, query = {}, viewer = null) {
 
   if (query.from || query.to) {
     filter.createdAt = {};
-    if (query.from) filter.createdAt.$gte = new Date(`${query.from}T00:00:00.000Z`);
-    if (query.to) filter.createdAt.$lte = new Date(`${query.to}T23:59:59.999Z`);
+    if (query.from) filter.createdAt.$gte = dayFrom(query.from);
+    if (query.to) filter.createdAt.$lte = dayTo(query.to);
   }
 
   // Jise sirf apna data dikhta hai, use register bhi apna hi dikhega

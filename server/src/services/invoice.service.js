@@ -24,6 +24,7 @@ import { sweepAdvance } from './balance.service.js';
 import { resolveRates } from './rate.service.js';
 import { notifyRetailer } from './notification.service.js';
 import { createIntakeFromInvoice, cancelIntakeForInvoice } from './intake.service.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -38,8 +39,8 @@ export async function listInvoices(businessId, q, viewer = null) {
 
   if (q.from || q.to) {
     filter.invoiceDate = {};
-    if (q.from) filter.invoiceDate.$gte = q.from;
-    if (q.to) { const to = new Date(q.to); to.setHours(23, 59, 59, 999); filter.invoiceDate.$lte = to; }
+    if (q.from) filter.invoiceDate.$gte = dayFrom(q.from);
+    if (q.to) filter.invoiceDate.$lte = dayTo(q.to);
   }
 
   if (q.q) {
@@ -136,7 +137,7 @@ async function dayTotalsFor(invoices, filter, q) {
     { $match: match },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate', timezone: '+05:30' } },
         amount: { $sum: '$grandTotal' },
         due: { $sum: '$dueAmount' },
         bills: { $sum: 1 },
@@ -208,8 +209,8 @@ export async function salesByParty(businessId, q = {}, viewer = null) {
   const match = { businessId: bid, isCancelled: false };
   if (q.from || q.to) {
     match.invoiceDate = {};
-    if (q.from) match.invoiceDate.$gte = new Date(q.from);
-    if (q.to) { const to = new Date(q.to); to.setHours(23, 59, 59, 999); match.invoiceDate.$lte = to; }
+    if (q.from) match.invoiceDate.$gte = dayFrom(q.from);
+    if (q.to) match.invoiceDate.$lte = dayTo(q.to);
   }
 
   const scoped = isScoped(viewer)

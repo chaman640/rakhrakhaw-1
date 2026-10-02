@@ -11,6 +11,7 @@ import { scopePartiesMatch, isScoped } from '../utils/scope.js';
 import {
   hasFeature, assertFeature, isOwner, nameMap, createTask,
 } from './crmWork.service.js';
+import { istDay } from '../utils/istDay.js';
 
 const DAY = 86400000;
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
@@ -202,7 +203,7 @@ function reorderOf(itemRows = []) {
     const dueIn = Math.round((next - Date.now()) / DAY);
     out.push({
       itemId: r.itemId, name: r.name, times: r.days.length, avgGapDays: gap,
-      avgQty: round2(r.qty / r.days.length), lastAt: last, expectedAt: new Date(next).toISOString().slice(0, 10), dueIn,
+      avgQty: round2(r.qty / r.days.length), lastAt: last, expectedAt: istDay(next), dueIn,
       due: dueIn <= 3 && dueIn >= -gap,
     });
   }

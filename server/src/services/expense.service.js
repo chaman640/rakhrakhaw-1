@@ -10,6 +10,7 @@ import { Expense, Counter, Item } from '../models/index.js';
 import { applyStockChange } from './stock.service.js';
 import { khepNikalo } from './lot.service.js';
 import { isScoped } from '../utils/scope.js';
+import { dayFrom, dayTo } from '../utils/istDay.js';
 
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,8 +38,8 @@ function buildFilter(businessId, q = {}, viewer = null) {
 
   if (q.from || q.to) {
     filter.date = {};
-    if (q.from) filter.date.$gte = new Date(q.from);
-    if (q.to) { const to = new Date(q.to); to.setHours(23, 59, 59, 999); filter.date.$lte = to; }
+    if (q.from) filter.date.$gte = dayFrom(q.from);
+    if (q.to) filter.date.$lte = dayTo(q.to);
   }
 
   if (q.q) {
@@ -349,7 +350,7 @@ export async function expenseDashboard(businessId, { todayStart, todayEnd, month
     { $match: { ...match, date: { $gte: from, $lte: todayEnd } } },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: '+05:30' } },
         amount: { $sum: '$amount' },
         n: { $sum: 1 },
       },

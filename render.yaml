@@ -41,6 +41,9 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
 
+      - key: TZ
+        value: Asia/Kolkata
+
       - key: BILLING_MODE
         value: free
 
