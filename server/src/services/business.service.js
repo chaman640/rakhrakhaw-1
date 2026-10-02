@@ -33,7 +33,7 @@ export async function updateBusiness(businessId, payload, user = null) {
   const simpleFields = [
     'name', 'email', 'upiId', 'upiName', 'invoicePrefix', 'orderPrefix',
     'termsAndConditions', 'invoiceFooterNote', 'lowStockThreshold', 'deliveryCharge',
-    'autoApproveRetailers', 'inviteEnabled', 'bio', 'requireApproval',
+    'autoApproveRetailers', 'inviteEnabled', 'bio', 'requireApproval', 'digestToManagers',
   ];
   for (const field of simpleFields) {
     if (payload[field] !== undefined) business[field] = payload[field];

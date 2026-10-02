@@ -49,6 +49,7 @@ export const updateBusinessSchema = z
     autoApproveRetailers: z.boolean().optional(),
     requireApproval: z.boolean().optional(),
     inviteEnabled: z.boolean().optional(),
+    digestToManagers: z.boolean().optional(),
   })
   .strict();
 

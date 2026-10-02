@@ -1,4 +1,5 @@
 import { ROLES, NOTIFICATION_TYPES } from '../config/constants.js';
+import { STAFF_ROLES, userCan } from '../config/permissions.js';
 import { Business, User, ReportDigest } from '../models/index.js';
 import { profitLossReport, outstandingReport } from './report.service.js';
 import { notify } from './notification.service.js';
@@ -10,7 +11,11 @@ import { notify } from './notification.service.js';
  * baad pichhle hafte (somvaar–ravivaar) ka, aur har mahine ki 1 tareekh 9 baje
  * ke baad pichhle mahine ka fayda-nuksan aur aaj ka kul udhaar bhejta hai.
  * Server band raha ho to agle sweep me chala jata hai; ek period ek hi baar.
+ * Malik ko hamesha; setting chalu ho to manager/admin staff ko bhi (jinke paas
+ * fayda-nuksan dekhne ki ijazat hai).
  */
+
+const MANAGER_ROLES = [STAFF_ROLES.ADMIN, STAFF_ROLES.MANAGER];
 
 const IST_MS = 5.5 * 3600000;
 const SEND_HOUR = 9;
@@ -70,13 +75,24 @@ export async function buildDigest(businessId, period) {
   };
 }
 
+/** Malik + (setting chalu ho to) manager/admin jinhe fayda-nuksan dekhne ki ijazat hai */
+async function recipientsOf(shop) {
+  const ids = [String(shop.ownerUserId)];
+  if (shop.digestToManagers) {
+    const staff = await User.find({ businessId: shop._id, role: ROLES.WHOLESALER, isActive: { $ne: false }, staffRole: { $in: MANAGER_ROLES } })
+      .select('_id role staffRole permissions').lean();
+    for (const u of staff) if (userCan(u, 'reports:profit') && !ids.includes(String(u._id))) ids.push(String(u._id));
+  }
+  return ids;
+}
+
 /** Har ghante — jinko is period ka hisaab nahi gaya unhe bhejo */
 export async function sweepReportDigests(now = new Date()) {
   const periods = duePeriods(now);
   if (!periods.length) return 0;
 
   const sellers = await User.find({ role: ROLES.WHOLESALER, isActive: { $ne: false } }).distinct('_id');
-  const shops = await Business.find({ ownerUserId: { $in: sellers } }).select('_id ownerUserId').lean();
+  const shops = await Business.find({ ownerUserId: { $in: sellers } }).select('_id ownerUserId digestToManagers').lean();
   let sent = 0;
 
   for (const period of periods) {
@@ -93,8 +109,10 @@ export async function sweepReportDigests(now = new Date()) {
       try {
         const msg = await buildDigest(shop._id, period);
         if (!msg) continue;
-        await notify({ businessId: shop._id, userId: shop.ownerUserId, type: NOTIFICATION_TYPES.REPORT_DIGEST, ...msg });
-        sent += 1;
+        for (const userId of await recipientsOf(shop)) {
+          await notify({ businessId: shop._id, userId, type: NOTIFICATION_TYPES.REPORT_DIGEST, ...msg });
+          sent += 1;
+        }
       } catch (e) {
         console.warn('[digest]', String(shop._id), e.message);
       }

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import PushToggle from '@/components/PushToggle';
+import DigestSetting from '@/components/DigestSetting';
 import { t, tDyn } from '@/lib/i18n';
 
 const TYPES = [
@@ -181,8 +182,9 @@ export default function Notifications() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 space-y-3">
         <PushToggle />
+        <DigestSetting />
       </div>
 
       <Card className="mb-5" padding={false}>

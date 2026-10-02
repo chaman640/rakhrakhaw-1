@@ -204,6 +204,9 @@ const businessSchema = new mongoose.Schema(
     */
     deliveryCharge: { type: Number, default: 0, min: 0 },
 
+    // Hafte/mahine ka hisaab (notification) manager/admin staff ko bhi jaye
+    digestToManagers: { type: Boolean, default: false },
+
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
