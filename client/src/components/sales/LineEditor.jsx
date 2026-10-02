@@ -9,14 +9,16 @@ const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const newLine = () => ({ key: Math.random().toString(36).slice(2), itemId: '', name: '', unit: 'PCS', qty: '1', rate: '', discountPct: '', gstRate: 0 });
 
 export function lineTotals(lines, withGst) {
+  // Server (quotation.service.js) jaisa hi — har line alag paise tak round
   let sub = 0; let taxable = 0; let tax = 0;
   for (const l of lines) {
     if (!l.itemId) continue;
-    const gross = Number(l.qty || 0) * Number(l.rate || 0);
-    const tx = gross * (1 - Number(l.discountPct || 0) / 100);
-    sub += gross; taxable += tx; tax += withGst ? (tx * (l.gstRate || 0)) / 100 : 0;
+    const gross = r2(r2(l.qty || 0) * r2(l.rate || 0));
+    const tx = r2(gross * (1 - r2(l.discountPct || 0) / 100));
+    sub = r2(sub + gross); taxable = r2(taxable + tx);
+    if (withGst) tax = r2(tax + r2((tx * (l.gstRate || 0)) / 100));
   }
-  return { sub: r2(sub), discount: r2(sub - taxable), tax: r2(tax), total: Math.round(taxable + tax) };
+  return { sub, discount: r2(sub - taxable), tax, total: Math.round(taxable + tax) };
 }
 
 /** Item lines for quotations and seller orders; rates default to the customer's price */

@@ -32,7 +32,10 @@ const REASONS = [
 export default function ReturnForm() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { gstEnabled, business } = useAuth();
+  const { gstEnabled: shopGst, business } = useAuth();
+  // Bill se wapasi: GST us bill ke hisaab se (server bhi yahi karta hai), warna dukaan ki setting
+  const [docGst, setDocGst] = useState(null);
+  const gstEnabled = docGst ?? shopGst;
   const [params] = useSearchParams();
 
   // ?type=SALE_RETURN&doc=<invoiceId>  — bill/purchase se seedha aane par
@@ -64,6 +67,7 @@ export default function ReturnForm() {
     then((r) => {
       const d = r.data;
       setType(d.type);
+      if (typeof d.gstEnabled === 'boolean') setDocGst(d.gstEnabled);
       setParty({ value: String(d.partyId), label: d.party?.shopName || d.party?.name });
       setPartyState(d.party?.address?.stateCode || '');
       setAgainst({
@@ -129,7 +133,7 @@ export default function ReturnForm() {
   // Type badla to party aur bill ka link hata do — warna galat party pe return ban jayega
   function changeType(next) {
     setType(next);
-    setParty(null);setPartyState('');setAgainst(null);
+    setParty(null);setPartyState('');setAgainst(null);setDocGst(null);
     setRows([emptyRow()]);
   }
 
@@ -138,17 +142,19 @@ export default function ReturnForm() {
 
   // ---- Live totals (server pe bilkul yahi hisaab hota hai) ----
   const totals = useMemo(() => {
+    // Server jaisa: har line paise tak round, phir jod
+    const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
     let taxable = 0,tax = 0;
     for (const r of rows) {
       if (!r.itemId) continue;
       const qty = Number(r.qty || 0);
       const rate = Number(r.rate || 0);
-      const disc = Number(r.discount || 0);
-      const value = Math.max(0, qty * rate - disc);
-      taxable += value;
-      if (gstEnabled) tax += value * Number(r.gstRate || 0) / 100;
+      const disc = r2(r.discount || 0);
+      const value = Math.max(0, r2(r2(qty * rate) - disc));
+      taxable = r2(taxable + value);
+      if (gstEnabled) tax = r2(tax + r2(value * Number(r.gstRate || 0) / 100));
     }
-    const before = taxable + tax;
+    const before = r2(taxable + tax);
     const grand = Math.round(before);
     return {
       taxable: Math.round(taxable * 100) / 100,
