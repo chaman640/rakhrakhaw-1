@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { withHold } from '../utils/holdDoc.js';
 import ApiError from '../utils/ApiError.js';
 import {
   RETURN_TYPES, PARTY_TYPES, LEDGER_TYPES, STOCK_MOVEMENT_TYPES,
@@ -298,7 +299,22 @@ export async function prefillFromDoc(businessId, type, docId) {
 
 /* ---------------------------------------------------------------- create */
 
+/*
+  Ek bill pe do wapasi ek saath — dono "kitna bacha" ek hi waqt gin lete the aur
+  bill se zyada maal wapas ho jata. Isliye bill/kharid (ya bina-bill ho to
+  party) pe taala; galat id ho to seedha andar wala saaf galti deta hai.
+*/
 export async function createReturn(businessId, payload, userId) {
+  const sale = IS_SALE(payload?.type);
+  const [Model, docId] = sale && payload?.invoiceId ? [Invoice, payload.invoiceId]
+    : !sale && payload?.purchaseId ? [Purchase, payload.purchaseId]
+      : [Party, payload?.partyId];
+  const filter = { _id: docId, businessId };
+  if (!docId || !(await Model.exists(filter))) return createReturnHeld(businessId, payload, userId);
+  return withHold(Model, filter, 'Nahi mila', () => createReturnHeld(businessId, payload, userId));
+}
+
+async function createReturnHeld(businessId, payload, userId) {
   const type = payload.type;
   const cfg = CONFIG[type];
   if (!cfg) throw ApiError.badRequest('Return ka type galat hai');
@@ -654,7 +670,13 @@ export async function createReturn(businessId, payload, userId) {
 
 /* ---------------------------------------------------------------- delete */
 
-export async function deleteReturn(businessId, id, userId, viewer = null) {
+// Wapasi do baar na mite — stock aur khata ek hi baar ulte
+export function deleteReturn(businessId, id, userId, viewer = null) {
+  return withHold(ReturnNote, { _id: id, businessId }, 'Ye return nahi mila',
+    () => deleteReturnHeld(businessId, id, userId, viewer));
+}
+
+async function deleteReturnHeld(businessId, id, userId, viewer = null) {
   const note = await ReturnNote.findOne({ _id: id, businessId });
   if (!note) throw ApiError.notFound('Ye return nahi mila');
 

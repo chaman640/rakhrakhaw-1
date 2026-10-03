@@ -65,6 +65,8 @@ const expenseSchema = new mongoose.Schema(
     payrollId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payroll', default: null },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    // Cancel/delete chalu hone ka taala — do tap se dugna asar na ho (utils/holdDoc.js)
+    busyAt: { type: Date, select: false },
   },
   { timestamps: true },
 );

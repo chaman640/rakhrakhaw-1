@@ -90,6 +90,8 @@ const orderSchema = new mongoose.Schema(
     retailerNote: { type: String, default: '' },
     wholesalerNote: { type: String, default: '' },
     cancelReason: { type: String, default: '' },
+    // Cancel/delete chalu hone ka taala — do tap se dugna asar na ho (utils/holdDoc.js)
+    busyAt: { type: Date, select: false },
   },
   { timestamps: true }
 );

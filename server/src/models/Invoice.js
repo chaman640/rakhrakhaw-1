@@ -181,6 +181,8 @@ const invoiceSchema = new mongoose.Schema(
     termsAndConditions: { type: String, default: '' },
     isCancelled: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // Cancel/delete chalu hone ka taala — do tap se dugna asar na ho (utils/holdDoc.js)
+    busyAt: { type: Date, select: false },
   },
   { timestamps: true }
 );

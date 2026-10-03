@@ -72,6 +72,8 @@ const partySchema = new mongoose.Schema(
     notes: { type: String, default: '' },
     tags: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
+    // Bina-bill wapasi chalu hone ka taala (utils/holdDoc.js)
+    busyAt: { type: Date, select: false },
   },
   { timestamps: true }
 );

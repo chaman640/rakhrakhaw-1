@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { withHold } from '../utils/holdDoc.js';
 import ApiError from '../utils/ApiError.js';
 import {
   PARTY_TYPES, STOCK_MOVEMENT_TYPES, LEDGER_TYPES, COUNTER_KEYS,
@@ -433,7 +434,14 @@ async function undoHalfInvoice(businessId, state, userId) {
   await step('adhoora bill hatana', () => Invoice.deleteOne({ _id: invoice._id, businessId }));
 }
 
-export async function createInvoice(businessId, payload, userId, viewer = null) {
+// Order se bill: ek order ka ek hi bill — do tap se do bill na bane
+export function createInvoice(businessId, payload, userId, viewer = null) {
+  if (!payload?.orderId) return createInvoiceHeld(businessId, payload, userId, viewer);
+  return withHold(Order, { _id: payload.orderId, businessId }, 'Order nahi mila',
+    () => createInvoiceHeld(businessId, payload, userId, viewer));
+}
+
+async function createInvoiceHeld(businessId, payload, userId, viewer = null) {
   const business = await Business.findById(businessId).lean();
   if (!business) throw ApiError.notFound('Business nahi mila');
 
@@ -970,7 +978,13 @@ export async function createInvoice(businessId, payload, userId, viewer = null) 
  * Bill delete nahi hota — cancel hota hai. Number wahin rehta hai (legal record),
  * par stock wapas aa jata hai aur khata ulta ho jata hai.
  */
-export async function cancelInvoice(businessId, id, { reason }, userId, viewer = null) {
+// Do baar cancel dab jaye to stock dugna wapas na aaye — ek waqt me ek hi
+export function cancelInvoice(businessId, id, opts, userId, viewer = null) {
+  return withHold(Invoice, { _id: id, businessId }, 'Bill nahi mila',
+    () => cancelInvoiceHeld(businessId, id, opts, userId, viewer));
+}
+
+async function cancelInvoiceHeld(businessId, id, { reason }, userId, viewer = null) {
   if (isScoped(viewer)) {
     const doc = await Invoice.findOne({ _id: id, businessId }).select('partyId createdBy').lean();
     if (!(await canSeeDoc(doc, businessId, viewer))) throw ApiError.notFound('Bill nahi mila');

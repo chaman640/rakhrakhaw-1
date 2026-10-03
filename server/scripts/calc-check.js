@@ -339,6 +339,37 @@ async function run() {
     r = await call('GET', '/accounts/trial-balance');
     eq('trial balance ab bhi barabar', r.data?.totals?.dr, r.data?.totals?.cr);
 
+    console.log(`\n${Y}27. Ek saath 3 tap — asar ek hi baar${N}`);
+    const x3 = (fn) => Promise.all([fn(), fn(), fn()]);
+    const ok1 = (rs) => rs.filter((x) => x.status === 200).length === 1 && rs.filter((x) => x.status === 409).length === 2;
+    const q1Stock = async () => (await Item.findById(Q1).lean()).stockQty;
+    let st = await q1Stock();
+    const rb = (await call('POST', '/invoices', { partyId: A, items: [{ itemId: Q1, qty: 1, rate: 200 }] })).data;
+    let rs = await x3(() => call('POST', `/invoices/${rb._id}/cancel`, { reason: 'race' }));
+    check('bill cancel: ek 200, do 409', ok1(rs), rs.map((x) => x.status).join(','));
+    eq('cancel ke baad Q1 stock wahi', await q1Stock(), st);
+    const rp = (await call('POST', '/purchases', { supplierId: S, items: [{ itemId: Q1, qty: 2, rate: 100 }] })).data;
+    rs = await x3(() => call('DELETE', `/purchases/${rp._id}`));
+    check('kharid delete: ek 200, do 409', ok1(rs), rs.map((x) => x.status).join(','));
+    eq('kharid delete ke baad Q1 stock wahi', await q1Stock(), st);
+    const rw = (await call('POST', '/expenses', { category: 'waste-stock', amount: 1, wasteItemId: Q1, wasteQty: 1 })).data;
+    const wId = rw?.expense?._id || rw?._id;
+    rs = await x3(() => call('DELETE', `/expenses/${wId}`));
+    check('waste delete: ek 200, do 409', ok1(rs), rs.map((x) => x.status).join(','));
+    eq('waste delete ke baad Q1 stock wahi', await q1Stock(), st);
+    const rb2 = (await call('POST', '/invoices', { partyId: A, items: [{ itemId: Q1, qty: 1, rate: 200 }] })).data;
+    const rr = (await call('POST', '/returns', { type: 'SALE_RETURN', partyId: A, invoiceId: rb2._id, items: [{ itemId: Q1, qty: 1, rate: 200 }] })).data;
+    const rId = rr?.note?._id || rr?.returnNote?._id || rr?._id;
+    rs = await x3(() => call('DELETE', `/returns/${rId}`));
+    check('wapasi delete: ek 200, do 409', ok1(rs), rs.map((x) => x.status).join(','));
+    eq('wapasi delete ke baad Q1 stock ek kam (bill khula hai)', await q1Stock(), st - 1);
+    const rb3 = (await call('POST', '/invoices', { partyId: A, items: [{ itemId: Q1, qty: 1, rate: 200 }] })).data;
+    rs = await x3(() => call('POST', '/returns', { type: 'SALE_RETURN', partyId: A, invoiceId: rb3._id, items: [{ itemId: Q1, qty: 1, rate: 200 }] }));
+    check('ek pc ke bill pe 3 wapasi ek saath → sirf ek bani', rs.filter((x) => x.status === 201).length === 1, rs.map((x) => x.status).join(','));
+    eq('bill aur wapasi ke baad Q1 stock wahi (st - 1)', await q1Stock(), st - 1);
+    await stockMatches(businessId);
+    await ledgerMatches(businessId);
+
     console.log(`\n${Y}20. Salary ke din (Sep 2026, ravivaar chhutti)${N}`);
     const sep = monthOf('2026-09').days;   // 30 din, 4 ravivaar → 26 kaam ke din
     const emp = { joiningDate: new Date('2026-01-01') };

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { withHold } from '../utils/holdDoc.js';
 import ApiError from '../utils/ApiError.js';
 import {
   PARTY_TYPES, STOCK_MOVEMENT_TYPES, LEDGER_TYPES, COUNTER_KEYS,
@@ -500,7 +501,13 @@ export async function createPurchase(businessId, payload, userId) {
  * Purchase delete = poora ulta. Stock wapas ghatega aur khata bhi ulta hoga.
  * Agar wo maal bik chuka hai (stock kam pad raha hai) to delete block ho jayega.
  */
-export async function deletePurchase(businessId, id, userId) {
+// Do baar delete dab jaye to stock do baar na ghate
+export function deletePurchase(businessId, id, userId) {
+  return withHold(Purchase, { _id: id, businessId }, 'Purchase nahi mili',
+    () => deletePurchaseHeld(businessId, id, userId));
+}
+
+async function deletePurchaseHeld(businessId, id, userId) {
   const purchase = await Purchase.findOne({ _id: id, businessId });
   if (!purchase) throw ApiError.notFound('Purchase nahi mili');
 

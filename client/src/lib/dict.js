@@ -4121,6 +4121,9 @@ const DICT = {
   'Order {a} chala gaya': { hi: 'ऑर्डर {a} चला गया', en: 'Order {a} sent' },
   '₹{a} ka kharch likh liya': { hi: '₹{a} का खर्च लिख लिया', en: 'Expense of ₹{a} recorded' },
   '₹{a} wapas kar diya': { hi: '₹{a} वापस कर दिया', en: '₹{a} refunded' },
+
+  /* ── Ek saath do tap ── */
+  'Ye kaam abhi chal raha hai — thodi der me dobara dekhein': { hi: 'ये काम अभी चल रहा है — थोड़ी देर में दोबारा देखें', en: 'This is already in progress — check again in a moment' },
 };
 
 export default DICT;

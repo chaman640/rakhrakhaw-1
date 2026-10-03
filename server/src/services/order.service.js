@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { withHold } from '../utils/holdDoc.js';
 import ApiError from '../utils/ApiError.js';
 import {
   ORDER_STATUS, ORDER_STATUS_FLOW, ORDER_PAYMENT_MODES, COUNTER_KEYS, PARTY_STATUS,
@@ -8,7 +9,6 @@ import { round2 } from '../utils/money.js';
 import { Order, Cart, Item, Party, Business, Counter } from '../models/index.js';
 import { scopeByParty, isScoped, canSeeDoc, ownPartyIds, toObjectIds } from '../utils/scope.js';
 import { resolveRates } from './rate.service.js';
-import { getCart, clearCart } from './cart.service.js';
 import { createPayment } from './payment.service.js';
 import { notifyWholesaler, notifyRetailer } from './notification.service.js';
 import { dayFrom, dayTo } from '../utils/istDay.js';
@@ -27,73 +27,92 @@ export async function placeOrder(businessId, partyId, userId, { note, paymentMod
     throw ApiError.forbidden('Order karne ke liye wholesaler ka approval chahiye');
   }
 
-  const cart = await Cart.findOne({ businessId, partyId }).lean();
-  if (!cart?.items?.length) throw ApiError.badRequest('Cart khali hai');
-
-  const itemIds = cart.items.map((i) => i.itemId);
-  const rawItems = await Item.find({
-    _id: { $in: itemIds }, businessId, isActive: true, visibleToRetailers: true,
-  }).select('name unit stockQty salePrice wholesalePrice').lean();
-
-  const priced = await resolveRates(businessId, partyId, rawItems);
-  const priceMap = new Map(priced.map((p) => [String(p._id), p]));
-
-  const lines = [];
   /*
-    Jo item gir gaya wo CHUP-CHAAP nahi girta.
-
-    Pehle bas `continue` tha: retailer 12 item ka cart bhejta, 8 ka order
-    banta, aur use kabhi pata hi nahi chalta — wo maal ka intezaar karta rehta
-    jo order me hai hi nahi. Error sirf tab aata tha jab SAB khatam ho.
+    Cart ek hi jhatke me "utha" lete hain (khaali karke purana wapas milta hai).
+    Pehle padhna aur baad me khaali karna alag the — do tap ya net ka retry
+    ek hi cart se do-teen order bana deta tha. Ab doosri request ko khaali
+    cart milta hai. Order na ban paye to cart wapas rakh dete hain.
   */
-  const dropped = [];
-  for (const line of cart.items) {
-    const item = priceMap.get(String(line.itemId));
-    if (!item) {
-      dropped.push({ itemId: line.itemId, name: line.name || '', reason: 'hat_gaya' });
-      continue;
-    }
-    if (item.stockQty <= 0) {
-      dropped.push({ itemId: item._id, name: item.name, reason: 'stock_khatam' });
-      continue;
+  const cart = await Cart.findOneAndUpdate(
+    { businessId, partyId, 'items.0': { $exists: true } },
+    { items: [], note: '' },
+  ).lean();
+  if (!cart?.items?.length) throw ApiError.badRequest('Cart khali hai');
+  const restoreCart = () => Cart.updateOne(
+    { businessId, partyId, 'items.0': { $exists: false } },
+    { items: cart.items, note: cart.note || '' },
+  ).catch(() => {});
+
+  let order;
+  let lines;
+  let dropped;
+  try {
+    const itemIds = cart.items.map((i) => i.itemId);
+    const rawItems = await Item.find({
+      _id: { $in: itemIds }, businessId, isActive: true, visibleToRetailers: true,
+    }).select('name unit stockQty salePrice wholesalePrice').lean();
+
+    const priced = await resolveRates(businessId, partyId, rawItems);
+    const priceMap = new Map(priced.map((p) => [String(p._id), p]));
+
+    lines = [];
+    /*
+      Jo item gir gaya wo CHUP-CHAAP nahi girta.
+
+      Pehle bas `continue` tha: retailer 12 item ka cart bhejta, 8 ka order
+      banta, aur use kabhi pata hi nahi chalta — wo maal ka intezaar karta rehta
+      jo order me hai hi nahi. Error sirf tab aata tha jab SAB khatam ho.
+    */
+    dropped = [];
+    for (const line of cart.items) {
+      const item = priceMap.get(String(line.itemId));
+      if (!item) {
+        dropped.push({ itemId: line.itemId, name: line.name || '', reason: 'hat_gaya' });
+        continue;
+      }
+      if (item.stockQty <= 0) {
+        dropped.push({ itemId: item._id, name: item.name, reason: 'stock_khatam' });
+        continue;
+      }
+
+      const qty = round2(line.qty);
+      lines.push({
+        itemId: item._id,
+        name: item.name,                      // snapshot
+        unit: item.unit,
+        qty,
+        rate: item.rate,                      // rate.service se aaya
+        amount: round2(qty * item.rate),
+        availableAtOrder: item.stockQty,      // order ke waqt kitna tha
+      });
     }
 
-    const qty = round2(line.qty);
-    lines.push({
-      itemId: item._id,
-      name: item.name,                      // snapshot
-      unit: item.unit,
-      qty,
-      rate: item.rate,                      // rate.service se aaya
-      amount: round2(qty * item.rate),
-      availableAtOrder: item.stockQty,      // order ke waqt kitna tha
+    if (!lines.length) {
+      throw ApiError.badRequest('Cart ke saare item ab available nahi hain — cart dobara dekh lein');
+    }
+
+    const business = await Business.findById(businessId).select('orderPrefix').lean();
+    const { number: orderNo } = await Counter.nextNumber({
+      businessId, key: COUNTER_KEYS.ORDER, prefix: business?.orderPrefix || 'ORD',
     });
+
+    order = await Order.create({
+      businessId,
+      partyId,
+      placedByUserId: userId,
+      orderNo,
+      items: lines,
+      itemsTotal: round2(lines.reduce((s, l) => s + l.amount, 0)),
+      itemCount: lines.length,
+      status: ORDER_STATUS.PLACED,
+      statusHistory: [{ status: ORDER_STATUS.PLACED, at: new Date(), byUserId: userId, note: 'Retailer ne order kiya' }],
+      paymentMode: paymentMode || ORDER_PAYMENT_MODES.UDHAAR,
+      retailerNote: note || cart.note || '',
+    });
+  } catch (err) {
+    await restoreCart();
+    throw err;
   }
-
-  if (!lines.length) {
-    throw ApiError.badRequest('Cart ke saare item ab available nahi hain — cart dobara dekh lein');
-  }
-
-  const business = await Business.findById(businessId).select('orderPrefix').lean();
-  const { number: orderNo } = await Counter.nextNumber({
-    businessId, key: COUNTER_KEYS.ORDER, prefix: business?.orderPrefix || 'ORD',
-  });
-
-  const order = await Order.create({
-    businessId,
-    partyId,
-    placedByUserId: userId,
-    orderNo,
-    items: lines,
-    itemsTotal: round2(lines.reduce((s, l) => s + l.amount, 0)),
-    itemCount: lines.length,
-    status: ORDER_STATUS.PLACED,
-    statusHistory: [{ status: ORDER_STATUS.PLACED, at: new Date(), byUserId: userId, note: 'Retailer ne order kiya' }],
-    paymentMode: paymentMode || ORDER_PAYMENT_MODES.UDHAAR,
-    retailerNote: note || cart.note || '',
-  });
-
-  await clearCart(businessId, partyId);
 
   // Wholesaler ko turant khabar
   await notifyWholesaler(businessId, {
@@ -103,7 +122,7 @@ export async function placeOrder(businessId, partyId, userId, { note, paymentMod
     body: `${order.itemCount} item · ${order.itemsTotal}${
       order.paymentMode === ORDER_PAYMENT_MODES.UDHAAR ? '' : ` · ${order.paymentMode} pe denge`}`,
     link: `/orders/${order._id}`,
-    data: { orderId: order._id, orderNo },
+    data: { orderId: order._id, orderNo: order.orderNo },
   });
 
   /*
@@ -340,7 +359,13 @@ export async function getOrderForWholesaler(businessId, id, viewer = null) {
   system use apne aap us bill me laga dega. Isiliye `allowAdvance: true` —
   bina iske "bill se zyada paisa" kehkar rok diya jata.
 */
-export async function markOrderPaid(businessId, id, { amount, mode, reference, note }, userId, viewer = null) {
+// Ek saath do tap — do payment na ban jayein (paymentId ka pehra baad me lagta hai)
+export function markOrderPaid(businessId, id, body, userId, viewer = null) {
+  return withHold(Order, { _id: id, businessId }, 'Order nahi mila',
+    () => markOrderPaidHeld(businessId, id, body, userId, viewer));
+}
+
+async function markOrderPaidHeld(businessId, id, { amount, mode, reference, note }, userId, viewer = null) {
   await assertCanTouch(businessId, id, viewer);
   const order = await Order.findOne({ _id: id, businessId });
   if (!order) throw ApiError.notFound('Order nahi mila');

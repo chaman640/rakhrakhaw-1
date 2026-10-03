@@ -1,4 +1,5 @@
 import { assertBankAccount } from './accounts.service.js';
+import { withHold } from '../utils/holdDoc.js';
 import mongoose from 'mongoose';
 import ApiError from '../utils/ApiError.js';
 import { COUNTER_KEYS, STOCK_MOVEMENT_TYPES } from '../config/constants.js';
@@ -306,7 +307,13 @@ export async function updateExpense(businessId, id, payload, viewer = null) {
  * Waste/Damaged Stock ho to stock bhi WAPAS chadhta hai — warna maal hamesha
  * ke liye kho jata, sirf isliye ki kisi ne galti se entry kar di thi.
  */
-export async function deleteExpense(businessId, id, viewer = null) {
+// Waste ka maal do baar wapas na jude — ek waqt me ek hi delete
+export function deleteExpense(businessId, id, viewer = null) {
+  return withHold(Expense, scopeFilter({ _id: id, businessId }, viewer), 'Ye kharch nahi mila',
+    () => deleteExpenseHeld(businessId, id, viewer));
+}
+
+async function deleteExpenseHeld(businessId, id, viewer = null) {
   const expense = await Expense.findOne(scopeFilter({ _id: id, businessId }, viewer));
   if (!expense) throw ApiError.notFound('Ye kharch nahi mila');
 
