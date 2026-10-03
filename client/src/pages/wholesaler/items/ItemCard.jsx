@@ -67,7 +67,7 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock, on
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button onClick={() => onStock(item)}>
             <Badge tone={item.isOutOfStock ? 'red' : item.isLowStock ? 'amber' : 'green'}>
-              {item.isOutOfStock ? 'Khatam' : formatQty(item.stockQty, item.unit)}
+              {item.isOutOfStock ? t('Khatam') : formatQty(item.stockQty, item.unit)}
             </Badge>
           </button>
           <span className="tabular text-sm text-slate-700">

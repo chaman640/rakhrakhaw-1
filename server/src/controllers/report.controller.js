@@ -1,3 +1,4 @@
+import { istDay } from '../utils/istDay.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import ApiError from '../utils/ApiError.js';
@@ -65,7 +66,7 @@ export const download = asyncHandler(async (req, res) => {
     ])));
   }
 
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = istDay();
   const filename = `${req.params.name}-report-${stamp}.csv`;
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');

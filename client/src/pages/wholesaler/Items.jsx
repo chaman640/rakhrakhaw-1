@@ -211,7 +211,7 @@ export default function Items() {
       render: (row) =>
       <button onClick={() => setStockItem(row)} className="focus-ring rounded">
             <Badge tone={row.isOutOfStock ? 'red' : row.isLowStock ? 'amber' : 'green'}>
-              {row.isOutOfStock ? 'Khatam' : formatQty(row.stockQty, row.unit)}
+              {row.isOutOfStock ? t('Khatam') : formatQty(row.stockQty, row.unit)}
             </Badge>
           </button>
 

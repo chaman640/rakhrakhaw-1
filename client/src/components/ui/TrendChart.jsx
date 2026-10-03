@@ -41,11 +41,14 @@ function niceMax(value) {
 }
 
 const shortMoney = (n) => {
-  const v = Number(n) || 0;
-  if (v >= 10000000) return `${(v / 10000000).toFixed(1)}Cr`;
-  if (v >= 100000) return `${(v / 100000).toFixed(1)}L`;
-  if (v >= 1000) return `${Math.round(v / 1000)}k`;
-  return String(Math.round(v));
+  const n0 = Number(n) || 0;
+  // Nuksan (minus) bhi chhota likha jaye — -150000 nahi, -1.5L
+  const sign = n0 < 0 ? '-' : '';
+  const v = Math.abs(n0);
+  if (v >= 10000000) return `${sign}${(v / 10000000).toFixed(1)}Cr`;
+  if (v >= 100000) return `${sign}${(v / 100000).toFixed(1)}L`;
+  if (v >= 1000) return `${sign}${Math.round(v / 1000)}k`;
+  return `${sign}${Math.round(v)}`;
 };
 
 export default function TrendChart({

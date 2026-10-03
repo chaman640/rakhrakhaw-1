@@ -198,7 +198,7 @@ export default function Autopay() {
                 <div className="shrink-0 text-right">
                   <p className="tabular text-sm font-semibold text-slate-900">{formatMoney(c.amountRupees)}</p>
                   <Badge tone={c.status === 'paid' ? 'green' : 'red'}>
-                    {t(c.status === 'paid' ? 'Aaya' : t('Nahi aaya'))}
+                    {t(c.status === 'paid' ? 'Aaya' : 'Nahi aaya')}
                   </Badge>
                 </div>
               </li>

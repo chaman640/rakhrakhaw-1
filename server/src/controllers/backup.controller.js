@@ -1,3 +1,4 @@
+import { istDay } from '../utils/istDay.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import ApiError from '../utils/ApiError.js';
@@ -9,7 +10,7 @@ export const summary = asyncHandler(async (req, res) =>
 /** Poora data, ek JSON file me */
 export const download = asyncHandler(async (req, res) => {
   const backup = await service.fullBackup(req.businessId);
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = istDay();
   const safeName = (backup.meta.businessName || 'rakhrakhav')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'rakhrakhav';
 
@@ -22,7 +23,7 @@ export const csv = asyncHandler(async (req, res) => {
   const result = await service.exportCsvKind(req.businessId, req.params.kind);
   if (!result) throw ApiError.notFound('Aisi koi file nahi banti');
 
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = istDay();
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${req.params.kind}-${stamp}.csv"`);
   // BOM taaki Excel me Hinglish theek dikhe
