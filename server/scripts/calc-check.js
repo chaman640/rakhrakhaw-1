@@ -367,6 +367,11 @@ async function run() {
     rs = await x3(() => call('POST', '/returns', { type: 'SALE_RETURN', partyId: A, invoiceId: rb3._id, items: [{ itemId: Q1, qty: 1, rate: 200 }] }));
     check('ek pc ke bill pe 3 wapasi ek saath → sirf ek bani', rs.filter((x) => x.status === 201).length === 1, rs.map((x) => x.status).join(','));
     eq('bill aur wapasi ke baad Q1 stock wahi (st - 1)', await q1Stock(), st - 1);
+    // Ek party pe 6 payment ek saath — balance khate ke jod se mile (pehle ek gayab ho jati thi)
+    const pb = (await Party.findById(B).lean()).balance;
+    rs = await Promise.all(Array.from({ length: 6 }, () => call('POST', '/payments', { partyId: B, amount: 10 })));
+    check('6 payment ek saath — sab bani', rs.every((x) => x.status === 201), rs.map((x) => x.status).join(','));
+    eq('balance 60 ghata', (await Party.findById(B).lean()).balance, round2(pb - 60));
     await stockMatches(businessId);
     await ledgerMatches(businessId);
 

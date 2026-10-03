@@ -74,6 +74,8 @@ const partySchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     // Bina-bill wapasi chalu hone ka taala (utils/holdDoc.js)
     busyAt: { type: Date, select: false },
+    // Khata likhte waqt ka taala — ek party ka khata ek waqt me ek hi kaam badle (ledger.service)
+    ledgerLockAt: { type: Date, select: false },
   },
   { timestamps: true }
 );

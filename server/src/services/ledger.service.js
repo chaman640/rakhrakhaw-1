@@ -16,7 +16,45 @@ import { Party, LedgerEntry } from '../models/index.js';
  *
  * Part 9 (payments) bhi yahi function use karega — do jagah hisaab mat likhna.
  */
-export async function postEntry({
+
+/*
+  Ek party ke khate pe ek waqt me ek hi likhai.
+
+  `$inc` akela kaafi nahi tha: purani tareekh ki entry ya entry hatne pe
+  `recalcBalances` poora khata padh kar balance SET karta hai. Usi pal doosri
+  payment ka `$inc` lag chuka ho par entry abhi bani na ho, to wo payment
+  balance se gayab ho jati thi (3 payment ek saath → balance −300, khata −600).
+  Ab dusra kaam fail nahi hota, thoda ruk kar apni baari pe chalta hai.
+*/
+const LOCK_STALE_MS = 30 * 1000;
+const LOCK_WAIT_MS = 15 * 1000;
+const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
+
+async function withPartyLedger(businessId, partyId, fn) {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let token;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    token = new Date();
+    const got = await Party.updateOne(
+      { _id: partyId, businessId, $or: [{ ledgerLockAt: null }, { ledgerLockAt: { $lt: new Date(token.getTime() - LOCK_STALE_MS) } }] },
+      { $set: { ledgerLockAt: token } },
+    );
+    if (got.modifiedCount) break;
+    if (!(await Party.exists({ _id: partyId, businessId }))) throw ApiError.notFound('Party nahi mili');
+    if (Date.now() > deadline) throw ApiError.conflict('Khata abhi vyast hai — thodi der me dobara koshish karein');
+    await sleep(wait);
+  }
+  try {
+    return await fn();
+  } finally {
+    await Party.updateOne({ _id: partyId, ledgerLockAt: token }, { $unset: { ledgerLockAt: 1 } }).catch(() => {});
+  }
+}
+export function postEntry(args) {
+  return withPartyLedger(args.businessId, args.partyId, () => postEntryLocked(args));
+}
+
+async function postEntryLocked({
   businessId, partyId, type, debit = 0, credit = 0,
   date = new Date(), refType = null, refId = null, refNo = '',
   note = '', userId = null,
@@ -55,7 +93,7 @@ export async function postEntry({
       .catch(() => {
         // Ulta karna bhi fail — ab sirf poora khata dobara jodna hi bachta hai
         console.error(`[ledger] ${partyId} ka balance ulta nahi ho paya — recalc chala rahe hain`);
-        return recalcBalances(businessId, partyId).catch(() => {});
+        return recalcUnlocked(businessId, partyId).catch(() => {});
       });
     throw err;
   }
@@ -66,7 +104,7 @@ export async function postEntry({
     businessId, partyId, _id: { $ne: entry._id }, date: { $gt: date },
   });
   if (laterExists) {
-    const balance = await recalcBalances(businessId, partyId);
+    const balance = await recalcUnlocked(businessId, partyId);
     const fresh = await LedgerEntry.findById(entry._id).lean();
     return { entry: fresh, balance };
   }
@@ -102,7 +140,11 @@ export async function reverseEntriesFor({ businessId, refType, refId, userId = n
  * Party.balance bhi yahin set hota hai — isliye khata aur balance kabhi
  * alag nahi ho sakte. Ye khud hi theek kar deta hai.
  */
-export async function recalcBalances(businessId, partyId) {
+export function recalcBalances(businessId, partyId) {
+  return withPartyLedger(businessId, partyId, () => recalcUnlocked(businessId, partyId));
+}
+
+async function recalcUnlocked(businessId, partyId) {
   const entries = await LedgerEntry.find({ businessId, partyId })
     .sort({ date: 1, createdAt: 1 })
     .select('_id debit credit')

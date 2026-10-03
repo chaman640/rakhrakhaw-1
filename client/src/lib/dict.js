@@ -4124,6 +4124,9 @@ const DICT = {
 
   /* ── Ek saath do tap ── */
   'Ye kaam abhi chal raha hai — thodi der me dobara dekhein': { hi: 'ये काम अभी चल रहा है — थोड़ी देर में दोबारा देखें', en: 'This is already in progress — check again in a moment' },
+
+  /* ── Khata vyast ── */
+  'Khata abhi vyast hai — thodi der me dobara koshish karein': { hi: 'खाता अभी व्यस्त है — थोड़ी देर में दोबारा कोशिश करें', en: 'The ledger is busy — please try again in a moment' },
 };
 
 export default DICT;
