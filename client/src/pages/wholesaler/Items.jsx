@@ -157,8 +157,8 @@ export default function Items() {
       header: t('Item'),
       render: (row) =>
       <div className="flex items-center gap-3">
-            {row.imageUrl ?
-        <img src={row.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" /> :
+            {row.coverUrl || row.imageUrl ?
+        <img src={row.coverUrl || row.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" /> :
 
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
                 <Package size={16} />

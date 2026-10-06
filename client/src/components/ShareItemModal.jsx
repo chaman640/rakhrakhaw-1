@@ -92,8 +92,8 @@ export default function ShareItemModal({ open, onClose, item, inviteCode, rate, 
     <Modal open={open} onClose={onClose} title={t('Item bhejein')} size="sm">
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
+          {item.coverUrl || item.imageUrl ? (
+            <img src={item.coverUrl || item.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
           ) : (
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
               <Package size={18} />

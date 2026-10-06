@@ -24,8 +24,8 @@ export default function ItemCard({ item, selected, onSelect, onEdit, onStock, on
         aria-label={t('{a} chunein', { a: item.name })}
       />
 
-      {item.imageUrl ? (
-        <img src={item.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
+      {item.coverUrl || item.imageUrl ? (
+        <img src={item.coverUrl || item.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
       ) : (
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
           <Package size={20} />

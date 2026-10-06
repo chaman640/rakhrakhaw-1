@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { coverUrl } from '../utils/itemPhoto.js';
 import ApiError from '../utils/ApiError.js';
 import { round2 } from '../utils/money.js';
 import { Item, Party, Wishlist } from '../models/index.js';
@@ -22,7 +23,7 @@ export async function listWishlist(businessId, partyId) {
   const itemIds = rows.filter((r) => r.itemId).map((r) => r.itemId);
   const items = itemIds.length
     ? await Item.find({ _id: { $in: itemIds }, businessId, isActive: true, visibleToRetailers: true })
-      .select('name imageUrl unit stockQty salePrice wholesalePrice').lean()
+      .select('name imageUrl images unit stockQty salePrice wholesalePrice').lean()
     : [];
   // Rate wahi jo is kharidaar ko catalog me dikhta hai (uska khaas rate bhi)
   const priced = items.length ? await resolveRates(businessId, partyId, items) : [];
@@ -39,7 +40,7 @@ export async function listWishlist(businessId, partyId) {
       item: it ? {
         _id: it._id,
         name: it.name,
-        imageUrl: it.imageUrl || '',
+        imageUrl: coverUrl(it),
         unit: it.unit,
         rate: round2(it.rate),
         inStock: Number(it.stockQty || 0) > 0,
@@ -111,7 +112,7 @@ export async function demandFor(businessId) {
   ]);
   const items = grouped.length
     ? await Item.find({ _id: { $in: grouped.map((g) => g._id) }, businessId })
-      .select('name imageUrl unit stockQty isActive').lean()
+      .select('name imageUrl images unit stockQty isActive').lean()
     : [];
   const itemMap = new Map(items.map((i) => [String(i._id), i]));
 
@@ -131,7 +132,7 @@ export async function demandFor(businessId) {
         return {
           itemId: g._id,
           name: it.name,
-          imageUrl: it.imageUrl || '',
+          imageUrl: coverUrl(it),
           unit: it.unit,
           stockQty: Number(it.stockQty || 0),
           hidden: !it.isActive,

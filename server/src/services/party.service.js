@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { coverUrl } from '../utils/itemPhoto.js';
 import ApiError from '../utils/ApiError.js';
 import { PARTY_TYPES, PARTY_STATUS, LEDGER_TYPES } from '../config/constants.js';
 import { getStateCode } from '../config/states.js';
@@ -415,7 +416,7 @@ export async function listRates(businessId, partyId, q, viewer = null) {
       sku: item.sku,
       unit: item.unit,
       category: item.categoryId?.name || null,
-      imageUrl: item.imageUrl,
+      imageUrl: coverUrl(item),
       purchasePrice: item.purchasePrice,
       salePrice: item.salePrice,
       wholesalePrice: item.wholesalePrice,

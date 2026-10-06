@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { coverUrl } from '../utils/itemPhoto.js';
 import ApiError from '../utils/ApiError.js';
 import { round2 } from '../utils/money.js';
 import { Item, Category } from '../models/index.js';
@@ -67,9 +68,9 @@ function decorate(item) {
     sku: item.sku,
     unit: item.unit,
     description: item.description,
-    imageUrl: item.imageUrl,
+    imageUrl: coverUrl(item),
     // Slider ke liye — cover photo pehle, uske baad gallery ki extra photos
-    images: [item.imageUrl, ...(item.images || []).map((i) => i.url)].filter(Boolean),
+    images: [...new Set([item.imageUrl, ...(item.images || []).map((i) => i.url)].filter(Boolean))],
     category: item.categoryId?.name || null,
     categoryId: item.categoryId?._id || null,
     rate: round2(item.rate),

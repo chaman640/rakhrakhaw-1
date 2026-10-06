@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { coverUrl } from '../utils/itemPhoto.js';
 import { round2 } from '../utils/money.js';
 import { partyHisaab, businessHisaab } from './balance.service.js';
 import { ORDER_STATUS, PARTY_TYPES } from '../config/constants.js';
@@ -197,7 +198,8 @@ export async function getWholesalerDashboard(businessId, user = null, q = {}) {
     ]),
 
     Item.find({ businessId, isActive: true, $expr: { $lte: ['$stockQty', '$lowStockAt'] } })
-      .sort({ stockQty: 1 }).limit(6).select('name unit stockQty lowStockAt imageUrl').lean(),
+      .sort({ stockQty: 1 }).limit(6).select('name unit stockQty lowStockAt imageUrl images').lean()
+      .then((rows) => rows.map(({ images, ...r }) => ({ ...r, imageUrl: coverUrl({ ...r, images }) }))),
 
     // Pichhle 14 din ka sale — chart ke liye
     Invoice.aggregate([

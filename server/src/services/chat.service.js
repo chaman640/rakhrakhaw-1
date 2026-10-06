@@ -1,4 +1,5 @@
 import ApiError from '../utils/ApiError.js';
+import { coverUrl } from '../utils/itemPhoto.js';
 import { saveImage } from '../utils/storage.js';
 import { PARTY_TYPES, PARTY_STATUS } from '../config/constants.js';
 import { Conversation, Message, Party, Item, Order } from '../models/index.js';
@@ -44,10 +45,10 @@ export async function sendMessage(businessId, partyId, { type = 'text', text = '
      * purana message wahi dikhega jo bhejte waqt tha.
      */
     const item = await Item.findOne({ _id: refId, businessId })
-      .select('name imageUrl salePrice wholesalePrice unit').lean();
+      .select('name imageUrl images salePrice wholesalePrice unit').lean();
     if (!item) throw ApiError.badRequest('Item nahi mila');
     title = item.name;
-    imageUrl = item.imageUrl || '';
+    imageUrl = coverUrl(item);
     subtitle = `₹${item.wholesalePrice || item.salePrice || 0} / ${item.unit}`;
   } else if (type === 'order') {
     const order = await Order.findOne({ _id: refId, businessId, partyId })

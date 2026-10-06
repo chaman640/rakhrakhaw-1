@@ -1,4 +1,5 @@
 import ApiError from '../utils/ApiError.js';
+import { coverUrl } from '../utils/itemPhoto.js';
 import { round2 } from '../utils/money.js';
 import { Cart, Item } from '../models/index.js';
 import { resolveRates } from './rate.service.js';
@@ -17,7 +18,7 @@ export async function getCart(businessId, partyId) {
   const itemIds = cart.items.map((i) => i.itemId);
   const rawItems = await Item.find({
     _id: { $in: itemIds }, businessId, isActive: true, visibleToRetailers: true,
-  }).select('name sku unit imageUrl stockQty salePrice wholesalePrice').lean();
+  }).select('name sku unit imageUrl images stockQty salePrice wholesalePrice').lean();
 
   const priced = await resolveRates(businessId, partyId, rawItems);
   const priceMap = new Map(priced.map((p) => [String(p._id), p]));
@@ -70,7 +71,7 @@ export async function getCart(businessId, partyId) {
       name: item.name,
       sku: item.sku,
       unit: item.unit,
-      imageUrl: item.imageUrl,
+      imageUrl: coverUrl(item),
       rate: item.rate,
       rateSource: item.rateSource,
       hasSpecialRate: item.rateSource === 'custom',

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { coverUrl } from '../utils/itemPhoto.js';
 import ApiError from '../utils/ApiError.js';
 import { STOCK_MOVEMENT_TYPES, UNITS } from '../config/constants.js';
 import { round2 } from '../utils/money.js';
@@ -78,6 +79,8 @@ function decorate(item) {
   const lowStockAt = Number(item.lowStockAt || 0);
   return {
     ...item,
+    // List ki thumbnail — cover na ho to pehli gallery photo (form me asli imageUrl hi rahe)
+    coverUrl: coverUrl(item),
     // categoryId populate hoke aata hai -> { _id, name }
     category: item.categoryId?.name || null,
     categoryId: item.categoryId?.name ? item.categoryId._id : (item.categoryId || null),
@@ -224,8 +227,9 @@ export async function getLowStockItems(businessId, limit = 20) {
   })
     .sort({ stockQty: 1 })
     .limit(limit)
-    .select('name unit stockQty lowStockAt imageUrl')
-    .lean();
+    .select('name unit stockQty lowStockAt imageUrl images')
+    .lean()
+    .then((rows) => rows.map(({ images, ...r }) => ({ ...r, imageUrl: coverUrl({ ...r, images }) })));
 }
 
 /* ------------------------------------------------------------------ CRUD */
