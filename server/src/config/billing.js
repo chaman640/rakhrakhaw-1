@@ -125,7 +125,7 @@ export const PLANS = [
 export const PLAN_BY_CODE = Object.fromEntries(PLANS.map((p) => [p.code, p]));
 
 // BILLING_MODE=free me ye feature band rehte hain (HR — attendance, salary); baaki sab khula
-export const FREE_MODE_OFF = ['hr_basic', 'hr_teams', 'hr_advanced'];
+export const FREE_MODE_OFF = [];
 
 /**
  * PAISA KITNE WAQT KA — sirf DO raste: mahina ya saal.
