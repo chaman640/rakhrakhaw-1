@@ -60,13 +60,14 @@ export const PLANS = [
   {
     code: 'FREE',
     name: 'Free',
-    seats: 3,
+    seats: 20,
     pricePaise: 0,
-    tagline: 'Kharidne ke liye — hamesha free',
+    tagline: 'Sab kuch free — bechna bhi, kharidna bhi',
     features: [
-      'Dukaanein dhundhein aur maal dekhein',
-      'Order bhejein, apna khata dekhein',
-      'Bill aur payment ka poora record',
+      'Apna stock, apna bill, apna khata',
+      'Retailer aap se seedha order karein',
+      '20 account — salesman, munshi, godown',
+      'Dukaanein dhundhein, order bhejein, poora record',
     ],
   },
   {
