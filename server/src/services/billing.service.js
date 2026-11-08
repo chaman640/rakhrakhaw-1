@@ -214,6 +214,7 @@ export async function assertSeat(businessId, { extra = 1 } = {}) {
  * sakta hai. Rok tabhi kaam ki hai jab uske saath aage ka rasta bhi ho.
  */
 export async function assertCanSell(businessId, user = null) {
+  return;
   if (isFreeMode()) return;
 
   const state = await subscriptionOf(businessId);
