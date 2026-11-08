@@ -240,7 +240,9 @@ export async function seatsUsed(businessId) {
 export async function assertSeat(businessId, { extra = 1 } = {}) {
   if (isFreeMode()) return;
 
-  const { planCode, plan } = await subscriptionOf(businessId);
+  const state = await subscriptionOf(businessId);
+  const planCode = isUsable(state.status) ? state.planCode : FREE_PLAN.code;
+  const plan = PLAN_BY_CODE[planCode] || FREE_PLAN;
   const max = seatsOf(planCode);
   if (max === null) return;
 
