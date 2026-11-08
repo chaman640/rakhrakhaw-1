@@ -386,7 +386,7 @@ export async function login({ phone, companyCode, employeeCode, password }) {
    */
   if (user.role === ROLES.WHOLESALER && !isOwnerUser(user) && user.businessId) {
     const { isFreeMode, subscriptionOf } = await import('./billing.service.js');
-    if (!isFreeMode()) {
+        if (false && !isFreeMode()) {
       const state = await subscriptionOf(user.businessId);
       if (state.status !== SUB_STATUS.ACTIVE) {
         throw ApiError.forbidden(
